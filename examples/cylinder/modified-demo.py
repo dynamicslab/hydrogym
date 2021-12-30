@@ -1,11 +1,14 @@
 from fenics import *
 import cfd_gym
+from mesh.common import INLET, FREESTREAM, OUTLET, CYLINDER
 
 # Print log messages only from the root process in parallel
 parameters["std_out_all_processes"] = False;
+mesh_name = 'noack'
 
-#cfd_gym.utils.mesh.convert_to_xdmf('mesh/cyl.msh', out_dir='mesh', dim=2)
-mesh, mf = cfd_gym.utils.mesh.load_mesh('mesh')
+if(MPI.rank(MPI.comm_world) == 0):
+    cfd_gym.utils.mesh.convert_to_xdmf(f'mesh/{mesh_name}/cyl.msh', out_dir=f'mesh/{mesh_name}', dim=2)
+mesh, mf = cfd_gym.utils.mesh.load_mesh(f'mesh/{mesh_name}')
 
 T = 300.0            # final time
 dt = 1e-2           # time step size
@@ -18,18 +21,25 @@ U_inf = Constant((1.0, 0))
 V = VectorFunctionSpace(mesh, 'CG', 2)  # Velocity
 Q = FunctionSpace(mesh, 'CG', 1)        # Pressure
 
-# Define boundaries
-inflow   = 'near(x[0], -60)'
-outflow  = 'near(x[0], 200)'
-walls    = 'near(x[1], -20) || near(x[1], 20)'
-cylinder = 'on_boundary && x[0]>-0.6 && x[0]<0.6 && x[1]>-0.6 && x[1]<0.6'
+# # Define boundaries
+# inflow   = 'near(x[0], -60)'
+# outflow  = 'near(x[0], 200)'
+# walls    = 'near(x[1], -20) || near(x[1], 20)'
+# cylinder = 'on_boundary && x[0]>-0.6 && x[0]<0.6 && x[1]>-0.6 && x[1]<0.6'
 
-# Define boundary conditions
-bcu_inflow = DirichletBC(V, U_inf, inflow)
-bcu_walls = DirichletBC(V, U_inf, walls)
-bcu_cylinder = DirichletBC(V, Constant((0, 0)), cylinder)
-bcp_outflow = DirichletBC(Q, Constant(0), outflow)
-bcu = [bcu_inflow, bcu_walls, bcu_cylinder]
+# # Define boundary conditions
+# bcu_inflow = DirichletBC(V, U_inf, inflow)
+# bcu_walls = DirichletBC(V, U_inf, walls)
+# bcu_cylinder = DirichletBC(V, Constant((0, 0)), cylinder)
+# bcp_outflow = DirichletBC(Q, Constant(0), outflow)
+
+# dolfin.cpp.fem.DirichletBC(V: dolfin.cpp.function.FunctionSpace, g: dolfin.cpp.function.GenericFunction, sub_domains: dolfin.cpp.mesh.MeshFunctionSizet, sub_domain: int, method: str = ‘topological’)
+bcu_inflow = DirichletBC(V, U_inf, mf, INLET)
+bcu_freestream = DirichletBC(V, U_inf, mf, FREESTREAM)
+bcu_cylinder = DirichletBC(V, Constant((0, 0)), mf, CYLINDER)
+bcp_outflow = DirichletBC(Q, Constant(0), mf, OUTLET)
+
+bcu = [bcu_inflow, bcu_freestream, bcu_cylinder]
 bcp = [bcp_outflow]
 
 # Define trial and test functions
@@ -118,7 +128,7 @@ for n in range(num_steps):
 #     # Save solution to file (XDMF/HDF5)
 #     xdmffile_u.write(u_, t)
 #     xdmffile_p.write(p_, t)
-    if n % 10 == 0:
+    if n % 100 == 0:
         outfile_u << u_
         outfile_p << p_
 
