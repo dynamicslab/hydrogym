@@ -13,25 +13,13 @@ mesh, mf = cfd_gym.utils.mesh.load_mesh(f'mesh/{mesh_name}')
 T = 300.0            # final time
 dt = 1e-2           # time step size
 num_steps = int(T//dt)  # number of time steps
-mu = 1/100         # dynamic viscosity
+Re = 100             # Reynolds number
 rho = 1            # density
 U_inf = Constant((1.0, 0))
 
 # Define function spaces
 V = VectorFunctionSpace(mesh, 'CG', 2)  # Velocity
 Q = FunctionSpace(mesh, 'CG', 1)        # Pressure
-
-# # Define boundaries
-# inflow   = 'near(x[0], -60)'
-# outflow  = 'near(x[0], 200)'
-# walls    = 'near(x[1], -20) || near(x[1], 20)'
-# cylinder = 'on_boundary && x[0]>-0.6 && x[0]<0.6 && x[1]>-0.6 && x[1]<0.6'
-
-# # Define boundary conditions
-# bcu_inflow = DirichletBC(V, U_inf, inflow)
-# bcu_walls = DirichletBC(V, U_inf, walls)
-# bcu_cylinder = DirichletBC(V, Constant((0, 0)), cylinder)
-# bcp_outflow = DirichletBC(Q, Constant(0), outflow)
 
 # dolfin.cpp.fem.DirichletBC(V: dolfin.cpp.function.FunctionSpace, g: dolfin.cpp.function.GenericFunction, sub_domains: dolfin.cpp.mesh.MeshFunctionSizet, sub_domain: int, method: str = ‘topological’)
 bcu_inflow = DirichletBC(V, U_inf, mf, INLET)
@@ -59,8 +47,7 @@ U  = 0.5*(u_n + u)
 n  = FacetNormal(mesh)
 f  = Constant((0, 0))
 k  = Constant(dt)
-mu = Constant(mu)
-rho = Constant(rho)
+nu = Constant(1/Re)
 
 # Define symmetric gradient
 def epsilon(u):
@@ -68,13 +55,13 @@ def epsilon(u):
 
 # Define stress tensor
 def sigma(u, p):
-    return 2*mu*epsilon(u) - p*Identity(len(u))
+    return 2*nu*epsilon(u) - p*Identity(len(u))
 
 # Define variational problem for step 1
-F1 = rho*dot((u - u_n) / k, v)*dx \
-   + rho*dot(dot(u_n, nabla_grad(u_n)), v)*dx \
+F1 = dot((u - u_n) / k, v)*dx \
+   + dot(dot(u_n, nabla_grad(u_n)), v)*dx \
    + inner(sigma(U, p_n), epsilon(v))*dx \
-   + dot(p_n*n, v)*ds - dot(mu*nabla_grad(U)*n, v)*ds \
+   + dot(p_n*n, v)*ds - dot(nu*nabla_grad(U)*n, v)*ds \
    - dot(f, v)*dx
 a1 = lhs(F1)
 L1 = rhs(F1)
