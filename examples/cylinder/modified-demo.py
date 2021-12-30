@@ -1,4 +1,5 @@
 from fenics import *
+import numpy as np
 import cfd_gym
 from mesh.common import INLET, FREESTREAM, OUTLET, CYLINDER
 
@@ -13,7 +14,7 @@ mesh, mf = cfd_gym.utils.mesh.load_mesh(f'mesh/{mesh_name}')
 T = 300.0            # final time
 dt = 1e-2           # time step size
 num_steps = int(T//dt)  # number of time steps
-Re = 100             # Reynolds number
+Re = 40             # Reynolds number
 rho = 1            # density
 U_inf = Constant((1.0, 0))
 
@@ -48,6 +49,7 @@ n  = FacetNormal(mesh)
 f  = Constant((0, 0))
 k  = Constant(dt)
 nu = Constant(1/Re)
+ds = ds(subdomain_data=mf)
 
 # Define symmetric gradient
 def epsilon(u):
@@ -87,6 +89,13 @@ A3 = assemble(a3)
 # xdmffile_u = XDMFFile(MPI.comm_world, 'output/velocity.xdmf')
 # xdmffile_p = XDMFFile(MPI.comm_world, 'output/pressure.xdmf')
 
+# Lift/drag on cylinder
+#  Note minus sign for force ON cylinder and factor of two between
+#  force and aerodynamic coefficient
+force = -dot(sigma(u_, p_), n)
+drag = 2*force[0]*ds(CYLINDER)
+lift = 2*force[1]*ds(CYLINDER)
+
 outfile_u = File(f"output/velocity.pvd")
 outfile_p = File(f"output/pressure.pvd")
 u_.rename("u", "velocity")
@@ -94,7 +103,9 @@ p_.rename("p", "pressure")
 
 # Time-stepping
 t = 0
-for n in range(num_steps):
+CL = np.zeros(num_steps)
+CD = np.zeros(num_steps)
+for j in range(num_steps):
     # Update current time
     t += dt
 
@@ -115,14 +126,22 @@ for n in range(num_steps):
 #     # Save solution to file (XDMF/HDF5)
 #     xdmffile_u.write(u_, t)
 #     xdmffile_p.write(p_, t)
-    if n % 100 == 0:
+    if j % 100 == 0:
         outfile_u << u_
+        outfile_u << p_
         outfile_p << p_
 
     # Update previous solution
     u_n.assign(u_)
     p_n.assign(p_)
 
+    CL[j] = assemble(lift)
+    CD[j] = assemble(drag)
+
     # Simple convergence check
     if(MPI.rank(MPI.comm_world) == 0):
-        print(f't: {t:0.03f}\t u max: {u_.vector()[:].max()}', flush=True)
+        # print(f't: {t:0.02f}\t u max: {u_.vector()[:].max()}', flush=True)
+        print(f't: {t:0.02f}\t lift: {CL[j]}\t drag: {CD[j]}', flush=True)
+
+t = dt*np.arange(num_steps)
+np.savetxt('output/force.dat', np.stack([t, CD, CL], axis=1))
