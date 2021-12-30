@@ -1,6 +1,6 @@
 FROM quay.io/dolfinadjoint/pyadjoint:latest
 
-ENV PYTHONPATH=/home/fenics/cfd_gym
+ENV PYTHONPATH=/home/fenics/hydrogym
 
 # Install dependencies
 # COPY requirements.txt /src/requirements.txt
@@ -11,15 +11,15 @@ RUN pip3 install --upgrade pip && \
 
 # RUN sudo pip3 git+https://github.com/barkm/torch-fenics.git@master
 
-# Install cfd_gym package
-RUN mkdir cfd_gym
-COPY setup.py /home/fenics/cfd_gym
-COPY cfd_gym /home/fenics/cfd_gym/cfd_gym
+# Install hydrogym package
+RUN mkdir hydrogym
+COPY setup.py /home/fenics/hydrogym
+COPY hydrogym /home/fenics/hydrogym/hydrogym
 
-# RUN cd cfd_gym && \
+# RUN cd hydrogym && \
 # 	pip3 install -e . && \
 # 	cd ..
     
 RUN cd /usr/local/lib/python3.6/dist-packages && \
-    python3 /home/fenics/cfd_gym/setup.py develop && \
+    python3 /home/fenics/hydrogym/setup.py develop && \
     cd /home/fenics

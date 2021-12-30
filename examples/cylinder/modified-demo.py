@@ -1,6 +1,6 @@
 from fenics import *
 import numpy as np
-import cfd_gym
+import hydrogym as gym
 from mesh.common import INLET, FREESTREAM, OUTLET, CYLINDER
 
 # Print log messages only from the root process in parallel
@@ -8,8 +8,8 @@ parameters["std_out_all_processes"] = False;
 mesh_name = 'noack'
 
 if(MPI.rank(MPI.comm_world) == 0):
-    cfd_gym.utils.mesh.convert_to_xdmf(f'mesh/{mesh_name}/cyl.msh', out_dir=f'mesh/{mesh_name}', dim=2)
-mesh, mf = cfd_gym.utils.mesh.load_mesh(f'mesh/{mesh_name}')
+    gym.utils.mesh.convert_to_xdmf(f'mesh/{mesh_name}/cyl.msh', out_dir=f'mesh/{mesh_name}', dim=2)
+mesh, mf = gym.utils.mesh.load_mesh(f'mesh/{mesh_name}')
 
 T = 300.0            # final time
 dt = 1e-2           # time step size
