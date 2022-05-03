@@ -16,7 +16,7 @@ ENV PATH="$VENV/bin:/home/firedrake/.local/bin:$PATH"
 # RUN pip3 install --no-cache-dir -r /src/requirements.txt
 RUN pip3 install --upgrade pip setuptools && \
     pip3 install --no-cache-dir --no-binary=h5py h5py && \
-	pip3 install gmsh meshio dmsuite jupyter
+	pip3 install gmsh meshio dmsuite jupyter gym
 
 # RUN sudo pip3 git+https://github.com/barkm/torch-fenics.git@master
 

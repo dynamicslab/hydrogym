@@ -12,7 +12,7 @@ chk_out = f"{output_dir}/checkpoint.h5"
 cyl = gym.flows.Cylinder()
 
 # cyl.solve_steady()  # Initialize with steady state
-# cyl.load_checkpoint(chk_out)  # Reload previous solution
+cyl.load_checkpoint(chk_out)  # Reload previous solution
 
 # Time step
 dt = 1e-2
@@ -36,7 +36,7 @@ def forces(iter, t, state):
 
 callbacks = [
     gym.io.ParaviewCallback(interval=10, filename=pvd_out, postprocess=compute_vort),
-    gym.io.CheckpointCallback(flow=cyl, interval=100, filename=chk_out),
+    # gym.io.CheckpointCallback(flow=cyl, interval=100, filename=chk_out),
     gym.io.GenericCallback(callback=forces, interval=1)
 ]
 

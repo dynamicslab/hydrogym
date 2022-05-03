@@ -4,7 +4,8 @@ from firedrake import dx, ds
 from firedrake.petsc import PETSc
 from ufl import sym, grad, dot, inner, nabla_grad, div, cos, sin, atan_2
 
-import hydrogym
+def print(s):
+    PETSc.Sys.Print(s)
 
 class Flow:
     def __init__(self, mesh):
@@ -90,6 +91,8 @@ class Flow:
 
 class Cylinder(Flow):
     from .mesh.cylinder.mesh import INLET, FREESTREAM, OUTLET, CYLINDER
+    MAX_CONTROL = 0.5*np.pi
+
     def __init__(self, mesh_name='noack', controller=None):
         """
         controller(t, y) -> omega
@@ -145,11 +148,13 @@ class Cylinder(Flow):
         CD = fd.assemble(2*force[0]*ds(self.CYLINDER))
         return CL, CD
 
-    def update_control(self, t):
-        if self.controller is not None:
-            y = self.collect_measurements()
-            u = self.controller(t, y)
-            self.rotation_rate.assign(u)
+    def clamp(self, u):
+        return max(-self.MAX_CONTROL, min(self.MAX_CONTROL, u))
+
+    def update_control(self, u):
+        self.rotation_rate.assign(
+            self.clamp( u )
+        )
 
     def collect_measurements(self):
         return self.compute_forces(self.u, self.p)

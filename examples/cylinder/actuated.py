@@ -27,10 +27,11 @@ def forces(iter, t, state):
     global data
     u, p = state
     CL, CD = cyl.compute_forces(u, p)
+    omega = cyl.rotation_rate.values()[0]
     if fd.COMM_WORLD.rank == 0:
         data = np.append(data, np.array([t, CL, CD], ndmin=2), axis=0)
         np.savetxt(f'{output_dir}/coeffs.dat', data)
-    PETSc.Sys.Print(f't:{t:08f}\t\t CL:{CL:08f} \t\tCD::{CD:08f}')
+    PETSc.Sys.Print(f't:{t:08f}\t\t CL:{CL:08f} \t\tCD:{CD:08f}\t\tOmega:{omega}')
 
 callbacks = [
     gym.io.ParaviewCallback(interval=10, filename=pvd_out, postprocess=compute_vort),
@@ -38,10 +39,15 @@ callbacks = [
 ]
 
 # Simple opposition control on lift
-def controller(t, y):
+def g(y):
     CL, CD = y
-    return -2*CL
+    return 0.1*CL
 
 # callbacks = []
-solver = gym.IPCSSolver(cyl, dt=dt, callbacks=callbacks, actuated=True)
-solver.solve(Tf)
+solver = gym.IPCSSolver(cyl, dt=dt, callbacks=callbacks, time_varying_bc=True)
+
+num_steps = int(Tf/dt)
+for iter in range(num_steps):
+    y = cyl.collect_measurements()
+    cyl.update_control(g(y))
+    solver.step(iter)
