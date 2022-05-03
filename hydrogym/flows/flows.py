@@ -2,7 +2,7 @@ import numpy as np
 import firedrake as fd
 from firedrake import dx, ds
 from firedrake.petsc import PETSc
-from ufl import sym, grad, dot, inner, nabla_grad, div
+from ufl import sym, grad, dot, inner, nabla_grad, div, cos, sin, atan_2
 
 import hydrogym
 
@@ -16,7 +16,7 @@ class Flow:
         self.pressure_space = fd.FunctionSpace(mesh, 'CG', 1)
         self.mixed_space = fd.MixedFunctionSpace([self.velocity_space, self.pressure_space])
         self.sol = fd.Function(self.mixed_space, name='q')
-        self.split_solution()  # Break out and rename solutio 
+        self.split_solution()  # Break out and rename solution
 
     def save_checkpoint(self, h5_file):
         with fd.CheckpointFile(h5_file, 'w') as chk:
@@ -82,13 +82,20 @@ class Flow:
         solver = fd.NonlinearVariationalSolver(problem)
         solver.solve()
 
-        return w
+        return q
+        
+    def collect_measurements(self):
+        pass
 
 
 class Cylinder(Flow):
     from .mesh.cylinder.mesh import INLET, FREESTREAM, OUTLET, CYLINDER
-
-    def __init__(self, mesh_name='noack'):
+    def __init__(self, mesh_name='noack', controller=None):
+        """
+        controller(t, y) -> omega
+        y = (CL, CD)
+        omega = scalar rotation rate
+        """
         from .mesh.cylinder.mesh import load_mesh
         mesh = load_mesh(name=mesh_name)
 
@@ -96,11 +103,22 @@ class Cylinder(Flow):
         self.U_inf = fd.Constant((1.0, 0.0))
         super().__init__(mesh)
 
+        self.controller = None
+        self.rotation_rate = fd.Constant(0.0)
+
     def init_bcs(self, mixed=False):
         V, Q = self.function_spaces(mixed=mixed)
+
+        # First set up tangential boundaries to cylinder
+        x, y = fd.SpatialCoordinate(self.mesh)
+        # Angle from origin
+        theta = atan_2(y, x)
+        rad = fd.Constant(0.5)
+        u_tan = (self.rotation_rate*rad*sin(theta), self.rotation_rate*rad*cos(theta))  # Tangential velocity
+
         self.bcu_inflow = fd.DirichletBC(V, self.U_inf, self.INLET)
         self.bcu_freestream = fd.DirichletBC(V, self.U_inf, self.FREESTREAM)
-        self.bcu_cylinder = fd.DirichletBC(V, fd.Constant((0, 0)), self.CYLINDER)
+        self.bcu_cylinder = fd.DirichletBC(V, u_tan, self.CYLINDER)
         self.bcp_outflow = fd.DirichletBC(Q, fd.Constant(0), self.OUTLET)
 
     def collect_bcu(self):
@@ -126,3 +144,12 @@ class Cylinder(Flow):
         CL = fd.assemble(2*force[1]*ds(self.CYLINDER))
         CD = fd.assemble(2*force[0]*ds(self.CYLINDER))
         return CL, CD
+
+    def update_control(self, t):
+        if self.controller is not None:
+            y = self.collect_measurements()
+            u = self.controller(t, y)
+            self.rotation_rate.assign(u)
+
+    def collect_measurements(self):
+        return self.compute_forces(self.u, self.p)

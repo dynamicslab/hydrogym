@@ -7,15 +7,24 @@ from hydrogym.flows import Flow
 from typing import Optional, Iterable, Callable
 
 class IPCSSolver:
-    def __init__(self, flow: Flow, dt: float, callbacks: Optional[Iterable[Callable]] = []):
+    def __init__(self, flow: Flow, dt: float,
+            callbacks: Optional[Iterable[Callable]] = [],
+            actuated = False):
         """
         callback(iter, t, flow)
+        controller(t, y)
         """
         self.dt = dt
         self.callbacks = callbacks
+        self.actuated = actuated
 
+        self.flow = flow
+        self.initialize_operators()
+
+    def initialize_operators(self):
         # Setup forms
-        k = fd.Constant(dt)
+        flow = self.flow
+        k = fd.Constant(self.dt)
         nu = fd.Constant(1/flow.Re)
 
         flow.init_bcs()
@@ -48,7 +57,7 @@ class IPCSSolver:
             + inner(flow.sigma(U, self.p_n), flow.epsilon(v))*dx \
             + dot(self.p_n*flow.n, v)*ds - dot(nu*nabla_grad(U)*flow.n, v)*ds
             # - dot(f, v)*self.dx
-        a1 = fd.lhs(F1)
+        self.a1 = fd.lhs(F1)
         self.L1 = fd.rhs(F1)
 
         # Poisson equation
@@ -60,12 +69,9 @@ class IPCSSolver:
         self.L3 = dot(self.u, v)*dx - k*dot(nabla_grad(self.p - self.p_n), v)*dx
 
         # Assemble matrices
-        self.A1 = fd.assemble(a1, bcs=self.bcu)
+        self.A1 = fd.assemble(self.a1, bcs=self.bcu)
         self.A2 = fd.assemble(a2, bcs=self.bcp)
         self.A3 = fd.assemble(a3)
-
-        self.flow = flow
-    
 
     def solve(self, Tf):
         num_steps = int(Tf//self.dt)
@@ -75,6 +81,10 @@ class IPCSSolver:
             t += self.dt  # Update current time
 
             # Step 1: Tentative velocity step
+            if self.actuated:
+                self.flow.update_control(t)
+                self.bcu = self.flow.collect_bcu()
+                self.A1 = fd.assemble(self.a1, bcs=self.bcu)
             b1 = fd.assemble(self.L1, bcs=self.bcu)
             fd.solve(self.A1, self.u.vector(), b1, solver_parameters={
                 "ksp_type": "gmres",
