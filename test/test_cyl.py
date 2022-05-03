@@ -1,7 +1,11 @@
 import hydrogym as gym
 
 def test_import():
-    cyl = gym.flows.Cylinder()
+    cyl = gym.flows.Cylinder(mesh_name='noack')
+    return cyl
+
+def test_import2():
+    cyl = gym.flows.Cylinder(mesh_name='sipp-lebedev')
     return cyl
 
 def test_steady():

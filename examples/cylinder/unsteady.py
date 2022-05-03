@@ -1,4 +1,3 @@
-from fenics import *
 import hydrogym as gym
 
 cyl = gym.flows.Cylinder()

@@ -91,12 +91,12 @@ Plane Surface(4) = {5};
 
 
 //+
-Physical Surface("Fluid") = {3, 2, 4, 1};
+Physical Surface("Fluid", 1) = {3, 2, 4, 1};
 //+
-Physical Curve("Inlet") = {11, 10, 9};
+Physical Curve("Inlet", 2) = {11, 10, 9};
 //+
-Physical Curve("Freestream") = {12, 16};
+Physical Curve("Freestream", 3) = {12, 16};
 //+
-Physical Curve("Outlet") = {13, 14, 15};
+Physical Curve("Outlet", 4) = {13, 14, 15};
 //+
-Physical Curve("Wall") = {1, 4, 3, 2};
+Physical Curve("Wall", 5) = {1, 4, 3, 2};

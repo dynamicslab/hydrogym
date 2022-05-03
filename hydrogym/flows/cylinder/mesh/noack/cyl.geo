@@ -59,12 +59,12 @@ Curve Loop(2) = {5, 11, 3, 4, 12, 9, 10};
 Plane Surface(2) = {2};
 
 //+
-Physical Surface("Fluid") = {1, 2};
+Physical Surface("Fluid", 1) = {1, 2};
 //+
-Physical Curve("Inlet") = {6, 5};
+Physical Curve("Inlet", 2) = {6, 5};
 //+
-Physical Curve("Freestream") = {7, 10};
+Physical Curve("Freestream", 3) = {7, 10};
 //+
-Physical Curve("Outlet") = {8, 9};
+Physical Curve("Outlet", 4) = {8, 9};
 //+
-Physical Curve("Wall") = {2, 1, 4, 3};
+Physical Curve("Wall", 5) = {2, 1, 4, 3};
