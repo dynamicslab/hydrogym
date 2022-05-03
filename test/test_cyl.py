@@ -26,7 +26,8 @@ def test_forces(tol=1e-3):
 def test_unsteady():
     cyl = gym.flows.Cylinder(mesh_name='noack')
     dt = 1e-2
-    cyl.integrate(dt=dt, Tf=10*dt, output_dir=None)
+    solver = gym.IPCSSolver(cyl, dt=dt)
+    solver.solve(10*dt)
 
 if __name__=='__main__':
     test_import()
