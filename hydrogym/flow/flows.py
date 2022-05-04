@@ -2,13 +2,15 @@ import numpy as np
 import firedrake as fd
 from firedrake import dx, ds
 from firedrake.petsc import PETSc
+
+import ufl
 from ufl import sym, grad, dot, inner, nabla_grad, div, cos, sin, atan_2
 
 def print(s):
     PETSc.Sys.Print(s)
 
 class Flow:
-    def __init__(self, mesh):
+    def __init__(self, mesh, h5_file=None):
         self.mesh = mesh
         self.n = fd.FacetNormal(self.mesh)
 
@@ -16,8 +18,12 @@ class Flow:
         self.velocity_space = fd.VectorFunctionSpace(mesh, 'CG', 2)
         self.pressure_space = fd.FunctionSpace(mesh, 'CG', 1)
         self.mixed_space = fd.MixedFunctionSpace([self.velocity_space, self.pressure_space])
-        self.sol = fd.Function(self.mixed_space, name='q')
+        self.q = fd.Function(self.mixed_space, name='q')
         self.split_solution()  # Break out and rename solution
+
+        # TODO: Do this without having to reinitialize everything?
+        if h5_file is not None:
+            self.load_checkpoint(h5_file)
 
     def save_checkpoint(self, h5_file):
         with fd.CheckpointFile(h5_file, 'w') as chk:
@@ -28,12 +34,12 @@ class Flow:
         with fd.CheckpointFile(h5_file, 'r') as chk:
             mesh = chk.load_mesh('mesh')
             Flow.__init__(self, mesh)  # Reinitialize with new mesh
-            self.sol = chk.load_function(self.mesh, 'q')
+            self.q = chk.load_function(self.mesh, 'q')
         
         self.split_solution()  # Reset functions so self.u, self.p point to the new solution
 
     def split_solution(self):
-        self.u, self.p = self.sol.split()
+        self.u, self.p = self.q.split()
         self.u.rename('u')
         self.p.rename('p')
 
@@ -73,38 +79,43 @@ class Flow:
 
     def solve_steady(self):
         self.init_bcs(mixed=True)
-        q = self.sol
 
-        F = self.steady_form(q, fd.TestFunctions(self.mixed_space))  # Nonlinear variational form
-        J = fd.derivative(F, q)    # Jacobian
+        F = self.steady_form(self.q, fd.TestFunctions(self.mixed_space))  # Nonlinear variational form
+        J = fd.derivative(F, self.q)    # Jacobian
 
         bcs = self.collect_bcs()
-        problem = fd.NonlinearVariationalProblem(F, q, bcs, J)
+        problem = fd.NonlinearVariationalProblem(F, self.q, bcs, J)
         solver = fd.NonlinearVariationalSolver(problem)
         solver.solve()
 
-        return q
+        return self.q
         
-    def collect_measurements(self):
+    def collect_observations(self):
+        pass
+
+    def update_control(self, u):
+        pass
+
+    def reset_control(self):
         pass
 
 
 class Cylinder(Flow):
-    from .mesh.cylinder.mesh import INLET, FREESTREAM, OUTLET, CYLINDER
+    from .mesh.cylinder import INLET, FREESTREAM, OUTLET, CYLINDER
     MAX_CONTROL = 0.5*np.pi
 
-    def __init__(self, mesh_name='noack', controller=None):
+    def __init__(self, mesh_name='noack', controller=None, h5_file=None):
         """
         controller(t, y) -> omega
         y = (CL, CD)
         omega = scalar rotation rate
         """
-        from .mesh.cylinder.mesh import load_mesh
+        from .mesh.cylinder import load_mesh
         mesh = load_mesh(name=mesh_name)
 
         self.Re = fd.Constant(100)
         self.U_inf = fd.Constant((1.0, 0.0))
-        super().__init__(mesh)
+        super().__init__(mesh, h5_file=h5_file)
 
         self.controller = None
         self.rotation_rate = fd.Constant(0.0)
@@ -117,11 +128,12 @@ class Cylinder(Flow):
         # Angle from origin
         theta = atan_2(y, x)
         rad = fd.Constant(0.5)
-        u_tan = (self.rotation_rate*rad*sin(theta), self.rotation_rate*rad*cos(theta))  # Tangential velocity
+        self.u_tan = ufl.as_tensor((self.rotation_rate*rad*sin(theta), self.rotation_rate*rad*cos(theta)))  # Tangential velocity
 
+        # Define actual boundary conditions
         self.bcu_inflow = fd.DirichletBC(V, self.U_inf, self.INLET)
         self.bcu_freestream = fd.DirichletBC(V, self.U_inf, self.FREESTREAM)
-        self.bcu_cylinder = fd.DirichletBC(V, u_tan, self.CYLINDER)
+        self.bcu_cylinder = fd.DirichletBC(V, fd.project(self.u_tan, V), self.CYLINDER)
         self.bcp_outflow = fd.DirichletBC(Q, fd.Constant(0), self.OUTLET)
 
     def collect_bcu(self):
@@ -132,6 +144,7 @@ class Cylinder(Flow):
 
     def steady_form(self, q, q_test):
         (u, p) = fd.split(q)
+        # (u, p) = q.split()
         (v, s) = q_test
         nu = fd.Constant(1/self.Re)
 
@@ -151,10 +164,23 @@ class Cylinder(Flow):
     def clamp(self, u):
         return max(-self.MAX_CONTROL, min(self.MAX_CONTROL, u))
 
-    def update_control(self, u):
-        self.rotation_rate.assign(
-            self.clamp( u )
-        )
+    def update_control(self, omega):
+        self.rotation_rate.assign(omega)
 
-    def collect_measurements(self):
+        # If the boundary condition has already been defined, update it
+        #   otherwise, the control will be applied with self.init_bcs()
+        if hasattr(self, 'bcu_cylinder'):
+            self.bcu_cylinder._function_arg.assign(
+                fd.project(self.u_tan, self.velocity_space)
+            )
+
+        # TODO: Limit max control
+        # self.rotation_rate.assign(
+        #     self.clamp( omega )
+        # )
+
+    def reset_control(self):
+        self.update_control(0.0)
+
+    def collect_observations(self):
         return self.compute_forces(self.u, self.p)

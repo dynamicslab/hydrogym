@@ -1,6 +1,7 @@
 from . import utils
-from . import flows
-from .timestepping import IPCSSolver
+from . import flow
+from . import ts
+from . import env
 from .utils import io
 
 import os

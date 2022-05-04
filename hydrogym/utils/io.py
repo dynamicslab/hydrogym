@@ -1,6 +1,6 @@
 import firedrake as fd
 
-from hydrogym.flows import Flow
+from hydrogym.flow import Flow
 from typing import Any, Optional, Callable, Tuple
 
 class CallbackBase:

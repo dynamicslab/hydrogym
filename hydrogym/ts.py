@@ -3,7 +3,7 @@ from firedrake import dx, ds
 from ufl import inner, dot, nabla_grad, div
 
 # Typing
-from hydrogym.flows import Flow
+from .flow import Flow
 from typing import Optional, Iterable, Callable
 
 class TransientSolver:

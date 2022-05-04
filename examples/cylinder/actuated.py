@@ -9,7 +9,7 @@ output_dir = 'controlled'
 pvd_out = f"{output_dir}/solution.pvd"
 checkpoint = f"output/checkpoint.h5"
 
-cyl = gym.flows.Cylinder()
+cyl = gym.flow.Cylinder()
 cyl.load_checkpoint(checkpoint)  # Reload previous solution
 
 # Time step
@@ -44,10 +44,10 @@ def g(y):
     return 0.1*CL
 
 # callbacks = []
-solver = gym.IPCSSolver(cyl, dt=dt, callbacks=callbacks, time_varying_bc=True)
+solver = gym.ts.IPCSSolver(cyl, dt=dt, callbacks=callbacks, time_varying_bc=True)
 
 num_steps = int(Tf/dt)
 for iter in range(num_steps):
-    y = cyl.collect_measurements()
+    y = cyl.collect_observations()
     cyl.update_control(g(y))
     solver.step(iter)

@@ -5,7 +5,7 @@ from ufl import curl
 import hydrogym as gym
 
 output_dir = 'output'
-cyl = gym.flows.Cylinder()
+cyl = gym.flow.Cylinder()
 cyl.solve_steady()
 
 CL, CD = cyl.compute_forces(cyl.u, cyl.p)
