@@ -142,7 +142,7 @@ class Cylinder(Flow):
     from .mesh.cylinder import INLET, FREESTREAM, OUTLET, CYLINDER
     MAX_CONTROL = 0.5*np.pi
 
-    def __init__(self, mesh_name='noack', controller=None, h5_file=None):
+    def __init__(self, Re=100, mesh_name='noack', controller=None, h5_file=None):
         """
         controller(t, y) -> omega
         y = (CL, CD)
@@ -151,7 +151,7 @@ class Cylinder(Flow):
         from .mesh.cylinder import load_mesh
         mesh = load_mesh(name=mesh_name)
 
-        self.Re = fd.Constant(ufl.real(100))
+        self.Re = fd.Constant(ufl.real(Re))
         self.U_inf = fd.Constant((1.0, 0.0))
         super().__init__(mesh, h5_file=h5_file)
 
@@ -162,7 +162,8 @@ class Cylinder(Flow):
 
         # Define actual boundary conditions
         self.bcu_inflow = fd.DirichletBC(V, self.U_inf, self.INLET)
-        self.bcu_freestream = fd.DirichletBC(V, self.U_inf, self.FREESTREAM)
+        # self.bcu_freestream = fd.DirichletBC(V, self.U_inf, self.FREESTREAM)
+        self.bcu_freestream = fd.DirichletBC(V.sub(1), fd.Constant(0.0), self.FREESTREAM)  # Symmetry BCs
         self.bcu_cylinder = fd.DirichletBC(V, fd.interpolate(fd.Constant((0, 0)), V), self.CYLINDER)
         self.bcp_outflow = fd.DirichletBC(Q, fd.Constant(0), self.OUTLET)
 
@@ -178,7 +179,7 @@ class Cylinder(Flow):
         self.omega.assign(0.0)
         self.init_bcs(mixed=True)
         self.bcu_inflow.set_value(fd.Constant((0, 0)))
-        self.bcu_freestream.set_value(fd.Constant((0, 0)))
+        self.bcu_freestream.set_value(fd.Constant(0.0))
 
     def compute_forces(self, u, p):
         # Lift/drag on cylinder
@@ -238,7 +239,8 @@ class Pinball(Flow):
 
         # Define actual boundary conditions
         self.bcu_inflow = fd.DirichletBC(V, self.U_inf, self.INLET)
-        self.bcu_freestream = fd.DirichletBC(V, self.U_inf, self.FREESTREAM)
+        # self.bcu_freestream = fd.DirichletBC(V, self.U_inf, self.FREESTREAM)
+        self.bcu_freestream = fd.DirichletBC(V.sub(1), fd.Constant(0.0), self.FREESTREAM)  # Symmetry BCs
         self.bcu_cylinder = fd.DirichletBC(V, fd.interpolate(fd.Constant((0, 0)), V), self.CYLINDER)
         self.bcp_outflow = fd.DirichletBC(Q, fd.Constant(0), self.OUTLET)
 
@@ -254,3 +256,48 @@ class Pinball(Flow):
         CL = [fd.assemble(2*force[1]*ds(cyl)) for cyl in self.CYLINDER]
         CD = [fd.assemble(2*force[0]*ds(cyl)) for cyl in self.CYLINDER]
         return CL, CD
+
+
+class Cavity(Flow):
+    from .mesh.cavity import INLET, FREESTREAM, OUTLET, SLIP, WALL
+    def __init__(self, h5_file=None, Re=5000):
+        """
+        controller(t, y) -> omega
+        y = (CL, CD)
+        omega = scalar rotation rate
+        """
+        from .mesh.cavity import load_mesh
+        mesh = load_mesh()
+
+        self.Re = fd.Constant(ufl.real(Re))
+        self.U_inf = fd.Constant((1.0, 0.0))
+        super().__init__(mesh, h5_file=h5_file)
+
+    def init_bcs(self, mixed=False):
+        V, Q = self.function_spaces(mixed=mixed)
+
+        # Define actual boundary conditions
+        self.bcu_inflow = fd.DirichletBC(V, self.U_inf, self.INLET)
+        self.bcu_freestream = fd.DirichletBC(V.sub(1), fd.Constant(0.0), self.FREESTREAM)
+        self.bcu_noslip = fd.DirichletBC(V, fd.interpolate(fd.Constant((0, 0)), V), self.WALL)
+        self.bcu_slip = fd.DirichletBC(V.sub(1), fd.Constant(0.0), self.SLIP)  # Free-slip
+        self.bcp_outflow = fd.DirichletBC(Q, fd.Constant(0), self.OUTLET)
+
+        self.bcu_slip = None
+        raise NotImplementedError  # Still need to add slip boundary
+
+    def collect_bcu(self):
+        return [self.bcu_inflow, self.bcu_freestream, self.bcu_noslip, self.bcu_slip]
+    
+    def collect_bcp(self):
+        return [self.bcp_outflow]
+
+    def compute_forces(self, u, p):
+        # Lift/drag on cylinder
+        force = -dot(self.sigma(u, p), self.n)
+        CL = [fd.assemble(2*force[1]*ds(cyl)) for cyl in self.CYLINDER]
+        CD = [fd.assemble(2*force[0]*ds(cyl)) for cyl in self.CYLINDER]
+        return CL, CD
+
+class Step(Flow):
+    pass

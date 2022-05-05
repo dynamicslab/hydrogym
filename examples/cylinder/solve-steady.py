@@ -5,11 +5,15 @@ from ufl import curl
 import hydrogym as gym
 
 output_dir = 'output'
-cyl = gym.flow.Cylinder()
+flow = gym.flow.Cylinder()
 # cyl.set_control(fd.Constant(0.5))
-cyl.solve_steady()
+flow.solve_steady()
 
-CL, CD = cyl.compute_forces(cyl.u, cyl.p)
+CL, CD = flow.compute_forces(flow.u, flow.p)
 print(f'CL:{CL:08f} \t\tCD:{CD:08f}')
 
-cyl.save_checkpoint(f"{output_dir}/steady.h5")
+flow.save_checkpoint(f"{output_dir}/steady.h5")
+
+vort = flow.vorticity()
+pvd = fd.File(f"{output_dir}/steady.pvd")
+pvd.write(flow.u, flow.p, vort)

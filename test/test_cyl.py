@@ -10,15 +10,16 @@ def test_import2():
     cyl = gym.flow.Cylinder(mesh_name='sipp-lebedev')
     return cyl
 
-def test_steady(tol=1e-3):
+def test_steady():
     cyl = gym.flow.Cylinder()
     q = cyl.solve_steady()
+    tol=1e-3
 
     # Lift/drag on cylinder
     CL, CD = cyl.compute_forces(cyl.u, cyl.p)
     assert(abs(CL) < tol)
     # assert(abs(CD - 1.8083279145880582) < tol)  # Re = 40
-    assert(abs(CD - 1.294685958568012) < tol)  # Re = 100
+    assert(abs(CD - 1.2840) < tol)  # Re = 100
 
 def test_unsteady():
     cyl = gym.flow.Cylinder(mesh_name='noack')
