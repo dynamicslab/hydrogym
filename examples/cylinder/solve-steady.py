@@ -6,7 +6,7 @@ import hydrogym as gym
 
 output_dir = 'output'
 cyl = gym.flow.Cylinder()
-cyl.set_control(fd.Constant(0.5))
+# cyl.set_control(fd.Constant(0.5))
 cyl.solve_steady()
 
 CL, CD = cyl.compute_forces(cyl.u, cyl.p)
