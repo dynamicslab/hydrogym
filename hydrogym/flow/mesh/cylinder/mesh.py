@@ -8,7 +8,6 @@ INLET = 2
 FREESTREAM = 3
 OUTLET = 4
 CYLINDER = 5
-ACTUATOR = 6
 
 def load_mesh(name='noack'):
     return Mesh(f'{mesh_dir}/{name}.msh', name='mesh')

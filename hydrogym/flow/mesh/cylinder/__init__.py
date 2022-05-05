@@ -4,6 +4,5 @@ from .mesh import (
     INLET,
     FREESTREAM,
     OUTLET,
-    CYLINDER,
-    ACTUATOR
+    CYLINDER
 )
