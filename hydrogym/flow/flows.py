@@ -86,7 +86,7 @@ class Flow:
     def solve_steady(self):
         self.init_bcs(mixed=True)
 
-        F = self.steady_form(self.q, fd.TestFunctions(self.mixed_space))  # Nonlinear variational form
+        F = self.steady_form()  # Nonlinear variational form
         J = fd.derivative(F, self.q)    # Jacobian
 
         bcs = self.collect_bcs()
@@ -96,10 +96,11 @@ class Flow:
 
         return self.q.copy(deepcopy=True)
     
-    def steady_form(self, q, q_test):
+    def steady_form(self, q=None):
+        if q is None: q = self.q
         (u, p) = fd.split(q)
-        (v, s) = q_test
-        nu = fd.Constant(ufl.real(1/self.Re))
+        (v, s) = fd.TestFunctions(self.mixed_space)
+        nu = fd.Constant(1/ufl.real(self.Re))
 
         F  = inner(dot(u, nabla_grad(u)), v)*dx \
             + inner(self.sigma(u, p), self.epsilon(v))*dx \
@@ -107,26 +108,20 @@ class Flow:
             + inner(div(u), s)*dx
         return F
 
-
-    def linearized_forms(self, Q):
-        """Linearize around base flow Q (from self.mixed_space)
-        
-        PROBABLY DON'T NEED THIS... USE fd.derivative
-        """
-        (U, P) = fd.split(Q)
-        (u, p) = fd.TrialFunctions(self.mixed_space)
-        (v, s) = fd.TestFunctions(self.mixed_space)
-        nu = fd.Constant(1/self.Re)
-
-        L = -(
-              inner(dot(u, nabla_grad(U)), v)*dx + inner(dot(U, nabla_grad(u)), v)*dx \
-            + inner(self.sigma(u, p), self.epsilon(v))*dx
-            + inner(p*self.n, v)*ds - inner(nu*nabla_grad(u)*self.n, v)*ds \
-            + inner(div(u), s)*dx
-        )
-
+    def linearized_forms(self, qB):
+        (u, _) = fd.TrialFunctions(self.mixed_space)
+        (v, _) = fd.TestFunctions(self.mixed_space)
+        F = self.steady_form(q=qB)
+        L = -fd.derivative(F, qB)
         M = inner(u, v)*dx
         return L, M
+
+    def linearize(self, qB):
+        L, M = self.linearized_forms(qB)
+        self.linearize_bcs()
+        A = fd.assemble(L, bcs=self.collect_bcs()).petscmat  # Dynamics matrix
+        B = fd.assemble(M, bcs=self.collect_bcs()).petscmat  # Mass matrix
+        return A, B
         
     def collect_observations(self):
         pass
@@ -197,9 +192,10 @@ class Cylinder(Flow):
 
         # If the boundary condition has already been defined, update it
         #   otherwise, the control will be applied with self.init_bcs()
-        self.bcu_cylinder._function_arg.assign(
-            fd.project(self.u_tan, self.velocity_space)
-        )
+        if hasattr(self, 'bcu_cylinder'):
+            self.bcu_cylinder._function_arg.assign(
+                fd.project(self.u_tan, self.velocity_space)
+            )
 
     def clamp(self, u):
         return max(-self.MAX_CONTROL, min(self.MAX_CONTROL, u))

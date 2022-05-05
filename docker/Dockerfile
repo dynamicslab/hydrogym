@@ -18,6 +18,7 @@ RUN bash -c "PETSC_CONFIGURE_OPTIONS='--download-fftw=1' python3 firedrake-insta
 ENV VENV_COMPLEX=/home/firedrake/firedrake-complex
 
 RUN bash -c ". $VENV/bin/activate; firedrake-update --documentation-dependencies --tinyasm --slepc --install thetis --install gusto --install icepack --install irksome --install femlium"
+RUN bash -c ". $VENV_COMPLEX/bin/activate; firedrake-update --documentation-dependencies --tinyasm --slepc --install thetis --install gusto --install icepack --install irksome --install femlium"
 # ENV PATH="$VENV/bin:/home/firedrake/.local/bin:$PATH"
 
 # Install dependencies
@@ -37,8 +38,8 @@ RUN bash -c ". $VENV_COMPLEX/bin/activate && pip install -e /home/hydrogym"
 
 # Install an iPython kernel for firedrake (https://github.com/firedrakeproject/firedrake/blob/master/docker/Dockerfile.jupyter)
 #  THIS SHOULD BE IN AN EXTERNAL FILE...
-# RUN bash -c ". $VENV/bin/activate && pip install jupyterhub ipykernel notebook ipywidgets mpltools nbformat nbconvert dmsuite gym memory_profiler gmsh"
-# RUN bash -c ". $VENV_COMPLEX/bin/activate && pip install jupyterhub ipykernel notebook ipywidgets mpltools nbformat nbconvert dmsuite gym memory_profiler gmsh"
+RUN bash -c ". $VENV/bin/activate && pip install jupyterhub ipykernel notebook ipywidgets mpltools nbformat nbconvert dmsuite gym memory_profiler gmsh"
+RUN bash -c ". $VENV_COMPLEX/bin/activate && pip install jupyterhub ipykernel notebook ipywidgets mpltools nbformat nbconvert dmsuite gym memory_profiler gmsh"
 RUN bash -c ". $VENV/bin/activate && jupyter nbextension enable --py widgetsnbextension --sys-prefix"
 RUN bash -c ". $VENV_COMPLEX/bin/activate && jupyter nbextension enable --py widgetsnbextension --sys-prefix"
 
