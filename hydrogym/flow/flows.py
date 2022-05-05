@@ -13,6 +13,7 @@ class Flow:
     def __init__(self, mesh, h5_file=None):
         self.mesh = mesh
         self.n = fd.FacetNormal(self.mesh)
+        self.x, self.y = fd.SpatialCoordinate(self.mesh)
 
         # Set up Taylor-Hood elements
         self.velocity_space = fd.VectorFunctionSpace(mesh, 'CG', 2)
@@ -28,7 +29,7 @@ class Flow:
     def save_checkpoint(self, h5_file):
         with fd.CheckpointFile(h5_file, 'w') as chk:
             chk.save_mesh(self.mesh)  # optional
-            chk.save_function(self.sol)
+            chk.save_function(self.q)
 
     def load_checkpoint(self, h5_file):
         with fd.CheckpointFile(h5_file, 'r') as chk:
@@ -47,7 +48,7 @@ class Flow:
         """Define all boundary conditions"""
         pass
 
-    def function_spaces(self, mixed=False):
+    def function_spaces(self, mixed=True):
         if mixed:
             V = self.mixed_space.sub(0)
             Q = self.mixed_space.sub(1)
@@ -93,7 +94,7 @@ class Flow:
     def collect_observations(self):
         pass
 
-    def update_control(self, u):
+    def set_control(self, u):
         pass
 
     def reset_control(self):
@@ -117,24 +118,18 @@ class Cylinder(Flow):
         self.U_inf = fd.Constant((1.0, 0.0))
         super().__init__(mesh, h5_file=h5_file)
 
-        self.controller = None
-        self.rotation_rate = fd.Constant(0.0)
+        self.omega = fd.Constant(0.0)
 
     def init_bcs(self, mixed=False):
         V, Q = self.function_spaces(mixed=mixed)
 
-        # First set up tangential boundaries to cylinder
-        x, y = fd.SpatialCoordinate(self.mesh)
-        # Angle from origin
-        theta = atan_2(y, x)
-        rad = fd.Constant(0.5)
-        self.u_tan = ufl.as_tensor((self.rotation_rate*rad*sin(theta), self.rotation_rate*rad*cos(theta)))  # Tangential velocity
-
         # Define actual boundary conditions
         self.bcu_inflow = fd.DirichletBC(V, self.U_inf, self.INLET)
         self.bcu_freestream = fd.DirichletBC(V, self.U_inf, self.FREESTREAM)
-        self.bcu_cylinder = fd.DirichletBC(V, fd.project(self.u_tan, V), self.CYLINDER)
+        self.bcu_cylinder = fd.DirichletBC(V, fd.interpolate(fd.Constant((0, 0)), V), self.CYLINDER)
         self.bcp_outflow = fd.DirichletBC(Q, fd.Constant(0), self.OUTLET)
+
+        self.update_rotation()
 
     def collect_bcu(self):
         return [self.bcu_inflow, self.bcu_freestream, self.bcu_cylinder]
@@ -161,11 +156,11 @@ class Cylinder(Flow):
         CD = fd.assemble(2*force[0]*ds(self.CYLINDER))
         return CL, CD
 
-    def clamp(self, u):
-        return max(-self.MAX_CONTROL, min(self.MAX_CONTROL, u))
-
-    def update_control(self, omega):
-        self.rotation_rate.assign(omega)
+    def update_rotation(self):
+        # First set up tangential boundaries to cylinder
+        theta = atan_2(self.y, self.x) # Angle from origin
+        rad = fd.Constant(0.5)
+        self.u_tan = ufl.as_tensor((self.omega*rad*sin(theta), self.omega*rad*cos(theta)))  # Tangential velocity
 
         # If the boundary condition has already been defined, update it
         #   otherwise, the control will be applied with self.init_bcs()
@@ -174,13 +169,20 @@ class Cylinder(Flow):
                 fd.project(self.u_tan, self.velocity_space)
             )
 
+    def clamp(self, u):
+        return max(-self.MAX_CONTROL, min(self.MAX_CONTROL, u))
+
+    def set_control(self, omega):
+        self.omega.assign(omega)
+        self.update_rotation()
+
         # TODO: Limit max control
         # self.rotation_rate.assign(
         #     self.clamp( omega )
         # )
 
     def reset_control(self):
-        self.update_control(0.0)
+        self.set_control(0.0)
 
     def collect_observations(self):
         return self.compute_forces(self.u, self.p)

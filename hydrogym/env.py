@@ -20,7 +20,7 @@ class FlowEnv(gym.Env):
         self.solver.callbacks = callbacks
     
     def step(self, action: ActType) -> Tuple[ObsType, float, bool, dict]:
-        self.flow.update_control(action)
+        self.flow.set_control(action)
         self.solver.step(self.iter)
         self.iter += 1
         obs = self.flow.collect_observations()
@@ -40,6 +40,8 @@ class FlowEnv(gym.Env):
         self.flow.q.assign(self.q0)
         self.flow.reset_control()
         self.solver.initialize_operators()
+
+        return self.flow.collect_observations()
 
     def render(self, mode="human"):
         pass

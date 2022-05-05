@@ -27,7 +27,7 @@ def forces(iter, t, state):
     global data
     u, p = state
     CL, CD = cyl.compute_forces(u, p)
-    omega = cyl.rotation_rate.values()[0]
+    omega = cyl.omega.values()[0]
     if fd.COMM_WORLD.rank == 0:
         data = np.append(data, np.array([t, CL, CD], ndmin=2), axis=0)
         np.savetxt(f'{output_dir}/coeffs.dat', data)
@@ -38,8 +38,8 @@ callbacks = [
     gym.io.GenericCallback(callback=forces, interval=1)
 ]
 
-# Simple opposition control on lift
-def g(y):
+# Simple opposition control on lift/drag
+def g(t, y):
     CL, CD = y
     return 0.1*CL
 
@@ -49,5 +49,5 @@ solver = gym.ts.IPCSSolver(cyl, dt=dt, callbacks=callbacks, time_varying_bc=True
 num_steps = int(Tf/dt)
 for iter in range(num_steps):
     y = cyl.collect_observations()
-    cyl.update_control(g(y))
+    cyl.set_control(g(solver.t, y))
     solver.step(iter)

@@ -25,12 +25,11 @@ def test_unsteady():
     dt = 1e-2
     solver = gym.ts.IPCSSolver(cyl, dt=dt)
     solver.solve(10*dt)
-
-
+    
 # Simple opposition control on lift
-def feedback_ctrl(y):
+def feedback_ctrl(y, K=0.1):
     CL, CD = y
-    return 0.1*CL
+    return K*CL
 
 def test_control():
     cyl = gym.flow.Cylinder(mesh_name='noack')
@@ -41,7 +40,7 @@ def test_control():
     num_steps = 10
     for iter in range(num_steps):
         y = cyl.collect_observations()
-        cyl.update_control(feedback_ctrl(y))
+        cyl.set_control(feedback_ctrl(y))
         solver.step(iter)
 
 def test_env():
@@ -57,7 +56,7 @@ def test_grad():
     cyl = gym.flow.Cylinder()
 
     omega = fd.Constant(0.0)
-    cyl.update_control(omega)
+    cyl.set_control(omega)
 
     cyl.solve_steady()
     CL, CD = cyl.compute_forces(cyl.u, cyl.p)
@@ -66,13 +65,14 @@ def test_grad():
 
 def test_env_grad():
     env = gym.env.CylEnv()
-    u = fd.Constant(0.0)
-    control = fda.Control(u)
+    y = env.reset()
+    K = fda.AdjFloat(0.0)
+    m = fda.Control(K)
+    J = 0.0
     for _ in range(10):
-        y, reward, done, info = env.step(u)
-        u.assign(feedback_ctrl(y))
-    CL, CD = y
-    dJdu = fda.compute_gradient(CD, control)
+        y, reward, done, info = env.step(feedback_ctrl(y, K=K))
+        J = J - reward
+    dJdm = fda.compute_gradient(J, m)
 
 if __name__=='__main__':
     test_import()

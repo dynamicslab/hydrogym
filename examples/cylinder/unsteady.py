@@ -16,7 +16,7 @@ cyl.load_checkpoint(chk_out)  # Reload previous solution
 
 # Time step
 dt = 1e-2
-Tf = 1.0
+Tf = 10.0
 
 vort = fd.Function(cyl.pressure_space, name='vort')
 def compute_vort(state):
