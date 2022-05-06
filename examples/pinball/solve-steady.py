@@ -4,12 +4,13 @@ from firedrake import logging
 
 import hydrogym as gym
 
-output_dir = 'output'
-flow = gym.flow.Pinball(Re=80)
+Re = 80
+output_dir = f'{Re}_output'
+flow = gym.flow.Pinball(Re=Re, mesh_name='fine')
 flow.solve_steady()
 
-CL, CD = flow.compute_forces(flow.u, flow.p)
-print([(L, D) for (L, D) in zip(CL, CD)])
+CL, CD = flow.compute_forces()
+gym.print([(L, D) for (L, D) in zip(CL, CD)])
 
 flow.save_checkpoint(f"{output_dir}/steady.h5")
 

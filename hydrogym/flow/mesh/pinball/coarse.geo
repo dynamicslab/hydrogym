@@ -42,9 +42,11 @@ Point(21) = {x_pinf, y_inf, 0, 1/n3};
 // High-resolution points in near-wake
 y0 = 1.5*R;
 Point(22) = {5.0,  y0, 0, 1/n1};
-Point(23) = {5.0,  -y0, 0, 1/n1};
-Point(24) = {x_pinf,  y0, 0, 1/n2};
-Point(25) = {x_pinf, -y0, 0, 1/n2};
+Point(23) = {5.0,  0.0, 0, 1/n1};
+Point(24) = {5.0,  -y0, 0, 1/n1};
+Point(25) = {x_pinf,  y0, 0, 1/n2};
+Point(26) = {x_pinf,  0.0, 0, 1/n2};
+Point(27) = {x_pinf, -y0, 0, 1/n2};
 
 // Cylinder Lines
 Circle(1) = {2, 1, 3};
@@ -62,56 +64,77 @@ Circle(10) = {13, 11, 14};
 Circle(11) = {14, 11, 15};
 Circle(12) = {15, 11, 12};
 
+
 //+
-Line(13) = {17, 18};
+Line(13) = {18, 21};
 //+
-Line(14) = {18, 21};
+Line(14) = {21, 25};
 //+
-Line(15) = {21, 24};
+Line(15) = {25, 20};
 //+
-Line(16) = {24, 20};
+Line(16) = {20, 27};
 //+
-Line(17) = {20, 25};
+Line(17) = {27, 19};
 //+
-Line(18) = {25, 19};
+Line(18) = {19, 16};
 //+
-Line(19) = {19, 16};
+Line(19) = {16, 17};
 //+
-Line(20) = {16, 17};
+Line(20) = {17, 18};
 //+
 Line(21) = {17, 4};
 //+
-Line(22) = {3, 9};
+Line(22) = {5, 14};
 //+
-Line(23) = {7, 22};
+Line(23) = {3, 9};
 //+
-Line(24) = {22, 24};
+Line(24) = {7, 22};
 //+
-Line(25) = {5, 14};
+Line(25) = {12, 24};
 //+
-Line(26) = {12, 23};
+Line(26) = {24, 23};
 //+
-Line(27) = {23, 25};
+Line(27) = {23, 22};
 //+
-Curve Loop(1) = {13, 14, 15, -24, -23, 5, 6, -22, 2, -21};
+Line(28) = {22, 25};
+//+
+Line(29) = {23, 20};
+//+
+Line(30) = {24, 27};
+//+
+Line(31) = {2, 23};
+//+
+Curve Loop(1) = {13, 14, -28, -24, 5, 6, -23, 2, -21, 20};
 //+
 Plane Surface(1) = {1};
 //+
-Curve Loop(2) = {21, 3, 25, 11, 12, 26, 27, 18, 19, 20};
+Curve Loop(2) = {7, 8, 24, -27, -31, 1, 23};
 //+
 Plane Surface(2) = {2};
 //+
-Curve Loop(3) = {22, 7, 8, 23, 24, 16, 17, -27, -26, 9, 10, -25, 4, 1};
+Curve Loop(3) = {28, 15, -29, 27};
 //+
 Plane Surface(3) = {3};
 //+
-Physical Surface("Fluid", 1) = {1, 3, 2};
+Curve Loop(4) = {16, -30, 26, 29};
 //+
-Physical Curve("Inlet", 2) = {13, 20};
+Plane Surface(4) = {4};
 //+
-Physical Curve("Freestream", 3) = {14, 19};
+Curve Loop(5) = {31, -26, -25, 9, 10, -22, 4};
 //+
-Physical Curve("Outlet", 4) = {15, 16, 17, 18};
+Plane Surface(5) = {5};
+//+
+Curve Loop(6) = {21, 3, 22, 11, 12, 25, 30, 17, 18, 19};
+//+
+Plane Surface(6) = {6};
+//+
+Physical Surface("Fluid", 1) = {1, 3, 4, 2, 5, 6};
+//+
+Physical Curve("Inlet", 2) = {20, 19};
+//+
+Physical Curve("Freestream", 3) = {13, 18};
+//+
+Physical Curve("Outlet", 4) = {14, 15, 16, 17};
 //+
 Physical Curve("Cyl1", 5) = {2, 1, 4, 3};
 //+

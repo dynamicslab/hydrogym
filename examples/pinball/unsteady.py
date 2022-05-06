@@ -5,7 +5,7 @@ import numpy as np
 
 import hydrogym as gym
 
-Re = 120
+Re = 30
 output_dir = f'{Re}_output'
 pvd_out = f"{output_dir}/solution.pvd"
 chk_out = f"{output_dir}/checkpoint.h5"
@@ -13,7 +13,7 @@ chk_out = f"{output_dir}/checkpoint.h5"
 flow = gym.flow.Pinball(Re=Re)
 
 # flow.solve_steady()  # Initialize with steady state
-flow.load_checkpoint(chk_out)  # Reload previous solution
+# flow.load_checkpoint(chk_out)  # Reload previous solution
 
 # Time step
 dt = 1e-2
@@ -26,8 +26,7 @@ def compute_vort(flow):
 data = np.zeros((1, 7))
 def forces(iter, t, flow):
     global data
-    u, p = flow.u, flow.p
-    CL, CD = flow.compute_forces(u, p)
+    CL, CD = flow.compute_forces(flow.q)
     if fd.COMM_WORLD.rank == 0:
         data = np.append(data, np.array([t, *CL, *CD], ndmin=2), axis=0)
         np.savetxt(f'{output_dir}/coeffs.dat', data)

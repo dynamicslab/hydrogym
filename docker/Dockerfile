@@ -2,7 +2,7 @@ FROM firedrakeproject/firedrake-env:latest AS hydrogym
 
 USER root
 RUN apt-get upgrade && apt-get update && \
-        apt-get install -y libhdf5-dev libxcursor-dev libxinerama1
+        apt-get install -y libhdf5-dev libxcursor-dev libxinerama1 texlive
 
 USER firedrake
 WORKDIR /home/firedrake
@@ -38,8 +38,8 @@ RUN bash -c ". $VENV_COMPLEX/bin/activate && pip install -e /home/hydrogym"
 
 # Install an iPython kernel for firedrake (https://github.com/firedrakeproject/firedrake/blob/master/docker/Dockerfile.jupyter)
 #  THIS SHOULD BE IN AN EXTERNAL FILE...
-RUN bash -c ". $VENV/bin/activate && pip install jupyterhub ipykernel notebook ipywidgets mpltools nbformat nbconvert dmsuite gym memory_profiler gmsh"
-RUN bash -c ". $VENV_COMPLEX/bin/activate && pip install jupyterhub ipykernel notebook ipywidgets mpltools nbformat nbconvert dmsuite gym memory_profiler gmsh"
+RUN bash -c ". $VENV/bin/activate && pip install jupyterlab ipykernel notebook ipywidgets mpltools nbformat nbconvert dmsuite gym memory_profiler gmsh"
+RUN bash -c ". $VENV_COMPLEX/bin/activate && pip install jupyterlab ipykernel notebook ipywidgets mpltools nbformat nbconvert dmsuite gym memory_profiler gmsh"
 RUN bash -c ". $VENV/bin/activate && jupyter nbextension enable --py widgetsnbextension --sys-prefix"
 RUN bash -c ". $VENV_COMPLEX/bin/activate && jupyter nbextension enable --py widgetsnbextension --sys-prefix"
 

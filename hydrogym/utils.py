@@ -26,3 +26,7 @@ def system_to_scipy(sys):
         return M, A
     B = np.vstack(sys[2]).T
     return M, A, B
+
+def set_from_array(func, array):
+    with func.dat.vec as vec:
+        vec.setArray(array)

@@ -25,8 +25,7 @@ def compute_vort(flow):
 data = np.array([0, 0, 0], ndmin=2)
 def forces(iter, t, flow):
     global data
-    u, p = flow.u, flow.p
-    CL, CD = cyl.compute_forces(u, p)
+    CL, CD = cyl.compute_forces(flow.q)
     omega = cyl.omega.values()[0]
     if fd.COMM_WORLD.rank == 0:
         data = np.append(data, np.array([t, CL, CD], ndmin=2), axis=0)

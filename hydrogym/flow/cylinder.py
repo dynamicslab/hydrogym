@@ -51,7 +51,9 @@ class Cylinder(FlowConfig):
         self.bcu_inflow.set_value(fd.Constant((0, 0)))
         self.bcu_freestream.set_value(fd.Constant(0.0))
 
-    def compute_forces(self, u, p):
+    def compute_forces(self, q=None):
+        if q is None: q = self.q
+        (u, p) = fd.split(q)
         # Lift/drag on cylinder
         force = -dot(self.sigma(u, p), self.n)
         CL = fd.assemble(2*force[1]*ds(self.CYLINDER))

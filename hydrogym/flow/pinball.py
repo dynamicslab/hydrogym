@@ -10,7 +10,7 @@ from ..core import FlowConfig
 
 class Pinball(FlowConfig):
     from .mesh.pinball import INLET, FREESTREAM, OUTLET, CYLINDER
-    def __init__(self, mesh_name='coarse', h5_file=None, Re=20):
+    def __init__(self, mesh_name='fine', h5_file=None, Re=20):
         """
         controller(t, y) -> omega
         y = (CL, CD)
@@ -39,7 +39,9 @@ class Pinball(FlowConfig):
     def collect_bcp(self):
         return [self.bcp_outflow]
 
-    def compute_forces(self, u, p):
+    def compute_forces(self, q=None):
+        if q is None: q = self.q
+        (u, p) = fd.split(q)
         # Lift/drag on cylinder
         force = -dot(self.sigma(u, p), self.n)
         CL = [fd.assemble(2*force[1]*ds(cyl)) for cyl in self.CYLINDER]

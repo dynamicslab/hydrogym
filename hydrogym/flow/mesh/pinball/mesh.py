@@ -10,6 +10,4 @@ OUTLET = 4
 CYLINDER = (5, 6, 7)
 
 def load_mesh(name='coarse'):
-    if name != 'coarse':
-        raise NotImplementedError
     return Mesh(f'{mesh_dir}/{name}.msh', name='mesh')
