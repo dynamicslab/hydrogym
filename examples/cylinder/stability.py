@@ -15,7 +15,7 @@ mesh = 'sipp-lebedev'
 def least_stable(Re):
     cyl = gym.flow.Cylinder(Re=Re, mesh_name=mesh)
     qB = cyl.solve_steady()
-    A, B = cyl.linearize(qB)
+    M, A = cyl.linearize(qB)
 
     ### SLEPc
     opts = PETSc.Options()
@@ -35,7 +35,7 @@ def least_stable(Re):
     num_eigenvalues = 20
     es = SLEPc.EPS().create(comm=fd.COMM_WORLD)
     es.setDimensions(num_eigenvalues)
-    es.setOperators(A, B)
+    es.setOperators(A, M)
     es.setFromOptions()
     es.solve()
 
@@ -51,7 +51,7 @@ def least_stable(Re):
 
 # Bisection search
 #  Noack: Re=45.7, omega=0.853
-#  Sipp & Lebedev: Re=46.6, omega=0.744
+#  Sipp & Lebedev: Re=46.52, omega=0.744
 Re_lo = 40
 Re_hi = 50
 sigma_hi = np.real(least_stable(Re_hi))

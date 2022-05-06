@@ -116,13 +116,26 @@ class Flow:
         M = inner(u, v)*dx
         return L, M
 
-    def linearize(self, qB):
-        L, M = self.linearized_forms(qB)
+    def linearize(self, qB, control=False, backend='petsc'):
+        A_form, M_form = self.linearized_forms(qB)
         self.linearize_bcs()
-        A = fd.assemble(L, bcs=self.collect_bcs()).petscmat  # Dynamics matrix
-        B = fd.assemble(M, bcs=self.collect_bcs()).petscmat  # Mass matrix
-        return A, B
-        
+        A = fd.assemble(A_form, bcs=self.collect_bcs()).petscmat  # Dynamics matrix
+        M = fd.assemble(M_form, bcs=self.collect_bcs()).petscmat  # Mass matrix
+        if control and self.num_controls()!=0:
+            B = [self.linearize_control(i) for i in range(self.num_controls())]
+            sys = M, A, B
+        else:
+            sys = M, A
+
+        if backend=='scipy':
+            from ..utils import system_to_scipy
+            sys = system_to_scipy(sys)
+        return sys
+
+    def linearize_control(self, act_idx=0):
+        """Return a PETSc.Vec corresponding to the column of the control matrix"""
+        pass
+
     def collect_observations(self):
         pass
 
@@ -131,6 +144,9 @@ class Flow:
 
     def reset_control(self):
         pass
+
+    def num_controls(self):
+        return 0
 
 
 class Cylinder(Flow):
@@ -211,6 +227,24 @@ class Cylinder(Flow):
 
     def reset_control(self):
         self.set_control(0.0)
+
+    def linearize_control(self, act_idx=0):
+        (v, _) = fd.TestFunctions(self.mixed_space)
+
+        # self.linearize_bcs() should have already reset control, need to perturb it now
+        eps = fd.Constant(1e-2)
+        self.set_control(eps)
+        B = fd.assemble(inner(fd.Constant((0, 0)), v)*dx, bcs=self.collect_bcs())  # As fd.Function
+        # Convert to PETSc.Vec
+        with B.dat.vec_ro as vec:
+            Bvec = vec/eps
+
+        # Now unset the perturbed control
+        self.reset_control()
+        return Bvec
+
+    def num_controls(self):
+        return 1
 
     def collect_observations(self):
         return self.compute_forces(self.u, self.p)
