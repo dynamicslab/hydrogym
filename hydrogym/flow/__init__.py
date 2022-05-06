@@ -1,8 +1,5 @@
 from . import mesh
-from .flows import (
-    Flow,
-    Cylinder, 
-    Pinball,
-    Cavity,
-    Step
-)
+from .cylinder import Cylinder
+from .pinball import Pinball
+from .cavity import Cavity
+from .step import Step

@@ -1,34 +1,34 @@
+import numpy as np
 import firedrake as fd
 from firedrake import dx, ds
 from ufl import inner, dot, nabla_grad, div
 
 # Typing
-from .flow import Flow
+from .core import FlowConfig
 from typing import Optional, Iterable, Callable
+
 
 class TransientSolver:
     pass
 
-class IPCSSolver(TransientSolver):
-    def __init__(self, flow: Flow, dt: float,
+class IPCS(TransientSolver):
+    def __init__(self, flow: FlowConfig, dt: float,
             callbacks: Optional[Iterable[Callable]] = [],
             time_varying_bc: bool = False):
         """
         callback(iter, t, flow)
         controller(t, y)
         """
-        self.dt = dt
-        self.t = 0
         self.callbacks = callbacks
         self.time_varying_bc = time_varying_bc
 
         self.flow = flow
-        self.initialize_operators()
+        self.initialize_operators(dt)
 
-    def initialize_operators(self):
+    def initialize_operators(self, dt):
         # Setup forms
         flow = self.flow
-        k = fd.Constant(self.dt)
+        k = fd.Constant(dt)
         nu = fd.Constant(1/flow.Re)
 
         flow.init_bcs()
@@ -78,8 +78,6 @@ class IPCSSolver(TransientSolver):
         self.A3 = fd.assemble(a3)
 
     def step(self, iter):
-        self.t += self.dt  # Update current time
-        
         # Step 1: Tentative velocity step
         if self.time_varying_bc:
             self.bcu = self.flow.collect_bcu()
@@ -110,12 +108,19 @@ class IPCSSolver(TransientSolver):
         self.u_n.assign(self.u)
         self.p_n.assign(self.p)
 
-        for cb in self.callbacks:
-            cb(iter, self.t, (self.u, self.p))
+        return self.flow
 
-    def solve(self, Tf):
-        num_steps = int(Tf//self.dt)
+METHODS = {'IPCS': IPCS}
 
-        self.t = 0
-        for iter in range(num_steps):
-            self.step(iter)
+def integrate(flow, t_span, dt, method='IPCS', 
+        callbacks=[], time_varying_bc=False, **options):
+    if method not in METHODS:
+        raise ValueError(f"`method` must be one of {METHODS.keys()}")
+    
+    method = METHODS[method]
+    solver = method(flow, dt, time_varying_bc=time_varying_bc)
+
+    for iter, t in enumerate(np.arange(*t_span, dt)):
+        flow = solver.step(iter)
+        for cb in callbacks:
+            cb(iter, t, flow)

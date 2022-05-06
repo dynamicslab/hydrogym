@@ -17,15 +17,15 @@ dt = 1e-2
 Tf = 100.0
 
 vort = fd.Function(cyl.pressure_space, name='vort')
-def compute_vort(state):
-    u, p = state
+def compute_vort(flow):
+    u, p = flow.u, flow.p
     vort.assign(fd.project(curl(u), cyl.pressure_space))
     return (u, p, vort)
 
 data = np.array([0, 0, 0], ndmin=2)
-def forces(iter, t, state):
+def forces(iter, t, flow):
     global data
-    u, p = state
+    u, p = flow.u, flow.p
     CL, CD = cyl.compute_forces(u, p)
     omega = cyl.omega.values()[0]
     if fd.COMM_WORLD.rank == 0:

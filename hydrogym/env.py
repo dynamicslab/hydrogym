@@ -4,13 +4,13 @@ import firedrake as fd
 import numpy as np
 
 class FlowEnv(gym.Env):
-    from .flow import Flow
+    from .core import FlowConfig
     from .ts import TransientSolver
     from typing import Optional, Tuple, TypeVar, Union
     ObsType = TypeVar("ObsType")
     ActType = TypeVar("ActType")
 
-    def __init__(self, flow: Flow, solver: TransientSolver):
+    def __init__(self, flow: FlowConfig, solver: TransientSolver):
         self.flow = flow
         self.solver = solver
         self.iter = 0

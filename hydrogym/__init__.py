@@ -6,6 +6,7 @@ from . import (
     io,
     control
 )
+from .ts import integrate
 from .utils import (
     print,
     is_rank_zero
