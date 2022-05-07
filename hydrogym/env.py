@@ -22,12 +22,11 @@ class FlowEnv(gym.Env):
         self.callbacks = callbacks
     
     def step(self, action: Optional[ActType] = None) -> Tuple[ObsType, float, bool, dict]:
-        self.flow.set_control(action)
-        self.solver.step(self.iter)
+        self.solver.step(self.iter, control=action)
         self.iter += 1
         t = self.iter*self.solver.dt
         for cb in self.callbacks:
-            cb(iter, t, self.flow)
+            cb(self.iter, t, self.flow)
         obs = self.flow.collect_observations()
 
         reward = self.get_reward(obs)
@@ -52,13 +51,13 @@ class FlowEnv(gym.Env):
         pass
 
 class CylEnv(FlowEnv):
-    def __init__(self, checkpoint=None, callbacks=[], differentiable=False, dt=1e-2):
+    def __init__(self, checkpoint=None, callbacks=[], differentiable=False, dt=1e-2, Re=100):
         from .flow import Cylinder
         if differentiable:
             from .ts import IPCS_diff as IPCS
         else:
             from .ts import IPCS
-        flow = Cylinder(h5_file=checkpoint)
+        flow = Cylinder(h5_file=checkpoint, Re=Re)
         solver = IPCS(flow, dt=dt)
         super().__init__(flow, solver, callbacks)
 

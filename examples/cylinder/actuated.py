@@ -7,14 +7,17 @@ import hydrogym as gym
 
 output_dir = 'controlled'
 pvd_out = f"{output_dir}/solution.pvd"
-checkpoint = f"output/checkpoint.h5"
+checkpoint = f"output/40_steady.h5"
 
-cyl = gym.flow.Cylinder()
-cyl.load_checkpoint(checkpoint)  # Reload previous solution
+Re = 40
+# cyl = gym.flow.Cylinder(Re=Re)
+# cyl.solve_steady()
+# cyl.save_checkpoint(checkpoint)
+cyl = gym.flow.Cylinder(Re=Re, h5_file=checkpoint)
 
 # Time step
 dt = 1e-2
-Tf = 100.0
+Tf = 0.5
 
 vort = fd.Function(cyl.pressure_space, name='vort')
 def compute_vort(flow):
@@ -22,31 +25,31 @@ def compute_vort(flow):
     vort.assign(fd.project(curl(u), cyl.pressure_space))
     return (u, p, vort)
 
-data = np.array([0, 0, 0], ndmin=2)
-def forces(iter, t, flow):
-    global data
-    CL, CD = cyl.compute_forces(flow.q)
-    omega = cyl.omega.values()[0]
-    if fd.COMM_WORLD.rank == 0:
-        data = np.append(data, np.array([t, CL, CD], ndmin=2), axis=0)
-        np.savetxt(f'{output_dir}/coeffs.dat', data)
-    PETSc.Sys.Print(f't:{t:08f}\t\t CL:{CL:08f} \t\tCD:{CD:08f}\t\tOmega:{omega}')
+print_fmt = "t: {0:0.2f},\t\t CL:{1:0.3f},\t\t CD:{2:0.03f}"  # This will format the output
+log = gym.io.LogCallback(
+    postprocess=lambda flow: flow.collect_observations(),
+    nvals=2,
+    interval=1,
+    print_fmt=print_fmt,
+    filename=None
+)
 
 callbacks = [
-    gym.io.ParaviewCallback(interval=10, filename=pvd_out, postprocess=compute_vort),
-    gym.io.GenericCallback(callback=forces, interval=1)
+    # gym.io.ParaviewCallback(interval=10, filename=pvd_out, postprocess=compute_vort),
+    log
 ]
 
-# Simple opposition control on lift/drag
-def g(t, y):
-    CL, CD = y
-    return 0.1*CL
-
-# callbacks = []
-solver = gym.ts.IPCSSolver(cyl, dt=dt, callbacks=callbacks, time_varying_bc=True)
+callbacks = []
+solver = gym.ts.IPCS(cyl, dt=dt)
+# solver = gym.ts.IPCS_diff(cyl, dt=dt)
 
 num_steps = int(Tf/dt)
 for iter in range(num_steps):
+    t = iter*dt
     y = cyl.collect_observations()
-    cyl.set_control(g(solver.t, y))
-    solver.step(iter)
+    omega = None
+    if t > 0.2:
+        omega = 0.1
+    solver.step(iter, control=omega)
+    for cb in callbacks:
+        cb(iter, t, cyl)

@@ -40,8 +40,7 @@ def test_control():
     num_steps = 10
     for iter in range(num_steps):
         y = flow.collect_observations()
-        flow.set_control(feedback_ctrl(y))
-        flow = solver.step(iter)
+        flow = solver.step(iter, control=feedback_ctrl(y))
 
 def test_env():
     env = gym.env.CylEnv()
@@ -66,18 +65,18 @@ def test_grad():
 def test_env_grad():
     env = gym.env.CylEnv(differentiable=True)
     y = env.reset()
-    K = fda.AdjFloat(0.0)
-    m = fda.Control(K)
+    K = fd.Constant(0.0)
     J = 0.0
     for _ in range(10):
         y, reward, done, info = env.step(feedback_ctrl(y, K=K))
         J = J - reward
-    dJdm = fda.compute_gradient(J, m)
+    dJdm = fda.compute_gradient(J, fda.Control(K))
 
 def test_lti():
     flow = gym.flow.Cylinder()
     qB = flow.solve_steady()
-    M, A, B = flow.linearize(qB, control=True, backend='scipy')
+    A, M = flow.linearize(qB, backend='scipy')
+    A_adj, M = flow.linearize(qB, adjoint=True, backend='scipy')
 
 if __name__=='__main__':
     test_import()

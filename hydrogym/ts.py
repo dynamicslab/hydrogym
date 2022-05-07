@@ -32,7 +32,7 @@ class IPCS(TransientSolver):
         k = fd.Constant(self.dt)
         nu = fd.Constant(1/flow.Re)
 
-        flow.init_bcs()
+        flow.init_bcs(mixed=False)
         V, Q = flow.function_spaces(mixed=False)
 
         # Boundary conditions
@@ -88,10 +88,14 @@ class IPCS(TransientSolver):
             'pc_type': 'sor'
         })
 
-    def step(self, iter):
-        # Step 1: Tentative velocity step
+        self.B = flow.linearize_control()
 
+    def step(self, iter, control=None):
+        # Step 1: Tentative velocity step
         self.predictor.solve()
+        if control is not None:
+            Bu, _ = self.B.split()
+            self.u += Bu*control
         self.poisson.solve()
         self.projection.solve()
 
@@ -120,7 +124,7 @@ class IPCS_diff(TransientSolver):
         k = fd.Constant(self.dt)
         nu = fd.Constant(1/flow.Re)
 
-        flow.init_bcs()
+        flow.init_bcs(mixed=False)
         V, Q = flow.function_spaces(mixed=False)
 
         # Boundary conditions
@@ -166,7 +170,9 @@ class IPCS_diff(TransientSolver):
         self.A2 = fd.assemble(a2, bcs=self.bcp)
         self.A3 = fd.assemble(a3)
 
-    def step(self, iter):
+        self.B = flow.linearize_control()
+
+    def step(self, iter, control=None):
         # Step 1: Tentative velocity step
         self.bcu = self.flow.collect_bcu()
         self.A1 = fd.assemble(self.a1, bcs=self.bcu)
@@ -176,6 +182,9 @@ class IPCS_diff(TransientSolver):
             "pc_type": "hypre",
             "pc_hypre_type": "boomeramg"
         })
+        if control is not None:
+            Bu, _ = self.B.split()
+            self.u += control*Bu
 
         # Step 2: Pressure correction step
         b2 = fd.assemble(self.L2, bcs=self.bcp)

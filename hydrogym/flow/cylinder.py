@@ -78,6 +78,14 @@ class Cylinder(FlowConfig):
         return max(-self.MAX_CONTROL, min(self.MAX_CONTROL, u))
 
     def set_control(self, omega=None):
+        """
+        Sets the rotation rate of the cylinder
+
+        Note that for time-varying controls it will be better to adjust the rotation rate
+        in the timestepper, e.g. with `solver.step(iter, control=omega)`.  This could be used
+        to change rotation rate for a steady-state solve, for instance, and is also used
+        internally to compute the control matrix
+        """
         if omega is None: omega = 0.0
         self.omega.assign(omega)
         self.update_rotation()
@@ -89,21 +97,26 @@ class Cylinder(FlowConfig):
 
     def reset_control(self):
         self.set_control(0.0)
+        self.init_bcs(mixed=False)
 
     def linearize_control(self, act_idx=0):
         (v, _) = fd.TestFunctions(self.mixed_space)
-
-        # self.linearize_bcs() should have already reset control, need to perturb it now
-        eps = fd.Constant(1e-2)
+        self.linearize_bcs()
+        # self.linearize_bcs() should have reset control, need to perturb it now
+        eps = fd.Constant(1.0)
         self.set_control(eps)
         B = fd.assemble(inner(fd.Constant((0, 0)), v)*dx, bcs=self.collect_bcs())  # As fd.Function
-        # Convert to PETSc.Vec
-        with B.dat.vec_ro as vec:
-            Bvec = vec/eps
+
+        # # Convert to PETSc.Vec
+        # with B.dat.vec_ro as vec:
+        #     Bvec = vec/eps
 
         # Now unset the perturbed control
+        # self.reset_control()
+        # return Bvec
+
         self.reset_control()
-        return Bvec
+        return B
 
     def num_controls(self):
         return 1

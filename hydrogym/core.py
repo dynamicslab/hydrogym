@@ -118,18 +118,15 @@ class FlowConfig:
         else:
             return L
 
-    def linearize(self, qB, control=False, adjoint=False, backend='petsc'):
+    def linearize(self, qB, adjoint=False, backend='petsc'):
+        assert (backend in ['petsc', 'scipy']), "Backend not recognized: use `petsc` or `scipy`"
         A_form = self.linearize_dynamics(qB, adjoint=adjoint)
         M_form = self.mass_matrix()
         self.linearize_bcs()
         A = fd.assemble(A_form, bcs=self.collect_bcs()).petscmat  # Dynamics matrix
         M = fd.assemble(M_form, bcs=self.collect_bcs()).petscmat  # Mass matrix
-        if control and self.num_controls()!=0:
-            B = [self.linearize_control(i) for i in range(self.num_controls())]
-            sys = A, M, B
-        else:
-            sys = A, M
 
+        sys = A, M
         if backend=='scipy':
             from .utils import system_to_scipy
             sys = system_to_scipy(sys)
