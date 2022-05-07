@@ -23,9 +23,10 @@ class FlowConfig:
         if h5_file is not None:
             self.load_checkpoint(h5_file)
 
-    def save_checkpoint(self, h5_file):
+    def save_checkpoint(self, h5_file, write_mesh=True):
         with fd.CheckpointFile(h5_file, 'w') as chk:
-            chk.save_mesh(self.mesh)  # optional
+            if write_mesh:
+                chk.save_mesh(self.mesh)  # optional
             chk.save_function(self.q)
 
     def load_checkpoint(self, h5_file):
@@ -76,10 +77,6 @@ class FlowConfig:
     def sigma(self, u, p):
         return 2*(1/self.Re)*self.epsilon(u) - p*fd.Identity(len(u))
 
-    def steady_form(self, w, w_test):
-        """Define nonlinear variational problem for steady-state NS"""
-        pass
-
     def solve_steady(self):
         self.init_bcs(mixed=True)
 
@@ -105,24 +102,33 @@ class FlowConfig:
             + inner(div(u), s)*dx
         return F
 
-    def linearized_forms(self, qB):
+    def mass_matrix(self):
         (u, _) = fd.TrialFunctions(self.mixed_space)
         (v, _) = fd.TestFunctions(self.mixed_space)
+        M = inner(u, v)*dx
+        return M
+
+    def linearize_dynamics(self, qB, adjoint=False):
         F = self.steady_form(q=qB)
         L = -fd.derivative(F, qB)
-        M = inner(u, v)*dx
-        return L, M
+        if adjoint:
+            args = L.arguments()
+            L_adj = ufl.adjoint(L, reordered_arguments=(args[0], args[1]))
+            return L_adj
+        else:
+            return L
 
-    def linearize(self, qB, control=False, backend='petsc'):
-        A_form, M_form = self.linearized_forms(qB)
+    def linearize(self, qB, control=False, adjoint=False, backend='petsc'):
+        A_form = self.linearize_dynamics(qB, adjoint=adjoint)
+        M_form = self.mass_matrix()
         self.linearize_bcs()
         A = fd.assemble(A_form, bcs=self.collect_bcs()).petscmat  # Dynamics matrix
         M = fd.assemble(M_form, bcs=self.collect_bcs()).petscmat  # Mass matrix
         if control and self.num_controls()!=0:
             B = [self.linearize_control(i) for i in range(self.num_controls())]
-            sys = M, A, B
+            sys = A, M, B
         else:
-            sys = M, A
+            sys = A, M
 
         if backend=='scipy':
             from .utils import system_to_scipy
@@ -136,8 +142,8 @@ class FlowConfig:
     def collect_observations(self):
         pass
 
-    def set_control(self, u):
-        pass
+    def set_control(self, u=None):
+        if u is None: pass
 
     def reset_control(self):
         pass
@@ -147,8 +153,20 @@ class FlowConfig:
 
 class CallbackBase:
     def __init__(self, interval: Optional[int] = 1):
+        """
+        Base class for things that happen every so often in the simulation
+        (e.g. save output for Paraview or write some info to a log file).
+        See also `utils/io.py`
+
+        Parameters:
+            interval - how often to take action
+        """
         self.interval = interval
 
     def __call__(self, iter: int, t: float, flow: FlowConfig):
+        """
+        Check if this is an 'iostep' by comparing to `self.interval`
+            This assumes that a child class will do something with this information
+        """
         iostep = (iter % self.interval == 0)
         return iostep

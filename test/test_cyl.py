@@ -16,7 +16,7 @@ def test_steady():
     tol=1e-3
 
     # Lift/drag on cylinder
-    CL, CD = flow.compute_forces(flow.u, flow.p)
+    CL, CD = flow.compute_forces()
     assert(abs(CL) < tol)
     # assert(abs(CD - 1.8083279145880582) < tol)  # Re = 40
     assert(abs(CD - 1.2840) < tol)  # Re = 100
@@ -24,8 +24,7 @@ def test_steady():
 def test_unsteady():
     flow = gym.flow.Cylinder(mesh_name='noack')
     dt = 1e-2
-    solver = gym.ts.IPCSSolver(flow, dt=dt)
-    solver.solve(10*dt)
+    gym.ts.integrate(flow, t_span=(0, 10*dt), dt=dt)
     
 # Simple opposition control on lift
 def feedback_ctrl(y, K=0.1):
@@ -36,13 +35,13 @@ def test_control():
     flow = gym.flow.Cylinder(mesh_name='noack')
     dt = 1e-2
 
-    solver = gym.ts.IPCSSolver(flow, dt=dt, callbacks=[], time_varying_bc=True)
+    solver = gym.ts.IPCS(flow, dt=dt)
 
     num_steps = 10
     for iter in range(num_steps):
         y = flow.collect_observations()
         flow.set_control(feedback_ctrl(y))
-        solver.step(iter)
+        flow = solver.step(iter)
 
 def test_env():
     env = gym.env.CylEnv()
@@ -60,12 +59,12 @@ def test_grad():
     flow.set_control(omega)
 
     flow.solve_steady()
-    CL, CD = flow.compute_forces(flow.u, flow.p)
+    CL, CD = flow.compute_forces()
 
     dJdu = fda.compute_gradient(CD, fda.Control(omega))
 
 def test_env_grad():
-    env = gym.env.CylEnv()
+    env = gym.env.CylEnv(differentiable=True)
     y = env.reset()
     K = fda.AdjFloat(0.0)
     m = fda.Control(K)

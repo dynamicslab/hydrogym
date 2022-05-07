@@ -3,6 +3,8 @@ from firedrake.petsc import PETSc
 import numpy as np
 from scipy import sparse
 
+__all__ = ["print", "is_rank_zero", "petsc_to_scipy", "system_to_scipy", "set_from_array"]
+
 ## Parallel utility functions
 def print(s):
     """Print only from first process"""
@@ -19,13 +21,13 @@ def petsc_to_scipy(petsc_mat):
     return scipy_mat
 
 def system_to_scipy(sys):
-    """Convert the LTI system tuple (M, A, B) to scipy/numpy arrays"""
-    M = petsc_to_scipy(sys[0])
-    A = petsc_to_scipy(sys[1])
+    """Convert the LTI system tuple (A, M, B) to scipy/numpy arrays"""
+    A = petsc_to_scipy(sys[0])
+    M = petsc_to_scipy(sys[1])
     if len(sys) == 2:
-        return M, A
+        return A, M
     B = np.vstack(sys[2]).T
-    return M, A, B
+    return A, M, B
 
 def set_from_array(func, array):
     with func.dat.vec as vec:

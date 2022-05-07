@@ -8,15 +8,14 @@ import hydrogym as gym
 output_dir = 'output'
 pvd_out = f"{output_dir}/solution.pvd"
 chk_out = f"{output_dir}/checkpoint.h5"
+snap_dir = 'snapshots'
 
-flow = gym.flow.Cylinder(Re=40)
-
-flow.solve_steady()  # Initialize with steady state
-# flow.load_checkpoint(chk_out)  # Reload previous solution
+flow = gym.flow.Cylinder(Re=100, h5_file=chk_out)
+# flow.solve_steady()  # Initialize with steady state
 
 # Time step
-dt = 1e-2
-Tf = 0.5
+Tf = 5.56
+dt = Tf/500
 
 vort = fd.Function(flow.pressure_space, name='vort')
 def compute_vort(flow):
@@ -36,14 +35,14 @@ def forces(iter, t, flow):
 callbacks = [
     # gym.io.ParaviewCallback(interval=10, filename=pvd_out, postprocess=compute_vort),
     # gym.io.CheckpointCallback(interval=100, filename=chk_out),
-    gym.io.GenericCallback(callback=forces, interval=1)
+    gym.io.GenericCallback(callback=forces, interval=1),
+    gym.io.SnapshotCallback(interval=5, output_dir=snap_dir)
 ]
+gym.integrate(flow, t_span=(0, Tf), dt=dt, callbacks=callbacks, method='IPCS')
 
-# gym.integrate(flow, t_span=(0, Tf), dt=dt, callbacks=callbacks, method='IPCS')
-
-# Test time-varying BC
-solver = gym.ts.IPCSTest(flow, dt)
-t_span = (0, Tf)
-solver.solve(t_span, callbacks=callbacks)
-flow.set_control(fd.Constant(0.5))
-solver.solve(t_span, callbacks=callbacks)
+# # Test time-varying BC
+# solver = gym.ts.IPCSTest(flow, dt)
+# t_span = (0, Tf)
+# solver.solve(t_span, callbacks=callbacks)
+# flow.set_control(fd.Constant(0.5))
+# solver.solve(t_span, callbacks=callbacks)

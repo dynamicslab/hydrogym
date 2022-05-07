@@ -1,9 +1,12 @@
 import numpy as np
 import firedrake as fd
+import pickle
 
-from .core import FlowConfig, CallbackBase
-from .utils import print
+from ..core import FlowConfig, CallbackBase
+from .utils import print, is_rank_zero
 from typing import Any, Optional, Callable, Tuple
+
+__all__ = ['ParaviewCallback', 'CheckpointCallback', 'LogCallback', 'SnapshotCallback', 'GenericCallback']
 
 class ParaviewCallback(CallbackBase):
     def __init__(self,
@@ -44,6 +47,7 @@ class LogCallback(CallbackBase):
             print_fmt: Optional[str] = None
             ):
         super().__init__(interval=interval)
+        self.postprocess = postprocess
         self.filename = filename
         self.print_fmt = print_fmt
         self.data = np.zeros((1, nvals+1))
@@ -56,25 +60,35 @@ class LogCallback(CallbackBase):
             else:
                 self.data = np.append(self.data, new_data, axis=0)
 
-            if self.filename is not None:
+            if self.filename is not None and is_rank_zero():
                 np.savetxt(self.filename, self.data)
             if self.print_fmt is not None:
-                print(self.print_fmt.format(*new_data))
+                print(self.print_fmt.format(*new_data.ravel()))
 
 class SnapshotCallback(CallbackBase):
     def __init__(self,
             interval: Optional[int] = 1,
             output_dir: Optional[str] = 'snapshots'
         ):
+        """
+        Save snapshots as checkpoints for modal analysis
+
+        Note that this slows down the simulation
+        """
         super().__init__(interval=interval)
         self.output_dir = output_dir
+        self.snap_idx = 0
+        self.saved_mesh = False
 
     def __call__(self, iter: int, t: float, flow: Tuple[fd.Function]):
         if iter == 0:
-            flow.save_checkpoint(f'{self.output_dir}/checkpoint.h5')
+            flow.save_checkpoint(f'{self.output_dir}/checkpoint.h5')  # Save matrix
         if super().__call__(iter, t, flow):
-            # TODO: Pickle and store PETSc array
-            pass
+            write_mesh = not self.saved_mesh
+            flow.save_checkpoint(f'{self.output_dir}/{self.snap_idx}.h5', write_mesh=write_mesh)
+            if write_mesh:
+                self.saved_mesh=True
+            self.snap_idx += 1
 
 class GenericCallback(CallbackBase):
     def __init__(self,

@@ -5,7 +5,7 @@ import numpy as np
 
 import hydrogym as gym
 
-Re = 30
+Re = 130
 output_dir = f'{Re}_output'
 pvd_out = f"{output_dir}/solution.pvd"
 chk_out = f"{output_dir}/checkpoint.h5"
@@ -13,7 +13,7 @@ chk_out = f"{output_dir}/checkpoint.h5"
 flow = gym.flow.Pinball(Re=Re)
 
 # flow.solve_steady()  # Initialize with steady state
-# flow.load_checkpoint(chk_out)  # Reload previous solution
+flow.load_checkpoint(chk_out)  # Reload previous solution
 
 # Time step
 dt = 1e-2

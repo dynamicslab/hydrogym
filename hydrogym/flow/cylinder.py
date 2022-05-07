@@ -77,7 +77,8 @@ class Cylinder(FlowConfig):
     def clamp(self, u):
         return max(-self.MAX_CONTROL, min(self.MAX_CONTROL, u))
 
-    def set_control(self, omega):
+    def set_control(self, omega=None):
+        if omega is None: omega = 0.0
         self.omega.assign(omega)
         self.update_rotation()
 
@@ -108,4 +109,4 @@ class Cylinder(FlowConfig):
         return 1
 
     def collect_observations(self):
-        return self.compute_forces(self.u, self.p)
+        return self.compute_forces()
