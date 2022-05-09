@@ -3,7 +3,7 @@ from firedrake.petsc import PETSc
 import numpy as np
 from scipy import sparse
 
-__all__ = ["print", "is_rank_zero", "petsc_to_scipy", "system_to_scipy", "set_from_array"]
+__all__ = ["print", "is_rank_zero", "petsc_to_scipy", "system_to_scipy", "set_from_array", "get_array"]
 
 ## Parallel utility functions
 def print(s):
@@ -32,3 +32,8 @@ def system_to_scipy(sys):
 def set_from_array(func, array):
     with func.dat.vec as vec:
         vec.setArray(array)
+
+def get_array(func):
+    with func.dat.vec_ro as vec:
+        array = vec.getArray()
+    return array

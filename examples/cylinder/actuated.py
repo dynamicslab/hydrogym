@@ -39,7 +39,7 @@ callbacks = [
     log
 ]
 
-callbacks = []
+# callbacks = []
 solver = gym.ts.IPCS(cyl, dt=dt)
 # solver = gym.ts.IPCS_diff(cyl, dt=dt)
 

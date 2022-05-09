@@ -45,9 +45,9 @@ class Cylinder(FlowConfig):
     def collect_bcp(self):
         return [self.bcp_outflow]
 
-    def linearize_bcs(self):
+    def linearize_bcs(self, mixed=True):
         self.omega.assign(0.0)
-        self.init_bcs(mixed=True)
+        self.init_bcs(mixed=mixed)
         self.bcu_inflow.set_value(fd.Constant((0, 0)))
         self.bcu_freestream.set_value(fd.Constant(0.0))
 
