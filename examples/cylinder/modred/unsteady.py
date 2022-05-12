@@ -10,7 +10,6 @@ pvd_out = f"{output_dir}/solution.pvd"
 chk_out = f"{output_dir}/checkpoint.h5"
 
 flow = gym.flow.Cylinder(Re=100, h5_file=chk_out)
-# flow.solve_steady()  # Initialize with steady state
 
 # Time step
 Tf = 5.56

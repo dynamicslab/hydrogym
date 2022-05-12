@@ -18,8 +18,4 @@ CL, CD = flow.compute_forces()
 # print(f'CL:{CL:08f} \t\tCD:{CD:08f}')
 gym.print((CL, CD))
 
-flow.save_checkpoint(f"{output_dir}/{mesh}-steady.h5", write_mesh=True)
-
-vort = flow.vorticity()
-pvd = fd.File(f"{output_dir}/steady.pvd")
-pvd.write(flow.u, flow.p, vort)
+flow.save_checkpoint(f"./steady.h5", write_mesh=True)

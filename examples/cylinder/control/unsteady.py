@@ -5,19 +5,15 @@ import numpy as np
 
 import hydrogym as gym
 
-output_dir = 'output'
+output_dir = 'natural'
 pvd_out = f"{output_dir}/solution.pvd"
 chk_out = f"{output_dir}/checkpoint.h5"
 
-flow = gym.flow.Cylinder(Re=100, h5_file=chk_out)
+flow = gym.flow.Cylinder(Re=50, h5_file='../output/checkpoint.h5')
 # flow.solve_steady()  # Initialize with steady state
 
-# Time step
-Tf = 5.56
-dt = Tf/500
-
-# Tf = 300
-# dt = 1e-2
+Tf = 300
+dt = 1e-2
 
 vort = fd.Function(flow.pressure_space, name='vort')
 def compute_vort(flow):
@@ -26,19 +22,18 @@ def compute_vort(flow):
     return (u, p, vort)
 
 data = np.array([0, 0, 0], ndmin=2)
-def forces(iter, t, flow):
+def forces(flow):
     global data
     CL, CD = flow.compute_forces(flow.q)
-    # if fd.COMM_WORLD.rank == 0:
-    #     data = np.append(data, np.array([t, CL, CD], ndmin=2), axis=0)
-    #     np.savetxt(f'{output_dir}/coeffs.dat', data)
-    gym.print(f't:{t:08f}\t\t CL:{CL:08f} \t\tCD::{CD:08f}')
+    return CL, CD
 
 callbacks = [
-    # gym.io.ParaviewCallback(interval=10, filename=pvd_out, postprocess=compute_vort),
-    # gym.io.CheckpointCallback(interval=100, filename=chk_out),
-    gym.io.GenericCallback(callback=forces, interval=1),
-    gym.io.SnapshotCallback(interval=5, filename=f'{output_dir}/snapshots.h5')
+    gym.io.ParaviewCallback(interval=10, filename=pvd_out, postprocess=compute_vort),
+    gym.io.CheckpointCallback(interval=100, filename=chk_out),
+    gym.io.LogCallback(postprocess=forces, nvals=2, interval=10,
+            filename=f'{output_dir}/forces.dat',
+            print_fmt='t:{0:0.2f}\t\t CL:{1:0.4f} \t\tCD::{2:0.4f}'
+    )
 ]
 gym.integrate(flow, t_span=(0, Tf), dt=dt, callbacks=callbacks, method='IPCS')
 
