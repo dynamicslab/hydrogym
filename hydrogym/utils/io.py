@@ -1,5 +1,6 @@
 import numpy as np
 import firedrake as fd
+from firedrake import logging
 import pickle
 
 from ..core import FlowConfig, CallbackBase
@@ -68,7 +69,7 @@ class LogCallback(CallbackBase):
 class SnapshotCallback(CallbackBase):
     def __init__(self,
             interval: Optional[int] = 1,
-            output_dir: Optional[str] = 'snapshots'
+            filename: Optional[str] = 'snapshots'
         ):
         """
         Save snapshots as checkpoints for modal analysis
@@ -76,19 +77,21 @@ class SnapshotCallback(CallbackBase):
         Note that this slows down the simulation
         """
         super().__init__(interval=interval)
-        self.output_dir = output_dir
+        self.h5 = fd.CheckpointFile(filename, 'w')
         self.snap_idx = 0
         self.saved_mesh = False
 
     def __call__(self, iter: int, t: float, flow: Tuple[fd.Function]):
-        if iter == 0:
-            flow.save_checkpoint(f'{self.output_dir}/checkpoint.h5')  # Save matrix
         if super().__call__(iter, t, flow):
-            write_mesh = not self.saved_mesh
-            flow.save_checkpoint(f'{self.output_dir}/{self.snap_idx}.h5', write_mesh=write_mesh)
-            if write_mesh:
-                self.saved_mesh=True
+            if not self.saved_mesh:
+                self.h5.save_mesh(flow.mesh)
+                self.saved_mesh = True
+            self.h5.save_function(flow.q, idx=self.snap_idx)
             self.snap_idx += 1
+
+    def close(self):
+        logging.log(logging.DEBUG, "Closing snapshot CheckpointFile")
+        self.h5.close()
 
 class GenericCallback(CallbackBase):
     def __init__(self,

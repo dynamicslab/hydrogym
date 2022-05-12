@@ -2,11 +2,11 @@ import numpy as np
 import firedrake as fd
 from firedrake import dx, ds, lhs, rhs
 from ufl import inner, dot, nabla_grad, div
+from firedrake import logging
 
 # Typing
 from .core import FlowConfig
 from typing import Optional, Iterable, Callable, Tuple
-
 
 class TransientSolver:
     def __init__(self, flow: FlowConfig, dt: float):
@@ -19,11 +19,15 @@ class TransientSolver:
             for cb in callbacks:
                 cb(iter, t, flow)
 
+        for cb in callbacks:
+            cb.close()
+
         return flow
 
 class IPCS(TransientSolver):
-    def __init__(self, flow: FlowConfig, dt: float, **kwargs):
+    def __init__(self, flow: FlowConfig, dt: float, debug=False, **kwargs):
         super().__init__(flow, dt)
+        self.debug = debug
         self.initialize_operators()
 
     def initialize_operators(self):
@@ -66,21 +70,20 @@ class IPCS(TransientSolver):
             + dot(self.p_n*flow.n, v)*ds - dot(nu*nabla_grad(U)*flow.n, v)*ds
             # - dot(f, v)*self.dx
         vel_prob = fd.LinearVariationalProblem(lhs(F1), rhs(F1), self.u, bcs=flow.collect_bcu())
-        self.predictor = fd.LinearVariationalSolver(vel_prob, solver_parameters={
+        solver_parameters = {
             "ksp_type": "gmres",
             "pc_type": "hypre",
             "pc_hypre_type": "boomeramg"
-        })
+        }
+        if self.debug:
+            solver_parameters['ksp_monitor_true_residual'] = None
+        self.predictor = fd.LinearVariationalSolver(vel_prob, solver_parameters=solver_parameters)
 
         # Poisson equation
         a2 = inner(nabla_grad(p), nabla_grad(s))*dx
         L2 = inner(nabla_grad(self.p_n), nabla_grad(s))*dx - (1/k)*div(self.u)*s*dx
         poisson_prob = fd.LinearVariationalProblem(a2, L2, self.p, bcs=flow.collect_bcp())
-        self.poisson = fd.LinearVariationalSolver(poisson_prob, solver_parameters = {
-            "ksp_type": "gmres",
-            "pc_type": "hypre",
-            "pc_hypre_type": "boomeramg"
-        })
+        self.poisson = fd.LinearVariationalSolver(poisson_prob, solver_parameters=solver_parameters)
 
         # Projection step (pressure correction)
         a3 = inner(u, v)*dx
@@ -93,19 +96,35 @@ class IPCS(TransientSolver):
 
         self.B = flow.linearize_control()
 
-    def step(self, iter, control=None):
-        # Step 1: Tentative velocity step
-        self.predictor.solve()
-        if control is not None:
-            Bu, _ = self.B.split()
-            self.u += Bu*control
-        self.poisson.solve()
-        self.projection.solve()
+    def step(self, iter, control=None, mode='direct'):
+        if mode == 'direct':
+            # Step 1: Tentative velocity step
+            logging.log(logging.DEBUG, f"iter: {iter}, solving velocity predictor")
+            self.predictor.solve()
+            if control is not None:
+                Bu, _ = self.B.split()
+                self.u += Bu*control
+            
+            logging.log(logging.DEBUG, f"Velocity predictor done, solving Poisson")
+            self.poisson.solve()
+            logging.log(logging.DEBUG, f"Poisson done, solving projection step")
+            self.projection.solve()
+            logging.log(logging.DEBUG, f"IPCS step finished")
+
+        elif mode == 'adjoint':
+            logging.log(logging.WARNING, "Adjoint time-stepping has not yet been implemented correctly")
+
+            assert hasattr(self, 'adj_predictor')
+            # Step 1: Tentative velocity step
+            logging.log(logging.DEBUG, f"iter: {iter}, solving adjoint velocity predictor")
+            self.adj_predictor.solve()
+            if control is not None:
+                logging.log(logging.WARNING, "Ignoring control applied to adjoint step")
+
 
         # Update previous solution
         self.u_n.assign(self.u)
         self.p_n.assign(self.p)
-
         return self.flow
 
     def linearize(self, qB=None):
@@ -113,7 +132,7 @@ class IPCS(TransientSolver):
         Return a LinearOperator that can act on numpy arrays (pulled from utils.get_array)
         """
         from scipy.sparse.linalg import LinearOperator
-        from .utils import get_array, set_from_array  # Convert function to/from array
+        from .utils import get_array, set_from_array, linalg  # Convert function to/from array
 
         flow = self.flow
         k = fd.Constant(self.dt)
@@ -136,161 +155,58 @@ class IPCS(TransientSolver):
             + dot(dot(self.u_n, nabla_grad(uB)), v)*dx \
             + inner(flow.sigma(U, self.p_n), flow.epsilon(v))*dx \
             + dot(self.p_n*flow.n, v)*ds - dot(nu*nabla_grad(U)*flow.n, v)*ds
-        vel_prob = fd.LinearVariationalProblem(lhs(F1), rhs(F1), self.u, bcs=flow.collect_bcu())
-        self.predictor = fd.LinearVariationalSolver(vel_prob, solver_parameters={
+        a1 = lhs(F1)
+        L1 = rhs(F1)
+        vel_prob = fd.LinearVariationalProblem(a1, L1, self.u, bcs=flow.collect_bcu())
+        solver_parameters = {
             "ksp_type": "gmres",
             "pc_type": "hypre",
             "pc_hypre_type": "boomeramg"
-        })
+        }
+        self.predictor = fd.LinearVariationalSolver(vel_prob, solver_parameters=solver_parameters)
+
+        # Adjoint operator
+        adj_vel_prob = fd.LinearVariationalProblem(linalg.adjoint(a1), L1, self.u, bcs=flow.collect_bcu())
+        self.adj_predictor = fd.LinearVariationalSolver(adj_vel_prob, solver_parameters=solver_parameters)
 
         # Poisson equation
         a2 = inner(nabla_grad(p), nabla_grad(s))*dx
         L2 = inner(nabla_grad(self.p_n), nabla_grad(s))*dx - (1/k)*div(self.u)*s*dx
         poisson_prob = fd.LinearVariationalProblem(a2, L2, self.p, bcs=flow.collect_bcp())
-        self.poisson = fd.LinearVariationalSolver(poisson_prob, solver_parameters = {
-            "ksp_type": "gmres",
-            "pc_type": "hypre",
-            "pc_hypre_type": "boomeramg"
+        self.poisson = fd.LinearVariationalSolver(poisson_prob, solver_parameters=solver_parameters)
+
+        # Projection step (pressure correction)
+        a3 = inner(u, v)*dx
+        L3 = inner(self.u, v)*dx - k*inner(nabla_grad(self.p - self.p_n), v)*dx
+        proj_prob = fd.LinearVariationalProblem(a3, L3, self.u)
+        self.projection = fd.LinearVariationalSolver(proj_prob, solver_parameters = {
+            'ksp_type': 'cg',
+            'pc_type': 'sor'
         })
+
 
         self.B = flow.linearize_control()
 
         q = flow.q.copy(deepcopy=True)
-        def matvec(q_vec):
+        def matvec(q_vec, mode):
             set_from_array(q, q_vec)
-            # u, p = fd.split(q)
             u, p = q.split()
             self.u_n.assign(q.sub(0))
             self.p_n.assign(q.sub(1))
 
-            self.step(0)  # Updates self.u, self.p, and by extension flow.q = [self.u, self.p]
+            self.step(0, mode=mode)  # Updates self.u, self.p, and by extension flow.q = [self.u, self.p]
             return get_array(flow.q)
 
+        def lmatvec(q_vec):
+            return matvec(q_vec, mode='direct')
+
         def rmatvec(q_vec):
-            raise NotImplementedError
+            return matvec(q_vec, mode='adjoint')
 
         N = q.vector().size()
-        A = LinearOperator(shape=(N, N), matvec=matvec)
+        A = LinearOperator(shape=(N, N), matvec=lmatvec, rmatvec=rmatvec)
         B = get_array(self.B)
         return A, B
-
-
-# class LinearizedIPCS(TransientSolver):
-#     def __init__(self, flow: FlowConfig, dt: float, **kwargs):
-#         super().__init__(flow, dt)
-#         self.initialize_operators()
-
-#     def initialize_operators(self):
-#         # Setup forms
-#         flow = self.flow
-#         k = fd.Constant(self.dt)
-#         nu = fd.Constant(1/flow.Re)
-
-#         flow.init_bcs(mixed=False)
-#         V, Q = flow.function_spaces(mixed=False)
-
-#         # Boundary conditions
-#         flow.linearize_bcs(mixed=False)
-#         self.bcu = flow.collect_bcu()
-#         self.bcp = flow.collect_bcp()
-
-#         # Trial/test functions for linear problems
-#         u = fd.TrialFunction(V)
-#         p = fd.TrialFunction(Q)
-#         v = fd.TestFunction(V)
-#         s = fd.TestFunction(Q)
-
-#         self.q_trial = (u, p)
-#         self.q_test = (v, s)
-
-#         # Assumes current state of flow is the base
-#         self.uB = flow.u.copy(deepcopy=True)
-
-#         # Actual solution (references the underlying Flow object)
-#         self.u, self.p = flow.u, flow.p
-
-#         # Previous solution for multistep scheme
-#         self.u_n = self.u.copy(deepcopy=True)
-#         self.p_n = self.p.copy(deepcopy=True)
-
-#         # Combinations of functions for form construction
-#         U = 0.5*(self.u_n + u)  # Average for semi-implicit
-#         u_t = (u - self.u_n)/k  # Time derivative
-        
-#         F1 = dot(u_t, v)*dx \
-#             + dot(dot(self.uB, nabla_grad(self.u_n)), v)*dx \
-#             + dot(dot(self.u_n, nabla_grad(self.uB)), v)*dx \
-#             + inner(flow.sigma(U, self.p_n), flow.epsilon(v))*dx \
-#             + dot(self.p_n*flow.n, v)*ds - dot(nu*nabla_grad(U)*flow.n, v)*ds
-#         vel_prob = fd.LinearVariationalProblem(lhs(F1), rhs(F1), self.u, bcs=flow.collect_bcu())
-#         self.predictor = fd.LinearVariationalSolver(vel_prob, solver_parameters={
-#             "ksp_type": "gmres",
-#             "pc_type": "hypre",
-#             "pc_hypre_type": "boomeramg"
-#         })
-
-#         # Poisson equation
-#         a2 = inner(nabla_grad(p), nabla_grad(s))*dx
-#         L2 = inner(nabla_grad(self.p_n), nabla_grad(s))*dx - (1/k)*div(self.u)*s*dx
-#         poisson_prob = fd.LinearVariationalProblem(a2, L2, self.p, bcs=flow.collect_bcp())
-#         self.poisson = fd.LinearVariationalSolver(poisson_prob, solver_parameters = {
-#             "ksp_type": "gmres",
-#             "pc_type": "hypre",
-#             "pc_hypre_type": "boomeramg"
-#         })
-
-#         # Projection step (pressure correction)
-#         a3 = inner(u, v)*dx
-#         L3 = inner(self.u, v)*dx - k*inner(nabla_grad(self.p - self.p_n), v)*dx
-#         proj_prob = fd.LinearVariationalProblem(a3, L3, self.u)
-#         self.projection = fd.LinearVariationalSolver(proj_prob, solver_parameters = {
-#             'ksp_type': 'cg',
-#             'pc_type': 'sor'
-#         })
-
-#         self.B = flow.linearize_control()
-
-#     def step(self, iter, control=None):
-#         # Step 1: Tentative velocity step
-#         self.predictor.solve()
-#         if control is not None:
-#             Bu, _ = self.B.split()
-#             self.u += Bu*control
-#         self.poisson.solve()
-#         self.projection.solve()
-
-#         # Update previous solution
-#         self.u_n.assign(self.u)
-#         self.p_n.assign(self.p)
-
-#         return self.flow
-
-#     def operators(self):
-#         """
-#         Return a LinearOperator that can act on numpy arrays (pulled from utils.get_array)
-#         """
-#         from scipy.sparse.linalg import LinearOperator
-#         from .utils import get_array, set_from_array  # Convert function to/from array
-
-#         flow = self.flow
-#         q = flow.q.copy(deepcopy=True)
-#         def matvec(q_vec):
-#             set_from_array(q, q_vec)
-#             # u, p = fd.split(q)
-#             u, p = q.split()
-#             self.u_n.assign(q.sub(0))
-#             self.p_n.assign(q.sub(1))
-
-#             self.step(0)  # Updates self.u, self.p, and by extension flow.q = [self.u, self.p]
-#             return get_array(flow.q)
-
-#         def rmatvec(q_vec):
-#             raise NotImplementedError
-
-#         N = q.vector().size()
-#         A = LinearOperator(shape=(N, N), matvec=matvec)
-#         B = get_array(self.B)
-#         return A, B
 
 class IPCS_diff(TransientSolver):
     def __init__(self, flow: FlowConfig, dt: float,

@@ -88,12 +88,14 @@ class Cylinder(FlowConfig):
         """
         if omega is None: omega = 0.0
         self.omega.assign(omega)
-        self.update_rotation()
 
-        # TODO: Limit max control
-        # self.rotation_rate.assign(
+        # TODO: Limit max control in a differentiable way
+        # self.omega.assign(
         #     self.clamp( omega )
         # )
+
+        self.update_rotation()
+
 
     def reset_control(self):
         self.set_control(0.0)

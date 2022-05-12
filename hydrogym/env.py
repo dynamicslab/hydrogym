@@ -50,6 +50,10 @@ class FlowEnv(gym.Env):
     def render(self, mode="human"):
         pass
 
+    def close(self):
+        for cb in self.callbacks:
+            cb.close()
+
 class CylEnv(FlowEnv):
     def __init__(self, checkpoint=None, callbacks=[], differentiable=False, dt=1e-2, Re=100):
         from .flow import Cylinder

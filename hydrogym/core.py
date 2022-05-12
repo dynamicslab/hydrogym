@@ -2,7 +2,7 @@ import firedrake as fd
 from firedrake import dx, ds
 
 import ufl
-from ufl import dot, inner, nabla_grad, div, sym, curl
+from ufl import dot, inner, grad, nabla_grad, div, sym, curl
 
 from typing import Optional
 
@@ -23,17 +23,17 @@ class FlowConfig:
         if h5_file is not None:
             self.load_checkpoint(h5_file)
 
-    def save_checkpoint(self, h5_file, write_mesh=True):
+    def save_checkpoint(self, h5_file, write_mesh=True, idx=None):
         with fd.CheckpointFile(h5_file, 'w') as chk:
             if write_mesh:
                 chk.save_mesh(self.mesh)  # optional
-            chk.save_function(self.q)
+            chk.save_function(self.q, idx=idx)
 
-    def load_checkpoint(self, h5_file):
+    def load_checkpoint(self, h5_file, idx=None):
         with fd.CheckpointFile(h5_file, 'r') as chk:
             mesh = chk.load_mesh('mesh')
             FlowConfig.__init__(self, mesh)  # Reinitialize with new mesh
-            self.q = chk.load_function(self.mesh, 'q')
+            self.q = chk.load_function(self.mesh, 'q', idx=idx)
         
         self.split_solution()  # Reset functions so self.u, self.p point to the new solution
 
@@ -42,8 +42,9 @@ class FlowConfig:
         self.u.rename('u')
         self.p.rename('p')
 
-    def vorticity(self):
-        vort = fd.project(curl(self.u), self.pressure_space)
+    def vorticity(self, u=None):
+        if u is None: u = self.u
+        vort = fd.project(curl(u), self.pressure_space)
         vort.rename('vort')
         return vort
 
@@ -77,20 +78,20 @@ class FlowConfig:
     def sigma(self, u, p):
         return 2*(1/self.Re)*self.epsilon(u) - p*fd.Identity(len(u))
 
-    def solve_steady(self):
+    def solve_steady(self, solver_parameters={}, stabilization=None):
         self.init_bcs(mixed=True)
 
-        F = self.steady_form()  # Nonlinear variational form
+        F = self.steady_form(stabilization=stabilization)  # Nonlinear variational form
         J = fd.derivative(F, self.q)    # Jacobian
 
         bcs = self.collect_bcs()
         problem = fd.NonlinearVariationalProblem(F, self.q, bcs, J)
-        solver = fd.NonlinearVariationalSolver(problem)
+        solver = fd.NonlinearVariationalSolver(problem, solver_parameters=solver_parameters)
         solver.solve()
 
         return self.q.copy(deepcopy=True)
     
-    def steady_form(self, q=None):
+    def steady_form(self, q=None, stabilization=None):
         if q is None: q = self.q
         (u, p) = fd.split(q)
         (v, s) = fd.TestFunctions(self.mixed_space)
@@ -100,21 +101,36 @@ class FlowConfig:
             + inner(self.sigma(u, p), self.epsilon(v))*dx \
             + inner(p*self.n, v)*ds - inner(nu*nabla_grad(u)*self.n, v)*ds \
             + inner(div(u), s)*dx
+
+        if stabilization=='gls':
+            # Galerkin least-squares stabilization (see Tezduyar, 1991)
+            res = lambda U, u, p: dot(U, nabla_grad(u)) - div(self.sigma(u, p))
+            h = fd.CellSize(self.mesh)
+            tau = ((4.0*dot(u, u)/h**2) + (4.0*nu/h**2)**2)**(-0.5)
+            F += tau*inner(res(u, u, p), res(u, v, s))*dx
+
         return F
 
-    def mass_matrix(self):
+    def mass_matrix(self, backend='petsc'):
         (u, _) = fd.TrialFunctions(self.mixed_space)
         (v, _) = fd.TestFunctions(self.mixed_space)
         M = inner(u, v)*dx
+
+        if backend=='scipy':
+            from .utils import petsc_to_scipy
+            M = petsc_to_scipy(
+                fd.assemble(M).petscmat
+            )
         return M
 
     def linearize_dynamics(self, qB, adjoint=False):
         F = self.steady_form(q=qB)
         L = -fd.derivative(F, qB)
         if adjoint:
-            args = L.arguments()
-            L_adj = ufl.adjoint(L, reordered_arguments=(args[0], args[1]))
-            return L_adj
+            from .utils.linalg import adjoint
+            # args = L.arguments()
+            # L_adj = ufl.adjoint(L, reordered_arguments=(args[0], args[1]))
+            return adjoint(L)
         else:
             return L
 
@@ -148,6 +164,9 @@ class FlowConfig:
     def num_controls(self):
         return 0
 
+    def dot(self, u, v):
+        return fd.assemble(inner(u, v)*dx)
+
 class CallbackBase:
     def __init__(self, interval: Optional[int] = 1):
         """
@@ -167,3 +186,6 @@ class CallbackBase:
         """
         iostep = (iter % self.interval == 0)
         return iostep
+
+    def close(self):
+        pass

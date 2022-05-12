@@ -2,6 +2,7 @@ import numpy as np
 import firedrake as fd
 from firedrake import dx, ds
 from firedrake.petsc import PETSc
+from firedrake import logging
 
 import ufl
 from ufl import sym, curl, dot, inner, nabla_grad, div, cos, sin, atan_2
@@ -33,8 +34,9 @@ class Cavity(FlowConfig):
         self.bcu_slip = fd.DirichletBC(V.sub(1), fd.Constant(0.0), self.SLIP)  # Free-slip
         self.bcp_outflow = fd.DirichletBC(Q, fd.Constant(0), self.OUTLET)
 
-        self.bcu_slip = None
-        raise NotImplementedError  # Still need to add slip boundary
+    def linearize_bcs(self, mixed=True):
+        self.init_bcs(mixed=mixed)
+        self.bcu_inflow.set_value(fd.Constant((0, 0)))
 
     def collect_bcu(self):
         return [self.bcu_inflow, self.bcu_freestream, self.bcu_noslip, self.bcu_slip]
@@ -42,9 +44,17 @@ class Cavity(FlowConfig):
     def collect_bcp(self):
         return [self.bcp_outflow]
 
-    def compute_forces(self, u, p):
-        # Lift/drag on cylinder
-        force = -dot(self.sigma(u, p), self.n)
-        CL = [fd.assemble(2*force[1]*ds(cyl)) for cyl in self.CYLINDER]
-        CD = [fd.assemble(2*force[0]*ds(cyl)) for cyl in self.CYLINDER]
-        return CL, CD
+    # def solve_steady(self, **kwargs):
+    #     if self.Re > 500:
+    #         Re_final = self.Re.values()[0]
+    #         logging.log(logging.INFO, "Re > 500, will need to ramp up steady solve")
+
+    #         Re_init = []
+    #         Re = Re_final/2
+    #         while Re > 500:
+    #             Re_init.insert(0, Re)
+    #             Re = Re/2
+
+    #         for Re, in Re_init:
+    #             self.Re.assign(Re)
+    #             super().solve_steady(**kwargs)
