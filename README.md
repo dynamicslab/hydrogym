@@ -10,11 +10,10 @@ Challenge problems in data-driven modeling and control of fluid dynamics
 * __Modeling and anlysis tools:__ Global stability analysis (via SLEPc) and modal decompositions (via modred)
 * __Scalable:__ Since linear algebra backend is PETSc, fully parallelized with MPI (including pyadjoint, SLEPc, modred)
 
-# Status (5/12/22)
+# Status (5/13/22)
 ## What works
 * Overview of features in Jupyter notebook (`notebooks/overview.ipynb`)
-* Feedback control of cylinder wake (both `gym.Env` and solver interfaces)
-* Pinball (without actuation - see below)
+* Feedback control of cylinder and pinball flows (both `gym.Env` and solver interfaces)
 * Newton-Krylov fixed point solver
 * Time integration with a projection scheme
 * Direct and adjoint global stability analysis with SLEPc
@@ -29,5 +28,4 @@ Challenge problems in data-driven modeling and control of fluid dynamics
 * Modred interface in parallel
 
 ## What needs to be tested
-* Pinball control
 * Cavity flow

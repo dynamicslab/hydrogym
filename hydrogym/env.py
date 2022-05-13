@@ -55,13 +55,13 @@ class FlowEnv(gym.Env):
             cb.close()
 
 class CylEnv(FlowEnv):
-    def __init__(self, checkpoint=None, callbacks=[], differentiable=False, dt=1e-2, Re=100):
+    def __init__(self, checkpoint=None, callbacks=[], differentiable=False, dt=1e-2, Re=100, mesh='noack'):
         from .flow import Cylinder
         if differentiable:
             from .ts import IPCS_diff as IPCS
         else:
             from .ts import IPCS
-        flow = Cylinder(h5_file=checkpoint, Re=Re)
+        flow = Cylinder(h5_file=checkpoint, Re=Re, mesh_name=mesh)
         solver = IPCS(flow, dt=dt)
         super().__init__(flow, solver, callbacks)
 
@@ -77,3 +77,28 @@ class CylEnv(FlowEnv):
 
         cyl = plt.Circle((0, 0), 0.5, edgecolor='k', facecolor='gray')
         im.axes.add_artist(cyl)
+
+class PinballEnv(FlowEnv):
+    def __init__(self, checkpoint=None, callbacks=[], differentiable=False, dt=1e-2, Re=100, mesh='fine'):
+        from .flow import Pinball
+        if differentiable:
+            from .ts import IPCS_diff as IPCS
+        else:
+            from .ts import IPCS
+        flow = Pinball(h5_file=checkpoint, Re=Re, mesh_name=mesh)
+        solver = IPCS(flow, dt=dt)
+        super().__init__(flow, solver, callbacks)
+
+    def get_reward(self, obs):
+        CL, CD = obs
+        return -sum(CD)
+
+    def render(self, mode="human", clim=None, levels=None, cmap='RdBu', **kwargs):
+        if clim is None: clim = (-2, 2)
+        if levels is None: levels=np.linspace(*clim, 10)
+        vort = fd.project(fd.curl(self.flow.u), self.flow.pressure_space)
+        im = fd.tricontourf(vort, cmap=cmap, levels=levels, vmin=clim[0], vmax=clim[1], extend='both', **kwargs)
+
+        for (x0, y0) in zip(self.flow.x0, self.flow.y0):
+            cyl = plt.Circle((x0, y0), self.flow.rad, edgecolor='k', facecolor='gray')
+            im.axes.add_artist(cyl)

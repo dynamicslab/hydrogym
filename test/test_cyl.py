@@ -10,16 +10,23 @@ def test_import2():
     flow = gym.flow.Cylinder(mesh_name='sipp-lebedev')
     return flow
 
-def test_steady():
-    flow = gym.flow.Cylinder()
-    q = flow.solve_steady()
-    tol=1e-3
+def test_steady(tol=1e-3):
+    flow = gym.flow.Cylinder(Re=100)
+    flow.solve_steady()
+
+    CL, CD = flow.compute_forces()
+    assert(abs(CL) < tol)
+    assert(abs(CD - 1.2840) < tol)  # Re = 100
+
+def test_rotation(tol=1e-3):
+    flow = gym.flow.Cylinder(Re=100)
+    flow.set_control(fd.Constant(0.1))
+    flow.solve_steady()
 
     # Lift/drag on cylinder
     CL, CD = flow.compute_forces()
-    assert(abs(CL) < tol)
-    # assert(abs(CD - 1.8083279145880582) < tol)  # Re = 40
-    assert(abs(CD - 1.2840) < tol)  # Re = 100
+    assert(abs(CL - 0.0594) < tol)
+    assert(abs(CD - 1.2852) < tol)  # Re = 100
 
 def test_unsteady():
     flow = gym.flow.Cylinder(mesh_name='noack')
@@ -72,7 +79,7 @@ def test_env_grad():
         J = J - reward
     dJdm = fda.compute_gradient(J, fda.Control(K))
 
-def test_lti():
+def test_linearizedNS():
     flow = gym.flow.Cylinder()
     qB = flow.solve_steady()
     A, M = flow.linearize(qB, backend='scipy')

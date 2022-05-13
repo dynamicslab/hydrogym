@@ -1,6 +1,7 @@
 import numpy as np
 import firedrake as fd
 from firedrake import dx, ds, lhs, rhs
+import ufl
 from ufl import inner, dot, nabla_grad, div
 from firedrake import logging
 
@@ -23,6 +24,22 @@ class TransientSolver:
             cb.close()
 
         return flow
+
+    def step(self, iter, control=None, mode='direct'):
+        pass
+
+    def enlist_controls(self, control):
+        # Check if scalar
+        if ufl.checks.is_ufl_scalar(control):
+            control = [control]
+        else:
+            try:
+                int(control)
+                control = [control]  # Make into a list of one if so
+            except TypeError:
+                assert isinstance(control, (list, tuple, np.ndarray)), "Control type not recognized"
+        return control
+
 
 class IPCS(TransientSolver):
     def __init__(self, flow: FlowConfig, dt: float, debug=False, **kwargs):
@@ -102,8 +119,10 @@ class IPCS(TransientSolver):
             logging.log(logging.DEBUG, f"iter: {iter}, solving velocity predictor")
             self.predictor.solve()
             if control is not None:
-                Bu, _ = self.B.split()
-                self.u += Bu*control
+                control = self.enlist_controls(control)
+                for (B, ctrl) in zip(self.B, control):
+                    Bu, _ = B.split()
+                    self.u += Bu*ctrl
             
             logging.log(logging.DEBUG, f"Velocity predictor done, solving Poisson")
             self.poisson.solve()
@@ -286,8 +305,10 @@ class IPCS_diff(TransientSolver):
             "pc_hypre_type": "boomeramg"
         })
         if control is not None:
-            Bu, _ = self.B.split()
-            self.u += control*Bu
+            control = self.enlist_controls(control)
+            for (B, ctrl) in zip(self.B, control):
+                Bu, _ = B.split()
+                self.u += ctrl*Bu
 
         # Step 2: Pressure correction step
         b2 = fd.assemble(self.L2, bcs=self.bcp)

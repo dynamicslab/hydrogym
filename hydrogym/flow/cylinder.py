@@ -12,7 +12,7 @@ class Cylinder(FlowConfig):
     from .mesh.cylinder import INLET, FREESTREAM, OUTLET, CYLINDER
     MAX_CONTROL = 0.5*np.pi
 
-    def __init__(self, Re=100, mesh_name='noack', controller=None, h5_file=None):
+    def __init__(self, Re=100, mesh_name='noack', h5_file=None):
         """
         controller(t, y) -> omega
         y = (CL, CD)
@@ -25,7 +25,13 @@ class Cylinder(FlowConfig):
         self.U_inf = fd.Constant((1.0, 0.0))
         super().__init__(mesh, h5_file=h5_file)
 
+        # Initialize control
         self.omega = fd.Constant(0.0)
+
+        # First set up tangential boundaries to cylinder
+        theta = atan_2(ufl.real(self.y), ufl.real(self.x)) # Angle from origin
+        rad = fd.Constant(0.5)
+        self.u_tan = ufl.as_tensor((rad*sin(theta), rad*cos(theta)))  # Tangential velocity
 
     def init_bcs(self, mixed=False):
         V, Q = self.function_spaces(mixed=mixed)
@@ -46,8 +52,7 @@ class Cylinder(FlowConfig):
         return [self.bcp_outflow]
 
     def linearize_bcs(self, mixed=True):
-        self.omega.assign(0.0)
-        self.init_bcs(mixed=mixed)
+        self.reset_control(mixed=mixed)
         self.bcu_inflow.set_value(fd.Constant((0, 0)))
         self.bcu_freestream.set_value(fd.Constant(0.0))
 
@@ -61,17 +66,11 @@ class Cylinder(FlowConfig):
         return CL, CD
 
     def update_rotation(self):
-        # return 
-        # First set up tangential boundaries to cylinder
-        theta = atan_2(ufl.real(self.y), ufl.real(self.x)) # Angle from origin
-        rad = fd.Constant(0.5)
-        self.u_tan = ufl.as_tensor((self.omega*rad*sin(theta), self.omega*rad*cos(theta)))  # Tangential velocity
-
         # If the boundary condition has already been defined, update it
         #   otherwise, the control will be applied with self.init_bcs()
         if hasattr(self, 'bcu_cylinder'):
             self.bcu_cylinder._function_arg.assign(
-                fd.project(self.u_tan, self.velocity_space)
+                fd.project(self.omega*self.u_tan, self.velocity_space)
             )
 
     def clamp(self, u):
@@ -96,10 +95,9 @@ class Cylinder(FlowConfig):
 
         self.update_rotation()
 
-
-    def reset_control(self):
+    def reset_control(self, mixed=False):
         self.set_control(0.0)
-        self.init_bcs(mixed=False)
+        self.init_bcs(mixed=mixed)
 
     def linearize_control(self, act_idx=0):
         (v, _) = fd.TestFunctions(self.mixed_space)
@@ -118,7 +116,7 @@ class Cylinder(FlowConfig):
         # return Bvec
 
         self.reset_control()
-        return B
+        return [B]
 
     def num_controls(self):
         return 1
