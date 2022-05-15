@@ -29,10 +29,13 @@ class FlowConfig:
                 chk.save_mesh(self.mesh)  # optional
             chk.save_function(self.q, idx=idx)
 
-    def load_checkpoint(self, h5_file, idx=None):
+    def load_checkpoint(self, h5_file, idx=None, read_mesh=True):
         with fd.CheckpointFile(h5_file, 'r') as chk:
-            mesh = chk.load_mesh('mesh')
-            FlowConfig.__init__(self, mesh)  # Reinitialize with new mesh
+            if read_mesh:
+                mesh = chk.load_mesh('mesh')
+                FlowConfig.__init__(self, mesh)  # Reinitialize with new mesh
+            else:
+                assert hasattr(self, 'mesh')
             self.q = chk.load_function(self.mesh, 'q', idx=idx)
         
         self.split_solution()  # Reset functions so self.u, self.p point to the new solution

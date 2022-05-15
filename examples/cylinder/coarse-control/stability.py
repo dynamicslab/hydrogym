@@ -7,14 +7,14 @@ assert PETSc.ScalarType == np.complex128, "Complex PETSc configuration required 
 
 import hydrogym as gym
 output_dir = 'tmp'
-mesh = 'sipp-lebedev'
+mesh = 'noack'
 
 Re = 50
-flow = gym.flow.Cylinder(Re=Re, mesh_name=mesh)
+flow = gym.flow.Cylinder(Re=50, mesh_name=mesh)
 qB = flow.solve_steady(solver_parameters={'snes_monitor': None})
 flow.save_checkpoint(f'{output_dir}/steady.h5')
 
-# Also save as arrays for conversion to real mode
+# flow = gym.flow.Cylinder(Re=50, h5_file=f'{output_dir}/steady.h5')
 qB = flow.q.copy(deepcopy=True)
 with qB.dat.vec_ro as vec:
     np.save(f'{output_dir}/steady_{fd.COMM_WORLD.rank}.npy', np.real(vec.array))

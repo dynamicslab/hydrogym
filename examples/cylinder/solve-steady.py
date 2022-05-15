@@ -8,17 +8,17 @@ from ufl import curl
 
 import hydrogym as gym
 
-mesh = 'noack'
+mesh = 'sipp-lebedev'
 output_dir = 'output'
-flow = gym.flow.Cylinder(mesh_name=mesh, Re=100)
-flow.set_control(fd.Constant(0.1))
-flow.solve_steady()
+flow = gym.flow.Cylinder(mesh_name=mesh, Re=50)
+# flow.set_control(fd.Constant(0.1))
+flow.solve_steady(solver_parameters={'snes_monitor': None})
 
 CL, CD = flow.compute_forces()
 # print(f'CL:{CL:08f} \t\tCD:{CD:08f}')
 gym.print((CL, CD))
 
-# flow.save_checkpoint(f"{output_dir}/{mesh}-steady.h5", write_mesh=True)
+flow.save_checkpoint(f"{output_dir}/{mesh}-steady.h5", write_mesh=True)
 
 # vort = flow.vorticity()
 # pvd = fd.File(f"{output_dir}/steady.pvd")

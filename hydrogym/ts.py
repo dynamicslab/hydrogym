@@ -203,7 +203,6 @@ class IPCS(TransientSolver):
             'pc_type': 'sor'
         })
 
-
         self.B = flow.linearize_control()
 
         q = flow.q.copy(deepcopy=True)
@@ -224,7 +223,9 @@ class IPCS(TransientSolver):
 
         N = q.vector().size()
         A = LinearOperator(shape=(N, N), matvec=lmatvec, rmatvec=rmatvec)
-        B = get_array(self.B)
+        B = np.zeros((N, len(self.B)))
+        for (i, Bi) in enumerate(self.B):
+            B[:, i] = get_array(Bi)
         return A, B
 
 class IPCS_diff(TransientSolver):
