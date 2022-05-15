@@ -126,6 +126,16 @@ class FlowConfig:
             )
         return M
 
+    def save_mass_matrix(self, filename):
+        from scipy.sparse import save_npz
+        assert (fd.COMM_WORLD.size == 1), "Not supported in parallel"
+
+        M = self.mass_matrix(backend='scipy')
+
+        if filename[-4:] != '.npz':
+            filename += '.npz'
+        save_npz(filename, M)
+
     def linearize_dynamics(self, qB, adjoint=False):
         F = self.steady_form(q=qB)
         L = -fd.derivative(F, qB)

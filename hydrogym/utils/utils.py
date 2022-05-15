@@ -3,7 +3,8 @@ from firedrake.petsc import PETSc
 import numpy as np
 from scipy import sparse
 
-__all__ = ["print", "is_rank_zero", "petsc_to_scipy", "system_to_scipy", "set_from_array", "get_array"]
+__all__ = ["print", "is_rank_zero", "petsc_to_scipy", "system_to_scipy",
+           "set_from_array", "get_array", "snapshots_to_numpy"]
 
 ## Parallel utility functions
 def print(s):
@@ -37,3 +38,10 @@ def get_array(func):
     with func.dat.vec_ro as vec:
         array = vec.getArray()
     return array
+
+def snapshots_to_numpy(filename, save_prefix, m):
+    file = fd.CheckpointFile(filename, 'r')
+    mesh = file.load_mesh('mesh')
+    for idx in range(m):
+        q = file.load_function(mesh, 'q', idx=idx)
+        np.save(f'{save_prefix}{idx}.npy', get_array(q))
