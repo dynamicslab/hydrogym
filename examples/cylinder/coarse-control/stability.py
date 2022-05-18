@@ -10,12 +10,13 @@ output_dir = 'tmp'
 mesh = 'noack'
 
 Re = 50
-flow = gym.flow.Cylinder(Re=50, mesh_name=mesh)
+flow = gym.flow.Cylinder(Re=Re, mesh_name=mesh)
+
+# Steady natural state
+flow.set_control(0.0)
 qB = flow.solve_steady(solver_parameters={'snes_monitor': None})
 flow.save_checkpoint(f'{output_dir}/steady.h5')
 
-# flow = gym.flow.Cylinder(Re=50, h5_file=f'{output_dir}/steady.h5')
-qB = flow.q.copy(deepcopy=True)
 with qB.dat.vec_ro as vec:
     np.save(f'{output_dir}/steady_{fd.COMM_WORLD.rank}.npy', np.real(vec.array))
 

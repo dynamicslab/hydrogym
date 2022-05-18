@@ -18,7 +18,7 @@ mesh = 'noack'
 Re = 50
 flow = gym.flow.Cylinder(Re=Re, mesh_name=mesh)
 
-# First load base flow
+# First load base flow and steady actuated flow
 with flow.q.dat.vec as vec:
     vec.array = np.load(f'{input_dir}/steady_{fd.COMM_WORLD.rank}.npy')
 flow.save_checkpoint(f"{output_dir}/steady.h5")

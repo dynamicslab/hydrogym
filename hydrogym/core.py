@@ -141,11 +141,13 @@ class FlowConfig:
         L = -fd.derivative(F, qB)
         if adjoint:
             from .utils.linalg import adjoint
-            # args = L.arguments()
-            # L_adj = ufl.adjoint(L, reordered_arguments=(args[0], args[1]))
             return adjoint(L)
         else:
             return L
+
+    def initialize_control(self, act_idx=0):
+        """Return a PETSc.Vec corresponding to the column of the control matrix"""
+        pass
 
     def linearize(self, qB, adjoint=False, backend='petsc'):
         assert (backend in ['petsc', 'scipy']), "Backend not recognized: use `petsc` or `scipy`"
@@ -161,10 +163,6 @@ class FlowConfig:
             sys = system_to_scipy(sys)
         return sys
 
-    def linearize_control(self, act_idx=0):
-        """Return a PETSc.Vec corresponding to the column of the control matrix"""
-        pass
-
     def collect_observations(self):
         pass
 
@@ -177,8 +175,10 @@ class FlowConfig:
     def num_controls(self):
         return 0
 
-    def dot(self, u, v):
-        return fd.assemble(inner(u, v)*dx)
+    def dot(self, q1, q2):
+        u1, _ = q1.split()
+        u2, _ = q2.split()
+        return fd.assemble(inner(u1, u2)*dx)
 
 class CallbackBase:
     def __init__(self, interval: Optional[int] = 1):

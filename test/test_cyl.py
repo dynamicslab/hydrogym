@@ -78,6 +78,7 @@ def test_env_grad():
         y, reward, done, info = env.step(feedback_ctrl(y, K=K))
         J = J - reward
     dJdm = fda.compute_gradient(J, fda.Control(K))
+    print(dJdm)
 
 def test_linearizedNS():
     flow = gym.flow.Cylinder()

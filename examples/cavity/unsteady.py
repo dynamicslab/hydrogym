@@ -7,14 +7,15 @@ from firedrake import logging
 
 import hydrogym as gym
 
-Re = 4000
+Re = 5000
 output_dir = f'{Re}_output'
+restart = "4000_output/checkpoint.h5"
 chk_out = f"{output_dir}/checkpoint.h5"
 
 flow = gym.flow.Cavity(Re=Re)
 
 # flow.solve_steady()  # Initialize with steady state
-flow.load_checkpoint(chk_out)  # Reload previous solution
+flow.load_checkpoint(restart)  # Reload previous solution
 
 # Time step
 dt = 1e-4
@@ -39,7 +40,4 @@ callbacks = [
     )
 ]
 
-# callbacks = []
-# solver = gym.ts.IPCSSolver(flow, dt=dt, callbacks=callbacks)
-# solver.solve(Tf)
 gym.integrate(flow, t_span=(0, Tf), dt=dt, callbacks=callbacks)

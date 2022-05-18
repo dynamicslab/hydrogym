@@ -1,15 +1,4 @@
-import firedrake as fd
-from firedrake.petsc import PETSc
-from ufl import curl
-import numpy as np
-
-import hydrogym as gym
-
-output_dir = 'output'
-pvd_out = f"{output_dir}/solution.pvd"
-chk_out = f"{output_dir}/checkpoint.h5"
-
-flow = gym.flow.Cylinder(Re=100, h5_file=chk_out)
+from common import *
 
 # Time step
 Tf = 5.56
@@ -35,15 +24,8 @@ def forces(iter, t, flow):
 
 callbacks = [
     # gym.io.ParaviewCallback(interval=10, filename=pvd_out, postprocess=compute_vort),
-    # gym.io.CheckpointCallback(interval=100, filename=chk_out),
+    gym.io.CheckpointCallback(interval=100, filename=restart),
     gym.io.GenericCallback(callback=forces, interval=1),
-    gym.io.SnapshotCallback(interval=5, filename=f'{output_dir}/snapshots.h5')
+    gym.io.SnapshotCallback(interval=5, filename=snap_file)
 ]
 gym.integrate(flow, t_span=(0, Tf), dt=dt, callbacks=callbacks, method='IPCS')
-
-# # Test time-varying BC
-# solver = gym.ts.IPCSTest(flow, dt)
-# t_span = (0, Tf)
-# solver.solve(t_span, callbacks=callbacks)
-# flow.set_control(fd.Constant(0.5))
-# solver.solve(t_span, callbacks=callbacks)

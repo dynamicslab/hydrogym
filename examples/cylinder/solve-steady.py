@@ -8,9 +8,9 @@ from ufl import curl
 
 import hydrogym as gym
 
-mesh = 'sipp-lebedev'
+mesh = 'noack'
 output_dir = 'output'
-flow = gym.flow.Cylinder(mesh_name=mesh, Re=50)
+flow = gym.flow.Cylinder(mesh_name=mesh, Re=100)
 # flow.set_control(fd.Constant(0.1))
 flow.solve_steady(solver_parameters={'snes_monitor': None})
 

@@ -4,7 +4,7 @@ import numpy as np
 from scipy import sparse
 
 __all__ = ["print", "is_rank_zero", "petsc_to_scipy", "system_to_scipy",
-           "set_from_array", "get_array", "snapshots_to_numpy"]
+           "set_from_array", "get_array", "snapshots_to_numpy", "white_noise"]
 
 ## Parallel utility functions
 def print(s):
@@ -45,3 +45,15 @@ def snapshots_to_numpy(filename, save_prefix, m):
     for idx in range(m):
         q = file.load_function(mesh, 'q', idx=idx)
         np.save(f'{save_prefix}{idx}.npy', get_array(q))
+    file.close()
+
+def white_noise(n_samples, fs, cutoff):
+    """Generate band-limited white noise"""
+    from scipy import signal
+    rng = fd.Generator(fd.PCG64())
+    noise = rng.standard_normal(n_samples)
+
+    # Set up butterworth filter
+    sos = signal.butter(N=4, Wn=cutoff, btype='lp', fs=fs, output='sos')
+    filt = signal.sosfilt(sos, noise)
+    return filt
