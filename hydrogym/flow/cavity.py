@@ -10,19 +10,27 @@ from ufl import sym, curl, dot, inner, nabla_grad, div, cos, sin, atan_2
 from ..core import FlowConfig
 
 class Cavity(FlowConfig):
-    from .mesh.cavity import INLET, FREESTREAM, OUTLET, SLIP, WALL
-    def __init__(self, h5_file=None, Re=5000):
+    from .mesh.cavity import INLET, FREESTREAM, OUTLET, SLIP, WALL, CONTROL
+    def __init__(self, h5_file=None, Re=5000, mesh='fine'):
         """
         controller(t, y) -> omega
         y = (CL, CD)
         omega = scalar rotation rate
         """
         from .mesh.cavity import load_mesh
-        mesh = load_mesh()
+        mesh = load_mesh(name=mesh)
 
         self.Re = fd.Constant(ufl.real(Re))
         self.U_inf = fd.Constant((1.0, 0.0))
+
         super().__init__(mesh, h5_file=h5_file)
+
+        self.control = fd.Constant(0.0)
+        self.u_ctrl = ufl.as_tensor((
+                0.0*self.x,
+                -self.x*(1600*self.x + 560)/147
+        ))  # Blowing/suction
+
 
     def init_bcs(self, mixed=False):
         V, Q = self.function_spaces(mixed=mixed)
@@ -33,16 +41,51 @@ class Cavity(FlowConfig):
         self.bcu_noslip = fd.DirichletBC(V, fd.interpolate(fd.Constant((0, 0)), V), self.WALL)
         self.bcu_slip = fd.DirichletBC(V.sub(1), fd.Constant(0.0), self.SLIP)  # Free-slip
         self.bcp_outflow = fd.DirichletBC(Q, fd.Constant(0), self.OUTLET)
+        self.bcu_actuation = fd.DirichletBC(V, fd.interpolate(fd.Constant((0, 0)), V), self.CONTROL)
+
+        self.set_control(self.control)
 
     def linearize_bcs(self, mixed=True):
+        self.reset_control(mixed=mixed)
         self.init_bcs(mixed=mixed)
         self.bcu_inflow.set_value(fd.Constant((0, 0)))
 
     def collect_bcu(self):
-        return [self.bcu_inflow, self.bcu_freestream, self.bcu_noslip, self.bcu_slip]
+        return [self.bcu_inflow, self.bcu_freestream, self.bcu_noslip, self.bcu_slip, self.bcu_actuation]
     
     def collect_bcp(self):
         return [self.bcp_outflow]
+
+    def set_control(self, control=None):
+        """
+        Sets the blowing/suction at the leading edge
+        """
+        if control is None: control = 0.0
+        self.control.assign(control)
+
+        if hasattr(self, 'bcu_actuation'):
+            self.bcu_actuation._function_arg.assign(
+                fd.project(self.control*self.u_ctrl, self.velocity_space)
+            )
+
+    def get_control(self):
+        return [self.control]
+
+    def reset_control(self, mixed=False):
+        self.set_control(0.0)
+        self.init_bcs(mixed=mixed)
+
+    def initialize_control(self, act_idx=0):
+        (v, _) = fd.TestFunctions(self.mixed_space)
+        self.linearize_bcs()
+
+        # self.linearize_bcs() should have reset control, need to perturb it now
+        eps = fd.Constant(1.0)
+        self.set_control(eps)
+        B = fd.assemble(inner(fd.Constant((0, 0)), v)*dx, bcs=self.collect_bcs())  # As fd.Function
+
+        self.reset_control()
+        return [B]
 
     # def solve_steady(self, **kwargs):
     #     if self.Re > 500:

@@ -5,5 +5,6 @@ from .mesh import (
     FREESTREAM,
     OUTLET,
     SLIP,
-    WALL
+    WALL,
+    CONTROL
 )

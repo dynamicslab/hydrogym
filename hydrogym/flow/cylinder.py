@@ -65,6 +65,8 @@ class Cylinder(FlowConfig):
     def update_rotation(self):
         # If the boundary condition has already been defined, update it
         #   otherwise, the control will be applied with self.init_bcs()
+        #
+        # TODO: Is thisnecessary, or could it be combined with `set_control()`?
         if hasattr(self, 'bcu_cylinder'):
             self.bcu_cylinder._function_arg.assign(
                 fd.project(self.omega*self.u_tan, self.velocity_space)
