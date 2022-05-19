@@ -31,13 +31,15 @@ class ParaviewCallback(CallbackBase):
 class CheckpointCallback(CallbackBase):
     def __init__(self,
             interval: Optional[int] = 1,
-            filename: Optional[str] = 'output/checkpoint.h5'):
+            filename: Optional[str] = 'output/checkpoint.h5',
+            write_mesh=True):
         super().__init__(interval=interval)
         self.filename = filename
+        self.write_mesh = write_mesh
 
     def __call__(self, iter: int, t: float, flow: Tuple[fd.Function]):
         if super().__call__(iter, t, flow):
-            flow.save_checkpoint(self.filename)
+            flow.save_checkpoint(self.filename, write_mesh=self.write_mesh)
 
 class LogCallback(CallbackBase):
     def __init__(self,

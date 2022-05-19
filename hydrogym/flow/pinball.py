@@ -105,7 +105,7 @@ class Pinball(FlowConfig):
         self.set_control(omega=None)
         self.init_bcs(mixed=mixed)
 
-    def linearize_control(self, mixed=False):
+    def initialize_control(self, mixed=False):
         (v, _) = fd.TestFunctions(self.mixed_space)
         self.linearize_bcs()
         # self.linearize_bcs() should have reset control, need to perturb it now

@@ -126,7 +126,7 @@ Plane Surface(6) = {6};
 Curve Loop(7) = {30, -24, -23, -22};
 //+
 Plane Surface(7) = {7};
-//+
+// 
 Physical Surface("Fluid", 1) = {4, 3, 2, 1, 5, 6, 7};
 //+
 Physical Curve("Inlet", 2) = {3, 2, 1};
@@ -134,7 +134,7 @@ Physical Curve("Inlet", 2) = {3, 2, 1};
 Physical Curve("Freestream", 3) = {4};
 //+
 Physical Curve("Outlet", 4) = {13, 14, 15, 16};
-//+
-Physical Curve("Slip", 5) = {7,8};
+//  Note that the downstream wall is "12"... move that up here to add that to the slip BCs
+Physical Curve("Slip", 5) = {7, 8};
 //+
 Physical Curve("Wall", 6) = {9, 19, 20, 21, 22, 23, 24, 25, 26, 27, 11, 12};

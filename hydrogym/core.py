@@ -36,8 +36,7 @@ class FlowConfig:
                 FlowConfig.__init__(self, mesh)  # Reinitialize with new mesh
             else:
                 assert hasattr(self, 'mesh')
-            self.q = chk.load_function(self.mesh, 'q', idx=idx)
-        
+            self.q.assign(chk.load_function(self.mesh, 'q', idx=idx))
         self.split_solution()  # Reset functions so self.u, self.p point to the new solution
 
     def split_solution(self):

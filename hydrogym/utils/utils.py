@@ -40,9 +40,11 @@ def get_array(func):
     return array
 
 def snapshots_to_numpy(filename, save_prefix, m):
+    from firedrake import logging
     file = fd.CheckpointFile(filename, 'r')
     mesh = file.load_mesh('mesh')
     for idx in range(m):
+        logging.log(logging.DEBUG, f'Converting snapshot {idx+1}/{m}')
         q = file.load_function(mesh, 'q', idx=idx)
         np.save(f'{save_prefix}{idx}.npy', get_array(q))
     file.close()

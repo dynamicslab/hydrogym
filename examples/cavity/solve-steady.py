@@ -6,7 +6,7 @@ import hydrogym as gym
 
 output_dir = 'output'
 Re = 4000
-Re_init = 2000
+Re_init = 4000
 
 h5_file = f'{output_dir}/{Re_init}_steady.h5'
 flow = gym.flow.Cavity(Re=Re, h5_file=h5_file)

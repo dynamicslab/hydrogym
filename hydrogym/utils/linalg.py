@@ -69,6 +69,7 @@ def eig(A, M, num_eigenvalues=1, sigma=None, options={}):
 def pod(flow: FlowConfig, snapshot_prefix: str, r: int,
         mass_matrix,
         decomp_indices=None,
+        coeff_prefix='',
         coeff_indices=None,
         remove_mean=True,
         mean_dest='mean',
@@ -142,7 +143,7 @@ def pod(flow: FlowConfig, snapshot_prefix: str, r: int,
     if coeff_indices is None:
         coeffs = POD.compute_proj_coeffs()  # If all snapshots used for POD
     else:
-        timeseries_snapshots = [Snapshot(f'{snapshot_prefix}{i}') for i in coeff_indices]
+        timeseries_snapshots = [Snapshot(f'{coeff_prefix}{i}') for i in coeff_indices]
         coeffs = POD.vec_space.compute_inner_product_array(mode_handles, timeseries_snapshots)  # If different snapshots are used for computing the decomposition and coefficients
 
     np.savetxt(f'{output_dir}/{coeffs_dest}', coeffs, fmt='%0.6f', delimiter='\t')

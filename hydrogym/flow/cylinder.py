@@ -60,7 +60,7 @@ class Cylinder(FlowConfig):
         force = -dot(self.sigma(u, p), self.n)
         CL = fd.assemble(2*force[1]*ds(self.CYLINDER))
         CD = fd.assemble(2*force[0]*ds(self.CYLINDER))
-        return np.array([CL, CD])
+        return CL, CD
 
     def update_rotation(self):
         # If the boundary condition has already been defined, update it
