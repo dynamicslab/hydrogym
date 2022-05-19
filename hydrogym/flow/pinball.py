@@ -14,11 +14,11 @@ class Pinball(FlowConfig):
     MAX_CONTROL = 0.5*np.pi
     TAU = 1.0
         
-    def __init__(self, Re=30, mesh_name='fine', h5_file=None):
+    def __init__(self, Re=30, mesh='fine', h5_file=None):
         """
         """
         from .mesh.pinball import load_mesh
-        mesh = load_mesh(name=mesh_name)
+        mesh = load_mesh(name=mesh)
 
         self.Re = fd.Constant(ufl.real(Re))
         self.U_inf = fd.Constant((1.0, 0.0))

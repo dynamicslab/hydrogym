@@ -3,6 +3,19 @@ from firedrake.petsc import PETSc
 import numpy as np
 from scipy import sparse
 
+import warnings
+from functools import wraps
+
+# Ignore deprecation warnings in projection
+def ignore_deprecation_warnings(f):
+    @wraps(f)
+    def inner(*args, **kwargs):
+        with warnings.catch_warnings(record=True) as w:
+            warnings.filterwarnings("ignore",category=DeprecationWarning)
+            response = f(*args, **kwargs)
+        return response
+    return inner
+
 __all__ = ["print", "is_rank_zero", "petsc_to_scipy", "system_to_scipy",
            "set_from_array", "get_array", "snapshots_to_numpy", "white_noise"]
 
@@ -39,15 +52,33 @@ def get_array(func):
         array = vec.getArray()
     return array
 
-def snapshots_to_numpy(filename, save_prefix, m):
+# def snapshots_to_numpy(flow, filename, save_prefix, m):
+#     from firedrake import logging
+#     flow.load_checkpoint(filename, idx=0, read_mesh=True)
+#     for idx in range(m):
+#         logging.log(logging.DEBUG, f'Converting snapshot {idx+1}/{m}')
+#         flow.load_checkpoint(filename, idx=idx, read_mesh=False)
+#         np.save(f'{save_prefix}{idx}.npy', get_array(flow.q))
+
+@ignore_deprecation_warnings
+def snapshots_to_numpy(flow, filename, save_prefix, m):
+    """
+    Load from CheckpointFile in `filename` and project to the mesh in `flow`
+    """
     from firedrake import logging
-    file = fd.CheckpointFile(filename, 'r')
-    mesh = file.load_mesh('mesh')
-    for idx in range(m):
-        logging.log(logging.DEBUG, f'Converting snapshot {idx+1}/{m}')
-        q = file.load_function(mesh, 'q', idx=idx)
-        np.save(f'{save_prefix}{idx}.npy', get_array(q))
-    file.close()
+    with fd.CheckpointFile(filename, 'r') as file:
+        mesh = file.load_mesh('mesh')
+        for idx in range(m):
+            logging.log(logging.DEBUG, f'Converting snapshot {idx+1}/{m}')
+            q = file.load_function(mesh, 'q', idx=idx)  # Load on different mesh
+            u, p = q.split()
+            
+            # Project to new mesh
+            flow.u.assign(fd.project(u, flow.velocity_space)) 
+            flow.p.assign(fd.project(p, flow.pressure_space)) 
+            
+            # Save with new mesh
+            np.save(f'{save_prefix}{idx}.npy', get_array(flow.q))
 
 def white_noise(n_samples, fs, cutoff):
     """Generate band-limited white noise"""

@@ -55,13 +55,13 @@ class FlowEnv(gym.Env):
             cb.close()
 
 class CylEnv(FlowEnv):
-    def __init__(self, checkpoint=None, callbacks=[], differentiable=False, dt=1e-2, Re=100, mesh='noack'):
+    def __init__(self, checkpoint=None, callbacks=[], differentiable=False, dt=1e-2, Re=100, mesh='medium'):
         from .flow import Cylinder
         if differentiable:
             from .ts import IPCS_diff as IPCS
         else:
             from .ts import IPCS
-        flow = Cylinder(h5_file=checkpoint, Re=Re, mesh_name=mesh)
+        flow = Cylinder(h5_file=checkpoint, Re=Re, mesh=mesh)
         solver = IPCS(flow, dt=dt)
         super().__init__(flow, solver, callbacks)
 
@@ -85,7 +85,7 @@ class PinballEnv(FlowEnv):
             from .ts import IPCS_diff as IPCS
         else:
             from .ts import IPCS
-        flow = Pinball(h5_file=checkpoint, Re=Re, mesh_name=mesh)
+        flow = Pinball(h5_file=checkpoint, Re=Re, mesh=mesh)
         solver = IPCS(flow, dt=dt)
         super().__init__(flow, solver, callbacks)
 

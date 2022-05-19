@@ -10,5 +10,5 @@ OUTLET = 4
 SLIP = 5
 WALL = 6
 
-def load_mesh(name='cavity'):
+def load_mesh(name='fine'):
     return Mesh(f'{mesh_dir}/{name}.msh', name='mesh')

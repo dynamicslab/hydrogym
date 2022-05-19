@@ -5,15 +5,15 @@ import numpy as np
 import pyadjoint
 
 def test_import():
-    flow = gym.flow.Pinball(mesh_name='coarse')
+    flow = gym.flow.Pinball(mesh='coarse')
     return flow
 
 def test_import2():
-    flow = gym.flow.Pinball(mesh_name='fine')
+    flow = gym.flow.Pinball(mesh='fine')
     return flow
 
 def test_steady(tol=1e-2):
-    flow = gym.flow.Pinball(Re=30, mesh_name='coarse')
+    flow = gym.flow.Pinball(Re=30, mesh='coarse')
     flow.solve_steady()
 
     CL_target = (0.0, 0.520, -0.517)  # Slight asymmetry in mesh
@@ -25,7 +25,7 @@ def test_steady(tol=1e-2):
         assert(abs(CD[i] - CD_target[i]) < tol)
 
 def test_rotation(tol=1e-2):
-    flow = gym.flow.Pinball(Re=30, mesh_name='coarse')
+    flow = gym.flow.Pinball(Re=30, mesh='coarse')
     flow.set_control((0.5, 0.5, 0.5))
     flow.solve_steady()
 
@@ -38,13 +38,13 @@ def test_rotation(tol=1e-2):
         assert(abs(CD[i] - CD_target[i]) < tol)
 
 def test_unsteady():
-    flow = gym.flow.Pinball(mesh_name='coarse')
+    flow = gym.flow.Pinball(mesh='coarse')
     dt = 1e-2
     gym.ts.integrate(flow, t_span=(0, 10*dt), dt=dt)
     
 
 def test_control():
-    flow = gym.flow.Pinball(mesh_name='coarse')
+    flow = gym.flow.Pinball(mesh='coarse')
     dt = 1e-2
 
     # Simple opposition control on lift
@@ -76,7 +76,7 @@ def test_env():
         u = feedback_ctrl(y)
 
 def test_grad():
-    flow = gym.flow.Pinball(Re=30, mesh_name='coarse')
+    flow = gym.flow.Pinball(Re=30, mesh='coarse')
     n_cyl = len(flow.CYLINDER)
 
     # Option 1: List of AdjFloats

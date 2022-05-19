@@ -14,14 +14,14 @@ class Cylinder(FlowConfig):
     # TAU = 0.556  # Time constant for controller damping (0.1*vortex shedding period)
     TAU = 0.0556  # Time constant for controller damping (0.01*vortex shedding period)
 
-    def __init__(self, Re=100, mesh_name='noack', h5_file=None):
+    def __init__(self, Re=100, mesh='medium', h5_file=None):
         """
         controller(t, y) -> omega
         y = (CL, CD)
         omega = scalar rotation rate
         """
         from .mesh.cylinder import load_mesh
-        mesh = load_mesh(name=mesh_name)
+        mesh = load_mesh(name=mesh)
 
         self.Re = fd.Constant(ufl.real(Re))
         self.U_inf = fd.Constant((1.0, 0.0))
