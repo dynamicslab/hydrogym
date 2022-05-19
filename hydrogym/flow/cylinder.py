@@ -11,15 +11,17 @@ from ..core import FlowConfig
 class Cylinder(FlowConfig):
     from .mesh.cylinder import INLET, FREESTREAM, OUTLET, CYLINDER
     MAX_CONTROL = 0.5*np.pi
+    # TAU = 0.556  # Time constant for controller damping (0.1*vortex shedding period)
+    TAU = 0.0556  # Time constant for controller damping (0.01*vortex shedding period)
 
-    def __init__(self, Re=100, mesh_name='noack', h5_file=None):
+    def __init__(self, Re=100, mesh='medium', h5_file=None):
         """
         controller(t, y) -> omega
         y = (CL, CD)
         omega = scalar rotation rate
         """
         from .mesh.cylinder import load_mesh
-        mesh = load_mesh(name=mesh_name)
+        mesh = load_mesh(name=mesh)
 
         self.Re = fd.Constant(ufl.real(Re))
         self.U_inf = fd.Constant((1.0, 0.0))
@@ -51,11 +53,6 @@ class Cylinder(FlowConfig):
     def collect_bcp(self):
         return [self.bcp_outflow]
 
-    def linearize_bcs(self, mixed=True):
-        self.reset_control(mixed=mixed)
-        self.bcu_inflow.set_value(fd.Constant((0, 0)))
-        self.bcu_freestream.set_value(fd.Constant(0.0))
-
     def compute_forces(self, q=None):
         if q is None: q = self.q
         (u, p) = fd.split(q)
@@ -76,12 +73,31 @@ class Cylinder(FlowConfig):
     def clamp(self, u):
         return max(-self.MAX_CONTROL, min(self.MAX_CONTROL, u))
 
+    def linearize_control(self, qB=None):
+        """
+        Solve linear problem with nonzero Dirichlet BCs to derive forcing term for unsteady DNS
+        """
+        if qB is None:
+            qB = self.solve_steady()
+
+        A = self.linearize_dynamics(qB, adjoint=False)
+        # M = self.mass_matrix()
+        self.linearize_bcs()  # Linearize BCs first (sets freestream to zero)
+        self.set_control(1.0) # Now change the cylinder rotation
+
+        (v, _) = fd.TestFunctions(self.mixed_space)
+        zero = fd.inner(fd.Constant((0, 0)), v)*fd.dx  # Zero RHS for linear form
+
+        f = fd.Function(self.mixed_space)
+        fd.solve(A == zero, f, bcs=self.collect_bcs())
+        return f
+
     def set_control(self, omega=None):
         """
         Sets the rotation rate of the cylinder
 
         Note that for time-varying controls it will be better to adjust the rotation rate
-        in the timestepper, e.g. with `solver.step(iter, control=omega)`.  This could be used
+        in the timestepper with `solver.step(iter, control=omega)`.  This method could be used
         to change rotation rate for a steady-state solve, for instance, and is also used
         internally to compute the control matrix
         """
@@ -95,25 +111,26 @@ class Cylinder(FlowConfig):
 
         self.update_rotation()
 
+    def get_control(self):
+        return [self.omega]
+
     def reset_control(self, mixed=False):
         self.set_control(0.0)
         self.init_bcs(mixed=mixed)
 
-    def linearize_control(self, act_idx=0):
+    def linearize_bcs(self, mixed=True):
+        self.reset_control(mixed=mixed)
+        self.bcu_inflow.set_value(fd.Constant((0, 0)))
+        self.bcu_freestream.set_value(fd.Constant(0.0))
+
+    def initialize_control(self, act_idx=0):
         (v, _) = fd.TestFunctions(self.mixed_space)
         self.linearize_bcs()
+
         # self.linearize_bcs() should have reset control, need to perturb it now
         eps = fd.Constant(1.0)
         self.set_control(eps)
         B = fd.assemble(inner(fd.Constant((0, 0)), v)*dx, bcs=self.collect_bcs())  # As fd.Function
-
-        # # Convert to PETSc.Vec
-        # with B.dat.vec_ro as vec:
-        #     Bvec = vec/eps
-
-        # Now unset the perturbed control
-        # self.reset_control()
-        # return Bvec
 
         self.reset_control()
         return [B]

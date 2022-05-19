@@ -1,7 +1,7 @@
 import numpy as np
 import modred as mr
 import firedrake as fd
-from modred import PODHandles
+from modred import PODHandles, VectorSpaceHandles
 
 from .utils import set_from_array
 

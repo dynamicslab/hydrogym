@@ -3,15 +3,19 @@ import firedrake_adjoint as fda
 import hydrogym as gym
 
 def test_import():
-    flow = gym.flow.Cylinder(mesh_name='noack')
+    flow = gym.flow.Cylinder(mesh='coarse')
     return flow
 
 def test_import2():
-    flow = gym.flow.Cylinder(mesh_name='sipp-lebedev')
+    flow = gym.flow.Cylinder(mesh='medium')
+    return flow
+
+def test_import3():
+    flow = gym.flow.Cylinder(mesh='fine')
     return flow
 
 def test_steady(tol=1e-3):
-    flow = gym.flow.Cylinder(Re=100)
+    flow = gym.flow.Cylinder(Re=100, mesh='medium')
     flow.solve_steady()
 
     CL, CD = flow.compute_forces()
@@ -19,7 +23,7 @@ def test_steady(tol=1e-3):
     assert(abs(CD - 1.2840) < tol)  # Re = 100
 
 def test_rotation(tol=1e-3):
-    flow = gym.flow.Cylinder(Re=100)
+    flow = gym.flow.Cylinder(Re=100, mesh='medium')
     flow.set_control(fd.Constant(0.1))
     flow.solve_steady()
 
@@ -29,7 +33,7 @@ def test_rotation(tol=1e-3):
     assert(abs(CD - 1.2852) < tol)  # Re = 100
 
 def test_unsteady():
-    flow = gym.flow.Cylinder(mesh_name='noack')
+    flow = gym.flow.Cylinder(mesh='coarse')
     dt = 1e-2
     gym.ts.integrate(flow, t_span=(0, 10*dt), dt=dt)
     
@@ -39,7 +43,7 @@ def feedback_ctrl(y, K=0.1):
     return K*CL
 
 def test_control():
-    flow = gym.flow.Cylinder(mesh_name='noack')
+    flow = gym.flow.Cylinder(mesh='coarse')
     dt = 1e-2
 
     solver = gym.ts.IPCS(flow, dt=dt)
@@ -50,7 +54,7 @@ def test_control():
         flow = solver.step(iter, control=feedback_ctrl(y))
 
 def test_env():
-    env = gym.env.CylEnv()
+    env = gym.env.CylEnv(mesh='coarse')
 
     u = 0.0
     for _ in range(10):
@@ -59,7 +63,7 @@ def test_env():
         u = feedback_ctrl(y)
 
 def test_grad():
-    flow = gym.flow.Cylinder()
+    flow = gym.flow.Cylinder(mesh='coarse')
 
     omega = fd.Constant(0.0)
     flow.set_control(omega)
@@ -70,7 +74,7 @@ def test_grad():
     dJdu = fda.compute_gradient(CD, fda.Control(omega))
 
 def test_env_grad():
-    env = gym.env.CylEnv(differentiable=True)
+    env = gym.env.CylEnv(differentiable=True, mesh='coarse')
     y = env.reset()
     K = fd.Constant(0.0)
     J = 0.0
@@ -78,9 +82,10 @@ def test_env_grad():
         y, reward, done, info = env.step(feedback_ctrl(y, K=K))
         J = J - reward
     dJdm = fda.compute_gradient(J, fda.Control(K))
+    print(dJdm)
 
 def test_linearizedNS():
-    flow = gym.flow.Cylinder()
+    flow = gym.flow.Cylinder(mesh='coarse')
     qB = flow.solve_steady()
     A, M = flow.linearize(qB, backend='scipy')
     A_adj, M = flow.linearize(qB, adjoint=True, backend='scipy')

@@ -11,11 +11,14 @@ from ..core import FlowConfig
 class Pinball(FlowConfig):
     from .mesh.pinball import (INLET, FREESTREAM, OUTLET, CYLINDER,
             rad, x0, y0)
-    def __init__(self, Re=30, mesh_name='fine', h5_file=None):
+    MAX_CONTROL = 0.5*np.pi
+    TAU = 1.0
+        
+    def __init__(self, Re=30, mesh='fine', h5_file=None):
         """
         """
         from .mesh.pinball import load_mesh
-        mesh = load_mesh(name=mesh_name)
+        mesh = load_mesh(name=mesh)
 
         self.Re = fd.Constant(ufl.real(Re))
         self.U_inf = fd.Constant((1.0, 0.0))
@@ -95,11 +98,14 @@ class Pinball(FlowConfig):
         for cyl_idx in range(len(self.CYLINDER)):
             self.update_rotation(cyl_idx)
 
+    def get_control(self):
+        return self.omega
+
     def reset_control(self, mixed=False):
         self.set_control(omega=None)
         self.init_bcs(mixed=mixed)
 
-    def linearize_control(self, mixed=False):
+    def initialize_control(self, mixed=False):
         (v, _) = fd.TestFunctions(self.mixed_space)
         self.linearize_bcs()
         # self.linearize_bcs() should have reset control, need to perturb it now
