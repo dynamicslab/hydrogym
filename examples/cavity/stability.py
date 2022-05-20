@@ -42,6 +42,8 @@ p.rename('p')
 vort.rename('vort')
 pvd.write(u, p, vort)
 
+np.save('output/evals.npy', evals)
+
 ### Adjoint
 A, M = flow.linearize(qB, adjoint=True)
 evals, es = gym.linalg.eig(A, M, num_eigenvalues=20, sigma=7.5j)
