@@ -130,9 +130,8 @@ class IPCS(TransientSolver):
         If actual control is u and input is v, effectively
             du/dt = (1/tau)*(v - u)
         """
-        tau = self.flow.TAU
         for (u, v) in zip(self.control, control):
-            # u.assign( u + (self.dt/tau)*(v - u) )
+            # u.assign( u + (self.dt/self.flow.TAU)*(v - u) )
             u.assign(v)
 
     def step(self, iter, control=None):
