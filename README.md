@@ -15,7 +15,8 @@ Challenge problems in data-driven modeling and control of fluid dynamics
 The easiest way to get started is with the Docker container.  Assuming you have [Docker installed](https://docs.docker.com/get-docker/), you can build and launch the image easily with the scripts in the `docker` folder:
 
 ```
-cd docker && ./build.sh && ./launch.sh
+cd docker && ./build.sh
+./launch.sh
 ```
 
 Note that building the image will take a while the first time, but you shouldn't have to do it again unless you change the configuration.
@@ -37,6 +38,13 @@ env = gym.env.CylEnv(Re=100) # Cylinder wake flow configuration
 for i in range(num_steps):
 	action = 0.0   # Put your control law here
     (lift, drag), reward, done, info = env.step(action)
+```
+
+Or to test that you can run things in parallel, try to run the steady-state Newton solver on the cylinder wake with 4 processors:
+
+```
+cd /home/hydrogym/examples/cylinder
+mpiexec -np 4 python solve-steady.py
 ```
 
 For more detail, check out:
