@@ -61,7 +61,8 @@ def test_control():
         flow = solver.step(iter, control=feedback_ctrl(y))
 
 def test_env():
-    env = gym.env.PinballEnv(Re=30, mesh='coarse')
+    env_config={'Re': 30, 'mesh': 'coarse'}
+    env = gym.env.PinballEnv(env_config)
 
     # Simple opposition control on lift
     def feedback_ctrl(y, K=None):
@@ -102,7 +103,8 @@ def test_env_grad():
         CL, CD = y
         return K @ CL
         
-    env = gym.env.PinballEnv(Re=30, differentiable=True, mesh='coarse')
+    env_config={'Re': 30, 'differentiable': True, 'mesh': 'coarse'}
+    env = gym.env.PinballEnv(env_config)
     y = env.reset()
     n_cyl = 3
     K = pyadjoint.create_overloaded_object( -0.1*np.ones((n_cyl, n_cyl)) )

@@ -54,7 +54,8 @@ def test_control():
         flow = solver.step(iter, control=feedback_ctrl(y))
 
 def test_env():
-    env = gym.env.CylEnv(mesh='coarse')
+    env_config = {'mesh': 'coarse'}
+    env = gym.env.CylEnv(env_config)
 
     u = 0.0
     for _ in range(10):
@@ -74,7 +75,8 @@ def test_grad():
     dJdu = fda.compute_gradient(CD, fda.Control(omega))
 
 def test_env_grad():
-    env = gym.env.CylEnv(differentiable=True, mesh='coarse')
+    env_config = {'differentiable': True, 'mesh': 'coarse'}
+    env = gym.env.CylEnv(env_config)
     y = env.reset()
     K = fd.Constant(0.0)
     J = 0.0

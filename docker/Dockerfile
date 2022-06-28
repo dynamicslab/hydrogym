@@ -45,6 +45,8 @@ RUN bash -c ". $VENV_COMPLEX/bin/activate && pip install -r /home/hydrogym/docke
 RUN bash -c ". $VENV/bin/activate && jupyter nbextension enable --py widgetsnbextension --sys-prefix"
 RUN bash -c ". $VENV_COMPLEX/bin/activate && jupyter nbextension enable --py widgetsnbextension --sys-prefix"
 
+# python -m pip install torch --extra-index-url https://download.pytorch.org/whl/cpu
+
 # Final configuration
 ENV OMP_NUM_THREADS=1
 WORKDIR /home

@@ -15,3 +15,4 @@ seaborn
 slycot
 control
 --no-binary=h5py h5py
+ray[rllib]

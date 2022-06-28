@@ -11,10 +11,10 @@ class FlowEnv(gym.Env):
     ObsType = TypeVar("ObsType")
     ActType = TypeVar("ActType")
 
-    def __init__(self, flow: FlowConfig, solver: TransientSolver, callbacks: Optional[Iterable[Callable]] = []):
-        self.flow = flow
-        self.solver = solver
-        self.callbacks = callbacks
+    def __init__(self, env_config: dict):
+        self.flow = env_config.get('flow')
+        self.solver = env_config.get('solver')
+        self.callbacks = env_config.get('callbacks', [])
         self.iter = 0
         self.q0 = self.flow.q.copy(deepcopy=True)  # Save the initial state for resetting
 
@@ -55,15 +55,22 @@ class FlowEnv(gym.Env):
             cb.close()
 
 class CylEnv(FlowEnv):
-    def __init__(self, checkpoint=None, callbacks=[], differentiable=False, dt=1e-2, Re=100, mesh='medium'):
+    def __init__(self, env_config: dict):
         from .flow import Cylinder
-        if differentiable:
+        if env_config.get('differentiable'):
             from .ts import IPCS_diff as IPCS
         else:
             from .ts import IPCS
-        flow = Cylinder(h5_file=checkpoint, Re=Re, mesh=mesh)
-        solver = IPCS(flow, dt=dt)
-        super().__init__(flow, solver, callbacks)
+        env_config['flow'] = Cylinder(
+            h5_file=env_config.get('checkpoint', None),
+            Re=env_config.get('Re', 100),
+            mesh=env_config.get('mesh', 'medium')
+        )
+        env_config['solver'] = IPCS(env_config['flow'], dt=env_config.get('dt', 1e-2))
+        super().__init__(env_config)
+
+        # self.observation_space = gym.spaces.Box(low=-np.inf, high=np.inf, dtype=fd.utils.ScalarType)
+        # self.action_space = gym.spaces.Box(low=-self.MAX_CONTROL, high=self.MAX_CONTROL, dtype=fd.utils.ScalarType)
 
     def get_reward(self, obs):
         CL, CD = obs
@@ -79,15 +86,19 @@ class CylEnv(FlowEnv):
         im.axes.add_artist(cyl)
 
 class PinballEnv(FlowEnv):
-    def __init__(self, checkpoint=None, callbacks=[], differentiable=False, dt=1e-2, Re=100, mesh='fine'):
+    def __init__(self, env_config: dict):
         from .flow import Pinball
-        if differentiable:
+        if env_config.get('differentiable'):
             from .ts import IPCS_diff as IPCS
         else:
             from .ts import IPCS
-        flow = Pinball(h5_file=checkpoint, Re=Re, mesh=mesh)
-        solver = IPCS(flow, dt=dt)
-        super().__init__(flow, solver, callbacks)
+        env_config['flow'] = Pinball(
+            h5_file=env_config.get('checkpoint', None),
+            Re=env_config.get('Re', 100),
+            mesh=env_config.get('mesh', 'fine')
+        )
+        env_config['solver'] = IPCS(env_config['flow'], dt=env_config.get('dt', 1e-2))
+        super().__init__(env_config)
 
     def get_reward(self, obs):
         CL, CD = obs
