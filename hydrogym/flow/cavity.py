@@ -24,6 +24,7 @@ class Cavity(FlowConfig):
         self.U_inf = fd.Constant((1.0, 0.0))
 
         super().__init__(mesh, h5_file=h5_file)
+        self.reset_control()
 
 
     def init_bcs(self, mixed=False):

@@ -36,6 +36,8 @@ class Pinball(FlowConfig):
                 (self.rad*sin(theta), self.rad*cos(theta))
             ))  # Tangential velocity
 
+        self.reset_control()
+
     def init_bcs(self, mixed=False):
         V, Q = self.function_spaces(mixed=mixed)
 

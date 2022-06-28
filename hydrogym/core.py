@@ -23,8 +23,6 @@ class FlowConfig:
         if h5_file is not None:
             self.load_checkpoint(h5_file)
 
-        self.reset_control()
-
     def save_checkpoint(self, h5_file, write_mesh=True, idx=None):
         with fd.CheckpointFile(h5_file, 'w') as chk:
             if write_mesh:

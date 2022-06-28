@@ -6,6 +6,8 @@ from firedrake.petsc import PETSc
 import ufl
 from ufl import sym, curl, dot, inner, nabla_grad, div, cos, sin, atan_2
 
+import gym
+
 from ..core import FlowConfig
 
 class Cylinder(FlowConfig):
@@ -27,13 +29,13 @@ class Cylinder(FlowConfig):
         self.U_inf = fd.Constant((1.0, 0.0))
         super().__init__(mesh, h5_file=h5_file)
 
-        # Initialize control
-        self.omega = fd.Constant(0.0)
-
         # First set up tangential boundaries to cylinder
+        self.omega = fd.Constant(0.0)
         theta = atan_2(ufl.real(self.y), ufl.real(self.x)) # Angle from origin
         rad = fd.Constant(0.5)
         self.u_tan = ufl.as_tensor((rad*sin(theta), rad*cos(theta)))  # Tangential velocity
+
+        self.reset_control()
 
     def init_bcs(self, mixed=False):
         V, Q = self.function_spaces(mixed=mixed)
