@@ -38,7 +38,7 @@ class FlowEnv(gym.Env):
         return False
 
     def check_complete(self):
-        pass
+        return False
 
     def reset(self) -> Union[ObsType, Tuple[ObsType, dict]]:
         self.flow.q.assign(self.q0)
@@ -61,6 +61,7 @@ class CylEnv(FlowEnv):
             from .ts import IPCS_diff as IPCS
         else:
             from .ts import IPCS
+
         env_config['flow'] = Cylinder(
             h5_file=env_config.get('checkpoint', None),
             Re=env_config.get('Re', 100),
@@ -69,8 +70,8 @@ class CylEnv(FlowEnv):
         env_config['solver'] = IPCS(env_config['flow'], dt=env_config.get('dt', 1e-2))
         super().__init__(env_config)
 
-        # self.observation_space = gym.spaces.Box(low=-np.inf, high=np.inf, dtype=fd.utils.ScalarType)
-        # self.action_space = gym.spaces.Box(low=-self.MAX_CONTROL, high=self.MAX_CONTROL, dtype=fd.utils.ScalarType)
+        self.observation_space = gym.spaces.Box(low=-np.inf, high=np.inf, shape=(2,), dtype=fd.utils.ScalarType)
+        self.action_space = gym.spaces.Box(low=-self.flow.MAX_CONTROL, high=self.flow.MAX_CONTROL, shape=(1,), dtype=fd.utils.ScalarType)
 
     def get_reward(self, obs):
         CL, CD = obs

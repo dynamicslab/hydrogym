@@ -5,14 +5,15 @@ ipywidgets
 mpltools
 nbformat
 nbconvert
-git+https://github.com/dynamicslab/pysindy.git@master#egg=pysindy
+# git+https://github.com/dynamicslab/pysindy.git@master#egg=pysindy
 dmsuite
 gym
 memory_profiler
 gmsh
 modred
 seaborn
-slycot
+# slycot
 control
 --no-binary=h5py h5py
 ray[rllib]
+torch
