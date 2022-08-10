@@ -131,8 +131,11 @@ class IPCS(TransientSolver):
             du/dt = (1/tau)*(v - u)
         """
         for (u, v) in zip(self.control, control):
-            u.assign( u + (self.dt/self.flow.TAU)*(v - u) )
-            # u.assign(v)
+            # u += (self.dt/self.flow.TAU)*(v - u)
+            # u.assign( u + (self.dt/self.flow.TAU)*(v - u) )
+            u = u + (self.dt/self.flow.TAU)*(v - u)
+            # u = fd.interpolate(u + (self.dt/self.flow.TAU)*(v - u), u.function_space() )
+            # u.assign(v)  # WORKS
 
     def step(self, iter, control=None):
         # Step 1: Tentative velocity step

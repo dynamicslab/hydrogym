@@ -1,6 +1,7 @@
 from time import time
 import gym
 import firedrake as fd
+from firedrake import logging
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -15,6 +16,7 @@ class FlowEnv(gym.Env):
         self.flow = env_config.get('flow')
         self.solver = env_config.get('solver')
         self.callbacks = env_config.get('callbacks', [])
+        self.max_steps = env_config.get('max_steps', int(1e6))
         self.iter = 0
         self.q0 = self.flow.q.copy(deepcopy=True)  # Save the initial state for resetting
 
@@ -31,6 +33,7 @@ class FlowEnv(gym.Env):
 
         reward = self.get_reward(obs)
         done = self.check_complete()
+        logging.log(logging.DEBUG, f'iter: {self.iter}\t reward: {reward}\t done: {done}')
         info = {}
         return obs, reward, done, info
 
@@ -38,7 +41,7 @@ class FlowEnv(gym.Env):
         return False
 
     def check_complete(self):
-        return False
+        return self.iter > self.max_steps
 
     def reset(self) -> Union[ObsType, Tuple[ObsType, dict]]:
         self.flow.q.assign(self.q0)
@@ -75,7 +78,7 @@ class CylEnv(FlowEnv):
 
     def get_reward(self, obs):
         CL, CD = obs
-        return -CD
+        return 1/CD
 
     def render(self, mode="human", clim=None, levels=None, cmap='RdBu', **kwargs):
         if clim is None: clim = (-2, 2)

@@ -24,6 +24,13 @@ class Cavity(FlowConfig):
         self.U_inf = fd.Constant((1.0, 0.0))
 
         super().__init__(mesh, h5_file=h5_file)
+
+        self.control = fd.Constant(0.0)
+        self.u_ctrl = ufl.as_tensor((
+                0.0*self.x,
+                -self.x*(1600*self.x + 560)/147
+        ))  # Blowing/suction
+
         self.reset_control()
 
 
@@ -67,11 +74,6 @@ class Cavity(FlowConfig):
         return [self.control]
 
     def reset_control(self, mixed=False):
-        self.control = fd.Constant(0.0)
-        self.u_ctrl = ufl.as_tensor((
-                0.0*self.x,
-                -self.x*(1600*self.x + 560)/147
-        ))  # Blowing/suction
 
         self.set_control(0.0)
         self.init_bcs(mixed=mixed)

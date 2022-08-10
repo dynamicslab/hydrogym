@@ -5,12 +5,12 @@ import numpy as np
 
 import hydrogym as gym
 
-Re = 5000
+Re = 7500
 output_dir = f'./{Re}_output'
 pvd_out = f"{output_dir}/solution.pvd"
 stability_path = './stability/global-modes/'
 restart = f"{stability_path}/steady.h5"
-checkpoint = f'checkpoint.h5'
+checkpoint = f'{output_dir}/checkpoint.h5'
 evec_file = f"{stability_path}/direct_real.h5"
 
 flow = gym.flow.Cavity(Re=Re)

@@ -79,7 +79,7 @@ def test_env_grad():
     env = gym.env.CylEnv(env_config)
     y = env.reset()
     K = fd.Constant(0.0)
-    J = 0.0
+    J = fda.AdjFloat(0.0)
     for _ in range(10):
         y, reward, done, info = env.step(feedback_ctrl(y, K=K))
         J = J - reward
