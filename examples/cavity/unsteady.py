@@ -13,17 +13,16 @@ restart = f"{stability_path}/steady.h5"
 checkpoint = f'{output_dir}/checkpoint.h5'
 evec_file = f"{stability_path}/direct_real.h5"
 
-flow = gym.flow.Cavity(Re=Re)
-flow.load_checkpoint(restart)  # Reload previous solution
+flow = gym.flow.Cavity(Re=Re, h5_file=restart)
 
-# Initialize with unstable eigenmode
+# # Initialize with unstable eigenmode
 with fd.CheckpointFile(evec_file, 'r') as file:
     v = file.load_function(flow.mesh, 'q', idx=0)
     
 flow.q += fd.Constant(1e-2)*v
 
 # Time step
-Tf = 100
+Tf = 500
 dt = 1e-4
 
 h = fd.CellSize(flow.mesh)

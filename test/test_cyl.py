@@ -32,7 +32,7 @@ def test_rotation(tol=1e-3):
     assert(abs(CL - 0.0594) < tol)
     assert(abs(CD - 1.2852) < tol)  # Re = 100
 
-def test_unsteady():
+def test_integrate():
     flow = gym.flow.Cylinder(mesh='coarse')
     dt = 1e-2
     gym.ts.integrate(flow, t_span=(0, 10*dt), dt=dt)

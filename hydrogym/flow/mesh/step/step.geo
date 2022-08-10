@@ -33,6 +33,10 @@ Point(20) = {-L_in, h_in-0.1, 0, 1/n2};
 Point(21) = { -1.0, h_in-0.1, 0, 1/n2};
 Point(22) = {  2.0, h_in-0.1, 0, 1/n2};
 Point(23) = {L_out, h_in-0.1, 0, 1/n2};
+
+// Control location
+Point(24) = {-0.35, 0.0, 0, 1/n};
+
 //+
 Line(1) = {1, 15};
 //+
@@ -58,7 +62,7 @@ Line(11) = {12, 17};
 //+
 Line(12) = {10, 9};
 //+
-Line(13) = {9, 4};
+Line(13) = {9, 24};
 //+
 Line(14) = {4, 14};
 //+
@@ -90,6 +94,8 @@ Line(27) = {22, 23};
 //+
 Line(28) = {6, 3};
 //+
+Line(29) = {24, 4};
+//+
 Curve Loop(1) = {4, -28, -25, -27, -8, -7, 3};
 //+
 Plane Surface(1) = {1};
@@ -102,7 +108,7 @@ Curve Loop(3) = {6, 9, 12, -5, 1};
 //+
 Plane Surface(3) = {3};
 //+
-Curve Loop(4) = {10, -17, -16, -14, -13, -12};
+Curve Loop(4) = {10, -17, -16, -14, -13, -29, -12};
 //+
 Plane Surface(4) = {4};
 //+
@@ -127,3 +133,5 @@ Physical Curve("Freestream", 3) = {4, 28};
 Physical Curve("Outlet", 4) = {25, 24, 23, 22};
 //+
 Physical Curve("Wall", 5) = {21, 15, 14, 13, 5};
+//+
+Physical Curve("Control", 6) = {29};
