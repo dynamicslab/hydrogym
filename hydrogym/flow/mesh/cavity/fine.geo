@@ -40,6 +40,9 @@ Point(23) = { 0.0,-1.0, 0, 1/n3m};
 // Control location
 Point(24) = {-0.35, 0.0, 0, 1/n};
 
+// Measurement location
+Point(25) = { 1.1, 0.0, 0, 1/n};
+
 //+
 Line(1) = {11, 12};
 //+
@@ -61,7 +64,7 @@ Line(9) = {10, 24};
 //+
 Line(10) = {9, 6};
 //+
-Line(11) = {6, 5};
+Line(11) = {6, 25};
 //+
 Line(12) = {5, 4};
 //+
@@ -102,9 +105,11 @@ Line(29) = {15, 14};
 Line(30) = {19, 18};
 //+
 Line(31) = {24, 9};
+//+
+Line(32) = {25, 5};
 
 //+
-Curve Loop(1) = {18, 17, 16, -12, -11, -27, -28, -19, -31, -9, -8};
+Curve Loop(1) = {18, 17, 16, -12, -11, -32, -27, -28, -19, -31, -9, -8};
 //+
 Plane Surface(1) = {1};
 //+
@@ -142,6 +147,8 @@ Physical Curve("Outlet", 4) = {13, 14, 15, 16};
 //  Note that the downstream wall is "12"... move that up here to add that to the slip BCs
 Physical Curve("Slip", 5) = {7, 8};
 //+
-Physical Curve("Wall", 6) = {9, 19, 20, 21, 22, 23, 24, 25, 26, 27, 11, 12};
+Physical Curve("Wall", 6) = {9, 19, 20, 21, 22, 23, 24, 25, 26, 27, 32, 12};
 //+
 Physical Curve("Control", 7) = {31};
+//+
+Physical Curve("Sensor", 8) = {11};

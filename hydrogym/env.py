@@ -117,3 +117,27 @@ class PinballEnv(FlowEnv):
         for (x0, y0) in zip(self.flow.x0, self.flow.y0):
             cyl = plt.Circle((x0, y0), self.flow.rad, edgecolor='k', facecolor='gray')
             im.axes.add_artist(cyl)
+
+
+class CavityEnv(FlowEnv):
+    def __init__(self, env_config: dict):
+        from .flow import Cavity
+        if env_config.get('differentiable'):
+            from .ts import IPCS_diff as IPCS
+        else:
+            from .ts import IPCS
+
+        env_config['flow'] = Cavity(
+            h5_file=env_config.get('checkpoint', None),
+            Re=env_config.get('Re', 7500),
+            mesh=env_config.get('mesh', 'fine')
+        )
+        env_config['solver'] = IPCS(env_config['flow'], dt=env_config.get('dt', 1e-4))
+        super().__init__(env_config)
+
+        self.observation_space = gym.spaces.Box(low=-np.inf, high=np.inf, shape=(2,), dtype=fd.utils.ScalarType)
+        self.action_space = gym.spaces.Box(low=-self.flow.MAX_CONTROL, high=self.flow.MAX_CONTROL, shape=(1,), dtype=fd.utils.ScalarType)
+
+    def get_reward(self, obs):
+        CL, CD = obs
+        return 1/CD

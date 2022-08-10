@@ -10,6 +10,9 @@ from ufl import sym, curl, dot, inner, nabla_grad, div, cos, sin, atan_2
 from ..core import FlowConfig
 
 class Cavity(FlowConfig):
+    MAX_CONTROL = 0.1  # Arbitrary... should tune this
+    TAU = .075  # Time constant for controller damping (0.01*instability frequency)
+
     from .mesh.cavity import INLET, FREESTREAM, OUTLET, SLIP, WALL, CONTROL
     def __init__(self, h5_file=None, Re=5000, mesh='fine'):
         """

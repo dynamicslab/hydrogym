@@ -8,8 +8,9 @@ INLET = 2
 FREESTREAM = 3
 OUTLET = 4
 SLIP = 5
-WALL = 6
+WALL = (6, 8)
 CONTROL = 7
+SENSOR = 8
 
 def load_mesh(name='fine'):
     return Mesh(f'{mesh_dir}/{name}.msh', name='mesh')
