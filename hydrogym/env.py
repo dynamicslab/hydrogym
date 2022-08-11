@@ -139,5 +139,5 @@ class CavityEnv(FlowEnv):
         self.action_space = gym.spaces.Box(low=-self.flow.MAX_CONTROL, high=self.flow.MAX_CONTROL, shape=(1,), dtype=fd.utils.ScalarType)
 
     def get_reward(self, obs):
-        CL, CD = obs
-        return 1/CD
+        # Observation in this case is the wall shear stress
+        return 1/obs

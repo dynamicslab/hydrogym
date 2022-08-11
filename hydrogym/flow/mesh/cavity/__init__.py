@@ -6,5 +6,6 @@ from .mesh import (
     OUTLET,
     SLIP,
     WALL,
-    CONTROL
+    CONTROL,
+    SENSOR
 )

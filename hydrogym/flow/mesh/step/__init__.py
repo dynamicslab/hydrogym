@@ -4,5 +4,6 @@ from .mesh import (
     INLET,
     FREESTREAM,
     OUTLET,
-    WALL
+    WALL,
+    CONTROL
 )
