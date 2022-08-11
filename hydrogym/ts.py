@@ -14,6 +14,8 @@ class TransientSolver:
         self.flow = flow
         self.dt = dt
 
+        self.t = 0.0
+
     def solve(self, t_span: Tuple[float, float], callbacks:Optional[Iterable[Callable]] = []):
         for iter, t in enumerate(np.arange(*t_span, self.dt)):
             flow = self.step(iter)
@@ -52,6 +54,7 @@ class IPCS(TransientSolver):
 
         self.B = flow.initialize_control()
         self.control = self.flow.get_control()
+
 
     def initialize_functions(self):
         flow = self.flow
@@ -157,6 +160,9 @@ class IPCS(TransientSolver):
         # Update previous solution
         self.u_n.assign(self.u)
         self.p_n.assign(self.p)
+
+        self.t += self.dt
+
         return self.flow
 
     def linearize(self, qB=None, return_operators=True):
@@ -464,6 +470,8 @@ class IPCS_diff(TransientSolver):
         # Update previous solution
         self.u_n.assign(self.u)
         self.p_n.assign(self.p)
+
+        self.t += self.dt
 
         return self.flow
 

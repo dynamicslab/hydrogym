@@ -74,6 +74,25 @@ def test_grad():
 
     dJdu = fda.compute_gradient(CD, fda.Control(omega))
 
+def test_sensitivity(dt=1e-2, num_steps=10):
+    from ufl import inner, dx
+
+    flow = gym.flow.Cylinder(mesh='coarse')
+
+    # Store a copy of the initial condition to distinguish it from the time-varying solution
+    q0 = flow.q.copy(deepcopy=True)
+    flow.q.assign(q0, annotate=True)  # Note the annotation flag so that the assignment is tracked
+
+    # Time step forward as usual
+    flow = gym.ts.integrate(flow, t_span=(0, num_steps*dt), dt=dt, method='IPCS_diff')
+
+    # Define a cost functional... here we're just using the energy inner product
+    J = 0.5*fd.assemble(inner(flow.u, flow.u)*dx)
+
+    # Compute the gradient with respect to the initial condition
+    #   The option for Riesz representation here specifies that we should end up back in the primal space
+    dq = fda.compute_gradient(J, fda.Control(q0), options={"riesz_representation": "L2"})
+
 def test_env_grad():
     env_config = {'differentiable': True, 'mesh': 'coarse'}
     env = gym.env.CylEnv(env_config)
