@@ -2,12 +2,12 @@
 
 ## Periodic Cylinder Wake (Re=100)
 
-![](docs/imgs/cylinder.png)
+![](imgs/cylinder.png)
 
 ## Chaotic pinball (Re=130)
 
-![](docs/imgs/pinball.img)
+![](imgs/pinball.png)
 
 ## Open Cavity (Re=7500)
 
-![](docs/imgs/cavity.png)
+![](imgs/cavity.png)
