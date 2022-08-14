@@ -1,5 +1,11 @@
-# HydroGym
-Challenge problems in data-driven modeling and control of fluid dynamics
+<p align="center">
+	<a rel="nofollow">
+		<img src="docs/imgs/logo.svg" />
+	</a>
+</p>
+
+
+HydroGym provides is an open-source library of challenge problems in data-driven modeling and control of fluid dynamics.
 
 ### Features
 * __Hierarchical:__ Designed for analysis and controller design from a high-level black-box interface to low-level operator access
@@ -56,34 +62,15 @@ For more detail, check out:
 
 ### Periodic cylinder wake (Re=100)
 
-![](doc/cylinder.png)
+![](docs/imgs/cylinder.png)
 
 ### Chaotic pinball (Re=130)
 
-![](doc/pinball.png)
+![](docs/imgs/pinball.png)
 
 
 ### Open cavity (Re=7500)
 
-![](doc/cavity.png)
+![](docs/imgs/cavity.png)
 
 For the time being the cylinder wake is the most well-developed flow configuration, although the pinball should also be pretty reliable.  The cavity is in development (the boundary conditions are a little iffy and there's no actuation implemented yet) and the backwards-facing step is still planned.
-
-# Status (5/18/22)
-## What works
-* Overview of features in Jupyter notebook (`notebooks/overview.ipynb`)
-* Feedback control of cylinder and pinball flows (both `gym.Env` and solver interfaces)
-* Newton-Krylov fixed point solver
-* Time integration with a projection scheme
-* Direct and adjoint global stability analysis with SLEPc
-* Conversion to discrete-time LTI system
-* Interface to Modred for modal analysis
-* Adjoint-based optimization with Pyadjoint
-* Basic test suite
-
-## What doesn't (see issues)
-* Adjoint operator construction in discrete time
-* LQR control for cylinder (control design works, but blows up in DNS)
-
-## What needs to be tested
-* Cavity flow
