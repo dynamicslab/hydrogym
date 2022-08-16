@@ -97,7 +97,8 @@ class Cavity(FlowConfig):
         """Integral of wall-normal shear stress (see Barbagallo et al, 2009)"""
         if q is None: q = self.q
         (u, p) = q.split()
-        return fd.assemble(-dot(grad(u[0]), self.n)*ds(self.SENSOR))
+        m = fd.assemble(-dot(grad(u[0]), self.n)*ds(self.SENSOR))
+        return m, 
 
     # def solve_steady(self, **kwargs):
     #     if self.Re > 500:

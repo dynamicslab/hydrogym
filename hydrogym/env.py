@@ -135,9 +135,10 @@ class CavityEnv(FlowEnv):
         env_config['solver'] = IPCS(env_config['flow'], dt=env_config.get('dt', 1e-4))
         super().__init__(env_config)
 
-        self.observation_space = gym.spaces.Box(low=-np.inf, high=np.inf, shape=(2,), dtype=fd.utils.ScalarType)
+        self.observation_space = gym.spaces.Box(low=-np.inf, high=np.inf, shape=(1,), dtype=fd.utils.ScalarType)
         self.action_space = gym.spaces.Box(low=-self.flow.MAX_CONTROL, high=self.flow.MAX_CONTROL, shape=(1,), dtype=fd.utils.ScalarType)
 
     def get_reward(self, obs):
         # Observation in this case is the wall shear stress
-        return 1/obs
+        m, = obs
+        return 1/m
