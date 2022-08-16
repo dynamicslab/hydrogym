@@ -71,9 +71,8 @@ def test_env():
 
     # Simple opposition control on lift
     def feedback_ctrl(y, K=None):
-        if K is None: K = -0.1*np.ones((3, 3)) # [Inputs x outputs]
-        CL, CD = y
-        return K @ CL
+        if K is None: K = -0.1*np.ones((3, 6)) # [Inputs x outputs]
+        return K @ y
 
     u = 0.0
     for _ in range(10):
@@ -107,14 +106,13 @@ def test_grad():
 def test_env_grad():
     # Simple feedback control on lift
     def feedback_ctrl(y, K):
-        CL, CD = y
-        return K @ CL
+        return K @ y
         
     env_config={'Re': 30, 'differentiable': True, 'mesh': 'coarse'}
     env = gym.env.PinballEnv(env_config)
     y = env.reset()
     n_cyl = 3
-    K = pyadjoint.create_overloaded_object( -0.1*np.ones((n_cyl, n_cyl)) )
+    K = pyadjoint.create_overloaded_object( -0.1*np.ones((n_cyl, 2*n_cyl)) )
     J = 0.0
     for _ in range(10):
         y, reward, done, info = env.step(feedback_ctrl(y, K))

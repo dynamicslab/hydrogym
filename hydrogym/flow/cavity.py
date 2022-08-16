@@ -98,7 +98,7 @@ class Cavity(FlowConfig):
         if q is None: q = self.q
         (u, p) = q.split()
         m = fd.assemble(-dot(grad(u[0]), self.n)*ds(self.SENSOR))
-        return m, 
+        return m,
 
     # def solve_steady(self, **kwargs):
     #     if self.Re > 500:

@@ -2,6 +2,7 @@ from time import time
 import gym
 import firedrake as fd
 from firedrake import logging
+from firedrake.petsc import PETSc
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -35,7 +36,16 @@ class FlowEnv(gym.Env):
         done = self.check_complete()
         logging.log(logging.DEBUG, f'iter: {self.iter}\t reward: {reward}\t done: {done}')
         info = {}
+
+        obs = self.stack_observations(obs)
+
+        # PETSc.Sys.Print(obs)
         return obs, reward, done, info
+
+    # TODO: Use this to allow for arbitrary returns from collect_observations
+    #  That are then converted to a list/tuple/ndarray here
+    def stack_observations(self, obs):
+        return obs
 
     def get_reward(self, obs):
         return False
@@ -104,8 +114,11 @@ class PinballEnv(FlowEnv):
         env_config['solver'] = IPCS(env_config['flow'], dt=env_config.get('dt', 1e-2))
         super().__init__(env_config)
 
+        self.observation_space = gym.spaces.Box(low=-np.inf, high=np.inf, shape=(6,), dtype=fd.utils.ScalarType)
+        self.action_space = gym.spaces.Box(low=-self.flow.MAX_CONTROL, high=self.flow.MAX_CONTROL, shape=(1,), dtype=fd.utils.ScalarType)
+
     def get_reward(self, obs):
-        CL, CD = obs
+        CD = obs[3:]
         return 1/sum(CD)
 
     def render(self, mode="human", clim=None, levels=None, cmap='RdBu', **kwargs):
@@ -140,5 +153,6 @@ class CavityEnv(FlowEnv):
 
     def get_reward(self, obs):
         # Observation in this case is the wall shear stress
+        # TODO: This should actually be related to perturbation KE/pressure oscillations
         m, = obs
         return 1/m

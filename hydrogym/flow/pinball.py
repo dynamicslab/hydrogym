@@ -137,4 +137,5 @@ class Pinball(FlowConfig):
         return 3
 
     def collect_observations(self):
-        return self.compute_forces()
+        CL, CD = self.compute_forces()
+        return [*CL, *CD]
