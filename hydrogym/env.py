@@ -106,7 +106,7 @@ class PinballEnv(FlowEnv):
 
     def get_reward(self, obs):
         CL, CD = obs
-        return -sum(CD)
+        return 1/sum(CD)
 
     def render(self, mode="human", clim=None, levels=None, cmap='RdBu', **kwargs):
         if clim is None: clim = (-2, 2)

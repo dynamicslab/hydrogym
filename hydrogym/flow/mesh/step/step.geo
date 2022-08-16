@@ -6,6 +6,8 @@ L_in = 5.0;
 L_out = 50;
 h_in = 0.5;
 h_s  = 0.5;
+x_lr = 11.8;  // Approximate reattachment point (Boujo & Gallaire, 2015)
+dx_s = 0.2;   // Length of sensor region
 
 Point(1) = {-L_in,  0.0, 0, 1/n1};
 Point(2) = {-L_in, h_in, 0, 1/n1};
@@ -36,6 +38,10 @@ Point(23) = {L_out, h_in-0.1, 0, 1/n2};
 
 // Control location
 Point(24) = {-0.35, 0.0, 0, 1/n};
+
+// Sensor location
+Point(25) = {x_lr, -h_s, 0.0, 1/n1};
+Point(26) = {x_lr+dx_s, -h_s, 0.0, 1/n1};
 
 //+
 Line(1) = {1, 15};
@@ -78,7 +84,7 @@ Line(19) = {18, 17};
 //+
 Line(20) = {17, 22};
 //+
-Line(21) = {5, 8};
+Line(21) = {5, 25};
 //+
 Line(22) = {8, 19};
 //+
@@ -95,6 +101,10 @@ Line(27) = {22, 23};
 Line(28) = {6, 3};
 //+
 Line(29) = {24, 4};
+//+
+Line(30) = {25, 26};
+//+
+Line(31) = {26, 8};
 //+
 Curve Loop(1) = {4, -28, -25, -27, -8, -7, 3};
 //+
@@ -116,7 +126,7 @@ Curve Loop(5) = {11, -19, -18, 17};
 //+
 Plane Surface(5) = {5};
 //+
-Curve Loop(6) = {18, -26, -22, -21, -15, 16};
+Curve Loop(6) = {18, -26, -22, -21, -30, -31, -15, 16};
 //+
 Plane Surface(6) = {6};
 //+
@@ -132,6 +142,8 @@ Physical Curve("Freestream", 3) = {4, 28};
 //+
 Physical Curve("Outlet", 4) = {25, 24, 23, 22};
 //+
-Physical Curve("Wall", 5) = {21, 15, 14, 13, 5};
+Physical Curve("Wall", 5) = {21, 31, 15, 14, 13, 5};
 //+
 Physical Curve("Control", 6) = {29};
+//+
+Physical Curve("Sensor", 7) = {30};

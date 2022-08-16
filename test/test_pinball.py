@@ -8,9 +8,11 @@ def test_import():
     flow = gym.flow.Pinball(mesh='coarse')
     return flow
 
+
 def test_import2():
     flow = gym.flow.Pinball(mesh='fine')
     return flow
+
 
 def test_steady(tol=1e-2):
     flow = gym.flow.Pinball(Re=30, mesh='coarse')
@@ -24,6 +26,7 @@ def test_steady(tol=1e-2):
         assert(abs(CL[i] - CL_target[i]) < tol)
         assert(abs(CD[i] - CD_target[i]) < tol)
 
+
 def test_rotation(tol=1e-2):
     flow = gym.flow.Pinball(Re=30, mesh='coarse')
     flow.set_control((0.5, 0.5, 0.5))
@@ -36,6 +39,7 @@ def test_rotation(tol=1e-2):
     for i in range(len(CL)):
         assert(abs(CL[i] - CL_target[i]) < tol)
         assert(abs(CD[i] - CD_target[i]) < tol)
+
 
 def test_unsteady():
     flow = gym.flow.Pinball(mesh='coarse')
@@ -60,6 +64,7 @@ def test_control():
         y = flow.collect_observations()
         flow = solver.step(iter, control=feedback_ctrl(y))
 
+
 def test_env():
     env_config={'Re': 30, 'mesh': 'coarse'}
     env = gym.env.PinballEnv(env_config)
@@ -75,6 +80,7 @@ def test_env():
         y, reward, done, info = env.step(u)
         print(y)
         u = feedback_ctrl(y)
+
 
 def test_grad():
     flow = gym.flow.Pinball(Re=30, mesh='coarse')
@@ -97,6 +103,7 @@ def test_grad():
 
     dJdu = fda.compute_gradient(sum(CD), control)
 
+
 def test_env_grad():
     # Simple feedback control on lift
     def feedback_ctrl(y, K):
@@ -113,6 +120,26 @@ def test_env_grad():
         y, reward, done, info = env.step(feedback_ctrl(y, K))
         J = J - reward
     dJdm = fda.compute_gradient(J, fda.Control(K))
+
+
+def test_sensitivity(dt=1e-2, num_steps=10):
+    from ufl import inner, dx
+
+    flow = gym.flow.Pinball(Re=30, mesh='coarse')
+
+    # Store a copy of the initial condition to distinguish it from the time-varying solution
+    q0 = flow.q.copy(deepcopy=True)
+    flow.q.assign(q0, annotate=True)  # Note the annotation flag so that the assignment is tracked
+
+    # Time step forward as usual
+    flow = gym.ts.integrate(flow, t_span=(0, num_steps*dt), dt=dt, method='IPCS_diff')
+
+    # Define a cost functional... here we're just using the energy inner product
+    J = 0.5*fd.assemble(inner(flow.u, flow.u)*dx)
+
+    # Compute the gradient with respect to the initial condition
+    #   The option for Riesz representation here specifies that we should end up back in the primal space
+    dq = fda.compute_gradient(J, fda.Control(q0), options={"riesz_representation": "L2"})
 
 # def test_lti():
 #     flow = gym.flow.Cylinder()
