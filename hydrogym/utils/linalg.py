@@ -4,11 +4,12 @@ import firedrake as fd
 import numpy as np
 import ufl
 from firedrake import logging
+from modred import PODHandles, VectorSpaceHandles
 from scipy import sparse
 
 # Type suggestions
 from ..core import FlowConfig
-from .modred_interface import PODHandles, Snapshot, VectorSpaceHandles, vec_handle_mean
+from .modred_interface import Snapshot, vec_handle_mean
 
 
 def adjoint(L):
