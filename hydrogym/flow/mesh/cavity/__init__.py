@@ -1,11 +1,11 @@
 from .mesh import (
-    load_mesh,
+    CONTROL,
     FLUID,
-    INLET,
     FREESTREAM,
+    INLET,
     OUTLET,
+    SENSOR,
     SLIP,
     WALL,
-    CONTROL,
-    SENSOR
+    load_mesh,
 )
