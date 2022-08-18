@@ -1,19 +1,28 @@
-import numpy as np
+from typing import Callable, Optional, Tuple
+
 import firedrake as fd
+import numpy as np
 from firedrake import logging
-import pickle
 
-from ..core import FlowConfig, CallbackBase
-from .utils import print, is_rank_zero
-from typing import Any, Optional, Callable, Tuple
+from ..core import CallbackBase, FlowConfig
+from .utils import is_rank_zero, print
 
-__all__ = ['ParaviewCallback', 'CheckpointCallback', 'LogCallback', 'SnapshotCallback', 'GenericCallback']
+__all__ = [
+    "ParaviewCallback",
+    "CheckpointCallback",
+    "LogCallback",
+    "SnapshotCallback",
+    "GenericCallback",
+]
+
 
 class ParaviewCallback(CallbackBase):
-    def __init__(self,
-            interval: Optional[int] = 1,
-            filename: Optional[str] = 'output/solution.pvd',
-            postprocess: Optional[Callable] = None):
+    def __init__(
+        self,
+        interval: Optional[int] = 1,
+        filename: Optional[str] = "output/solution.pvd",
+        postprocess: Optional[Callable] = None,
+    ):
         super().__init__(interval=interval)
         self.file = fd.File(filename)
 
@@ -25,14 +34,17 @@ class ParaviewCallback(CallbackBase):
     def __call__(self, iter: int, t: float, flow: FlowConfig):
         if super().__call__(iter, t, flow):
             state = self.postprocess(flow)
-            if (iter % self.interval == 0):
+            if iter % self.interval == 0:
                 self.file.write(*state, time=t)
 
+
 class CheckpointCallback(CallbackBase):
-    def __init__(self,
-            interval: Optional[int] = 1,
-            filename: Optional[str] = 'output/checkpoint.h5',
-            write_mesh=True):
+    def __init__(
+        self,
+        interval: Optional[int] = 1,
+        filename: Optional[str] = "output/checkpoint.h5",
+        write_mesh=True,
+    ):
         super().__init__(interval=interval)
         self.filename = filename
         self.write_mesh = write_mesh
@@ -41,24 +53,26 @@ class CheckpointCallback(CallbackBase):
         if super().__call__(iter, t, flow):
             flow.save_checkpoint(self.filename, write_mesh=self.write_mesh)
 
+
 class LogCallback(CallbackBase):
-    def __init__(self,
-            postprocess: Callable,
-            nvals,
-            interval: Optional[int] = 1,
-            filename: Optional[str] = None,
-            print_fmt: Optional[str] = None
-            ):
+    def __init__(
+        self,
+        postprocess: Callable,
+        nvals,
+        interval: Optional[int] = 1,
+        filename: Optional[str] = None,
+        print_fmt: Optional[str] = None,
+    ):
         super().__init__(interval=interval)
         self.postprocess = postprocess
         self.filename = filename
         self.print_fmt = print_fmt
-        self.data = np.zeros((1, nvals+1))
+        self.data = np.zeros((1, nvals + 1))
 
     def __call__(self, iter: int, t: float, flow: Tuple[fd.Function]):
         if super().__call__(iter, t, flow):
             new_data = np.array([t, *self.postprocess(flow)], ndmin=2)
-            if iter==0:
+            if iter == 0:
                 self.data[0, :] = new_data
             else:
                 self.data = np.append(self.data, new_data, axis=0)
@@ -68,18 +82,18 @@ class LogCallback(CallbackBase):
             if self.print_fmt is not None:
                 print(self.print_fmt.format(*new_data.ravel()))
 
+
 class SnapshotCallback(CallbackBase):
-    def __init__(self,
-            interval: Optional[int] = 1,
-            filename: Optional[str] = 'snapshots'
-        ):
+    def __init__(
+        self, interval: Optional[int] = 1, filename: Optional[str] = "snapshots"
+    ):
         """
         Save snapshots as checkpoints for modal analysis
 
         Note that this slows down the simulation
         """
         super().__init__(interval=interval)
-        self.h5 = fd.CheckpointFile(filename, 'w')
+        self.h5 = fd.CheckpointFile(filename, "w")
         self.snap_idx = 0
         self.saved_mesh = False
 
@@ -95,13 +109,12 @@ class SnapshotCallback(CallbackBase):
         logging.log(logging.DEBUG, "Closing snapshot CheckpointFile")
         self.h5.close()
 
+
 class GenericCallback(CallbackBase):
-    def __init__(self,
-            callback: Callable,
-            interval: Optional[int] = 1):
+    def __init__(self, callback: Callable, interval: Optional[int] = 1):
         super().__init__(interval=interval)
         self.cb = callback
-    
+
     def __call__(self, iter: int, t: float, flow: FlowConfig):
         if super().__call__(iter, t, flow):
             self.cb(iter, t, flow)

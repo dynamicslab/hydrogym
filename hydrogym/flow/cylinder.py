@@ -1,28 +1,27 @@
-import numpy as np
 import firedrake as fd
-from firedrake import dx, ds
-from firedrake.petsc import PETSc
-
+import numpy as np
 import ufl
-from ufl import sym, curl, dot, inner, nabla_grad, div, cos, sin, atan_2
-
-import gym
+from firedrake import ds, dx
+from ufl import atan_2, cos, dot, inner, sin
 
 from ..core import FlowConfig
 
+
 class Cylinder(FlowConfig):
-    from .mesh.cylinder import INLET, FREESTREAM, OUTLET, CYLINDER
-    MAX_CONTROL = 0.5*np.pi
+    from .mesh.cylinder import CYLINDER, FREESTREAM, INLET, OUTLET
+
+    MAX_CONTROL = 0.5 * np.pi
     # TAU = 0.556  # Time constant for controller damping (0.1*vortex shedding period)
     TAU = 0.0556  # Time constant for controller damping (0.01*vortex shedding period)
 
-    def __init__(self, Re=100, mesh='medium', h5_file=None):
+    def __init__(self, Re=100, mesh="medium", h5_file=None):
         """
         controller(t, y) -> omega
         y = (CL, CD)
         omega = scalar rotation rate
         """
         from .mesh.cylinder import load_mesh
+
         mesh = load_mesh(name=mesh)
 
         self.Re = fd.Constant(ufl.real(Re))
@@ -31,9 +30,11 @@ class Cylinder(FlowConfig):
 
         # First set up tangential boundaries to cylinder
         self.omega = fd.Constant(0.0)
-        theta = atan_2(ufl.real(self.y), ufl.real(self.x)) # Angle from origin
+        theta = atan_2(ufl.real(self.y), ufl.real(self.x))  # Angle from origin
         rad = fd.Constant(0.5)
-        self.u_tan = ufl.as_tensor((rad*sin(theta), rad*cos(theta)))  # Tangential velocity
+        self.u_tan = ufl.as_tensor(
+            (rad * sin(theta), rad * cos(theta))
+        )  # Tangential velocity
 
         self.reset_control()
 
@@ -43,25 +44,30 @@ class Cylinder(FlowConfig):
         # Define actual boundary conditions
         self.bcu_inflow = fd.DirichletBC(V, self.U_inf, self.INLET)
         # self.bcu_freestream = fd.DirichletBC(V, self.U_inf, self.FREESTREAM)
-        self.bcu_freestream = fd.DirichletBC(V.sub(1), fd.Constant(0.0), self.FREESTREAM)  # Symmetry BCs
-        self.bcu_cylinder = fd.DirichletBC(V, fd.interpolate(fd.Constant((0, 0)), V), self.CYLINDER)
+        self.bcu_freestream = fd.DirichletBC(
+            V.sub(1), fd.Constant(0.0), self.FREESTREAM
+        )  # Symmetry BCs
+        self.bcu_cylinder = fd.DirichletBC(
+            V, fd.interpolate(fd.Constant((0, 0)), V), self.CYLINDER
+        )
         self.bcp_outflow = fd.DirichletBC(Q, fd.Constant(0), self.OUTLET)
 
         self.update_rotation()
 
     def collect_bcu(self):
         return [self.bcu_inflow, self.bcu_freestream, self.bcu_cylinder]
-    
+
     def collect_bcp(self):
         return [self.bcp_outflow]
 
     def compute_forces(self, q=None):
-        if q is None: q = self.q
+        if q is None:
+            q = self.q
         (u, p) = fd.split(q)
         # Lift/drag on cylinder
         force = -dot(self.sigma(u, p), self.n)
-        CL = fd.assemble(2*force[1]*ds(self.CYLINDER))
-        CD = fd.assemble(2*force[0]*ds(self.CYLINDER))
+        CL = fd.assemble(2 * force[1] * ds(self.CYLINDER))
+        CD = fd.assemble(2 * force[0] * ds(self.CYLINDER))
         return CL, CD
 
     def update_rotation(self):
@@ -69,9 +75,9 @@ class Cylinder(FlowConfig):
         #   otherwise, the control will be applied with self.init_bcs()
         #
         # TODO: Is this necessary, or could it be combined with `set_control()`?
-        if hasattr(self, 'bcu_cylinder'):
+        if hasattr(self, "bcu_cylinder"):
             self.bcu_cylinder._function_arg.assign(
-                fd.project(self.omega*self.u_tan, self.velocity_space)
+                fd.project(self.omega * self.u_tan, self.velocity_space)
             )
 
     def clamp(self, u):
@@ -87,10 +93,10 @@ class Cylinder(FlowConfig):
         A = self.linearize_dynamics(qB, adjoint=False)
         # M = self.mass_matrix()
         self.linearize_bcs()  # Linearize BCs first (sets freestream to zero)
-        self.set_control(1.0) # Now change the cylinder rotation
+        self.set_control(1.0)  # Now change the cylinder rotation
 
         (v, _) = fd.TestFunctions(self.mixed_space)
-        zero = fd.inner(fd.Constant((0, 0)), v)*fd.dx  # Zero RHS for linear form
+        zero = fd.inner(fd.Constant((0, 0)), v) * fd.dx  # Zero RHS for linear form
 
         f = fd.Function(self.mixed_space)
         fd.solve(A == zero, f, bcs=self.collect_bcs())
@@ -105,7 +111,8 @@ class Cylinder(FlowConfig):
         to change rotation rate for a steady-state solve, for instance, and is also used
         internally to compute the control matrix
         """
-        if omega is None: omega = 0.0
+        if omega is None:
+            omega = 0.0
         self.omega.assign(omega)
 
         # TODO: Limit max control in a differentiable way
@@ -134,7 +141,9 @@ class Cylinder(FlowConfig):
         # self.linearize_bcs() should have reset control, need to perturb it now
         eps = fd.Constant(1.0)
         self.set_control(eps)
-        B = fd.assemble(inner(fd.Constant((0, 0)), v)*dx, bcs=self.collect_bcs())  # As fd.Function
+        B = fd.assemble(
+            inner(fd.Constant((0, 0)), v) * dx, bcs=self.collect_bcs()
+        )  # As fd.Function
 
         self.reset_control()
         return [B]
