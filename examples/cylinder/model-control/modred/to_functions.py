@@ -1,19 +1,24 @@
 # Load snapshots as firedrake Functions and save as numpy arrays in individual files
 # Idea is to avoid PETSc's parallelization in favor of modred's for modal analysis
-from common import *
+import firedrake as fd
+import numpy as np
+from common import flow, output_dir, pod_file, pod_prefix
+
+import hydrogym as gym
+
 assert fd.COMM_WORLD.size == 1, "Run in serial"
 
 r = 8
 
 # flow.load_checkpoint(restart)
-with fd.CheckpointFile(pod_file, 'w') as file:
+with fd.CheckpointFile(pod_file, "w") as file:
     file.save_mesh(flow.mesh)
-    gym.utils.set_from_array(flow.q, np.load(f'{output_dir}/mean.npy'))
+    gym.utils.set_from_array(flow.q, np.load(f"{output_dir}/mean.npy"))
     file.save_function(flow.q, idx=0)
     for idx in range(r):
-        gym.utils.set_from_array(flow.q, np.load(f'{pod_prefix}{idx}.npy'))
+        gym.utils.set_from_array(flow.q, np.load(f"{pod_prefix}{idx}.npy"))
         print(flow.dot(flow.q, flow.q))
-        file.save_function(flow.q, idx=idx+1)
+        file.save_function(flow.q, idx=idx + 1)
 
 
 # # Check orthonormality
