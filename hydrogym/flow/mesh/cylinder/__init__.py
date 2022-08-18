@@ -1,8 +1,1 @@
-from .mesh import (
-    load_mesh,
-    FLUID,
-    INLET,
-    FREESTREAM,
-    OUTLET,
-    CYLINDER
-)
+from .mesh import CYLINDER, FLUID, FREESTREAM, INLET, OUTLET, load_mesh

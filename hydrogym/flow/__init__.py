@@ -1,5 +1,5 @@
 from . import mesh
+from .cavity import Cavity
 from .cylinder import Cylinder
 from .pinball import Pinball
-from .cavity import Cavity
 from .step import Step

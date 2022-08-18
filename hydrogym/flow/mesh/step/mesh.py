@@ -1,7 +1,8 @@
+import os
+
 from firedrake import Mesh
 
-import os
-mesh_dir = os.path.abspath(f'{__file__}/..')
+mesh_dir = os.path.abspath(f"{__file__}/..")
 
 FLUID = 1
 INLET = 2
@@ -10,5 +11,6 @@ OUTLET = 4
 WALL = 5
 CONTROL = 6
 
-def load_mesh(name='step'):
-    return Mesh(f'{mesh_dir}/{name}.msh', name='mesh')
+
+def load_mesh(name="step"):
+    return Mesh(f"{mesh_dir}/{name}.msh", name="mesh")
