@@ -2,6 +2,7 @@ from typing import Callable, Iterable, Optional, Tuple
 
 import firedrake as fd
 import numpy as np
+from scipy.optimize import fsolve
 import ufl
 from firedrake import ds, dx, lhs, logging, rhs
 from ufl import div, dot, inner, nabla_grad
@@ -284,6 +285,58 @@ class IPCS(TransientSolver):
                 B[:, i] = get_array(Bi)
             return A, B
 
+class Torque_IPCS(IPCS):
+    def __init__(self, flow: FlowConfig, dt: float, debug=False, **kwargs):
+        super().__init__(flow, dt, debug=False, **kwargs)
+        self.control = 0.0 # init with no torque on system
+        self.omega = [0.0] # Cylinder starts at rest
+        self.k_damping = 1/self.flow.TAU
+        self.I_cm = 0.006172 # Moment of inertia about CoM of a Plexiglass Cylinder with a 2 inch radius and spanning a half meter test section of a wind tunnel
+
+    def set_dampingConst(self, k_new):
+        self.k_damping = k_new
+        return
+
+    def get_momOfInertia(self):
+        return self.I_cm
+
+    def get_omega(self):
+        return self.omega
+
+    def back_euler_func(self, x):
+        return x + ((self.k_damping * x - self.control)/self.I_cm) * self.dt - self.omega
+
+    def update_velocity(self, torque):
+        """
+        Update BCS of cylinder to new angular velocity
+        """
+        self.omega = fsolve(self.back_euler_func, self.omega)
+        return
+
+    def step(self, iter, control=None):
+        # Step 1: Tentative velocity step
+        logging.log(logging.DEBUG, f"iter: {iter}, solving velocity predictor")
+        self.predictor.solve()
+        if control is not None:
+            self.control = control
+            self.update_velocity(control)
+            for (B, ctrl) in zip(self.B, self.omega):
+                Bu, _ = B.split()
+                self.u += Bu*ctrl
+        
+        logging.log(logging.DEBUG, f"Velocity predictor done, solving Poisson")
+        self.poisson.solve()
+        logging.log(logging.DEBUG, f"Poisson done, solving projection step")
+        self.projection.solve()
+        logging.log(logging.DEBUG, f"IPCS step finished")
+
+        # Update previous solution
+        self.u_n.assign(self.u)
+        self.p_n.assign(self.p)
+
+        self.t += self.dt
+
+        return self.flow
 
 class LinearizedIPCS(IPCS):
     def __init__(
