@@ -107,13 +107,20 @@ class Cavity(FlowConfig):
         self.reset_control()
         return [B]
 
-    def collect_observations(self, q=None):
+    def get_observations(self, q=None):
         """Integral of wall-normal shear stress (see Barbagallo et al, 2009)"""
         if q is None:
             q = self.q
         (u, p) = q.split()
         m = fd.assemble(-dot(grad(u[0]), self.n) * ds(self.SENSOR))
         return (m,)
+
+    def evaluate_objective(self, q=None):
+        if q is None:
+            q = self.q
+        (u, p) = q.split()
+        KE = 0.5 * fd.assemble(fd.inner(u, u) * fd.dx)
+        return KE
 
     # def solve_steady(self, **kwargs):
     #     if self.Re > 500:

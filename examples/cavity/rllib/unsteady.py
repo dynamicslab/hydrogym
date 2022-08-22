@@ -26,7 +26,7 @@ def log_postprocess(flow):
         .vector()
         .max()
     )
-    (m,) = flow.collect_observations()
+    (m,) = flow.get_observations()
     return [CFL, KE, m]
 
 

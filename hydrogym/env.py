@@ -35,9 +35,9 @@ class FlowEnv(gym.Env):
         t = self.iter * self.solver.dt
         for cb in self.callbacks:
             cb(self.iter, t, self.flow)
-        obs = self.flow.collect_observations()
+        obs = self.flow.get_observations()
 
-        reward = self.get_reward(obs)
+        reward = self.get_reward()
         done = self.check_complete()
         logging.log(
             logging.DEBUG, f"iter: {self.iter}\t reward: {reward}\t done: {done}"
@@ -54,8 +54,8 @@ class FlowEnv(gym.Env):
     def stack_observations(self, obs):
         return obs
 
-    def get_reward(self, obs):
-        return False
+    def get_reward(self):
+        return 1 / self.flow.evaluate_objective()
 
     def check_complete(self):
         return self.iter > self.max_steps
@@ -102,10 +102,6 @@ class CylEnv(FlowEnv):
             dtype=fd.utils.ScalarType,
         )
 
-    def get_reward(self, obs):
-        CL, CD = obs
-        return 1 / CD
-
     def render(self, mode="human", clim=None, levels=None, cmap="RdBu", **kwargs):
         if clim is None:
             clim = (-2, 2)
@@ -151,10 +147,6 @@ class PinballEnv(FlowEnv):
             shape=(1,),
             dtype=fd.utils.ScalarType,
         )
-
-    def get_reward(self, obs):
-        CD = obs[3:]
-        return 1 / sum(CD)
 
     def render(self, mode="human", clim=None, levels=None, cmap="RdBu", **kwargs):
         if clim is None:
@@ -203,9 +195,3 @@ class CavityEnv(FlowEnv):
             shape=(1,),
             dtype=fd.utils.ScalarType,
         )
-
-    def get_reward(self, obs):
-        # Observation in this case is the wall shear stress
-        # TODO: This should actually be related to perturbation KE/pressure oscillations
-        (m,) = obs
-        return 1 / m

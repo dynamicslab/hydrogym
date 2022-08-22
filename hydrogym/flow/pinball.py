@@ -148,6 +148,10 @@ class Pinball(FlowConfig):
     def num_controls(self):
         return 3
 
-    def collect_observations(self):
+    def get_observations(self):
         CL, CD = self.compute_forces()
         return [*CL, *CD]
+
+    def evaluate_objective(self, q=None):
+        CL, CD = self.compute_forces(q=q)
+        return sum(CD)

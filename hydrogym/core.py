@@ -178,7 +178,10 @@ class FlowConfig:
             sys = system_to_scipy(sys)
         return sys
 
-    def collect_observations(self):
+    def get_observations(self):
+        pass
+
+    def evaluate_objective(self, q=None):
         pass
 
     def set_control(self, u=None):

@@ -151,5 +151,9 @@ class Cylinder(FlowConfig):
     def num_controls(self):
         return 1
 
-    def collect_observations(self):
+    def get_observations(self):
         return self.compute_forces()
+
+    def evaluate_objective(self, q=None):
+        CL, CD = self.compute_forces(q=q)
+        return CD
