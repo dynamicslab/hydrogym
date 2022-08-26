@@ -124,6 +124,14 @@ class FlowConfig:
 
         return F
 
+    def shear_force(self, q=None):
+        if q is None: q = self.q
+        (u, p) = fd.split(q)
+        (v, s) = fd.TestFunctions(self.mixed_space)
+        nu = fd.Constant(1/ufl.real(self.Re))
+
+        return inner(nu*nabla_grad(u)*self.n, v)*ds
+
     def mass_matrix(self, backend="petsc"):
         (u, _) = fd.TrialFunctions(self.mixed_space)
         (v, _) = fd.TestFunctions(self.mixed_space)

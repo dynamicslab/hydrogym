@@ -2,7 +2,7 @@ import firedrake as fd
 import numpy as np
 import ufl
 from firedrake import ds, dx
-from ufl import atan_2, cos, dot, inner, sin
+from ufl import atan_2, cos, dot, inner, sin, sqrt, sign, as_vector
 
 from ..core import FlowConfig
 
@@ -69,6 +69,34 @@ class Cylinder(FlowConfig):
         CL = fd.assemble(2 * force[1] * ds(self.CYLINDER))
         CD = fd.assemble(2 * force[0] * ds(self.CYLINDER))
         return CL, CD
+
+    # get net shear force acting tangential to the surface of the cylinder
+    # Implementing the general case of the article below:
+    # http://www.homepages.ucl.ac.uk/~uceseug/Fluids2/Notes_Viscosity.pdf
+    def shear_force(self, q=None):
+        if q is None:
+            q = self.q
+        (u, p) = fd.split(q)
+        (v, s) = fd.TestFunctions(self.mixed_space)
+
+        # der of velocity wrt to the unit normal at the surface of the cylinder
+        # equivalent to directional derivative along normal:
+        # https://math.libretexts.org/Courses/University_of_California_Davis/UCD_Mat_21C%3A_Multivariate_Calculus/13%3A_Partial_Derivatives/13.5%3A_Directional_Derivatives_and_Gradient_Vectors#mjx-eqn-DD2v
+        du_dn = dot(self.epsilon(u), self.n)
+
+        # Get unit tangent vector
+        # pulled from https://fenics-shells.readthedocs.io/_/downloads/en/stable/pdf/
+        t = as_vector((-self.n[1], self.n[0]))
+
+        du_dn_t = (dot(du_dn, t)) * t
+
+        # get the sign from the tangential cmpnt
+        direction = sign(dot(du_dn, t))
+
+        return fd.assemble(
+            (direction / self.Re * sqrt(du_dn_t[0] ** 2 + du_dn_t[1] ** 2))
+            * ds(self.CYLINDER)
+        )
 
     def update_rotation(self):
         # If the boundary condition has already been defined, update it
