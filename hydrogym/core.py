@@ -7,10 +7,11 @@ from ufl import curl, div, dot, inner, nabla_grad, sym
 
 
 class FlowConfig:
-    def __init__(self, mesh, h5_file=None):
+    def __init__(self, mesh, Re, h5_file=None):
         self.mesh = mesh
         self.n = fd.FacetNormal(self.mesh)
         self.x, self.y = fd.SpatialCoordinate(self.mesh)
+        self.Re = fd.Constant(ufl.real(Re))
 
         # Set up Taylor-Hood elements
         self.velocity_space = fd.VectorFunctionSpace(mesh, "CG", 2)
@@ -25,6 +26,10 @@ class FlowConfig:
         if h5_file is not None:
             self.load_checkpoint(h5_file)
 
+    @property
+    def nu(self):
+        return fd.Constant(1 / ufl.real(self.Re))
+
     def save_checkpoint(self, h5_file, write_mesh=True, idx=None):
         with fd.CheckpointFile(h5_file, "w") as chk:
             if write_mesh:
@@ -35,7 +40,7 @@ class FlowConfig:
         with fd.CheckpointFile(h5_file, "r") as chk:
             if read_mesh:
                 mesh = chk.load_mesh("mesh")
-                FlowConfig.__init__(self, mesh)  # Reinitialize with new mesh
+                FlowConfig.__init__(self, mesh, self.Re)  # Reinitialize with new mesh
             else:
                 assert hasattr(self, "mesh")
             self.q.assign(chk.load_function(self.mesh, "q", idx=idx))
@@ -81,7 +86,11 @@ class FlowConfig:
 
     # Define stress tensor
     def sigma(self, u, p):
-        return 2 * (1 / self.Re) * self.epsilon(u) - p * fd.Identity(len(u))
+        return 2 * self.nu * self.epsilon(u) - p * fd.Identity(len(u))
+
+    @property
+    def body_force(self):
+        return fd.interpolate(fd.Constant((0.0, 0.0)), self.velocity_space)
 
     def solve_steady(self, solver_parameters={}, stabilization=None):
         self.init_bcs(mixed=True)
@@ -103,13 +112,12 @@ class FlowConfig:
             q = self.q
         (u, p) = fd.split(q)
         (v, s) = fd.TestFunctions(self.mixed_space)
-        nu = fd.Constant(1 / ufl.real(self.Re))
 
         F = (
             inner(dot(u, nabla_grad(u)), v) * dx
             + inner(self.sigma(u, p), self.epsilon(v)) * dx
             + inner(p * self.n, v) * ds
-            - inner(nu * nabla_grad(u) * self.n, v) * ds
+            - inner(self.nu * nabla_grad(u) * self.n, v) * ds
             + inner(div(u), s) * dx
         )
 
@@ -119,7 +127,7 @@ class FlowConfig:
                 return dot(U, nabla_grad(u)) - div(self.sigma(u, p))
 
             h = fd.CellSize(self.mesh)
-            tau = ((4.0 * dot(u, u) / h**2) + (4.0 * nu / h**2) ** 2) ** (-0.5)
+            tau = ((4.0 * dot(u, u) / h**2) + (4.0 * self.nu / h**2) ** 2) ** (-0.5)
             F += tau * inner(res(u, u, p), res(u, v, s)) * dx
 
         return F

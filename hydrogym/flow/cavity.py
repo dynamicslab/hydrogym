@@ -22,10 +22,9 @@ class Cavity(FlowConfig):
 
         mesh = load_mesh(name=mesh)
 
-        self.Re = fd.Constant(ufl.real(Re))
         self.U_inf = fd.Constant((1.0, 0.0))
 
-        super().__init__(mesh, h5_file=h5_file)
+        super().__init__(mesh, Re, h5_file=h5_file)
 
         self.control = fd.Constant(0.0)
         self.u_ctrl = ufl.as_tensor(
@@ -43,7 +42,10 @@ class Cavity(FlowConfig):
             V.sub(1), fd.Constant(0.0), self.FREESTREAM
         )
         self.bcu_noslip = fd.DirichletBC(
-            V, fd.interpolate(fd.Constant((0, 0)), V), self.WALL
+            # V, fd.interpolate(fd.Constant((0, 0)), V), (self.WALL, self.SENSOR)
+            V,
+            fd.interpolate(fd.Constant((0, 0)), V),
+            self.WALL,
         )
         self.bcu_slip = fd.DirichletBC(
             V.sub(1), fd.Constant(0.0), self.SLIP

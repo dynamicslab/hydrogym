@@ -65,7 +65,7 @@ class FlowEnv(gym.Env):
         self.flow.reset_control()
         self.solver.initialize_operators()
 
-        return self.flow.collect_observations()
+        return self.flow.get_observations()
 
     def render(self, mode="human"):
         pass

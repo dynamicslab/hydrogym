@@ -8,6 +8,7 @@ from ufl import div, dot, inner, nabla_grad
 
 # Typing
 from .core import FlowConfig
+from .utils import white_noise
 
 
 class TransientSolver:
@@ -49,16 +50,38 @@ class TransientSolver:
 
 
 class IPCS(TransientSolver):
-    def __init__(self, flow: FlowConfig, dt: float, debug=False, **kwargs):
+    def __init__(
+        self, flow: FlowConfig, dt: float, eta: float = 0.0, debug=False, **kwargs
+    ):
         super().__init__(flow, dt)
         self.debug = debug
-        self.f = fd.interpolate(fd.Constant((0.0, 0.0)), flow.velocity_space)
 
+        # Set up random forcing (if applicable)
         self.initialize_functions()
+        self.initialize_forcing(
+            eta=eta,
+            n_samples=kwargs.get("max_iter", int(1e8)),
+            cutoff=kwargs.get("noise_cutoff", 10 / flow.TAU),
+        )
         self.initialize_operators()
 
         self.B = flow.initialize_control()
         self.control = self.flow.get_control()
+
+    def initialize_forcing(self, eta, n_samples, cutoff):
+        logging.log(logging.INFO, f"Initializing forcing with amplitude {eta}")
+        self.f = self.flow.body_force
+        self.eta = fd.Constant(0.0)  # Current forcing amplitude
+
+        if eta > 0:
+            self.noise = eta * white_noise(
+                n_samples=n_samples,
+                fs=1 / self.dt,
+                cutoff=cutoff,
+            )
+        else:
+            self.noise = np.zeros(n_samples)
+        self.noise_idx = 0
 
     def initialize_functions(self):
         flow = self.flow
@@ -84,7 +107,6 @@ class IPCS(TransientSolver):
         # Setup forms
         flow = self.flow
         k = fd.Constant(self.dt)
-        nu = fd.Constant(1 / flow.Re)
 
         flow.init_bcs(mixed=False)
 
@@ -105,8 +127,8 @@ class IPCS(TransientSolver):
             + dot(dot(self.u_n, nabla_grad(self.u_n)), v) * dx
             + inner(flow.sigma(U, self.p_n), flow.epsilon(v)) * dx
             + dot(self.p_n * flow.n, v) * ds
-            - dot(nu * nabla_grad(U) * flow.n, v) * ds
-            - dot(self.f, v) * dx
+            - dot(flow.nu * nabla_grad(U) * flow.n, v) * ds
+            - dot(self.eta * self.f, v) * dx
         )
         vel_prob = fd.LinearVariationalProblem(
             lhs(F1), rhs(F1), self.u, bcs=flow.collect_bcu()
@@ -157,6 +179,9 @@ class IPCS(TransientSolver):
             # u.assign(v)  # WORKS
 
     def step(self, iter, control=None):
+        # Update perturbations (if applicable)
+        self.eta.assign(self.noise[self.noise_idx])
+
         # Step 1: Tentative velocity step
         logging.log(logging.DEBUG, f"iter: {iter}, solving velocity predictor")
         self.predictor.solve()
@@ -178,6 +203,8 @@ class IPCS(TransientSolver):
         self.p_n.assign(self.p)
 
         self.t += self.dt
+        self.noise_idx += 1
+        assert self.noise_idx < len(self.noise), "Not enough noise samples generated"
 
         return self.flow
 
@@ -191,7 +218,6 @@ class IPCS(TransientSolver):
 
         flow = self.flow
         k = fd.Constant(self.dt)
-        nu = fd.Constant(1 / flow.Re)
 
         if qB is None:
             uB = flow.u.copy(deepcopy=True)
@@ -211,7 +237,7 @@ class IPCS(TransientSolver):
             + dot(dot(self.u_n, nabla_grad(uB)), v) * dx
             + inner(flow.sigma(U, self.p_n), flow.epsilon(v)) * dx
             + dot(self.p_n * flow.n, v) * ds
-            - dot(nu * nabla_grad(U) * flow.n, v) * ds
+            - dot(flow.nu * nabla_grad(U) * flow.n, v) * ds
         )
         a1 = lhs(F1)
         L1 = rhs(F1)
@@ -297,7 +323,6 @@ class LinearizedIPCS(IPCS):
 
         flow = self.flow
         k = fd.Constant(self.dt)
-        nu = fd.Constant(1 / flow.Re)
 
         uB = self.qB.split()[0].copy(deepcopy=True)
 
@@ -314,7 +339,7 @@ class LinearizedIPCS(IPCS):
             + dot(dot(self.u_n, nabla_grad(uB)), v) * dx
             + inner(flow.sigma(U, self.p_n), flow.epsilon(v)) * dx
             + dot(self.p_n * flow.n, v) * ds
-            - dot(nu * nabla_grad(U) * flow.n, v) * ds
+            - dot(flow.nu * nabla_grad(U) * flow.n, v) * ds
             - inner(self.f, v) * dx
         )
         a1 = lhs(F1)
@@ -442,7 +467,6 @@ class IPCS_diff(TransientSolver):
         # Setup forms
         flow = self.flow
         k = fd.Constant(self.dt)
-        nu = fd.Constant(1 / flow.Re)
 
         flow.init_bcs(mixed=False)
         V, Q = flow.function_spaces(mixed=False)
@@ -474,7 +498,7 @@ class IPCS_diff(TransientSolver):
             + dot(dot(self.u_n, nabla_grad(self.u_n)), v) * dx
             + inner(flow.sigma(U, self.p_n), flow.epsilon(v)) * dx
             + dot(self.p_n * flow.n, v) * ds
-            - dot(nu * nabla_grad(U) * flow.n, v) * ds
+            - dot(flow.nu * nabla_grad(U) * flow.n, v) * ds
         )
         self.a1 = fd.lhs(F1)
         self.L1 = fd.rhs(F1)

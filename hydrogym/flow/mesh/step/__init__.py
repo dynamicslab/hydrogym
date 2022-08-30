@@ -1,1 +1,1 @@
-from .mesh import CONTROL, FLUID, FREESTREAM, INLET, OUTLET, WALL, load_mesh
+from .mesh import CONTROL, FLUID, INLET, OUTLET, SENSOR, WALL, load_mesh
