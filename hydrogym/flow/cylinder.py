@@ -32,9 +32,9 @@ class Cylinder(FlowConfig):
         # First set up tangential boundaries to cylinder
         self.omega = fd.Constant(0.0)
         theta = atan_2(ufl.real(self.y), ufl.real(self.x))  # Angle from origin
-        rad = fd.Constant(0.5)
+        self.rad = fd.Constant(0.5)
         self.u_tan = ufl.as_tensor(
-            (rad * sin(theta), rad * cos(theta))
+            (self.rad * sin(theta), self.rad * cos(theta))
         )  # Tangential velocity
 
         self.reset_control()

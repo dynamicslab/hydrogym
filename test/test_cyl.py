@@ -282,10 +282,6 @@ def test_convergenceVariable():
     print("finished @" + str(time.time() - time_start))
 
 
-def solve_omega(torque, I_cm, t):
-    return torque * t / I_cm
-
-
 def test_shearForce0():
     flow = gym.flow.Cylinder(Re=100, mesh="coarse")
     flow.set_control(fd.Constant(0.0))

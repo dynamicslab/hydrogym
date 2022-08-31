@@ -55,6 +55,7 @@ class IPCS(TransientSolver):
         flow: FlowConfig,
         dt: float,
         control_method="direct",
+        account_for_skin_friction=False,
         debug=False,
         **kwargs,
     ):
@@ -73,6 +74,7 @@ class IPCS(TransientSolver):
         self.inertia = flow.get_inertia()
         self.state = flow.get_state()
         self.control_method = control_method
+        self.account_for_skin_friction = account_for_skin_friction
 
     def initialize_functions(self):
         flow = self.flow
@@ -180,12 +182,17 @@ class IPCS(TransientSolver):
 
                 omega_t[i+1] can be solved for directly in order to avoid using a costly root solver
                 """
+                if self.account_for_skin_friction:
+                    F_s = self.flow.shear_force()
+                    tau_s = F_s * float(self.flow.rad)
+                else:
+                    tau_s = 0
                 next_state = []
                 for (state, ctrl, I_cm, k_damping) in zip(
-                    self.state, control, self.I_cm, self.k_damping
+                    self.state, control, self.inertia, self.controller_damping_coeff
                 ):
                     next_state.append(
-                        (state + ctrl * self.dt / I_cm)
+                        (state + (ctrl + tau_s) * self.dt / I_cm)
                         / (1 + k_damping * self.dt / I_cm)
                     )
                 self.state = next_state
