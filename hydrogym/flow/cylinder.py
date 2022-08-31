@@ -20,6 +20,7 @@ class Cylinder(FlowConfig):
         y = (CL, CD)
         omega = scalar rotation rate
         """
+        self.name = "Cylinder"
         from .mesh.cylinder import load_mesh
 
         mesh = load_mesh(name=mesh)

@@ -15,6 +15,7 @@ class Pinball(FlowConfig):
 
     def __init__(self, Re=30, mesh="fine", h5_file=None):
         """ """
+        self.name = "Pinball"
         from .mesh.pinball import load_mesh
 
         mesh = load_mesh(name=mesh)

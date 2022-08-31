@@ -18,6 +18,7 @@ class Cavity(FlowConfig):
         y = (CL, CD)
         omega = scalar rotation rate
         """
+        self.name = "Cavity"
         from .mesh.cavity import load_mesh
 
         mesh = load_mesh(name=mesh)
