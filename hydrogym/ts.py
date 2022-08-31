@@ -50,7 +50,14 @@ class TransientSolver:
 
 
 class IPCS(TransientSolver):
-    def __init__(self, flow: FlowConfig, dt: float, debug=False, **kwargs):
+    def __init__(
+        self,
+        flow: FlowConfig,
+        dt: float,
+        control_method="direct",
+        debug=False,
+        **kwargs,
+    ):
         super().__init__(flow, dt)
         self.debug = debug
         self.f = fd.interpolate(fd.Constant((0.0, 0.0)), flow.velocity_space)
@@ -60,6 +67,21 @@ class IPCS(TransientSolver):
 
         self.B = flow.initialize_control()
         self.control = self.flow.get_control()
+
+        ###
+        self.k_damping = [1 / self.flow.TAU]
+        # I_cm = MR**2 / 2
+
+        # Is everything normalized wrt mass and D or are we just kind of choosing that?
+        # Is there a reason we are normalizing by the diameter instead of by the radius? (R is what's used in the equation)
+        # Should I just normalize by D**2
+
+        self.I_cm = [
+            0.006172
+        ]  # Moment of inertia about CoM of a Plexiglass Cylinder with a 2 inch radius and spanning a half meter test section of a wind tunnel
+
+        self.state = [0.0]
+        self.control_method = control_method
 
     def initialize_functions(self):
         flow = self.flow
@@ -144,18 +166,50 @@ class IPCS(TransientSolver):
             proj_prob, solver_parameters={"ksp_type": "cg", "pc_type": "sor"}
         )
 
-    def update_controls(self, control):
-        """Add a damping factor to the controller response
+    def set_damping(self, k_new):
+        if not isinstance(k_new, list):
+            k_new = [k_new]
+        self.k_damping = k_new
+        return
 
-        If actual control is u and input is v, effectively
-            du/dt = (1/tau)*(v - u)
-        """
-        for (u, v) in zip(self.control, control):
-            # u += (self.dt/self.flow.TAU)*(v - u)
-            # u.assign( u + (self.dt/self.flow.TAU)*(v - u) )
-            u = u + (self.dt / self.flow.TAU) * (v - u)
-            # u = fd.interpolate(u + (self.dt/self.flow.TAU)*(v - u), u.function_space() )
-            # u.assign(v)  # WORKS
+    def get_inertia(self):
+        return self.I_cm
+
+    def get_state(self):
+        return self.state
+
+    def update_controls(self, control):
+        if self.control_method == "indirect":
+            """
+            Update BCS of cylinder to new angular velocity using implicit euler solver according to diff eqn:
+
+            omega_t[i+1] = omega_t[i] + (d_omega/dt)_t[i+1] * dt
+                        = omega_t[i] + (control_t[i+1] - k_damping*omega_t[i+1])/I_cm * dt
+
+            omega_t[i+1] can be solved for directly in order to avoid using a costly root solver
+            """
+            # TODO: check if the environment is cylinder
+            # or
+            # use more general terms besides k_damping & I_cm
+            this_state = []
+            for (state, ctrl, I_cm, k_damping) in zip(
+                self.state, control, self.I_cm, self.k_damping
+            ):
+                this_state.append(
+                    (state + ctrl * self.dt / I_cm) / (1 + k_damping * self.dt / I_cm)
+                )
+            self.state = this_state
+            # TODO: raise "not supported" error if trying indirect control of state
+        else:
+            """Add a damping factor to the controller response
+
+            If actual control is u and input is v, effectively
+                du/dt = (1/tau)*(v - u)
+            """
+            for (u, v) in zip(self.control, control):
+                u = u + (self.dt / self.flow.TAU) * (v - u)
+            # for direct control of the state, the input is the desired state
+            self.state = self.control
 
     def step(self, iter, control=None):
         # Step 1: Tentative velocity step
@@ -164,15 +218,15 @@ class IPCS(TransientSolver):
         if control is not None:
             control = self.enlist_controls(control)
             self.update_controls(control)
-            for (B, ctrl) in zip(self.B, self.control):
+            for (B, ctrl) in zip(self.B, self.state):
                 Bu, _ = B.split()
                 self.u += Bu * ctrl
 
-        logging.log(logging.DEBUG, "Velocity predictor done, solving Poisson")
+        logging.log(logging.DEBUG, f"Velocity predictor done, solving Poisson")
         self.poisson.solve()
-        logging.log(logging.DEBUG, "Poisson done, solving projection step")
+        logging.log(logging.DEBUG, f"Poisson done, solving projection step")
         self.projection.solve()
-        logging.log(logging.DEBUG, "IPCS step finished")
+        logging.log(logging.DEBUG, f"IPCS step finished")
 
         # Update previous solution
         self.u_n.assign(self.u)
@@ -187,8 +241,11 @@ class IPCS(TransientSolver):
         Return a LinearOperator that can act on numpy arrays (pulled from utils.get_array)
         """
         from scipy.sparse.linalg import LinearOperator
-
-        from .utils import get_array, linalg, set_from_array
+        from .utils import (
+            get_array,
+            set_from_array,
+            linalg,
+        )  # Convert function to/from array
 
         flow = self.flow
         k = fd.Constant(self.dt)
@@ -285,58 +342,6 @@ class IPCS(TransientSolver):
                 B[:, i] = get_array(Bi)
             return A, B
 
-class Torque_IPCS(IPCS):
-    def __init__(self, flow: FlowConfig, dt: float, debug=False, **kwargs):
-        super().__init__(flow, dt, debug=False, **kwargs)
-        self.control = 0.0 # init with no torque on system
-        self.omega = [0.0] # Cylinder starts at rest
-        self.k_damping = 1/self.flow.TAU
-        self.I_cm = 0.006172 # Moment of inertia about CoM of a Plexiglass Cylinder with a 2 inch radius and spanning a half meter test section of a wind tunnel
-
-    def set_dampingConst(self, k_new):
-        self.k_damping = k_new
-        return
-
-    def get_momOfInertia(self):
-        return self.I_cm
-
-    def get_omega(self):
-        return self.omega
-
-    def back_euler_func(self, x):
-        return x + ((self.k_damping * x - self.control)/self.I_cm) * self.dt - self.omega
-
-    def update_velocity(self, torque):
-        """
-        Update BCS of cylinder to new angular velocity
-        """
-        self.omega = fsolve(self.back_euler_func, self.omega)
-        return
-
-    def step(self, iter, control=None):
-        # Step 1: Tentative velocity step
-        logging.log(logging.DEBUG, f"iter: {iter}, solving velocity predictor")
-        self.predictor.solve()
-        if control is not None:
-            self.control = control
-            self.update_velocity(control)
-            for (B, ctrl) in zip(self.B, self.omega):
-                Bu, _ = B.split()
-                self.u += Bu*ctrl
-        
-        logging.log(logging.DEBUG, f"Velocity predictor done, solving Poisson")
-        self.poisson.solve()
-        logging.log(logging.DEBUG, f"Poisson done, solving projection step")
-        self.projection.solve()
-        logging.log(logging.DEBUG, f"IPCS step finished")
-
-        # Update previous solution
-        self.u_n.assign(self.u)
-        self.p_n.assign(self.p)
-
-        self.t += self.dt
-
-        return self.flow
 
 class LinearizedIPCS(IPCS):
     def __init__(
