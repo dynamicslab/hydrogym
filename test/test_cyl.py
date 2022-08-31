@@ -282,5 +282,42 @@ def test_convergenceVariable():
     print("finished @" + str(time.time() - time_start))
 
 
+def solve_omega(torque, I_cm, t):
+    return torque * t / I_cm
+
+
+def test_shearForce0():
+    flow = gym.flow.Cylinder(Re=100, mesh="coarse")
+    flow.set_control(fd.Constant(0.0))
+    flow.solve_steady()
+    shear_force = flow.shear_force()
+
+    assert np.isclose(shear_force, 0.0, rtol=1e-3, atol=1e-3)
+
+    print(shear_force)
+
+
+def test_shearForcePos():
+    flow = gym.flow.Cylinder(Re=100, mesh="coarse")
+    flow.set_control(fd.Constant(0.1))
+    flow.solve_steady()
+    shear_force = flow.shear_force()
+
+    assert shear_force < 0
+
+    print(shear_force)
+
+
+def test_shearForceNeg():
+    flow = gym.flow.Cylinder(Re=100, mesh="coarse")
+    flow.set_control(fd.Constant(-0.1))
+    flow.solve_steady()
+    shear_force = flow.shear_force()
+
+    assert shear_force > 0
+
+    print(shear_force)
+
+
 if __name__ == "__main__":
     test_import()

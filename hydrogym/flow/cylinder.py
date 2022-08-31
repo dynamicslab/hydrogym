@@ -46,7 +46,7 @@ class Cylinder(FlowConfig):
         # Should I just normalize by D**2
         self.I_cm = [0.006172]
         # ^^^ Moment of inertia about CoM of a Plexiglass Cylinder with a 2 inch radius and spanning a half meter test section of a wind tunnel
-        self.controller_damping_coeff = [1 / self.flow.TAU]
+        self.controller_damping_coeff = [1 / self.TAU]
 
     def init_bcs(self, mixed=False):
         V, Q = self.function_spaces(mixed=mixed)
@@ -199,4 +199,4 @@ class Cylinder(FlowConfig):
         return self.controller_damping_coeff
 
     def get_state(self):
-        return [self.omega]
+        return [float(self.omega)]
