@@ -66,21 +66,12 @@ class IPCS(TransientSolver):
         self.initialize_operators()
 
         self.B = flow.initialize_control()
-        self.control = self.flow.get_control()
+        self.control = flow.get_control()
 
-        ###
-        self.k_damping = [1 / self.flow.TAU]
-        # I_cm = MR**2 / 2
-
-        # Is everything normalized wrt mass and D or are we just kind of choosing that?
-        # Is there a reason we are normalizing by the diameter instead of by the radius? (R is what's used in the equation)
-        # Should I just normalize by D**2
-
-        self.I_cm = [
-            0.006172
-        ]  # Moment of inertia about CoM of a Plexiglass Cylinder with a 2 inch radius and spanning a half meter test section of a wind tunnel
-
-        self.state = [0.0]
+        # Quantities important for "indirect" flow control
+        self.controller_damping_coeff = flow.get_damping()
+        self.inertia = flow.get_inertia()
+        self.state = flow.get_state()
         self.control_method = control_method
 
     def initialize_functions(self):
@@ -169,37 +160,52 @@ class IPCS(TransientSolver):
     def set_damping(self, k_new):
         if not isinstance(k_new, list):
             k_new = [k_new]
-        self.k_damping = k_new
+        self.controller_damping_coeff = k_new
         return
 
     def get_inertia(self):
-        return self.I_cm
+        return self.inertia
 
     def get_state(self):
         return self.state
 
     def update_controls(self, control):
         if self.control_method == "indirect":
-            """
-            Update BCS of cylinder to new angular velocity using implicit euler solver according to diff eqn:
+            if self.flow.name == "Cylinder":
+                """
+                Update BCS of cylinder to new angular velocity using implicit euler solver according to diff eqn:
 
-            omega_t[i+1] = omega_t[i] + (d_omega/dt)_t[i+1] * dt
-                        = omega_t[i] + (control_t[i+1] - k_damping*omega_t[i+1])/I_cm * dt
+                omega_t[i+1] = omega_t[i] + (d_omega/dt)_t[i+1] * dt
+                            = omega_t[i] + (control_t[i+1] - k_damping*omega_t[i+1])/I_cm * dt
 
-            omega_t[i+1] can be solved for directly in order to avoid using a costly root solver
-            """
-            # TODO: check if the environment is cylinder
-            # or
-            # use more general terms besides k_damping & I_cm
-            this_state = []
-            for (state, ctrl, I_cm, k_damping) in zip(
-                self.state, control, self.I_cm, self.k_damping
-            ):
-                this_state.append(
-                    (state + ctrl * self.dt / I_cm) / (1 + k_damping * self.dt / I_cm)
+                omega_t[i+1] can be solved for directly in order to avoid using a costly root solver
+                """
+                next_state = []
+                for (state, ctrl, I_cm, k_damping) in zip(
+                    self.state, control, self.I_cm, self.k_damping
+                ):
+                    next_state.append(
+                        (state + ctrl * self.dt / I_cm)
+                        / (1 + k_damping * self.dt / I_cm)
+                    )
+                self.state = next_state
+
+            elif self.flow.name == "Pinball":
+                raise Exception(
+                    "Indirect control of Pinball environment is not yet supported"
                 )
-            self.state = this_state
-            # TODO: raise "not supported" error if trying indirect control of state
+            elif self.flow.name == "Cavity":
+                raise Exception(
+                    "Indirect control of Cavity environment is not yet supported"
+                )
+            elif self.flow.name == "Step":
+                raise Exception(
+                    "Indirect control of Step environment is not yet supported"
+                )
+            else:
+                raise Exception(
+                    "Unknown Environment Selected (indirect control is not yet supported)"
+                )
         else:
             """Add a damping factor to the controller response
 

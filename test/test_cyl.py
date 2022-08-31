@@ -280,3 +280,7 @@ def test_convergenceVariable():
     assert isordered(errors)
 
     print("finished @" + str(time.time() - time_start))
+
+
+if __name__ == "__main__":
+    test_import()

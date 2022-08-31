@@ -39,6 +39,15 @@ class Cylinder(FlowConfig):
 
         self.reset_control()
 
+        # I_cm = MR**2 / 2
+
+        # Is everything normalized wrt mass and D or are we just kind of choosing that?
+        # Is there a reason we are normalizing by the diameter instead of by the radius? (R is what's used in the equation)
+        # Should I just normalize by D**2
+        self.I_cm = [0.006172]
+        # ^^^ Moment of inertia about CoM of a Plexiglass Cylinder with a 2 inch radius and spanning a half meter test section of a wind tunnel
+        self.controller_damping_coeff = [1 / self.flow.TAU]
+
     def init_bcs(self, mixed=False):
         V, Q = self.function_spaces(mixed=mixed)
 
@@ -182,3 +191,12 @@ class Cylinder(FlowConfig):
 
     def collect_observations(self):
         return self.compute_forces()
+
+    def get_inertia(self):
+        return self.I_cm
+
+    def get_damping(self):
+        return self.controller_damping_coeff
+
+    def get_state(self):
+        return [self.omega]

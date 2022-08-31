@@ -196,6 +196,15 @@ class FlowConfig:
         u2, _ = q2.split()
         return fd.assemble(inner(u1, u2) * dx)
 
+    def get_inertia(self):
+        pass
+
+    def get_damping(self):
+        pass
+
+    def get_state(self):
+        pass
+
 
 class CallbackBase:
     def __init__(self, interval: Optional[int] = 1):
