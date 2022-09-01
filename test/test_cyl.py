@@ -170,7 +170,7 @@ def test_no_damp():
 
 def test_fixed_torque():
     print("")
-    print("Is Reasonable")
+    print("Fixed Torque Convergence")
     time_start = time.time()
     flow = gym.flow.Cylinder(mesh="coarse")
     dt = 1e-3
@@ -185,7 +185,6 @@ def test_fixed_torque():
     for iter in range(num_steps):
         flow = solver.step(iter, control=torque)
 
-    # damped solved is ~ 3 order of magnitude less than the undamped system, seems high...
     print(flow.get_ctrl_state())
 
     assert np.isclose(flow.get_ctrl_state(), 2.0)
@@ -205,7 +204,7 @@ def isordered(arr):
 # sin function feeding into the controller
 def test_convergence_test_varying_torque():
     print("")
-    print("Convergence Variable")
+    print("Convergence Test with Varying Torque Commands")
     time_start = time.time()
     # larger dt to compensate for longer tf
     dt_list = [1e-2, 5e-3, 2.5e-3, 1e-3]
