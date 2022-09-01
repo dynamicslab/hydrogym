@@ -4,16 +4,19 @@ import hydrogym as gym
 import numpy as np
 import pyadjoint
 
+
 def test_import():
-    flow = gym.flow.Pinball(mesh='coarse')
+    flow = gym.flow.Pinball(mesh="coarse")
     return flow
+
 
 def test_import2():
-    flow = gym.flow.Pinball(mesh='fine')
+    flow = gym.flow.Pinball(mesh="fine")
     return flow
 
+
 def test_steady(tol=1e-2):
-    flow = gym.flow.Pinball(Re=30, mesh='coarse')
+    flow = gym.flow.Pinball(Re=30, mesh="coarse")
     flow.solve_steady()
 
     CL_target = (0.0, 0.520, -0.517)  # Slight asymmetry in mesh
@@ -21,11 +24,12 @@ def test_steady(tol=1e-2):
 
     CL, CD = flow.compute_forces()
     for i in range(len(CL)):
-        assert(abs(CL[i] - CL_target[i]) < tol)
-        assert(abs(CD[i] - CD_target[i]) < tol)
+        assert abs(CL[i] - CL_target[i]) < tol
+        assert abs(CD[i] - CD_target[i]) < tol
+
 
 def test_rotation(tol=1e-2):
-    flow = gym.flow.Pinball(Re=30, mesh='coarse')
+    flow = gym.flow.Pinball(Re=30, mesh="coarse")
     flow.set_control((0.5, 0.5, 0.5))
     flow.solve_steady()
 
@@ -34,22 +38,24 @@ def test_rotation(tol=1e-2):
 
     CL, CD = flow.compute_forces()
     for i in range(len(CL)):
-        assert(abs(CL[i] - CL_target[i]) < tol)
-        assert(abs(CD[i] - CD_target[i]) < tol)
+        assert abs(CL[i] - CL_target[i]) < tol
+        assert abs(CD[i] - CD_target[i]) < tol
+
 
 def test_unsteady():
-    flow = gym.flow.Pinball(mesh='coarse')
+    flow = gym.flow.Pinball(mesh="coarse")
     dt = 1e-2
-    gym.ts.integrate(flow, t_span=(0, 10*dt), dt=dt)
-    
+    gym.ts.integrate(flow, t_span=(0, 10 * dt), dt=dt)
+
 
 def test_control():
-    flow = gym.flow.Pinball(mesh='coarse')
+    flow = gym.flow.Pinball(mesh="coarse")
     dt = 1e-2
 
     # Simple opposition control on lift
     def feedback_ctrl(y, K=None):
-        if K is None: K = -0.1*np.ones((3, 3)) # [Inputs x outputs]
+        if K is None:
+            K = -0.1 * np.ones((3, 3))  # [Inputs x outputs]
         CL, CD = y
         return K @ CL
 
@@ -60,13 +66,15 @@ def test_control():
         y = flow.collect_observations()
         flow = solver.step(iter, control=feedback_ctrl(y))
 
+
 def test_env():
-    env_config={'Re': 30, 'mesh': 'coarse'}
+    env_config = {"Re": 30, "mesh": "coarse"}
     env = gym.env.PinballEnv(env_config)
 
     # Simple opposition control on lift
     def feedback_ctrl(y, K=None):
-        if K is None: K = -0.1*np.ones((3, 3)) # [Inputs x outputs]
+        if K is None:
+            K = -0.1 * np.ones((3, 3))  # [Inputs x outputs]
         CL, CD = y
         return K @ CL
 
@@ -76,8 +84,9 @@ def test_env():
         print(y)
         u = feedback_ctrl(y)
 
+
 def test_grad():
-    flow = gym.flow.Pinball(Re=30, mesh='coarse')
+    flow = gym.flow.Pinball(Re=30, mesh="coarse")
     n_cyl = len(flow.CYLINDER)
 
     # Option 1: List of AdjFloats
@@ -87,7 +96,7 @@ def test_grad():
     # omega = [fd.Constant(0.1*i) for i in range(n_cyl)]
     # control = [fda.Control(omg) for omg in omega]
 
-    # Option 3: Overloaded array with numpy_adjoint 
+    # Option 3: Overloaded array with numpy_adjoint
     omega = pyadjoint.create_overloaded_object(np.zeros(n_cyl))
     control = fda.Control(omega)
 
@@ -97,25 +106,30 @@ def test_grad():
 
     dJdu = fda.compute_gradient(sum(CD), control)
 
+
 def test_env_grad():
     # Simple feedback control on lift
     def feedback_ctrl(y, K):
         CL, CD = y
         return K @ CL
-        
-    env_config={'Re': 30, 'differentiable': True, 'mesh': 'coarse'}
+
+    env_config = {"Re": 30, "differentiable": True, "mesh": "coarse"}
     env = gym.env.PinballEnv(env_config)
     y = env.reset()
     n_cyl = 3
-    K = pyadjoint.create_overloaded_object( -0.1*np.ones((n_cyl, n_cyl)) )
+    K = pyadjoint.create_overloaded_object(-0.1 * np.ones((n_cyl, n_cyl)))
     J = 0.0
     for _ in range(10):
         y, reward, done, info = env.step(feedback_ctrl(y, K))
         J = J - reward
     dJdm = fda.compute_gradient(J, fda.Control(K))
 
+
 # def test_lti():
 #     flow = gym.flow.Cylinder()
 #     qB = flow.solve_steady()
 #     A, M = flow.linearize(qB, backend='scipy')
 #     A_adj, M = flow.linearize(qB, adjoint=True, backend='scipy')
+
+if __name__ == "__main__":
+    test_import()

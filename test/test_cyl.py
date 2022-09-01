@@ -145,9 +145,9 @@ def test_no_damp():
     print("")
     print("No Damp")
     time_start = time.time()
-    flow = gym.flow.Cylinder(mesh="coarse")
+    flow = gym.flow.Cylinder(mesh="coarse", control_method="indirect")
     dt = 1e-2
-    solver = gym.ts.IPCS(flow, dt=dt, control_method="indirect")
+    solver = gym.ts.IPCS(flow, dt=dt)
     flow.set_damping(0.0)
 
     # Apply steady torque for 0.1 seconds... should match analytical solution!
@@ -172,9 +172,9 @@ def test_fixed_torque():
     print("")
     print("Fixed Torque Convergence")
     time_start = time.time()
-    flow = gym.flow.Cylinder(mesh="coarse")
+    flow = gym.flow.Cylinder(mesh="coarse", control_method="indirect")
     dt = 1e-3
-    solver = gym.ts.IPCS(flow, dt=dt, control_method="indirect")
+    solver = gym.ts.IPCS(flow, dt=dt)
 
     # Apply steady torque of 35.971223 Nm, should converge to ~2 rad/sec with k_damp = 1/TAU
     tf = 1e-2  # sec
@@ -210,8 +210,8 @@ def test_convergence_test_varying_torque():
     dt_list = [1e-2, 5e-3, 2.5e-3, 1e-3]
     dt_baseline = 5e-4
 
-    flow = gym.flow.Cylinder(mesh="coarse")
-    solver = gym.ts.IPCS(flow, dt=dt_baseline, control_method="indirect")
+    flow = gym.flow.Cylinder(mesh="coarse", control_method="indirect")
+    solver = gym.ts.IPCS(flow, dt=dt_baseline)
     tf = 1e-1  # sec
     torque = 50  # Nm
 
@@ -228,8 +228,8 @@ def test_convergence_test_varying_torque():
     errors = []
 
     for dt in dt_list:
-        flow = gym.flow.Cylinder(mesh="coarse")
-        solver = gym.ts.IPCS(flow, dt=dt, control_method="indirect")
+        flow = gym.flow.Cylinder(mesh="coarse", control_method="indirect")
+        solver = gym.ts.IPCS(flow, dt=dt)
 
         num_steps = int(tf / dt)
         for iter in range(num_steps):

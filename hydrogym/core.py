@@ -202,10 +202,8 @@ class FlowConfig:
             "Indirect control is not yet implemented/supported in this Flow Environment"
         )
 
-    def update_state(self):
-        raise Exception(
-            "Indirect control is not yet implemented/supported in this Flow Environment"
-        )
+    def update_state(self, control, dt):
+        raise Exception("State update not yet implemented in this environment")
 
     def num_controls(self):
         return 0

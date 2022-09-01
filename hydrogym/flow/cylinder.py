@@ -15,7 +15,12 @@ class Cylinder(FlowConfig):
     TAU = 0.0556  # Time constant for controller damping (0.01*vortex shedding period)
 
     def __init__(
-        self, Re=100, mesh="medium", h5_file=None, account_for_skin_friction=False
+        self,
+        Re=100,
+        mesh="medium",
+        h5_file=None,
+        control_method="direct",
+        account_for_skin_friction=False,
     ):
         """
         controller(t, y) -> omega
@@ -23,6 +28,7 @@ class Cylinder(FlowConfig):
         omega = scalar rotation rate
         """
         self.account_for_skin_friction = account_for_skin_friction
+        self.control_method = control_method
         from .mesh.cylinder import load_mesh
 
         mesh = load_mesh(name=mesh)
@@ -211,25 +217,32 @@ class Cylinder(FlowConfig):
         return self.ctrl_state
 
     def update_state(self, control, dt):
-        """
-        Update BCS of cylinder to new angular velocity using implicit euler solver according to diff eqn:
+        if self.control_method == "indirect":
+            """
+            Update BCS of cylinder to new angular velocity using implicit euler solver according to diff eqn:
 
-        omega_t[i+1] = omega_t[i] + (d_omega/dt)_t[i+1] * dt
-                    = omega_t[i] + (control_t[i+1] - k_damping*omega_t[i+1] + shear_torque)/I_cm * dt
+            omega_t[i+1] = omega_t[i] + (d_omega/dt)_t[i+1] * dt
+                        = omega_t[i] + (control_t[i+1] - k_damping*omega_t[i+1] + shear_torque)/I_cm * dt
 
-        omega_t[i+1] can be solved for directly in order to avoid using a costly root solver
-        """
-        if self.account_for_skin_friction:
-            F_s = self.shear_force()
-            tau_s = F_s * float(self.rad)
+            omega_t[i+1] can be solved for directly in order to avoid using a costly root solver
+            """
+            if self.account_for_skin_friction:
+                F_s = self.shear_force()
+                tau_s = F_s * float(self.rad)
+            else:
+                tau_s = 0
+
+            for (state, ctrl, I_cm, k_damp) in zip(
+                self.ctrl_state, control, self.I_cm, self.controller_damping_coeff
+            ):
+                self.ctrl_state = [
+                    (state + (ctrl + tau_s) * dt / I_cm) / (1 + k_damp * dt / I_cm)
+                ]
         else:
-            tau_s = 0
+            """Add a damping factor to the controller response
 
-        for (state, ctrl, I_cm, k_damp) in zip(
-            self.ctrl_state, control, self.I_cm, self.controller_damping_coeff
-        ):
-            self.ctrl_state = [
-                (state + (ctrl + tau_s) * dt / I_cm) / (1 + k_damp * dt / I_cm)
-            ]
-
-        return
+            If actual control is u and input is v, effectively
+                du/dt = (1/tau)*(v - u)
+            """
+            for (u, v) in zip(self.ctrl_state, control):
+                u = u + (dt / self.TAU) * (v - u)

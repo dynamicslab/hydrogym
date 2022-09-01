@@ -13,9 +13,9 @@ class Pinball(FlowConfig):
     MAX_CONTROL = 0.5 * np.pi
     TAU = 1.0
 
-    def __init__(self, Re=30, mesh="fine", h5_file=None):
+    def __init__(self, Re=30, mesh="fine", h5_file=None, control_method="direct"):
         """ """
-        self.name = "Pinball"
+        self.control_method = control_method
         from .mesh.pinball import load_mesh
 
         mesh = load_mesh(name=mesh)
@@ -25,6 +25,8 @@ class Pinball(FlowConfig):
         super().__init__(mesh, h5_file=h5_file)
 
         self.omega = [fd.Constant(0.0) for _ in range(len(self.CYLINDER))]
+
+        self.ctrl_state = [float(x) for x in self.omega]
 
         # First set up tangential boundaries for each cylinder
         self.rad = fd.Constant(self.rad)
@@ -151,3 +153,15 @@ class Pinball(FlowConfig):
 
     def collect_observations(self):
         return self.compute_forces()
+
+    def update_state(self, control, dt):
+        if self.control_method == "indirect":
+            raise Exception("Indirect Control not yet implemented for this environment")
+        else:
+            """Add a damping factor to the controller response
+
+            If actual control is u and input is v, effectively
+                du/dt = (1/tau)*(v - u)
+            """
+            for (u, v) in zip(self.ctrl_state, control):
+                u = u + (dt / self.TAU) * (v - u)

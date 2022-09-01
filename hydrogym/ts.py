@@ -54,7 +54,6 @@ class IPCS(TransientSolver):
         self,
         flow: FlowConfig,
         dt: float,
-        control_method="direct",
         debug=False,
         **kwargs,
     ):
@@ -67,9 +66,6 @@ class IPCS(TransientSolver):
 
         self.B = flow.initialize_control()
         self.control = flow.get_control()
-
-        # Quantities important for "indirect" flow control
-        self.control_method = control_method
 
     def initialize_functions(self):
         flow = self.flow
@@ -154,29 +150,13 @@ class IPCS(TransientSolver):
             proj_prob, solver_parameters={"ksp_type": "cg", "pc_type": "sor"}
         )
 
-    def update_controls(self, control):
-        if self.control_method == "indirect":
-            # Update state
-            self.flow.update_state(control, self.dt)
-
-        else:
-            """Add a damping factor to the controller response
-
-            If actual control is u and input is v, effectively
-                du/dt = (1/tau)*(v - u)
-            """
-            for (u, v) in zip(self.control, control):
-                u = u + (self.dt / self.flow.TAU) * (v - u)
-            # for direct control of the state, the input is the desired state
-            self.state = self.control
-
     def step(self, iter, control=None):
         # Step 1: Tentative velocity step
         logging.log(logging.DEBUG, f"iter: {iter}, solving velocity predictor")
         self.predictor.solve()
         if control is not None:
             control = self.enlist_controls(control)
-            self.update_controls(control)
+            self.flow.update_state(control, self.dt)
             for (B, ctrl) in zip(self.B, self.flow.ctrl_state):
                 Bu, _ = B.split()
                 self.u += Bu * ctrl
