@@ -1,9 +1,10 @@
-from typing import Optional
-
 import firedrake as fd
+from firedrake import dx, ds
+
 import ufl
-from firedrake import ds, dx
-from ufl import curl, div, dot, inner, nabla_grad, sym
+from ufl import dot, inner, grad, nabla_grad, div, sym, curl
+
+from typing import Optional
 
 
 class FlowConfig:
@@ -115,9 +116,7 @@ class FlowConfig:
 
         if stabilization == "gls":
             # Galerkin least-squares stabilization (see Tezduyar, 1991)
-            def res(U, u, p):
-                return dot(U, nabla_grad(u)) - div(self.sigma(u, p))
-
+            res = lambda U, u, p: dot(U, nabla_grad(u)) - div(self.sigma(u, p))
             h = fd.CellSize(self.mesh)
             tau = ((4.0 * dot(u, u) / h**2) + (4.0 * nu / h**2) ** 2) ** (-0.5)
             F += tau * inner(res(u, u, p), res(u, v, s)) * dx
@@ -188,14 +187,6 @@ class FlowConfig:
     def reset_control(self):
         pass
 
-    def num_controls(self):
-        return 0
-
-    def dot(self, q1, q2):
-        u1, _ = q1.split()
-        u2, _ = q2.split()
-        return fd.assemble(inner(u1, u2) * dx)
-
     def get_inertia(self):
         pass
 
@@ -204,6 +195,19 @@ class FlowConfig:
 
     def get_state(self):
         pass
+
+    def update_state(self):
+        raise Exception(
+            "Indirect control is not yet implemented in this Flow Environment"
+        )
+
+    def num_controls(self):
+        return 0
+
+    def dot(self, q1, q2):
+        u1, _ = q1.split()
+        u2, _ = q2.split()
+        return fd.assemble(inner(u1, u2) * dx)
 
 
 class CallbackBase:

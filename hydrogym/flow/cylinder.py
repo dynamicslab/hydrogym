@@ -14,13 +14,15 @@ class Cylinder(FlowConfig):
     # TAU = 0.556  # Time constant for controller damping (0.1*vortex shedding period)
     TAU = 0.0556  # Time constant for controller damping (0.01*vortex shedding period)
 
-    def __init__(self, Re=100, mesh="medium", h5_file=None):
+    def __init__(
+        self, Re=100, mesh="medium", h5_file=None, account_for_skin_friction=False
+    ):
         """
         controller(t, y) -> omega
         y = (CL, CD)
         omega = scalar rotation rate
         """
-        self.name = "Cylinder"
+        self.account_for_skin_friction = account_for_skin_friction
         from .mesh.cylinder import load_mesh
 
         mesh = load_mesh(name=mesh)
@@ -44,6 +46,7 @@ class Cylinder(FlowConfig):
         # Is everything normalized wrt mass and D or are we just kind of choosing that?
         # Is there a reason we are normalizing by the diameter instead of by the radius? (R is what's used in the equation)
         # Should I just normalize by D**2
+        self.ctrl_state = [float(self.omega)]
         self.I_cm = [0.006172]
         # ^^^ Moment of inertia about CoM of a Plexiglass Cylinder with a 2 inch radius and spanning a half meter test section of a wind tunnel
         self.controller_damping_coeff = [1 / self.TAU]
@@ -192,6 +195,12 @@ class Cylinder(FlowConfig):
     def collect_observations(self):
         return self.compute_forces()
 
+    def set_damping(self, k_new):
+        if not isinstance(k_new, list):
+            k_new = [k_new]
+        self.controller_damping_coeff = k_new
+        return
+
     def get_inertia(self):
         return self.I_cm
 
@@ -199,4 +208,30 @@ class Cylinder(FlowConfig):
         return self.controller_damping_coeff
 
     def get_state(self):
-        return [float(self.omega)]
+        return self.ctrl_state
+
+    def update_state(self, control, dt):
+        """
+        Update BCS of cylinder to new angular velocity using implicit euler solver according to diff eqn:
+
+        omega_t[i+1] = omega_t[i] + (d_omega/dt)_t[i+1] * dt
+                    = omega_t[i] + (control_t[i+1] - k_damping*omega_t[i+1] + shear_torque)/I_cm * dt
+
+        omega_t[i+1] can be solved for directly in order to avoid using a costly root solver
+        """
+        if self.account_for_skin_friction:
+            F_s = self.shear_force()
+            tau_s = F_s * float(self.rad)
+        else:
+            tau_s = 0
+
+        next_state = []
+
+        for (state, ctrl, I_cm, k_damp) in zip(
+            self.ctrl_state, control, self.I_cm, self.controller_damping_coeff
+        ):
+            self.ctrl_state = [
+                (state + (ctrl + tau_s) * dt / I_cm) / (1 + k_damp * dt / I_cm)
+            ]
+
+        return

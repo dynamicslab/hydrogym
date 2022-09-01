@@ -55,7 +55,6 @@ class IPCS(TransientSolver):
         flow: FlowConfig,
         dt: float,
         control_method="direct",
-        account_for_skin_friction=False,
         debug=False,
         **kwargs,
     ):
@@ -70,11 +69,7 @@ class IPCS(TransientSolver):
         self.control = flow.get_control()
 
         # Quantities important for "indirect" flow control
-        self.controller_damping_coeff = flow.get_damping()
-        self.inertia = flow.get_inertia()
-        self.state = flow.get_state()
         self.control_method = control_method
-        self.account_for_skin_friction = account_for_skin_friction
 
     def initialize_functions(self):
         flow = self.flow
@@ -159,60 +154,11 @@ class IPCS(TransientSolver):
             proj_prob, solver_parameters={"ksp_type": "cg", "pc_type": "sor"}
         )
 
-    def set_damping(self, k_new):
-        if not isinstance(k_new, list):
-            k_new = [k_new]
-        self.controller_damping_coeff = k_new
-        return
-
-    def get_inertia(self):
-        return self.inertia
-
-    def get_state(self):
-        return self.state
-
     def update_controls(self, control):
         if self.control_method == "indirect":
-            if self.flow.name == "Cylinder":
-                """
-                Update BCS of cylinder to new angular velocity using implicit euler solver according to diff eqn:
+            # Update state
+            self.flow.update_state(control, self.dt)
 
-                omega_t[i+1] = omega_t[i] + (d_omega/dt)_t[i+1] * dt
-                            = omega_t[i] + (control_t[i+1] - k_damping*omega_t[i+1])/I_cm * dt
-
-                omega_t[i+1] can be solved for directly in order to avoid using a costly root solver
-                """
-                if self.account_for_skin_friction:
-                    F_s = self.flow.shear_force()
-                    tau_s = F_s * float(self.flow.rad)
-                else:
-                    tau_s = 0
-                next_state = []
-                for (state, ctrl, I_cm, k_damping) in zip(
-                    self.state, control, self.inertia, self.controller_damping_coeff
-                ):
-                    next_state.append(
-                        (state + (ctrl + tau_s) * self.dt / I_cm)
-                        / (1 + k_damping * self.dt / I_cm)
-                    )
-                self.state = next_state
-
-            elif self.flow.name == "Pinball":
-                raise Exception(
-                    "Indirect control of Pinball environment is not yet supported"
-                )
-            elif self.flow.name == "Cavity":
-                raise Exception(
-                    "Indirect control of Cavity environment is not yet supported"
-                )
-            elif self.flow.name == "Step":
-                raise Exception(
-                    "Indirect control of Step environment is not yet supported"
-                )
-            else:
-                raise Exception(
-                    "Unknown Environment Selected (indirect control is not yet supported)"
-                )
         else:
             """Add a damping factor to the controller response
 
@@ -231,7 +177,7 @@ class IPCS(TransientSolver):
         if control is not None:
             control = self.enlist_controls(control)
             self.update_controls(control)
-            for (B, ctrl) in zip(self.B, self.state):
+            for (B, ctrl) in zip(self.B, self.flow.ctrl_state):
                 Bu, _ = B.split()
                 self.u += Bu * ctrl
 

@@ -141,19 +141,19 @@ def solve_omega(torque, I_cm, t):
     return answer
 
 
-def test_noDamp():
+def test_no_damp():
     print("")
     print("No Damp")
     time_start = time.time()
     flow = gym.flow.Cylinder(mesh="coarse")
     dt = 1e-2
     solver = gym.ts.IPCS(flow, dt=dt, control_method="indirect")
-    solver.set_damping(0.0)
+    flow.set_damping(0.0)
 
     # Apply steady torque for 0.1 seconds... should match analytical solution!
     tf = 0.1  # sec
     torque = 0.05  # Nm
-    I_cm = solver.get_inertia()
+    I_cm = flow.get_inertia()
     analytical_sol = solve_omega(torque, I_cm, tf)
 
     # Run sim
@@ -161,14 +161,14 @@ def test_noDamp():
     for iter in range(num_steps):
         flow = solver.step(iter, control=torque)
 
-    print(solver.get_state(), analytical_sol)
+    print(flow.get_state(), analytical_sol)
 
-    assert np.isclose(solver.get_state(), analytical_sol)
+    assert np.isclose(flow.get_state(), analytical_sol)
 
     print("finished @" + str(time.time() - time_start))
 
 
-def test_isReasonable():
+def test_fixed_torque():
     print("")
     print("Is Reasonable")
     time_start = time.time()
@@ -186,9 +186,9 @@ def test_isReasonable():
         flow = solver.step(iter, control=torque)
 
     # damped solved is ~ 3 order of magnitude less than the undamped system, seems high...
-    print(solver.get_state())
+    print(flow.get_state())
 
-    assert np.isclose(solver.get_state(), 2.0)
+    assert np.isclose(flow.get_state(), 2.0)
 
     print("finished @" + str(time.time() - time_start))
 
@@ -202,45 +202,8 @@ def isordered(arr):
         return True
 
 
-def test_convergenceSteady():
-    print("")
-    print("Convergence Steady")
-    time_start = time.time()
-    dt_list = [5e-3, 2.5e-3, 1e-3, 5e-4, 2.5e-4]
-    dt_baseline = 1e-4
-
-    flow = gym.flow.Cylinder(mesh="coarse")
-    solver = gym.ts.IPCS(flow, dt=dt_baseline, control_method="indirect")
-    tf = 1e-2  # sec
-    torque = 50  # Nm
-
-    # First establish a baseline
-    num_steps = int(tf / dt_baseline)
-    for iter in range(num_steps):
-        flow = solver.step(iter, control=torque)
-
-    baseline_solution = solver.get_state()[0]
-
-    solutions = []
-    errors = []
-
-    for dt in dt_list:
-        flow = gym.flow.Cylinder(mesh="coarse")
-        solver = gym.ts.IPCS(flow, dt=dt, control_method="indirect")
-        num_steps = int(tf / dt)
-        for iter in range(num_steps):
-            flow = solver.step(iter, control=torque)
-        solutions.append(solver.get_state()[0])
-        errors.append(np.abs(solutions[-1] - baseline_solution))
-
-    # assert solutions converge to baseline solution
-    assert isordered(errors)
-
-    print("finished @" + str(time.time() - time_start))
-
-
 # sin function feeding into the controller
-def test_convergenceVariable():
+def test_convergence_test_varying_torque():
     print("")
     print("Convergence Variable")
     time_start = time.time()
@@ -260,7 +223,7 @@ def test_convergenceVariable():
         input = np.sin(47.12 * dt_baseline)
         flow = solver.step(iter, control=input)
 
-    baseline_solution = solver.get_state()[0]
+    baseline_solution = flow.get_state()[0]
 
     solutions = []
     errors = []
@@ -273,46 +236,13 @@ def test_convergenceVariable():
         for iter in range(num_steps):
             input = np.sin(47.2 * dt)
             flow = solver.step(iter, control=input)
-        solutions.append(solver.get_state()[0])
+        solutions.append(flow.get_state()[0])
         errors.append(np.abs(solutions[-1] - baseline_solution))
 
     # assert solutions converge to baseline solution
     assert isordered(errors)
 
     print("finished @" + str(time.time() - time_start))
-
-
-def test_shearForce0():
-    flow = gym.flow.Cylinder(Re=100, mesh="coarse")
-    flow.set_control(fd.Constant(0.0))
-    flow.solve_steady()
-    shear_force = flow.shear_force()
-
-    assert np.isclose(shear_force, 0.0, rtol=1e-3, atol=1e-3)
-
-    print(shear_force)
-
-
-def test_shearForcePos():
-    flow = gym.flow.Cylinder(Re=100, mesh="coarse")
-    flow.set_control(fd.Constant(0.1))
-    flow.solve_steady()
-    shear_force = flow.shear_force()
-
-    assert shear_force < 0
-
-    print(shear_force)
-
-
-def test_shearForceNeg():
-    flow = gym.flow.Cylinder(Re=100, mesh="coarse")
-    flow.set_control(fd.Constant(-0.1))
-    flow.solve_steady()
-    shear_force = flow.shear_force()
-
-    assert shear_force > 0
-
-    print(shear_force)
 
 
 if __name__ == "__main__":
