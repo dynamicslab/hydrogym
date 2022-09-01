@@ -188,17 +188,23 @@ class FlowConfig:
         pass
 
     def get_inertia(self):
-        pass
+        raise Exception(
+            "Indirect control is not yet implemented/supported in this Flow Environment"
+        )
 
     def get_damping(self):
-        pass
+        raise Exception(
+            "Indirect control is not yet implemented/supported in this Flow Environment"
+        )
 
-    def get_state(self):
-        pass
+    def get_ctrl_state(self):
+        raise Exception(
+            "Indirect control is not yet implemented/supported in this Flow Environment"
+        )
 
     def update_state(self):
         raise Exception(
-            "Indirect control is not yet implemented in this Flow Environment"
+            "Indirect control is not yet implemented/supported in this Flow Environment"
         )
 
     def num_controls(self):

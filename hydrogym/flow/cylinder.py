@@ -207,7 +207,7 @@ class Cylinder(FlowConfig):
     def get_damping(self):
         return self.controller_damping_coeff
 
-    def get_state(self):
+    def get_ctrl_state(self):
         return self.ctrl_state
 
     def update_state(self, control, dt):
@@ -224,8 +224,6 @@ class Cylinder(FlowConfig):
             tau_s = F_s * float(self.rad)
         else:
             tau_s = 0
-
-        next_state = []
 
         for (state, ctrl, I_cm, k_damp) in zip(
             self.ctrl_state, control, self.I_cm, self.controller_damping_coeff

@@ -161,9 +161,9 @@ def test_no_damp():
     for iter in range(num_steps):
         flow = solver.step(iter, control=torque)
 
-    print(flow.get_state(), analytical_sol)
+    print(flow.get_ctrl_state(), analytical_sol)
 
-    assert np.isclose(flow.get_state(), analytical_sol)
+    assert np.isclose(flow.get_ctrl_state(), analytical_sol)
 
     print("finished @" + str(time.time() - time_start))
 
@@ -186,9 +186,9 @@ def test_fixed_torque():
         flow = solver.step(iter, control=torque)
 
     # damped solved is ~ 3 order of magnitude less than the undamped system, seems high...
-    print(flow.get_state())
+    print(flow.get_ctrl_state())
 
-    assert np.isclose(flow.get_state(), 2.0)
+    assert np.isclose(flow.get_ctrl_state(), 2.0)
 
     print("finished @" + str(time.time() - time_start))
 
@@ -223,7 +223,7 @@ def test_convergence_test_varying_torque():
         input = np.sin(47.12 * dt_baseline)
         flow = solver.step(iter, control=input)
 
-    baseline_solution = flow.get_state()[0]
+    baseline_solution = flow.get_ctrl_state()[0]
 
     solutions = []
     errors = []
@@ -236,7 +236,7 @@ def test_convergence_test_varying_torque():
         for iter in range(num_steps):
             input = np.sin(47.2 * dt)
             flow = solver.step(iter, control=input)
-        solutions.append(flow.get_state()[0])
+        solutions.append(flow.get_ctrl_state()[0])
         errors.append(np.abs(solutions[-1] - baseline_solution))
 
     # assert solutions converge to baseline solution
