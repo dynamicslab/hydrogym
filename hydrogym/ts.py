@@ -61,7 +61,7 @@ class IPCS(TransientSolver):
         self.initialize_forcing(
             eta=eta,
             n_samples=kwargs.get("max_iter", int(1e8)),
-            cutoff=kwargs.get("noise_cutoff", 10 / flow.TAU),
+            cutoff=kwargs.get("noise_cutoff", 0.01 / flow.TAU),
         )
         self.initialize_operators()
 
