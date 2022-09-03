@@ -35,18 +35,27 @@ class FlowEnv(gym.Env):
         t = self.iter * self.solver.dt
         for cb in self.callbacks:
             cb(self.iter, t, self.flow)
-        obs = self.flow.collect_observations()
+        obs = self.flow.get_observations()
 
-        reward = self.get_reward(obs)
+        reward = self.get_reward()
         done = self.check_complete()
         logging.log(
             logging.DEBUG, f"iter: {self.iter}\t reward: {reward}\t done: {done}"
         )
         info = {}
+
+        obs = self.stack_observations(obs)
+
+        # PETSc.Sys.Print(obs)
         return obs, reward, done, info
 
-    def get_reward(self, obs):
-        return False
+    # TODO: Use this to allow for arbitrary returns from collect_observations
+    #  That are then converted to a list/tuple/ndarray here
+    def stack_observations(self, obs):
+        return obs
+
+    def get_reward(self):
+        return 1 / self.flow.evaluate_objective()
 
     def check_complete(self):
         return self.iter > self.max_steps
@@ -56,7 +65,7 @@ class FlowEnv(gym.Env):
         self.flow.reset_control()
         self.solver.initialize_operators()
 
-        return self.flow.collect_observations()
+        return self.flow.get_observations()
 
     def render(self, mode="human"):
         pass
@@ -92,10 +101,6 @@ class CylEnv(FlowEnv):
             shape=(1,),
             dtype=fd.utils.ScalarType,
         )
-
-    def get_reward(self, obs):
-        CL, CD = obs
-        return 1 / CD
 
     def render(self, mode="human", clim=None, levels=None, cmap="RdBu", **kwargs):
         if clim is None:
@@ -133,9 +138,15 @@ class PinballEnv(FlowEnv):
         env_config["solver"] = IPCS(env_config["flow"], dt=env_config.get("dt", 1e-2))
         super().__init__(env_config)
 
-    def get_reward(self, obs):
-        CL, CD = obs
-        return -sum(CD)
+        self.observation_space = gym.spaces.Box(
+            low=-np.inf, high=np.inf, shape=(6,), dtype=fd.utils.ScalarType
+        )
+        self.action_space = gym.spaces.Box(
+            low=-self.flow.MAX_CONTROL,
+            high=self.flow.MAX_CONTROL,
+            shape=(1,),
+            dtype=fd.utils.ScalarType,
+        )
 
     def render(self, mode="human", clim=None, levels=None, cmap="RdBu", **kwargs):
         if clim is None:
@@ -176,7 +187,7 @@ class CavityEnv(FlowEnv):
         super().__init__(env_config)
 
         self.observation_space = gym.spaces.Box(
-            low=-np.inf, high=np.inf, shape=(2,), dtype=fd.utils.ScalarType
+            low=-np.inf, high=np.inf, shape=(1,), dtype=fd.utils.ScalarType
         )
         self.action_space = gym.spaces.Box(
             low=-self.flow.MAX_CONTROL,
@@ -185,6 +196,36 @@ class CavityEnv(FlowEnv):
             dtype=fd.utils.ScalarType,
         )
 
-    def get_reward(self, obs):
-        # Observation in this case is the wall shear stress
-        return 1 / obs
+
+class StepEnv(FlowEnv):
+    def __init__(self, env_config: dict):
+        from .flow import Step
+
+        if env_config.get("differentiable"):
+            from .ts import IPCS_diff as IPCS
+        else:
+            from .ts import IPCS
+
+        env_config["flow"] = Step(
+            h5_file=env_config.get("checkpoint", None),
+            Re=env_config.get("Re", 600),
+            mesh=env_config.get("mesh", "fine"),
+        )
+
+        # TODO: Add config for inlet forcing
+        env_config["solver"] = IPCS(
+            env_config["flow"],
+            dt=env_config.get("dt", 1e-3),
+            eta=1.0,
+        )
+        super().__init__(env_config)
+
+        self.observation_space = gym.spaces.Box(
+            low=-np.inf, high=np.inf, shape=(1,), dtype=fd.utils.ScalarType
+        )
+        self.action_space = gym.spaces.Box(
+            low=-self.flow.MAX_CONTROL,
+            high=self.flow.MAX_CONTROL,
+            shape=(1,),
+            dtype=fd.utils.ScalarType,
+        )

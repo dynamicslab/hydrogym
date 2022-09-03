@@ -22,10 +22,9 @@ class Cavity(FlowConfig):
 
         mesh = load_mesh(name=mesh)
 
-        self.Re = fd.Constant(ufl.real(Re))
         self.U_inf = fd.Constant((1.0, 0.0))
 
-        super().__init__(mesh, h5_file=h5_file)
+        super().__init__(mesh, Re, h5_file=h5_file)
 
         self.control = fd.Constant(0.0)
         self.u_ctrl = ufl.as_tensor(
@@ -43,7 +42,10 @@ class Cavity(FlowConfig):
             V.sub(1), fd.Constant(0.0), self.FREESTREAM
         )
         self.bcu_noslip = fd.DirichletBC(
-            V, fd.interpolate(fd.Constant((0, 0)), V), self.WALL
+            # V, fd.interpolate(fd.Constant((0, 0)), V), (self.WALL, self.SENSOR)
+            V,
+            fd.interpolate(fd.Constant((0, 0)), V),
+            self.WALL,
         )
         self.bcu_slip = fd.DirichletBC(
             V.sub(1), fd.Constant(0.0), self.SLIP
@@ -107,12 +109,20 @@ class Cavity(FlowConfig):
         self.reset_control()
         return [B]
 
-    def collect_observations(self, q=None):
+    def get_observations(self, q=None):
         """Integral of wall-normal shear stress (see Barbagallo et al, 2009)"""
         if q is None:
             q = self.q
         (u, p) = q.split()
-        return fd.assemble(-dot(grad(u[0]), self.n) * ds(self.SENSOR))
+        m = fd.assemble(-dot(grad(u[0]), self.n) * ds(self.SENSOR))
+        return (m,)
+
+    def evaluate_objective(self, q=None):
+        if q is None:
+            q = self.q
+        (u, p) = q.split()
+        KE = 0.5 * fd.assemble(fd.inner(u, u) * fd.dx)
+        return KE
 
     # def solve_steady(self, **kwargs):
     #     if self.Re > 500:

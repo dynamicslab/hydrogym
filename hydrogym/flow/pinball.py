@@ -19,9 +19,8 @@ class Pinball(FlowConfig):
 
         mesh = load_mesh(name=mesh)
 
-        self.Re = fd.Constant(ufl.real(Re))
         self.U_inf = fd.Constant((1.0, 0.0))
-        super().__init__(mesh, h5_file=h5_file)
+        super().__init__(mesh, Re, h5_file=h5_file)
 
         self.omega = [fd.Constant(0.0) for _ in range(len(self.CYLINDER))]
 
@@ -148,5 +147,10 @@ class Pinball(FlowConfig):
     def num_controls(self):
         return 3
 
-    def collect_observations(self):
-        return self.compute_forces()
+    def get_observations(self):
+        CL, CD = self.compute_forces()
+        return [*CL, *CD]
+
+    def evaluate_objective(self, q=None):
+        CL, CD = self.compute_forces(q=q)
+        return sum(CD)
