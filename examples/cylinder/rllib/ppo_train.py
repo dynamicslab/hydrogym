@@ -28,7 +28,7 @@ if __name__ == "__main__":
 
     # Set up the printing callback
     log = hydrogym.io.LogCallback(
-        postprocess=lambda flow: flow.collect_observations(),
+        postprocess=lambda flow: flow.get_observations(),
         nvals=2,
         interval=1,
         print_fmt="t: {0:0.2f},\t\t CL: {1:0.3f},\t\t CD: {2:0.03f}",
