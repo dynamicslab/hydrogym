@@ -63,6 +63,7 @@ class FlowEnv(gym.Env):
     def reset(self) -> Union[ObsType, Tuple[ObsType, dict]]:
         self.flow.q.assign(self.q0)
         self.flow.reset_control()
+        self.iter = 0
         self.solver.initialize_operators()
 
         return self.flow.get_observations()
