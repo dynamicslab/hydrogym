@@ -10,6 +10,7 @@ class Step(FlowConfig):
     MAX_CONTROL = 0.1  # Arbitrary... should tune this
     # TODO: Stability analysis for step (and resolvent)
     TAU = 0.005  # Time constant for controller damping (0.01*instability frequency)
+    # BASE_KE = 2.4833
 
     from .mesh.step import CONTROL, INLET, OUTLET, SENSOR, WALL
 

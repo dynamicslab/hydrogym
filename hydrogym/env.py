@@ -195,3 +195,31 @@ class CavityEnv(FlowEnv):
             shape=(1,),
             dtype=fd.utils.ScalarType,
         )
+
+
+class StepEnv(FlowEnv):
+    def __init__(self, env_config: dict):
+        from .flow import Step
+
+        if env_config.get("differentiable"):
+            from .ts import IPCS_diff as IPCS
+        else:
+            from .ts import IPCS
+
+        env_config["flow"] = Step(
+            h5_file=env_config.get("checkpoint", None),
+            Re=env_config.get("Re", 600),
+            mesh=env_config.get("mesh", "fine"),
+        )
+        env_config["solver"] = IPCS(env_config["flow"], dt=env_config.get("dt", 1e-3))
+        super().__init__(env_config)
+
+        self.observation_space = gym.spaces.Box(
+            low=-np.inf, high=np.inf, shape=(1,), dtype=fd.utils.ScalarType
+        )
+        self.action_space = gym.spaces.Box(
+            low=-self.flow.MAX_CONTROL,
+            high=self.flow.MAX_CONTROL,
+            shape=(1,),
+            dtype=fd.utils.ScalarType,
+        )

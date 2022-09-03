@@ -47,13 +47,14 @@ solver_parameters = {"snes_monitor": None}
 
 Re_init = [100, 200, 300, 400, 500, Re]
 flow = gym.flow.Step(Re=Re_init[0])
-gym.print(f"Steady solve at Re={Re_init[0]}")
-qB = flow.solve_steady(solver_parameters=solver_parameters)
 
-for (i, R) in enumerate(Re_init[1:]):
+for (i, R) in enumerate(Re_init):
     flow.Re.assign(R)
     gym.print(f"Steady solve at Re={R}")
     qB = flow.solve_steady(solver_parameters=solver_parameters)
+
+    KE = 0.5 * fd.assemble(fd.inner(flow.u, flow.u) * fd.dx)
+    gym.print(f"KE at Re={R}: {KE}")
 
 # flow.set_control(1.0)
 vort = flow.vorticity()
