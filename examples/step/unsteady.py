@@ -21,7 +21,6 @@ h = fd.CellSize(flow.mesh)
 
 def log_postprocess(flow):
     KE = 0.5 * fd.assemble(fd.inner(flow.u, flow.u) * fd.dx)
-    TKE = KE - flow.BASE_KE
     CFL = (
         fd.project(
             dt * sqrt(flow.u.sub(0) ** 2 + flow.u.sub(1) ** 2) / h, flow.pressure_space
@@ -29,7 +28,7 @@ def log_postprocess(flow):
         .vector()
         .max()
     )
-    return [CFL, TKE]
+    return [CFL, KE]
 
 
 print_fmt = "t: {0:0.3f}\t\tCFL: {1:0.3f}\t\t TKE: {2:0.12e}"

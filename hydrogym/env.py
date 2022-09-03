@@ -211,7 +211,13 @@ class StepEnv(FlowEnv):
             Re=env_config.get("Re", 600),
             mesh=env_config.get("mesh", "fine"),
         )
-        env_config["solver"] = IPCS(env_config["flow"], dt=env_config.get("dt", 1e-3))
+
+        # TODO: Add config for inlet forcing
+        env_config["solver"] = IPCS(
+            env_config["flow"],
+            dt=env_config.get("dt", 1e-3),
+            eta=1.0,
+        )
         super().__init__(env_config)
 
         self.observation_space = gym.spaces.Box(
