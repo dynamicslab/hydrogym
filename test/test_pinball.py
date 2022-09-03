@@ -6,12 +6,12 @@ import pyadjoint
 import hydrogym as gym
 
 
-def test_import():
+def test_import_coarse():
     flow = gym.flow.Pinball(mesh="coarse")
     return flow
 
 
-def test_import2():
+def test_import_fine():
     flow = gym.flow.Pinball(mesh="fine")
     return flow
 
@@ -43,7 +43,7 @@ def test_rotation(tol=1e-2):
         assert abs(CD[i] - CD_target[i]) < tol
 
 
-def test_unsteady():
+def test_integrate():
     flow = gym.flow.Pinball(mesh="coarse")
     dt = 1e-2
     gym.ts.integrate(flow, t_span=(0, 10 * dt), dt=dt)
@@ -116,8 +116,8 @@ def test_env_grad():
     env = gym.env.PinballEnv(env_config)
     y = env.reset()
     n_cyl = 3
-    K = pyadjoint.create_overloaded_object(-0.1 * np.ones((n_cyl, 2 * n_cyl)))
-    J = 0.0
+    K = pyadjoint.create_overloaded_object(np.zeros((n_cyl, 2 * n_cyl)))
+    J = fda.AdjFloat(0.0)
     for _ in range(10):
         y, reward, done, info = env.step(feedback_ctrl(y, K))
         J = J - reward

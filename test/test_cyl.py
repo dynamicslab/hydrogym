@@ -4,17 +4,17 @@ import firedrake_adjoint as fda
 import hydrogym as gym
 
 
-def test_import():
+def test_import_coarse():
     flow = gym.flow.Cylinder(mesh="coarse")
     return flow
 
 
-def test_import2():
+def test_import_medium():
     flow = gym.flow.Cylinder(mesh="medium")
     return flow
 
 
-def test_import3():
+def test_import_fine():
     flow = gym.flow.Cylinder(mesh="fine")
     return flow
 
@@ -129,4 +129,4 @@ def test_linearizedNS():
 
 
 if __name__ == "__main__":
-    test_import()
+    test_import_coarse()

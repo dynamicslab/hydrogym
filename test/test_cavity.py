@@ -5,12 +5,12 @@ from ufl import sin
 import hydrogym as gym
 
 
-def test_import():
+def test_import_medium():
     flow = gym.flow.Cavity(mesh="medium")
     return flow
 
 
-def test_import2():
+def test_import_fine():
     flow = gym.flow.Cavity(mesh="fine")
     return flow
 
@@ -27,17 +27,6 @@ def test_actuation():
     flow = gym.flow.Cavity(Re=500, mesh="medium")
     flow.set_control(1.0)
     flow.solve_steady()
-
-
-def test_step():
-    flow = gym.flow.Cavity(Re=500, mesh="medium")
-    dt = 1e-4
-
-    solver = gym.ts.IPCS(flow, dt=dt)
-
-    num_steps = 10
-    for iter in range(num_steps):
-        flow = solver.step(iter)
 
 
 def test_integrate():
@@ -60,7 +49,7 @@ def test_control():
 
 
 def test_env():
-    env_config = {"mesh": "medium"}
+    env_config = {"Re": 500, "mesh": "medium"}
     env = gym.env.CavityEnv(env_config)
 
     for _ in range(10):
@@ -74,7 +63,7 @@ def test_grad():
     flow.set_control(c)
 
     flow.solve_steady()
-    y = flow.get_observations()
+    (y,) = flow.get_observations()
 
     fda.compute_gradient(y, fda.Control(c))
 
@@ -82,7 +71,7 @@ def test_grad():
 def test_sensitivity(dt=1e-2, num_steps=10):
     from ufl import dx, inner
 
-    flow = gym.flow.Cavity(Re=5000, mesh="medium")
+    flow = gym.flow.Cavity(Re=500, mesh="medium")
 
     # Store a copy of the initial condition to distinguish it from the time-varying solution
     q0 = flow.q.copy(deepcopy=True)
@@ -102,7 +91,7 @@ def test_sensitivity(dt=1e-2, num_steps=10):
 
 
 def test_env_grad():
-    env_config = {"differentiable": True, "mesh": "medium"}
+    env_config = {"Re": 500, "differentiable": True, "mesh": "medium"}
     env = gym.env.CavityEnv(env_config)
     y = env.reset()
     omega = fd.Constant(1.0)
