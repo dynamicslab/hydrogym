@@ -1,6 +1,6 @@
 <p align="center">
-	<a rel="nofollow">
-		<img src="docs/imgs/logo.svg" />
+	<a rel="nofollow">	
+		<img src="docs/source/_static/imgs/logo.svg" />
 	</a>
 </p>
 
