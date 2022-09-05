@@ -45,4 +45,5 @@ Core Features
    :caption: Notes
 
    distributed_backend
+   ray
 
