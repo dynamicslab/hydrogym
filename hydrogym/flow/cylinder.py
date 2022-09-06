@@ -2,7 +2,7 @@ import firedrake as fd
 import numpy as np
 import ufl
 from firedrake import ds, dx
-from ufl import atan_2, cos, dot, inner, sin, sqrt, sign, as_vector
+from ufl import as_vector, atan_2, cos, dot, inner, sign, sin, sqrt
 
 from ..core import FlowConfig
 
@@ -47,14 +47,10 @@ class Cylinder(FlowConfig):
 
         self.reset_control()
 
-        # I_cm = MR**2 / 2
-
-        # Is everything normalized wrt mass and D or are we just kind of choosing that?
-        # Is there a reason we are normalizing by the diameter instead of by the radius? (R is what's used in the equation)
-        # Should I just normalize by D**2
         self.ctrl_state = [float(self.omega)]
-        self.I_cm = [0.006172]
-        # ^^^ Moment of inertia about CoM of a Plexiglass Cylinder with a 2 inch radius and spanning a half meter test section of a wind tunnel
+        # I_cm = 1/2 M R**2
+        # taking I_cm for a plexiglass cylinder with R=0.05m & length = 1m
+        self.I_cm = [0.0115846]
         self.controller_damping_coeff = [1 / self.TAU]
 
     def init_bcs(self, mixed=False):
