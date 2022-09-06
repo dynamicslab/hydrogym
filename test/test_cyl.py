@@ -1,9 +1,11 @@
+import time
+
 import firedrake as fd
 import firedrake_adjoint as fda
-import hydrogym as gym
 import numpy as np
-import time
 import pytest
+
+import hydrogym as gym
 
 
 def test_import():
@@ -89,7 +91,7 @@ def test_grad():
 
 
 def test_sensitivity(dt=1e-2, num_steps=10):
-    from ufl import inner, dx
+    from ufl import dx, inner
 
     flow = gym.flow.Cylinder(mesh="coarse")
 
@@ -243,6 +245,34 @@ def test_convergence_test_varying_torque():
 
     print("finished @" + str(time.time() - time_start))
 
+
+# Shear force test cases (shear force not fully implemented yet)
+
+# def test_shearForce0():
+#     flow = gym.flow.Cylinder(Re=100, mesh="coarse")
+#     flow.set_control(fd.Constant(0.0))
+#     flow.solve_steady()
+#     shear_force = flow.shear_force()
+
+#     assert np.isclose(shear_force, 0.0, rtol=1e-3, atol=1e-3)
+
+
+# def test_shearForcePos():
+#     flow = gym.flow.Cylinder(Re=100, mesh="coarse")
+#     flow.set_control(fd.Constant(0.1))
+#     flow.solve_steady()
+#     shear_force = flow.shear_force()
+
+#     assert shear_force < 0
+
+
+# def test_shearForceNeg():
+#     flow = gym.flow.Cylinder(Re=100, mesh="coarse")
+#     flow.set_control(fd.Constant(-0.1))
+#     flow.solve_steady()
+#     shear_force = flow.shear_force()
+
+#     assert shear_force > 0
 
 if __name__ == "__main__":
     test_import()
