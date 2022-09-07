@@ -1,17 +1,15 @@
 import firedrake as fd
 import firedrake_adjoint as fda
-import hydrogym as gym
-import numpy as np
-import pyadjoint
 from ufl import sin
+import hydrogym as gym
 
 
-def test_import():
+def test_import_medium():
     flow = gym.flow.Cavity(mesh="medium")
     return flow
 
 
-def test_import2():
+def test_import_fine():
     flow = gym.flow.Cavity(mesh="fine")
     return flow
 
@@ -20,7 +18,7 @@ def test_steady(tol=1e-3):
     flow = gym.flow.Cavity(Re=500, mesh="medium")
     flow.solve_steady()
 
-    y = flow.collect_observations()
+    (y,) = flow.get_observations()
     assert abs(y - 2.2122) < tol  # Re = 500
 
 
@@ -56,12 +54,12 @@ def test_control():
 
     num_steps = 10
     for iter in range(num_steps):
-        y = flow.collect_observations()
+        flow.get_observations()
         flow = solver.step(iter, control=0.1 * sin(solver.t))
 
 
 def test_env():
-    env_config = {"mesh": "medium"}
+    env_config = {"Re": 500, "mesh": "medium"}
     env = gym.env.CavityEnv(env_config)
 
     for _ in range(10):
@@ -75,15 +73,15 @@ def test_grad():
     flow.set_control(c)
 
     flow.solve_steady()
-    y = flow.collect_observations()
+    (y,) = flow.get_observations()
 
-    dJdu = fda.compute_gradient(y, fda.Control(c))
+    fda.compute_gradient(y, fda.Control(c))
 
 
 def test_sensitivity(dt=1e-2, num_steps=10):
-    from ufl import inner, dx
+    from ufl import dx, inner
 
-    flow = gym.flow.Cavity(Re=5000, mesh="medium")
+    flow = gym.flow.Cavity(Re=500, mesh="medium")
 
     # Store a copy of the initial condition to distinguish it from the time-varying solution
     q0 = flow.q.copy(deepcopy=True)
@@ -99,13 +97,11 @@ def test_sensitivity(dt=1e-2, num_steps=10):
 
     # Compute the gradient with respect to the initial condition
     #   The option for Riesz representation here specifies that we should end up back in the primal space
-    dq = fda.compute_gradient(
-        J, fda.Control(q0), options={"riesz_representation": "L2"}
-    )
+    fda.compute_gradient(J, fda.Control(q0), options={"riesz_representation": "L2"})
 
 
 def test_env_grad():
-    env_config = {"differentiable": True, "mesh": "medium"}
+    env_config = {"Re": 500, "differentiable": True, "mesh": "medium"}
     env = gym.env.CavityEnv(env_config)
     y = env.reset()
     omega = fd.Constant(1.0)

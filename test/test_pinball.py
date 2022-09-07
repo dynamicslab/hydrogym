@@ -1,16 +1,17 @@
 import firedrake as fd
 import firedrake_adjoint as fda
-import hydrogym as gym
 import numpy as np
 import pyadjoint
 
+import hydrogym as gym
 
-def test_import():
+
+def test_import_coarse():
     flow = gym.flow.Pinball(mesh="coarse")
     return flow
 
 
-def test_import2():
+def test_import_fine():
     flow = gym.flow.Pinball(mesh="fine")
     return flow
 
@@ -42,7 +43,7 @@ def test_rotation(tol=1e-2):
         assert abs(CD[i] - CD_target[i]) < tol
 
 
-def test_unsteady():
+def test_integrate():
     flow = gym.flow.Pinball(mesh="coarse")
     dt = 1e-2
     gym.ts.integrate(flow, t_span=(0, 10 * dt), dt=dt)
@@ -56,14 +57,14 @@ def test_control():
     def feedback_ctrl(y, K=None):
         if K is None:
             K = -0.1 * np.ones((3, 3))  # [Inputs x outputs]
-        CL, CD = y
+        CL = y[:3]
         return K @ CL
 
     solver = gym.ts.IPCS(flow, dt=dt)
 
     num_steps = 10
     for iter in range(num_steps):
-        y = flow.collect_observations()
+        y = flow.get_observations()
         flow = solver.step(iter, control=feedback_ctrl(y))
 
 
@@ -74,9 +75,8 @@ def test_env():
     # Simple opposition control on lift
     def feedback_ctrl(y, K=None):
         if K is None:
-            K = -0.1 * np.ones((3, 3))  # [Inputs x outputs]
-        CL, CD = y
-        return K @ CL
+            K = -0.1 * np.ones((3, 6))  # [Inputs x outputs]
+        return K @ y
 
     u = 0.0
     for _ in range(10):
@@ -104,25 +104,48 @@ def test_grad():
     flow.solve_steady()
     CL, CD = flow.compute_forces()
 
-    dJdu = fda.compute_gradient(sum(CD), control)
+    fda.compute_gradient(sum(CD), control)
+
 
 
 def test_env_grad():
     # Simple feedback control on lift
     def feedback_ctrl(y, K):
-        CL, CD = y
-        return K @ CL
+        return K @ y
 
     env_config = {"Re": 30, "differentiable": True, "mesh": "coarse"}
     env = gym.env.PinballEnv(env_config)
     y = env.reset()
     n_cyl = 3
-    K = pyadjoint.create_overloaded_object(-0.1 * np.ones((n_cyl, n_cyl)))
-    J = 0.0
+    K = pyadjoint.create_overloaded_object(np.zeros((n_cyl, 2 * n_cyl)))
+    J = fda.AdjFloat(0.0)
     for _ in range(10):
         y, reward, done, info = env.step(feedback_ctrl(y, K))
         J = J - reward
-    dJdm = fda.compute_gradient(J, fda.Control(K))
+    fda.compute_gradient(J, fda.Control(K))
+
+
+def test_sensitivity(dt=1e-2, num_steps=10):
+    from ufl import dx, inner
+
+    flow = gym.flow.Pinball(Re=30, mesh="coarse")
+
+    # Store a copy of the initial condition to distinguish it from the time-varying solution
+    q0 = flow.q.copy(deepcopy=True)
+    flow.q.assign(
+        q0, annotate=True
+    )  # Note the annotation flag so that the assignment is tracked
+
+    # Time step forward as usual
+    flow = gym.ts.integrate(flow, t_span=(0, num_steps * dt), dt=dt, method="IPCS_diff")
+
+    # Define a cost functional... here we're just using the energy inner product
+    J = 0.5 * fd.assemble(inner(flow.u, flow.u) * dx)
+
+    # Compute the gradient with respect to the initial condition
+    #   The option for Riesz representation here specifies that we should end up back in the primal space
+    fda.compute_gradient(J, fda.Control(q0), options={"riesz_representation": "L2"})
+
 
 
 # def test_lti():
@@ -132,4 +155,4 @@ def test_env_grad():
 #     A_adj, M = flow.linearize(qB, adjoint=True, backend='scipy')
 
 if __name__ == "__main__":
-    test_import()
+    test_import_coarse()

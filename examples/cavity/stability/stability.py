@@ -27,11 +27,17 @@ with qB.dat.vec_ro as vec:
 # Direct stability analysis
 gym.print("Direct analysis...")
 A, M = flow.linearize(qB)
+sigma = np.arange(0, 25, 0.5)
+all_evals = np.array([])
 evals, es = gym.linalg.eig(A, M, num_eigenvalues=6, sigma=7.5j)
-max_idx = np.argmax(np.real(evals))
 nconv = es.getConverged()
+max_idx = np.argmax(np.real(evals))
 vr, vi = A.getVecs()
 gym.print(f"Re={Re}:\t\t{nconv} converged, largest: {evals[max_idx]}")
+gym.print(evals)
+gym.print(evals.shape)
+sorted_idx = np.argsort(np.real(evals))
+np.savetxt("global-modes/evals.dat", evals[sorted_idx], fmt="%.6f", delimiter="\t")
 
 es.getEigenpair(max_idx, vr, vi)
 

@@ -8,17 +8,17 @@ import pytest
 import hydrogym as gym
 
 
-def test_import():
+def test_import_coarse():
     flow = gym.flow.Cylinder(mesh="coarse")
     return flow
 
 
-def test_import2():
+def test_import_medium():
     flow = gym.flow.Cylinder(mesh="medium")
     return flow
 
 
-def test_import3():
+def test_import_fine():
     flow = gym.flow.Cylinder(mesh="fine")
     return flow
 
@@ -63,7 +63,7 @@ def test_control():
 
     num_steps = 10
     for iter in range(num_steps):
-        y = flow.collect_observations()
+        y = flow.get_observations()
         flow = solver.step(iter, control=feedback_ctrl(y))
 
 
@@ -87,7 +87,8 @@ def test_grad():
     flow.solve_steady()
     CL, CD = flow.compute_forces()
 
-    dJdu = fda.compute_gradient(CD, fda.Control(omega))
+    fda.compute_gradient(CD, fda.Control(omega))
+
 
 
 def test_sensitivity(dt=1e-2, num_steps=10):
@@ -109,9 +110,7 @@ def test_sensitivity(dt=1e-2, num_steps=10):
 
     # Compute the gradient with respect to the initial condition
     #   The option for Riesz representation here specifies that we should end up back in the primal space
-    dq = fda.compute_gradient(
-        J, fda.Control(q0), options={"riesz_representation": "L2"}
-    )
+    fda.compute_gradient(J, fda.Control(q0), options={"riesz_representation": "L2"})
 
 
 def test_env_grad():
@@ -275,4 +274,4 @@ def test_convergence_test_varying_torque():
 #     assert shear_force > 0
 
 if __name__ == "__main__":
-    test_import()
+    test_import_coarse()

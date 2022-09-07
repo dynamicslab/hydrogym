@@ -33,9 +33,8 @@ class Cylinder(FlowConfig):
 
         mesh = load_mesh(name=mesh)
 
-        self.Re = fd.Constant(ufl.real(Re))
         self.U_inf = fd.Constant((1.0, 0.0))
-        super().__init__(mesh, h5_file=h5_file)
+        super().__init__(mesh, Re, h5_file=h5_file)
 
         # First set up tangential boundaries to cylinder
         self.omega = fd.Constant(0.0)
@@ -194,7 +193,7 @@ class Cylinder(FlowConfig):
     def num_controls(self):
         return 1
 
-    def collect_observations(self):
+    def get_observations(self):
         return self.compute_forces()
 
     def set_damping(self, k_new):
@@ -242,3 +241,7 @@ class Cylinder(FlowConfig):
             """
             for (u, v) in zip(self.ctrl_state, control):
                 u = u + (dt / self.TAU) * (v - u)
+
+    def evaluate_objective(self, q=None):
+        CL, CD = self.compute_forces(q=q)
+        return CD
