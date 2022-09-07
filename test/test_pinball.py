@@ -107,6 +107,7 @@ def test_grad():
     fda.compute_gradient(sum(CD), control)
 
 
+
 def test_env_grad():
     # Simple feedback control on lift
     def feedback_ctrl(y, K):
@@ -146,8 +147,12 @@ def test_sensitivity(dt=1e-2, num_steps=10):
     fda.compute_gradient(J, fda.Control(q0), options={"riesz_representation": "L2"})
 
 
+
 # def test_lti():
 #     flow = gym.flow.Cylinder()
 #     qB = flow.solve_steady()
 #     A, M = flow.linearize(qB, backend='scipy')
 #     A_adj, M = flow.linearize(qB, adjoint=True, backend='scipy')
+
+if __name__ == "__main__":
+    test_import_coarse()

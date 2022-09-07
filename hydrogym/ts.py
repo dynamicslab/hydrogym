@@ -2,6 +2,7 @@ from typing import Callable, Iterable, Optional, Tuple
 
 import firedrake as fd
 import numpy as np
+from scipy.optimize import fsolve
 import ufl
 from firedrake import ds, dx, lhs, logging, rhs
 from ufl import div, dot, inner, nabla_grad
@@ -66,7 +67,7 @@ class IPCS(TransientSolver):
         self.initialize_operators()
 
         self.B = flow.initialize_control()
-        self.control = self.flow.get_control()
+        self.control = flow.get_control()
 
     def initialize_forcing(self, eta, n_samples, cutoff):
         logging.log(logging.INFO, f"Initializing forcing with amplitude {eta}")
@@ -165,19 +166,6 @@ class IPCS(TransientSolver):
             proj_prob, solver_parameters={"ksp_type": "cg", "pc_type": "sor"}
         )
 
-    def update_controls(self, control):
-        """Add a damping factor to the controller response
-
-        If actual control is u and input is v, effectively
-            du/dt = (1/tau)*(v - u)
-        """
-        for (u, v) in zip(self.control, control):
-            # u += (self.dt/self.flow.TAU)*(v - u)
-            # u.assign( u + (self.dt/self.flow.TAU)*(v - u) )
-            u = u + (self.dt / self.flow.TAU) * (v - u)
-            # u = fd.interpolate(u + (self.dt/self.flow.TAU)*(v - u), u.function_space() )
-            # u.assign(v)  # WORKS
-
     def step(self, iter, control=None):
         # Update perturbations (if applicable)
         self.eta.assign(self.noise[self.noise_idx])
@@ -187,16 +175,16 @@ class IPCS(TransientSolver):
         self.predictor.solve()
         if control is not None:
             control = self.enlist_controls(control)
-            self.update_controls(control)
-            for (B, ctrl) in zip(self.B, self.control):
+            self.flow.update_state(control, self.dt)
+            for (B, ctrl) in zip(self.B, self.flow.ctrl_state):
                 Bu, _ = B.split()
                 self.u += Bu * ctrl
 
-        logging.log(logging.DEBUG, "Velocity predictor done, solving Poisson")
+        logging.log(logging.DEBUG, f"Velocity predictor done, solving Poisson")
         self.poisson.solve()
-        logging.log(logging.DEBUG, "Poisson done, solving projection step")
+        logging.log(logging.DEBUG, f"Poisson done, solving projection step")
         self.projection.solve()
-        logging.log(logging.DEBUG, "IPCS step finished")
+        logging.log(logging.DEBUG, f"IPCS step finished")
 
         # Update previous solution
         self.u_n.assign(self.u)
@@ -213,8 +201,11 @@ class IPCS(TransientSolver):
         Return a LinearOperator that can act on numpy arrays (pulled from utils.get_array)
         """
         from scipy.sparse.linalg import LinearOperator
-
-        from .utils import get_array, linalg, set_from_array
+        from .utils import (
+            get_array,
+            set_from_array,
+            linalg,
+        )  # Convert function to/from array
 
         flow = self.flow
         k = fd.Constant(self.dt)

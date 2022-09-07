@@ -1,9 +1,10 @@
-from typing import Optional
-
 import firedrake as fd
+from firedrake import dx, ds
+
 import ufl
-from firedrake import ds, dx
-from ufl import curl, div, dot, inner, nabla_grad, sym
+from ufl import dot, inner, grad, nabla_grad, div, sym, curl
+
+from typing import Optional
 
 
 class FlowConfig:
@@ -123,9 +124,7 @@ class FlowConfig:
 
         if stabilization == "gls":
             # Galerkin least-squares stabilization (see Tezduyar, 1991)
-            def res(U, u, p):
-                return dot(U, nabla_grad(u)) - div(self.sigma(u, p))
-
+            res = lambda U, u, p: dot(U, nabla_grad(u)) - div(self.sigma(u, p))
             h = fd.CellSize(self.mesh)
             tau = ((4.0 * dot(u, u) / h**2) + (4.0 * self.nu / h**2) ** 2) ** (-0.5)
             F += tau * inner(res(u, u, p), res(u, v, s)) * dx
@@ -198,6 +197,24 @@ class FlowConfig:
 
     def reset_control(self):
         pass
+
+    def get_inertia(self):
+        raise Exception(
+            "Indirect control is not yet implemented/supported in this Flow Environment"
+        )
+
+    def get_damping(self):
+        raise Exception(
+            "Indirect control is not yet implemented/supported in this Flow Environment"
+        )
+
+    def get_ctrl_state(self):
+        raise Exception(
+            "Indirect control is not yet implemented/supported in this Flow Environment"
+        )
+
+    def update_state(self, control, dt):
+        raise Exception("State update not yet implemented in this environment")
 
     def num_controls(self):
         return 0

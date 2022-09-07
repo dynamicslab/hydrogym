@@ -2,7 +2,7 @@ import firedrake as fd
 import numpy as np
 import ufl
 from firedrake import ds, dx
-from ufl import atan_2, cos, dot, inner, sin
+from ufl import as_vector, atan_2, cos, dot, inner, sign, sin, sqrt
 
 from ..core import FlowConfig
 
@@ -14,12 +14,21 @@ class Cylinder(FlowConfig):
     # TAU = 0.556  # Time constant for controller damping (0.1*vortex shedding period)
     TAU = 0.0556  # Time constant for controller damping (0.01*vortex shedding period)
 
-    def __init__(self, Re=100, mesh="medium", h5_file=None):
+    def __init__(
+        self,
+        Re=100,
+        mesh="medium",
+        h5_file=None,
+        control_method="direct",
+        account_for_skin_friction=False,
+    ):
         """
         controller(t, y) -> omega
         y = (CL, CD)
         omega = scalar rotation rate
         """
+        self.account_for_skin_friction = account_for_skin_friction
+        self.control_method = control_method
         from .mesh.cylinder import load_mesh
 
         mesh = load_mesh(name=mesh)
@@ -30,12 +39,18 @@ class Cylinder(FlowConfig):
         # First set up tangential boundaries to cylinder
         self.omega = fd.Constant(0.0)
         theta = atan_2(ufl.real(self.y), ufl.real(self.x))  # Angle from origin
-        rad = fd.Constant(0.5)
+        self.rad = fd.Constant(0.5)
         self.u_tan = ufl.as_tensor(
-            (rad * sin(theta), rad * cos(theta))
+            (self.rad * sin(theta), self.rad * cos(theta))
         )  # Tangential velocity
 
         self.reset_control()
+
+        self.ctrl_state = [float(self.omega)]
+        # I_cm = 1/2 M R**2
+        # taking I_cm for a plexiglass cylinder with R=0.05m & length = 1m
+        self.I_cm = [0.0115846]
+        self.controller_damping_coeff = [1 / self.TAU]
 
     def init_bcs(self, mixed=False):
         V, Q = self.function_spaces(mixed=mixed)
@@ -68,6 +83,34 @@ class Cylinder(FlowConfig):
         CL = fd.assemble(2 * force[1] * ds(self.CYLINDER))
         CD = fd.assemble(2 * force[0] * ds(self.CYLINDER))
         return CL, CD
+
+    # get net shear force acting tangential to the surface of the cylinder
+    # Implementing the general case of the article below:
+    # http://www.homepages.ucl.ac.uk/~uceseug/Fluids2/Notes_Viscosity.pdf
+    def shear_force(self, q=None):
+        if q is None:
+            q = self.q
+        (u, p) = fd.split(q)
+        (v, s) = fd.TestFunctions(self.mixed_space)
+
+        # der of velocity wrt to the unit normal at the surface of the cylinder
+        # equivalent to directional derivative along normal:
+        # https://math.libretexts.org/Courses/University_of_California_Davis/UCD_Mat_21C%3A_Multivariate_Calculus/13%3A_Partial_Derivatives/13.5%3A_Directional_Derivatives_and_Gradient_Vectors#mjx-eqn-DD2v
+        du_dn = dot(self.epsilon(u), self.n)
+
+        # Get unit tangent vector
+        # pulled from https://fenics-shells.readthedocs.io/_/downloads/en/stable/pdf/
+        t = as_vector((-self.n[1], self.n[0]))
+
+        du_dn_t = (dot(du_dn, t)) * t
+
+        # get the sign from the tangential cmpnt
+        direction = sign(dot(du_dn, t))
+
+        return fd.assemble(
+            (direction / self.Re * sqrt(du_dn_t[0] ** 2 + du_dn_t[1] ** 2))
+            * ds(self.CYLINDER)
+        )
 
     def update_rotation(self):
         # If the boundary condition has already been defined, update it
@@ -152,6 +195,52 @@ class Cylinder(FlowConfig):
 
     def get_observations(self):
         return self.compute_forces()
+
+    def set_damping(self, k_new):
+        if not isinstance(k_new, list):
+            k_new = [k_new]
+        self.controller_damping_coeff = k_new
+        return
+
+    def get_inertia(self):
+        return self.I_cm
+
+    def get_damping(self):
+        return self.controller_damping_coeff
+
+    def get_ctrl_state(self):
+        return self.ctrl_state
+
+    def update_state(self, control, dt):
+        if self.control_method == "indirect":
+            """
+            Update BCS of cylinder to new angular velocity using implicit euler solver according to diff eqn:
+
+            omega_t[i+1] = omega_t[i] + (d_omega/dt)_t[i+1] * dt
+                        = omega_t[i] + (control_t[i+1] - k_damping*omega_t[i+1] + shear_torque)/I_cm * dt
+
+            omega_t[i+1] can be solved for directly in order to avoid using a costly root solver
+            """
+            if self.account_for_skin_friction:
+                F_s = self.shear_force()
+                tau_s = F_s * float(self.rad)
+            else:
+                tau_s = 0
+
+            for (state, ctrl, I_cm, k_damp) in zip(
+                self.ctrl_state, control, self.I_cm, self.controller_damping_coeff
+            ):
+                self.ctrl_state = [
+                    (state + (ctrl + tau_s) * dt / I_cm) / (1 + k_damp * dt / I_cm)
+                ]
+        else:
+            """Add a damping factor to the controller response
+
+            If actual control is u and input is v, effectively
+                du/dt = (1/tau)*(v - u)
+            """
+            for (u, v) in zip(self.ctrl_state, control):
+                u = u + (dt / self.TAU) * (v - u)
 
     def evaluate_objective(self, q=None):
         CL, CD = self.compute_forces(q=q)

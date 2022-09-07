@@ -12,12 +12,13 @@ class Cavity(FlowConfig):
 
     from .mesh.cavity import CONTROL, FREESTREAM, INLET, OUTLET, SENSOR, SLIP, WALL
 
-    def __init__(self, h5_file=None, Re=7500, mesh="fine"):
+    def __init__(self, h5_file=None, Re=7500, mesh="fine", control_method="direct"):
         """
         controller(t, y) -> omega
         y = (CL, CD)
         omega = scalar rotation rate
         """
+        self.control_method = control_method
         from .mesh.cavity import load_mesh
 
         mesh = load_mesh(name=mesh)
@@ -30,6 +31,8 @@ class Cavity(FlowConfig):
         self.u_ctrl = ufl.as_tensor(
             (0.0 * self.x, -self.x * (1600 * self.x + 560) / 147)
         )  # Blowing/suction
+
+        self.ctrl_state = [self.control]
 
         self.reset_control()
 
@@ -123,6 +126,18 @@ class Cavity(FlowConfig):
         (u, p) = q.split()
         KE = 0.5 * fd.assemble(fd.inner(u, u) * fd.dx)
         return KE
+
+    def update_state(self, control, dt):
+        if self.control_method == "indirect":
+            raise Exception("Indirect Control not yet implemented for this environment")
+        else:
+            """Add a damping factor to the controller response
+
+            If actual control is u and input is v, effectively
+                du/dt = (1/tau)*(v - u)
+            """
+            for (u, v) in zip(self.ctrl_state, control):
+                u = u + (dt / self.TAU) * (v - u)
 
     # def solve_steady(self, **kwargs):
     #     if self.Re > 500:
