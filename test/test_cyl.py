@@ -60,6 +60,7 @@ def test_control():
     num_steps = 10
     for iter in range(num_steps):
         y = flow.get_observations()
+        gym.print(y)
         flow = solver.step(iter, control=feedback_ctrl(y))
 
 

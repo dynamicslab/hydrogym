@@ -61,10 +61,9 @@ class FlowEnv(gym.Env):
         return self.iter > self.max_steps
 
     def reset(self) -> Union[ObsType, Tuple[ObsType, dict]]:
-        self.flow.q.assign(self.q0)
-        self.flow.reset_control()
         self.iter = 0
-        self.solver.initialize_operators()
+        self.flow.reset(q0=self.q0)
+        self.solver.reset()
 
         return self.flow.get_observations()
 
@@ -102,6 +101,13 @@ class CylEnv(FlowEnv):
             shape=(1,),
             dtype=fd.utils.ScalarType,
         )
+
+    def reset(self):
+        # TODO: Need to actually restart everything
+        # ... why is this not working???
+        out = super().reset()
+        print(out)
+        return out
 
     def render(self, mode="human", clim=None, levels=None, cmap="RdBu", **kwargs):
         if clim is None:

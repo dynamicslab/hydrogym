@@ -1,5 +1,6 @@
 import firedrake as fd
 import numpy as np
+import pyadjoint
 import ufl
 from firedrake import ds, dx
 from ufl import atan_2, cos, dot, inner, sin
@@ -22,7 +23,9 @@ class Pinball(FlowConfig):
         self.U_inf = fd.Constant((1.0, 0.0))
         super().__init__(mesh, Re, h5_file=h5_file)
 
-        self.omega = [fd.Constant(0.0) for _ in range(len(self.CYLINDER))]
+        # self.omega = [fd.Constant(0.0) for _ in range(len(self.CYLINDER))]
+
+        self.omega = pyadjoint.create_overloaded_object(np.zeros(self.CYLINDER))
 
         # First set up tangential boundaries for each cylinder
         self.rad = fd.Constant(self.rad)
@@ -81,8 +84,13 @@ class Pinball(FlowConfig):
         # If the boundary condition has already been defined, update it
         #   otherwise, the control will be applied with self.init_bcs()
         if hasattr(self, "bcu_cylinder"):
+            # self.bcu_cylinder[cyl_idx]._function_arg.assign(
+            #     fd.project(
+            #         self.omega[cyl_idx] * self.u_tan[cyl_idx], self.velocity_space
+            #     )
+            # )
             self.bcu_cylinder[cyl_idx]._function_arg.assign(
-                fd.project(
+                fd.interpolate(
                     self.omega[cyl_idx] * self.u_tan[cyl_idx], self.velocity_space
                 )
             )
@@ -99,7 +107,8 @@ class Pinball(FlowConfig):
         if omega is None:
             omega = 0.0, 0.0, 0.0
         for i in range(len(self.CYLINDER)):
-            self.omega[i].assign(omega[i])
+            # self.omega[i].assign(omega[i])
+            self.omega[i] = omega[i]
 
         # TODO: Limit max control in a differentiable way
         # self.omega.assign(

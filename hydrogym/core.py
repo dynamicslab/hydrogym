@@ -26,6 +26,11 @@ class FlowConfig:
         if h5_file is not None:
             self.load_checkpoint(h5_file)
 
+    def reset(self, q0=None):
+        if q0 is not None:
+            self.q.assign(q0)
+        self.reset_control()
+
     @property
     def nu(self):
         return fd.Constant(1 / ufl.real(self.Re))

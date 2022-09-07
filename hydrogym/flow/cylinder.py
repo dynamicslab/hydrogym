@@ -1,4 +1,5 @@
 import firedrake as fd
+import firedrake_adjoint as fda
 import numpy as np
 import ufl
 from firedrake import ds, dx
@@ -28,7 +29,8 @@ class Cylinder(FlowConfig):
         super().__init__(mesh, Re, h5_file=h5_file)
 
         # First set up tangential boundaries to cylinder
-        self.omega = fd.Constant(0.0)
+        self.omega = fda.AdjFloat(0.0)
+        # self.omega = fd.Constant(0.0)
         theta = atan_2(ufl.real(self.y), ufl.real(self.x))  # Angle from origin
         rad = fd.Constant(0.5)
         self.u_tan = ufl.as_tensor(
@@ -76,7 +78,7 @@ class Cylinder(FlowConfig):
         # TODO: Is this necessary, or could it be combined with `set_control()`?
         if hasattr(self, "bcu_cylinder"):
             self.bcu_cylinder._function_arg.assign(
-                fd.project(self.omega * self.u_tan, self.velocity_space)
+                fd.interpolate(self.omega * self.u_tan, self.velocity_space)
             )
 
     def clamp(self, u):
@@ -112,7 +114,8 @@ class Cylinder(FlowConfig):
         """
         if omega is None:
             omega = 0.0
-        self.omega.assign(omega)
+        # self.omega.assign(omega)
+        self.omega = omega
 
         # TODO: Limit max control in a differentiable way
         # self.omega.assign(

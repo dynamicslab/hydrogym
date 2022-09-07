@@ -38,15 +38,16 @@ class TransientSolver:
         # Check if scalar
         if ufl.checks.is_ufl_scalar(control):
             control = [control]
+        elif isinstance(control, (list, tuple, np.ndarray)):
+            return control
         else:
             try:
+                # TODO: better test for whether or not it is a number
                 int(control)
                 control = [control]  # Make into a list of one if so
+                return control
             except TypeError:
-                assert isinstance(
-                    control, (list, tuple, np.ndarray)
-                ), "Control type not recognized"
-        return control
+                raise TypeError("Control type not recognized")
 
 
 class IPCS(TransientSolver):
@@ -56,16 +57,23 @@ class IPCS(TransientSolver):
         super().__init__(flow, dt)
         self.debug = debug
 
-        # Set up random forcing (if applicable)
+        self.forcing_config = {
+            "eta": eta,
+            "n_samples": kwargs.get("max_iter", int(1e8)),
+            "cutoff": kwargs.get("noise_cutoff", 0.01 / flow.TAU),
+        }
+
+        self.reset()
+
+    def reset(self):
         self.initialize_functions()
-        self.initialize_forcing(
-            eta=eta,
-            n_samples=kwargs.get("max_iter", int(1e8)),
-            cutoff=kwargs.get("noise_cutoff", 0.01 / flow.TAU),
-        )
+
+        # Set up random forcing (if applicable)
+        self.initialize_forcing(**self.forcing_config)
+
         self.initialize_operators()
 
-        self.B = flow.initialize_control()
+        self.B = self.flow.initialize_control()
         self.control = self.flow.get_control()
 
     def initialize_forcing(self, eta, n_samples, cutoff):
@@ -171,12 +179,21 @@ class IPCS(TransientSolver):
         If actual control is u and input is v, effectively
             du/dt = (1/tau)*(v - u)
         """
+        logging.log(logging.DEBUG, type(control))
+        logging.log(logging.DEBUG, control)
+        assert len(self.control) == len(control)
+        # for i, (u, v) in enumerate(zip(self.control, control)):
+        #     logging.log(logging.DEBUG, f"Input control: {v} / current value: {u}")
+        #     self.control[i] += (self.dt/self.flow.TAU)*(v - u)
         for (u, v) in zip(self.control, control):
-            # u += (self.dt/self.flow.TAU)*(v - u)
-            # u.assign( u + (self.dt/self.flow.TAU)*(v - u) )
-            u = u + (self.dt / self.flow.TAU) * (v - u)
-            # u = fd.interpolate(u + (self.dt/self.flow.TAU)*(v - u), u.function_space() )
-            # u.assign(v)  # WORKS
+            logging.log(logging.DEBUG, f"Input control: {v} / current value: {u}")
+            u += (self.dt / self.flow.TAU) * (v - u)  # F
+        #     logging.log(logging.DEBUG, f"New value: {u}")
+        #     # u = fd.interpolate(u + (self.dt/self.flow.TAU)*(v - u), u.function_space())  # F
+
+        #     # u.assign(u + (self.dt/self.flow.TAU)*(v - u), annotate=True)  # RL
+        #     # u.assign(v)  # RL
+        #     # u = u + (self.dt / self.flow.TAU) * (v - u)  #
 
     def step(self, iter, control=None):
         # Update perturbations (if applicable)
