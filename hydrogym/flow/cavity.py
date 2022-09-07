@@ -3,10 +3,10 @@ import ufl
 from firedrake import ds, dx
 from ufl import dot, grad, inner
 
-from ..core import FlowConfig
+from .base import FlowConfigBase
 
 
-class Cavity(FlowConfig):
+class Cavity(FlowConfigBase):
     MAX_CONTROL = 0.1  # Arbitrary... should tune this
     TAU = 0.075  # Time constant for controller damping (0.01*instability frequency)
 
@@ -95,7 +95,7 @@ class Cavity(FlowConfig):
         self.set_control(0.0)
         self.init_bcs(mixed=mixed)
 
-    def initialize_control(self, act_idx=0):
+    def control_vec(self, act_idx=0):
         (v, _) = fd.TestFunctions(self.mixed_space)
         self.linearize_bcs()
 

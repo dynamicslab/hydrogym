@@ -3,11 +3,11 @@ import ufl
 from firedrake import ds, dx
 from ufl import dot, exp, grad, inner
 
-from ..core import FlowConfig
+from .base import FlowConfigBase
 
 
-class Step(FlowConfig):
-    MAX_CONTROL = 0.1  # Arbitrary... should tune this
+class Step(FlowConfigBase):
+    MAX_CONTROL = 0.1  # Arbitrary... should tune this... TODO:  DEPRECATED??
     # TODO: Stability analysis for step (and resolvent)
     TAU = 0.005  # Time constant for controller damping (0.01*instability frequency)
     # BASE_KE = 2.4833
@@ -104,7 +104,7 @@ class Step(FlowConfig):
         self.set_control(0.0)
         self.init_bcs(mixed=mixed)
 
-    def initialize_control(self, act_idx=0):
+    def control_vec(self, act_idx=0):
         (v, _) = fd.TestFunctions(self.mixed_space)
         self.linearize_bcs()
 

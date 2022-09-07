@@ -1,6 +1,6 @@
 from typing import Callable, Optional
 
-from .core import CallbackBase, FlowConfig
+from .core import CallbackBase, PDEModel
 
 
 # TODO
@@ -9,6 +9,6 @@ class ControllerCallback(CallbackBase):
         super().__init__(interval=interval)
         self.cb = callback
 
-    def __call__(self, iter: int, t: float, flow: FlowConfig):
+    def __call__(self, iter: int, t: float, flow: PDEModel):
         if super().__call__(iter, t, flow):
             self.cb(iter, t, flow)

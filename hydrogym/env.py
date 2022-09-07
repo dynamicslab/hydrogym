@@ -8,7 +8,7 @@ from firedrake import logging
 class FlowEnv(gym.Env):
     from typing import Callable, Iterable, Optional, Tuple, TypeVar, Union
 
-    from .core import FlowConfig
+    from .flow.base import FlowConfigBase
     from .ts import TransientSolver
 
     ObsType = TypeVar("ObsType")
@@ -85,7 +85,7 @@ class CylEnv(FlowEnv):
             from .ts import IPCS
 
         env_config["flow"] = Cylinder(
-            h5_file=env_config.get("checkpoint", None),
+            restart=env_config.get("checkpoint", None),
             Re=env_config.get("Re", 100),
             mesh=env_config.get("mesh", "medium"),
         )
@@ -138,7 +138,7 @@ class PinballEnv(FlowEnv):
         else:
             from .ts import IPCS
         env_config["flow"] = Pinball(
-            h5_file=env_config.get("checkpoint", None),
+            restart=env_config.get("checkpoint", None),
             Re=env_config.get("Re", 100),
             mesh=env_config.get("mesh", "fine"),
         )
@@ -186,7 +186,7 @@ class CavityEnv(FlowEnv):
             from .ts import IPCS
 
         env_config["flow"] = Cavity(
-            h5_file=env_config.get("checkpoint", None),
+            restart=env_config.get("checkpoint", None),
             Re=env_config.get("Re", 7500),
             mesh=env_config.get("mesh", "fine"),
         )
@@ -214,7 +214,7 @@ class StepEnv(FlowEnv):
             from .ts import IPCS
 
         env_config["flow"] = Step(
-            h5_file=env_config.get("checkpoint", None),
+            restart=env_config.get("checkpoint", None),
             Re=env_config.get("Re", 600),
             mesh=env_config.get("mesh", "fine"),
         )

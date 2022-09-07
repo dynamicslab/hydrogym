@@ -8,7 +8,7 @@ from modred import PODHandles, VectorSpaceHandles
 from scipy import sparse
 
 # Type suggestions
-from ..core import FlowConfig
+from ..core import PDEModel
 from .modred_interface import Snapshot, vec_handle_mean
 
 
@@ -91,7 +91,7 @@ def define_inner_product(mass_matrix):
 
 
 def pod(
-    flow: FlowConfig,
+    flow: PDEModel,
     snapshot_handles: Iterable[Snapshot],
     r: int,
     mass_matrix,

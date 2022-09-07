@@ -30,7 +30,7 @@ def test_steady(tol=1e-3):
 
 def test_rotation(tol=1e-3):
     flow = gym.flow.Cylinder(Re=100, mesh="medium")
-    flow.set_control(fd.Constant(0.1))
+    flow.set_control(0.1)
     flow.solve_steady()
 
     # Lift/drag on cylinder
@@ -78,7 +78,7 @@ def test_env():
 def test_grad():
     flow = gym.flow.Cylinder(mesh="coarse")
 
-    omega = fd.Constant(0.0)
+    omega = fda.AdjFloat(0.0)
     flow.set_control(omega)
 
     flow.solve_steady()
@@ -113,11 +113,11 @@ def test_env_grad():
     env_config = {"differentiable": True, "mesh": "coarse"}
     env = gym.env.CylEnv(env_config)
     y = env.reset()
-    K = fd.Constant(0.0)
+    K = fda.AdjFloat(0.0)
     J = fda.AdjFloat(0.0)
     for _ in range(10):
         y, reward, done, info = env.step(feedback_ctrl(y, K=K))
-        J = J - reward
+        J = J + reward
     dJdm = fda.compute_gradient(J, fda.Control(K))
     print(dJdm)
 

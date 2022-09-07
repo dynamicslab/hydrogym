@@ -5,12 +5,13 @@ import ufl
 from firedrake import ds, dx
 from ufl import atan_2, cos, dot, inner, sin
 
-from ..core import FlowConfig
+from .base import FlowConfigBase
 
 
-class Pinball(FlowConfig):
+class Pinball(FlowConfigBase):
     from .mesh.pinball import CYLINDER, FREESTREAM, INLET, OUTLET, rad, x0, y0
 
+    NUM_ACT = len(CYLINDER)
     MAX_CONTROL = 0.5 * np.pi
     TAU = 1.0
 
@@ -125,7 +126,7 @@ class Pinball(FlowConfig):
         self.set_control(omega=None)
         self.init_bcs(mixed=mixed)
 
-    def initialize_control(self, mixed=False):
+    def control_vec(self, mixed=False):
         (v, _) = fd.TestFunctions(self.mixed_space)
         self.linearize_bcs()
         # self.linearize_bcs() should have reset control, need to perturb it now

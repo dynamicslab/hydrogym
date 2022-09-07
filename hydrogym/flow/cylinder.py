@@ -1,21 +1,20 @@
 import firedrake as fd
-import firedrake_adjoint as fda
 import numpy as np
 import ufl
 from firedrake import ds, dx
 from ufl import atan_2, cos, dot, inner, sin
 
-from ..core import FlowConfig
+from .base import FlowConfigBase
 
 
-class Cylinder(FlowConfig):
+class Cylinder(FlowConfigBase):
     from .mesh.cylinder import CYLINDER, FREESTREAM, INLET, OUTLET
 
     MAX_CONTROL = 0.5 * np.pi
     # TAU = 0.556  # Time constant for controller damping (0.1*vortex shedding period)
     TAU = 0.0556  # Time constant for controller damping (0.01*vortex shedding period)
 
-    def __init__(self, Re=100, mesh="medium", h5_file=None):
+    def __init__(self, Re=100, mesh="medium", restart=None):
         """
         controller(t, y) -> omega
         y = (CL, CD)
@@ -26,18 +25,20 @@ class Cylinder(FlowConfig):
         mesh = load_mesh(name=mesh)
 
         self.U_inf = fd.Constant((1.0, 0.0))
-        super().__init__(mesh, Re, h5_file=h5_file)
+        super().__init__(mesh, Re, restart=restart)
 
+        # self.reset_control()
+
+    def initialize_state(self):
+        super().initialize_state()
         # First set up tangential boundaries to cylinder
-        self.omega = fda.AdjFloat(0.0)
+        # self.control = fda.AdjFloat(0.0)
         # self.omega = fd.Constant(0.0)
         theta = atan_2(ufl.real(self.y), ufl.real(self.x))  # Angle from origin
         rad = fd.Constant(0.5)
         self.u_tan = ufl.as_tensor(
             (rad * sin(theta), rad * cos(theta))
         )  # Tangential velocity
-
-        self.reset_control()
 
     def init_bcs(self, mixed=False):
         V, Q = self.function_spaces(mixed=mixed)
@@ -76,9 +77,18 @@ class Cylinder(FlowConfig):
         #   otherwise, the control will be applied with self.init_bcs()
         #
         # TODO: Is this necessary, or could it be combined with `set_control()`?
+
+        omega = fd.Constant(self.control[0])
+        # print(self.control)
+        # print(type(self.control))
+        # print(self.u_tan)
+        # print(type(self.u_tan))
+        # expr = omega * self.u_tan
+        # print(expr)
+        # print(type(expr))
         if hasattr(self, "bcu_cylinder"):
             self.bcu_cylinder._function_arg.assign(
-                fd.interpolate(self.omega * self.u_tan, self.velocity_space)
+                fd.interpolate(omega * self.u_tan, self.velocity_space)
             )
 
     def clamp(self, u):
@@ -94,7 +104,7 @@ class Cylinder(FlowConfig):
         A = self.linearize_dynamics(qB, adjoint=False)
         # M = self.mass_matrix()
         self.linearize_bcs()  # Linearize BCs first (sets freestream to zero)
-        self.set_control(1.0)  # Now change the cylinder rotation
+        self.set_control([1.0])  # Now change the cylinder rotation  TODO: FIX
 
         (v, _) = fd.TestFunctions(self.mixed_space)
         zero = fd.inner(fd.Constant((0, 0)), v) * fd.dx  # Zero RHS for linear form
@@ -112,23 +122,26 @@ class Cylinder(FlowConfig):
         to change rotation rate for a steady-state solve, for instance, and is also used
         internally to compute the control matrix
         """
+        # print("Setting control")
         if omega is None:
             omega = 0.0
         # self.omega.assign(omega)
-        self.omega = omega
+        # print(self.control)
+        self.control = self.enlist_controls(omega)
 
         # TODO: Limit max control in a differentiable way
         # self.omega.assign(
         #     self.clamp( omega )
         # )
 
+        # print(self.control)
         self.update_rotation()
 
-    def get_control(self):
-        return [self.omega]
+    # def get_control(self):
+    #     return [self.control]
 
     def reset_control(self, mixed=False):
-        self.set_control(0.0)
+        super().reset_control()
         self.init_bcs(mixed=mixed)
 
     def linearize_bcs(self, mixed=True):
@@ -136,13 +149,13 @@ class Cylinder(FlowConfig):
         self.bcu_inflow.set_value(fd.Constant((0, 0)))
         self.bcu_freestream.set_value(fd.Constant(0.0))
 
-    def initialize_control(self, act_idx=0):
+    def control_vec(self, act_idx=0):
+        # TODO: should this be in FlowConfigBase??
         (v, _) = fd.TestFunctions(self.mixed_space)
         self.linearize_bcs()
 
         # self.linearize_bcs() should have reset control, need to perturb it now
-        eps = fd.Constant(1.0)
-        self.set_control(eps)
+        self.set_control(1.0)
         B = fd.assemble(
             inner(fd.Constant((0, 0)), v) * dx, bcs=self.collect_bcs()
         )  # As fd.Function

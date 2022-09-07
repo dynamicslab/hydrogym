@@ -2,17 +2,18 @@ from typing import Callable, Iterable, Optional, Tuple
 
 import firedrake as fd
 import numpy as np
-import ufl
+
+# import ufl
 from firedrake import ds, dx, lhs, logging, rhs
 from ufl import div, dot, inner, nabla_grad
 
 # Typing
-from .core import FlowConfig
+from .flow.base import FlowConfigBase
 from .utils import white_noise
 
 
 class TransientSolver:
-    def __init__(self, flow: FlowConfig, dt: float):
+    def __init__(self, flow: FlowConfigBase, dt: float):
         self.flow = flow
         self.dt = dt
 
@@ -34,25 +35,10 @@ class TransientSolver:
     def step(self, iter, control=None, mode="direct"):
         pass
 
-    def enlist_controls(self, control):
-        # Check if scalar
-        if ufl.checks.is_ufl_scalar(control):
-            control = [control]
-        elif isinstance(control, (list, tuple, np.ndarray)):
-            return control
-        else:
-            try:
-                # TODO: better test for whether or not it is a number
-                int(control)
-                control = [control]  # Make into a list of one if so
-                return control
-            except TypeError:
-                raise TypeError("Control type not recognized")
-
 
 class IPCS(TransientSolver):
     def __init__(
-        self, flow: FlowConfig, dt: float, eta: float = 0.0, debug=False, **kwargs
+        self, flow: FlowConfigBase, dt: float, eta: float = 0.0, debug=False, **kwargs
     ):
         super().__init__(flow, dt)
         self.debug = debug
@@ -73,8 +59,7 @@ class IPCS(TransientSolver):
 
         self.initialize_operators()
 
-        self.B = self.flow.initialize_control()
-        self.control = self.flow.get_control()
+        self.B = self.flow.control_vec()
 
     def initialize_forcing(self, eta, n_samples, cutoff):
         logging.log(logging.INFO, f"Initializing forcing with amplitude {eta}")
@@ -173,28 +158,6 @@ class IPCS(TransientSolver):
             proj_prob, solver_parameters={"ksp_type": "cg", "pc_type": "sor"}
         )
 
-    def update_controls(self, control):
-        """Add a damping factor to the controller response
-
-        If actual control is u and input is v, effectively
-            du/dt = (1/tau)*(v - u)
-        """
-        logging.log(logging.DEBUG, type(control))
-        logging.log(logging.DEBUG, control)
-        assert len(self.control) == len(control)
-        # for i, (u, v) in enumerate(zip(self.control, control)):
-        #     logging.log(logging.DEBUG, f"Input control: {v} / current value: {u}")
-        #     self.control[i] += (self.dt/self.flow.TAU)*(v - u)
-        for (u, v) in zip(self.control, control):
-            logging.log(logging.DEBUG, f"Input control: {v} / current value: {u}")
-            u += (self.dt / self.flow.TAU) * (v - u)  # F
-        #     logging.log(logging.DEBUG, f"New value: {u}")
-        #     # u = fd.interpolate(u + (self.dt/self.flow.TAU)*(v - u), u.function_space())  # F
-
-        #     # u.assign(u + (self.dt/self.flow.TAU)*(v - u), annotate=True)  # RL
-        #     # u.assign(v)  # RL
-        #     # u = u + (self.dt / self.flow.TAU) * (v - u)  #
-
     def step(self, iter, control=None):
         # Update perturbations (if applicable)
         self.eta.assign(self.noise[self.noise_idx])
@@ -203,9 +166,8 @@ class IPCS(TransientSolver):
         logging.log(logging.DEBUG, f"iter: {iter}, solving velocity predictor")
         self.predictor.solve()
         if control is not None:
-            control = self.enlist_controls(control)
-            self.update_controls(control)
-            for (B, ctrl) in zip(self.B, self.control):
+            control = self.flow.update_controls(control, self.dt)
+            for (B, ctrl) in zip(self.B, control):
                 Bu, _ = B.split()
                 self.u += Bu * ctrl
 
@@ -299,7 +261,7 @@ class IPCS(TransientSolver):
 
         if return_operators:
             assert fd.COMM_WORLD.size == 1, "Must run in serial for scipy operators"
-            self.B = flow.initialize_control()
+            self.B = flow.control_vec()
 
             q = flow.q.copy(deepcopy=True)
 
@@ -330,7 +292,12 @@ class IPCS(TransientSolver):
 
 class LinearizedIPCS(IPCS):
     def __init__(
-        self, flow: FlowConfig, dt: float, base_flow: fd.Function, debug=False, **kwargs
+        self,
+        flow: FlowConfigBase,
+        dt: float,
+        base_flow: fd.Function,
+        debug=False,
+        **kwargs,
     ):
         self.qB = base_flow
         super().__init__(flow, dt, debug=debug, **kwargs)
@@ -414,7 +381,7 @@ class LinearizedIPCS(IPCS):
         assert fd.COMM_WORLD.size == 1, "Must run in serial for scipy operators"
 
         flow = self.flow
-        self.B = flow.initialize_control()
+        self.B = flow.control_vec()
 
         q = flow.q.copy(deepcopy=True)
 
@@ -468,7 +435,10 @@ class LinearizedIPCS(IPCS):
 
 class IPCS_diff(TransientSolver):
     def __init__(
-        self, flow: FlowConfig, dt: float, callbacks: Optional[Iterable[Callable]] = []
+        self,
+        flow: FlowConfigBase,
+        dt: float,
+        callbacks: Optional[Iterable[Callable]] = [],
     ):
         """
         Modified form of IPCS solver that is differentiable with respect to the control parameters
@@ -536,7 +506,7 @@ class IPCS_diff(TransientSolver):
         self.A2 = fd.assemble(a2, bcs=self.bcp)
         self.A3 = fd.assemble(a3)
 
-        self.B = flow.initialize_control()
+        self.B = flow.control_vec()
 
     def step(self, iter, control=None):
         # Step 1: Tentative velocity step
@@ -554,7 +524,7 @@ class IPCS_diff(TransientSolver):
             },
         )
         if control is not None:
-            control = self.enlist_controls(control)
+            control = self.flow.update_controls(control, self.dt)
             for (B, ctrl) in zip(self.B, control):
                 Bu, _ = B.split()
                 self.u += ctrl * Bu
