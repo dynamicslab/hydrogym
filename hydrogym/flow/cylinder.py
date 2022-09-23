@@ -48,8 +48,8 @@ class Cylinder(FlowConfig):
 
         self.ctrl_state = [float(self.omega)]
         # I_cm = 1/2 M R**2
-        # taking I_cm for a plexiglass cylinder with R=0.05m & length = 1m
-        self.I_cm = [0.0115846]
+        # taking dimensionless I_cm for a plexiglass cylinder
+        self.I_cm = [0.1162]
         self.controller_damping_coeff = [1 / self.TAU]
 
     def init_bcs(self, mixed=False):
