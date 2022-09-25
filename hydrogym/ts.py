@@ -438,7 +438,10 @@ class IPCS_diff(TransientSolver):
         self,
         flow: FlowConfigBase,
         dt: float,
-        callbacks: Optional[Iterable[Callable]] = [],
+        eta: float = 0.0,
+        debug=False,
+        **kwargs
+        # callbacks: Optional[Iterable[Callable]] = [],
     ):
         """
         Modified form of IPCS solver that is differentiable with respect to the control parameters
@@ -447,8 +450,15 @@ class IPCS_diff(TransientSolver):
             (might be able to get speed and differentiability with low-level access to the KSP objects?)
         """
         super().__init__(flow, dt)
-        self.callbacks = callbacks
+        # self.callbacks = callbacks
+        if eta > 0:
+            raise NotImplementedError("Random forcing not implemented for IPCS_diff")
+        # self.initialize_operators()
+        self.reset()
+
+    def reset(self):
         self.initialize_operators()
+        self.B = self.flow.control_vec()
 
     def initialize_operators(self):
         # Setup forms
