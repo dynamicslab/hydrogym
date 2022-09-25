@@ -170,10 +170,8 @@ class FlowConfigBase(PDEModel):
             for i in range(self.ACT_DIM):
                 c = fd.Constant(self.control[i])
                 self.bcu_actuation[i]._function_arg.assign(
-                    fd.interpolate(
-                        c * self.u_ctrl[i], self.velocity_space
-                    )
-                ) 
+                    fd.interpolate(c * self.u_ctrl[i], self.velocity_space)
+                )
 
     def control_vec(self, mixed=False):
         """Return a list of PETSc.Vecs corresponding to the columns of the control matrix"""
@@ -195,7 +193,7 @@ class FlowConfigBase(PDEModel):
             )
 
             # Have to have mixed function space for computing B functions
-            self.reset_control(mixed=True)  
+            self.reset_control(mixed=True)
 
         # At the end the BC function spaces could be mixed or not
         self.reset_control(mixed=mixed)

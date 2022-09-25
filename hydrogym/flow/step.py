@@ -17,14 +17,15 @@ class Step(FlowConfigBase):
 
     def get_mesh_loader(self):
         from .mesh.step import load_mesh
+
         return load_mesh
 
     def initialize_state(self):
         super().initialize_state()
         self.U_inf = ufl.as_tensor((1.0 - ((self.y - 0.25) / 0.25) ** 2, 0.0 * self.y))
-        self.u_ctrl = [ufl.as_tensor(
-            (0.0 * self.x, -self.x * (1600 * self.x + 560) / 147)
-        )]  # Blowing/suction
+        self.u_ctrl = [
+            ufl.as_tensor((0.0 * self.x, -self.x * (1600 * self.x + 560) / 147))
+        ]  # Blowing/suction
 
     @property
     def nu(self):
@@ -53,9 +54,9 @@ class Step(FlowConfigBase):
             # V, fd.interpolate(fd.Constant((0, 0)), V), self.WALL
         )
         self.bcp_outflow = fd.DirichletBC(Q, fd.Constant(0), self.OUTLET)
-        self.bcu_actuation = [fd.DirichletBC(
-            V, fd.interpolate(fd.Constant((0, 0)), V), self.CONTROL
-        )]
+        self.bcu_actuation = [
+            fd.DirichletBC(V, fd.interpolate(fd.Constant((0, 0)), V), self.CONTROL)
+        ]
 
         self.set_control(self.control)
 

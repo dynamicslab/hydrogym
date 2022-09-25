@@ -9,6 +9,7 @@ from .base import FlowConfigBase
 
 class Pinball(FlowConfigBase):
     from .mesh.pinball import CYLINDER, FREESTREAM, INLET, OUTLET, rad, x0, y0
+
     DEFAULT_MESH = "fine"
     DEFAULT_REYNOLDS = 30
     ACT_DIM = len(CYLINDER)
@@ -17,6 +18,7 @@ class Pinball(FlowConfigBase):
 
     def get_mesh_loader(self):
         from .mesh.pinball import load_mesh
+
         return load_mesh
 
     def initialize_state(self):

@@ -9,6 +9,7 @@ from .base import FlowConfigBase
 
 class Cylinder(FlowConfigBase):
     from .mesh.cylinder import CYLINDER, FREESTREAM, INLET, OUTLET
+
     DEFAULT_MESH = "medium"
     DEFAULT_REYNOLDS = 100
     ACT_DIM = 1
@@ -29,6 +30,7 @@ class Cylinder(FlowConfigBase):
 
     def get_mesh_loader(self):
         from .mesh.cylinder import load_mesh
+
         return load_mesh
 
     def initialize_state(self):
@@ -38,9 +40,9 @@ class Cylinder(FlowConfigBase):
         # Set up tangential boundaries to cylinder
         theta = atan_2(ufl.real(self.y), ufl.real(self.x))  # Angle from origin
         rad = fd.Constant(0.5)
-        self.u_ctrl = [ufl.as_tensor(
-            (rad * sin(theta), rad * cos(theta))
-        )]  # Tangential velocity
+        self.u_ctrl = [
+            ufl.as_tensor((rad * sin(theta), rad * cos(theta)))
+        ]  # Tangential velocity
 
     def init_bcs(self, mixed=False):
         V, Q = self.function_spaces(mixed=mixed)
@@ -51,9 +53,9 @@ class Cylinder(FlowConfigBase):
         self.bcu_freestream = fd.DirichletBC(
             V.sub(1), fd.Constant(0.0), self.FREESTREAM
         )  # Symmetry BCs
-        self.bcu_actuation = [fd.DirichletBC(
-            V, fd.interpolate(fd.Constant((0, 0)), V), self.CYLINDER
-        )]
+        self.bcu_actuation = [
+            fd.DirichletBC(V, fd.interpolate(fd.Constant((0, 0)), V), self.CYLINDER)
+        ]
         self.bcp_outflow = fd.DirichletBC(Q, fd.Constant(0), self.OUTLET)
 
         self.set_control(self.control)
