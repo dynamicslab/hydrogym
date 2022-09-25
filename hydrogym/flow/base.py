@@ -1,7 +1,7 @@
 import firedrake as fd
 
 # import pyadjoint
-# import numpy as np
+import numpy as np
 import ufl
 from firedrake import ds, dx
 
@@ -13,10 +13,18 @@ from ..core import PDEModel
 
 class FlowConfigBase(PDEModel):
     ACT_DIM = 1
+    DEFAULT_MESH = ""
+    DEFAULT_REYNOLDS = 1
 
-    def __init__(self, mesh, Re, restart=None):
+    def __init__(self, Re=None, restart=None, mesh=None):
+        load_mesh = self.get_mesh_loader()
+        mesh = load_mesh(name=mesh or self.DEFAULT_MESH)
         super().__init__(mesh, restart=restart)
-        self.Re = fd.Constant(ufl.real(Re))
+        self.Re = fd.Constant(ufl.real(Re or self.DEFAULT_REYNOLDS))
+
+    def get_mesh_loader(self):
+        """Return a function load_mesh(name) that will load a fd.Mesh"""
+        return None
 
     def initialize_state(self):
         # Set up Taylor-Hood elements
@@ -145,9 +153,56 @@ class FlowConfigBase(PDEModel):
         else:
             return L
 
-    def control_vec(self, act_idx=0):
-        """Return a PETSc.Vec corresponding to the column of the control matrix"""
-        pass
+    def set_control(self, control=None):
+        """
+        Sets the actuation
+
+        Note that for time-varying controls it will be better to adjust the rotation rate
+        in the timestepper, e.g. with `solver.step(iter, control=c)`.  This could be used
+        to change control for a steady-state solve, for instance, and is also used
+        internally to compute the control matrix
+        """
+        if control is None:
+            control = np.zeros(self.ACT_DIM)
+        self.control = self.enlist_controls(control)
+
+        if hasattr(self, "bcu_actuation"):
+            for i in range(self.ACT_DIM):
+                c = fd.Constant(self.control[i])
+                self.bcu_actuation[i]._function_arg.assign(
+                    fd.interpolate(
+                        c * self.u_ctrl[i], self.velocity_space
+                    )
+                ) 
+
+    def control_vec(self, mixed=False):
+        """Return a list of PETSc.Vecs corresponding to the columns of the control matrix"""
+        (v, _) = fd.TestFunctions(self.mixed_space)
+        self.linearize_bcs()
+        # self.linearize_bcs() should have reset control, need to perturb it now
+
+        fd.assemble(inner(fd.Constant((0, 0)), v) * dx, bcs=self.collect_bcs())
+
+        B = []
+        for i in range(self.ACT_DIM):
+            c = np.zeros(self.ACT_DIM)
+            c[i] = 1.0  # Perturb the ith control
+            self.set_control(c)
+
+            # Control as fd.Function
+            B.append(
+                fd.assemble(inner(fd.Constant((0, 0)), v) * dx, bcs=self.collect_bcs())
+            )
+
+            # Have to have mixed function space for computing B functions
+            self.reset_control(mixed=True)  
+
+        # At the end the BC function spaces could be mixed or not
+        self.reset_control(mixed=mixed)
+        return B
+
+    def num_controls(self):
+        return self.ACT_DIM
 
     def linearize(self, qB, adjoint=False, backend="petsc"):
         assert backend in [

@@ -77,7 +77,9 @@ class PDEModel:
         If actual control is u and input is v, effectively
             du/dt = (1/tau)*(v - u)
         """
+        print(act)
         act = self.enlist_controls(act)
+        print(act)
         assert len(act) == self.ACT_DIM
 
         for i, (u, v) in enumerate(zip(self.control, act)):

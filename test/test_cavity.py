@@ -59,7 +59,7 @@ def test_env():
 def test_grad():
     flow = gym.flow.Cavity(Re=500, mesh="medium")
 
-    c = fd.Constant(0.0)
+    c = fda.AdjFloat(0.0)
     flow.set_control(c)
 
     flow.solve_steady()

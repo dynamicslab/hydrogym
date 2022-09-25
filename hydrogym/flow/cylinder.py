@@ -1,42 +1,46 @@
 import firedrake as fd
 import numpy as np
 import ufl
-from firedrake import ds, dx
-from ufl import atan_2, cos, dot, inner, sin
+from firedrake import ds
+from ufl import atan_2, cos, dot, sin
 
 from .base import FlowConfigBase
 
 
 class Cylinder(FlowConfigBase):
     from .mesh.cylinder import CYLINDER, FREESTREAM, INLET, OUTLET
-
+    DEFAULT_MESH = "medium"
+    DEFAULT_REYNOLDS = 100
+    ACT_DIM = 1
     MAX_CONTROL = 0.5 * np.pi
     # TAU = 0.556  # Time constant for controller damping (0.1*vortex shedding period)
     TAU = 0.0556  # Time constant for controller damping (0.01*vortex shedding period)
 
-    def __init__(self, Re=100, mesh="medium", restart=None):
-        """
-        controller(t, y) -> omega
-        y = (CL, CD)
-        omega = scalar rotation rate
-        """
+    # def __init__(self, Re=100, mesh="medium", restart=None):
+    #     """
+    #     controller(t, y) -> omega
+    #     y = (CL, CD)
+    #     omega = scalar rotation rate
+    #     """
+    #     from .mesh.cylinder import load_mesh
+
+    #     mesh = load_mesh(name=mesh)
+    #     super().__init__(mesh, Re, restart=restart)
+
+    def get_mesh_loader(self):
         from .mesh.cylinder import load_mesh
-
-        mesh = load_mesh(name=mesh)
-
-        self.U_inf = fd.Constant((1.0, 0.0))
-        super().__init__(mesh, Re, restart=restart)
+        return load_mesh
 
     def initialize_state(self):
         super().initialize_state()
-        # First set up tangential boundaries to cylinder
-        # self.control = fda.AdjFloat(0.0)
-        # self.omega = fd.Constant(0.0)
+        self.U_inf = fd.Constant((1.0, 0.0))
+
+        # Set up tangential boundaries to cylinder
         theta = atan_2(ufl.real(self.y), ufl.real(self.x))  # Angle from origin
         rad = fd.Constant(0.5)
-        self.u_tan = ufl.as_tensor(
+        self.u_ctrl = [ufl.as_tensor(
             (rad * sin(theta), rad * cos(theta))
-        )  # Tangential velocity
+        )]  # Tangential velocity
 
     def init_bcs(self, mixed=False):
         V, Q = self.function_spaces(mixed=mixed)
@@ -47,15 +51,15 @@ class Cylinder(FlowConfigBase):
         self.bcu_freestream = fd.DirichletBC(
             V.sub(1), fd.Constant(0.0), self.FREESTREAM
         )  # Symmetry BCs
-        self.bcu_cylinder = fd.DirichletBC(
+        self.bcu_actuation = [fd.DirichletBC(
             V, fd.interpolate(fd.Constant((0, 0)), V), self.CYLINDER
-        )
+        )]
         self.bcp_outflow = fd.DirichletBC(Q, fd.Constant(0), self.OUTLET)
 
         self.set_control(self.control)
 
     def collect_bcu(self):
-        return [self.bcu_inflow, self.bcu_freestream, self.bcu_cylinder]
+        return [self.bcu_inflow, self.bcu_freestream, *self.bcu_actuation]
 
     def collect_bcp(self):
         return [self.bcp_outflow]
@@ -89,43 +93,24 @@ class Cylinder(FlowConfigBase):
         fd.solve(A == zero, f, bcs=self.collect_bcs())
         return f
 
-    def set_control(self, omega=None):
-        """
-        Sets the rotation rate of the cylinder
-
-        Note that for time-varying controls it will be better to adjust the rotation rate
-        in the timestepper with `solver.step(iter, control=omega)`.  This method could be used
-        to change rotation rate for a steady-state solve, for instance, and is also used
-        internally to compute the control matrix
-        """
-        if omega is None:
-            omega = 0.0
-        self.control = self.enlist_controls(omega)
-        
-        c = fd.Constant(self.control[0])
-        if hasattr(self, "bcu_cylinder"):
-            self.bcu_cylinder._function_arg.assign(
-                fd.interpolate(c * self.u_tan, self.velocity_space)
-            )
-
     def linearize_bcs(self, mixed=True):
         self.reset_control(mixed=mixed)
         self.bcu_inflow.set_value(fd.Constant((0, 0)))
         self.bcu_freestream.set_value(fd.Constant(0.0))
 
-    def control_vec(self, act_idx=0):
-        # TODO: should this be in FlowConfigBase??
-        (v, _) = fd.TestFunctions(self.mixed_space)
-        self.linearize_bcs()
+    # def control_vec(self, act_idx=0):
+    #     # TODO: should this be in FlowConfigBase??
+    #     (v, _) = fd.TestFunctions(self.mixed_space)
+    #     self.linearize_bcs()
 
-        # self.linearize_bcs() should have reset control, need to perturb it now
-        self.set_control(1.0)
-        B = fd.assemble(
-            inner(fd.Constant((0, 0)), v) * dx, bcs=self.collect_bcs()
-        )  # As fd.Function
+    #     # self.linearize_bcs() should have reset control, need to perturb it now
+    #     self.set_control(1.0)
+    #     B = fd.assemble(
+    #         inner(fd.Constant((0, 0)), v) * dx, bcs=self.collect_bcs()
+    #     )  # As fd.Function
 
-        self.reset_control()
-        return [B]
+    #     self.reset_control()
+    #     return [B]
 
     def num_controls(self):
         return 1

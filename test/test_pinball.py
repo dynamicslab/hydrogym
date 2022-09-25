@@ -80,10 +80,9 @@ def test_env():
             K = -0.1 * np.ones((3, 6))  # [Inputs x outputs]
         return K @ y
 
-    u = 0.0
+    u = np.zeros(env.flow.ACT_DIM)
     for _ in range(10):
         y, reward, done, info = env.step(u)
-        print(y)
         u = feedback_ctrl(y)
 
 
@@ -117,7 +116,7 @@ def test_env_grad():
     env_config = {"Re": 30, "differentiable": True, "mesh": "coarse"}
     env = gym.env.PinballEnv(env_config)
     y = env.reset()
-    n_cyl = 3
+    n_cyl = env.flow.ACT_DIM
     K = pyadjoint.create_overloaded_object(np.zeros((n_cyl, 2 * n_cyl)))
     J = fda.AdjFloat(0.0)
     for _ in range(10):
