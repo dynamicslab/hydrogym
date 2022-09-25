@@ -84,8 +84,9 @@ class PDEModel:
             self.control[i] += (dt / self.TAU) * (v - u)
         return self.control
 
-    def reset_control(self):
+    def reset_control(self, mixed=False):
         self.control = self.enlist_controls(np.zeros(self.ACT_DIM))
+        self.init_bcs(mixed=mixed)
 
     def dot(self, q1, q2):
         """Inner product between states q1 and q2"""

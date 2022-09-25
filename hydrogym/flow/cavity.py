@@ -12,7 +12,7 @@ class Cavity(FlowConfigBase):
 
     from .mesh.cavity import CONTROL, FREESTREAM, INLET, OUTLET, SENSOR, SLIP, WALL
 
-    def __init__(self, h5_file=None, Re=7500, mesh="fine"):
+    def __init__(self, restart=None, Re=7500, mesh="fine"):
         """
         controller(t, y) -> omega
         y = (CL, CD)
@@ -23,15 +23,17 @@ class Cavity(FlowConfigBase):
         mesh = load_mesh(name=mesh)
 
         self.U_inf = fd.Constant((1.0, 0.0))
+        super().__init__(mesh, Re, restart=restart)
 
-        super().__init__(mesh, Re, h5_file=h5_file)
+        # self.control = fd.Constant(0.0)
+    
+        # self.reset_control()
 
-        self.control = fd.Constant(0.0)
+    def initialize_state(self):
+        super().initialize_state()
         self.u_ctrl = ufl.as_tensor(
             (0.0 * self.x, -self.x * (1600 * self.x + 560) / 147)
         )  # Blowing/suction
-
-        self.reset_control()
 
     def init_bcs(self, mixed=False):
         V, Q = self.function_spaces(mixed=mixed)
@@ -80,34 +82,29 @@ class Cavity(FlowConfigBase):
         """
         if control is None:
             control = 0.0
-        self.control.assign(control)
+        self.control = self.enlist_controls(control)
 
+        c = fd.Constant(self.control[0])
         if hasattr(self, "bcu_actuation"):
             self.bcu_actuation._function_arg.assign(
-                fd.project(self.control * self.u_ctrl, self.velocity_space)
+                fd.project(c * self.u_ctrl, self.velocity_space)
             )
-
-    def get_control(self):
-        return [self.control]
-
-    def reset_control(self, mixed=False):
-
-        self.set_control(0.0)
-        self.init_bcs(mixed=mixed)
 
     def control_vec(self, act_idx=0):
         (v, _) = fd.TestFunctions(self.mixed_space)
         self.linearize_bcs()
 
         # self.linearize_bcs() should have reset control, need to perturb it now
-        eps = fd.Constant(1.0)
-        self.set_control(eps)
+        self.set_control(1.0)
         B = fd.assemble(
             inner(fd.Constant((0, 0)), v) * dx, bcs=self.collect_bcs()
         )  # As fd.Function
 
         self.reset_control()
         return [B]
+    
+    def num_controls(self):
+        return 1
 
     def get_observations(self, q=None):
         """Integral of wall-normal shear stress (see Barbagallo et al, 2009)"""
@@ -118,11 +115,14 @@ class Cavity(FlowConfigBase):
         return (m,)
 
     def evaluate_objective(self, q=None):
+        # TODO: This should be *fluctuation* kinetic energy
         if q is None:
             q = self.q
         (u, p) = q.split()
         KE = 0.5 * fd.assemble(fd.inner(u, u) * fd.dx)
         return KE
+        # m, = self.get_observations(q=q)
+        # return m
 
     # def solve_steady(self, **kwargs):
     #     if self.Re > 500:

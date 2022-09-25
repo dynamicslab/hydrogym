@@ -103,14 +103,13 @@ class FlowConfigBase(PDEModel):
             + inner(div(u), s) * dx
         )
 
-        if stabilization == "gls":
-            # Galerkin least-squares stabilization (see Tezduyar, 1991)
-            def res(U, u, p):
-                return dot(U, nabla_grad(u)) - div(self.sigma(u, p))
+        # if stabilization == "gls":
+        #     # Galerkin least-squares stabilization (see Tezduyar, 1991)
+        #     def res(U, u, p):
+        #         return dot(U, nabla_grad(u)) - div(self.sigma(u, p))
 
-            h = fd.CellSize(self.mesh)
-            tau = ((4.0 * dot(u, u) / h**2) + (4.0 * self.nu / h**2) ** 2) ** (-0.5)
-            F += tau * inner(res(u, u, p), res(u, v, s)) * dx
+        #     h = fd.CellSize(self.mesh)
+        #     F += tau * inner(res(u, u, p), res(u, v, s)) * dx
 
         return F
 

@@ -27,8 +27,6 @@ class Cylinder(FlowConfigBase):
         self.U_inf = fd.Constant((1.0, 0.0))
         super().__init__(mesh, Re, restart=restart)
 
-        # self.reset_control()
-
     def initialize_state(self):
         super().initialize_state()
         # First set up tangential boundaries to cylinder
@@ -54,7 +52,7 @@ class Cylinder(FlowConfigBase):
         )
         self.bcp_outflow = fd.DirichletBC(Q, fd.Constant(0), self.OUTLET)
 
-        self.update_rotation()
+        self.set_control(self.control)
 
     def collect_bcu(self):
         return [self.bcu_inflow, self.bcu_freestream, self.bcu_cylinder]
@@ -71,28 +69,6 @@ class Cylinder(FlowConfigBase):
         CL = fd.assemble(2 * force[1] * ds(self.CYLINDER))
         CD = fd.assemble(2 * force[0] * ds(self.CYLINDER))
         return CL, CD
-
-    def update_rotation(self):
-        # If the boundary condition has already been defined, update it
-        #   otherwise, the control will be applied with self.init_bcs()
-        #
-        # TODO: Is this necessary, or could it be combined with `set_control()`?
-
-        omega = fd.Constant(self.control[0])
-        # print(self.control)
-        # print(type(self.control))
-        # print(self.u_tan)
-        # print(type(self.u_tan))
-        # expr = omega * self.u_tan
-        # print(expr)
-        # print(type(expr))
-        if hasattr(self, "bcu_cylinder"):
-            self.bcu_cylinder._function_arg.assign(
-                fd.interpolate(omega * self.u_tan, self.velocity_space)
-            )
-
-    def clamp(self, u):
-        return max(-self.MAX_CONTROL, min(self.MAX_CONTROL, u))
 
     def linearize_control(self, qB=None):
         """
@@ -122,27 +98,15 @@ class Cylinder(FlowConfigBase):
         to change rotation rate for a steady-state solve, for instance, and is also used
         internally to compute the control matrix
         """
-        # print("Setting control")
         if omega is None:
             omega = 0.0
-        # self.omega.assign(omega)
-        # print(self.control)
         self.control = self.enlist_controls(omega)
-
-        # TODO: Limit max control in a differentiable way
-        # self.omega.assign(
-        #     self.clamp( omega )
-        # )
-
-        # print(self.control)
-        self.update_rotation()
-
-    # def get_control(self):
-    #     return [self.control]
-
-    def reset_control(self, mixed=False):
-        super().reset_control()
-        self.init_bcs(mixed=mixed)
+        
+        c = fd.Constant(self.control[0])
+        if hasattr(self, "bcu_cylinder"):
+            self.bcu_cylinder._function_arg.assign(
+                fd.interpolate(c * self.u_tan, self.velocity_space)
+            )
 
     def linearize_bcs(self, mixed=True):
         self.reset_control(mixed=mixed)

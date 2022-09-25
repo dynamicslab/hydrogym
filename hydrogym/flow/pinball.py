@@ -1,6 +1,5 @@
 import firedrake as fd
 import numpy as np
-import pyadjoint
 import ufl
 from firedrake import ds, dx
 from ufl import atan_2, cos, dot, inner, sin
@@ -15,20 +14,22 @@ class Pinball(FlowConfigBase):
     MAX_CONTROL = 0.5 * np.pi
     TAU = 1.0
 
-    def __init__(self, Re=30, mesh="fine", h5_file=None):
+    def __init__(self, Re=30, mesh="fine", restart=None):
         """ """
         from .mesh.pinball import load_mesh
 
         mesh = load_mesh(name=mesh)
 
         self.U_inf = fd.Constant((1.0, 0.0))
-        super().__init__(mesh, Re, h5_file=h5_file)
+        super().__init__(mesh, Re, restart=restart)
 
         # self.omega = [fd.Constant(0.0) for _ in range(len(self.CYLINDER))]
+        # self.omega = pyadjoint.create_overloaded_object(np.zeros(self.CYLINDER))
+        # self.reset_control()
 
-        self.omega = pyadjoint.create_overloaded_object(np.zeros(self.CYLINDER))
-
-        # First set up tangential boundaries for each cylinder
+    def initialize_state(self):
+        super().initialize_state()
+        # Set up tangential boundaries for each cylinder
         self.rad = fd.Constant(self.rad)
         self.u_tan = []
         for cyl_idx in range(len(self.CYLINDER)):
@@ -39,8 +40,6 @@ class Pinball(FlowConfigBase):
             self.u_tan.append(
                 ufl.as_tensor((self.rad * sin(theta), self.rad * cos(theta)))
             )  # Tangential velocity
-
-        self.reset_control()
 
     def init_bcs(self, mixed=False):
         V, Q = self.function_spaces(mixed=mixed)
@@ -57,8 +56,7 @@ class Pinball(FlowConfigBase):
         ]
         self.bcp_outflow = fd.DirichletBC(Q, fd.Constant(0), self.OUTLET)
 
-        for cyl_idx in range(len(self.CYLINDER)):
-            self.update_rotation(cyl_idx)
+        self.set_control(self.control)
 
     def collect_bcu(self):
         return [self.bcu_inflow, self.bcu_freestream, *self.bcu_cylinder]
@@ -81,21 +79,6 @@ class Pinball(FlowConfigBase):
         CD = [fd.assemble(2 * force[0] * ds(cyl)) for cyl in self.CYLINDER]
         return CL, CD
 
-    def update_rotation(self, cyl_idx):
-        # If the boundary condition has already been defined, update it
-        #   otherwise, the control will be applied with self.init_bcs()
-        if hasattr(self, "bcu_cylinder"):
-            # self.bcu_cylinder[cyl_idx]._function_arg.assign(
-            #     fd.project(
-            #         self.omega[cyl_idx] * self.u_tan[cyl_idx], self.velocity_space
-            #     )
-            # )
-            self.bcu_cylinder[cyl_idx]._function_arg.assign(
-                fd.interpolate(
-                    self.omega[cyl_idx] * self.u_tan[cyl_idx], self.velocity_space
-                )
-            )
-
     def set_control(self, omega=None):
         """
         Sets the rotation rate of the cylinder
@@ -107,17 +90,19 @@ class Pinball(FlowConfigBase):
         """
         if omega is None:
             omega = 0.0, 0.0, 0.0
-        for i in range(len(self.CYLINDER)):
-            # self.omega[i].assign(omega[i])
-            self.omega[i] = omega[i]
+        # for i in range(len(self.CYLINDER)):
+        #     # self.omega[i].assign(omega[i])
+        #     self.omega[i] = omega[i]
+        self.control = self.enlist_controls(omega)
 
-        # TODO: Limit max control in a differentiable way
-        # self.omega.assign(
-        #     self.clamp( omega )
-        # )
-
-        for cyl_idx in range(len(self.CYLINDER)):
-            self.update_rotation(cyl_idx)
+        if hasattr(self, "bcu_cylinder"):
+            for cyl_idx in range(len(self.CYLINDER)):
+                c = fd.Constant(self.control[cyl_idx])
+                self.bcu_cylinder[cyl_idx]._function_arg.assign(
+                    fd.interpolate(
+                        c * self.u_tan[cyl_idx], self.velocity_space
+                    )
+                )
 
     def get_control(self):
         return self.omega

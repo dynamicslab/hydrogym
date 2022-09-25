@@ -34,10 +34,12 @@ def test_rotation(tol=1e-2):
     flow.set_control((0.5, 0.5, 0.5))
     flow.solve_steady()
 
-    CL_target = (0.2718, 0.5263, -0.6146)  # Slight asymmetry in mesh
+    CL_target = (0.2718, 0.5035, -0.6276)  # Slight asymmetry in mesh
     CD_target = (1.4027, 1.5166, 1.5696)
 
     CL, CD = flow.compute_forces()
+    print(CL)
+    print(CD)
     for i in range(len(CL)):
         assert abs(CL[i] - CL_target[i]) < tol
         assert abs(CD[i] - CD_target[i]) < tol

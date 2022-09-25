@@ -55,7 +55,7 @@ class FlowEnv(gym.Env):
         return obs
 
     def get_reward(self):
-        return 1 / self.flow.evaluate_objective()
+        return -self.flow.evaluate_objective()
 
     def check_complete(self):
         return self.iter > self.max_steps
