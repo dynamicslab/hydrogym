@@ -29,7 +29,7 @@ n_hidden = 64
 n_layers = 2
 gamma = 0.99
 seed = 42
-steps = 1000
+steps = 100
 epochs = 50
 
 ppo.ppo(

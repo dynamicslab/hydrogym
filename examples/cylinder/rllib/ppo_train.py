@@ -37,13 +37,14 @@ if __name__ == "__main__":
 
     config = {
         "log_level": "DEBUG",
+        "horizon": 100,
         "env": hydrogym.env.CylEnv,
         "env_config": {
             "Re": 100,
             "checkpoint": "../demo/checkpoint-coarse.h5",
             "mesh": "coarse",
             "callbacks": [log],
-            "max_steps": 1000,
+            "max_steps": 100,
         },
         # Use GPUs iff `RLLIB_NUM_GPUS` env var set to > 0.
         "num_gpus": int(os.environ.get("RLLIB_NUM_GPUS", "0")),
@@ -51,6 +52,10 @@ if __name__ == "__main__":
             "custom_model": "cyl_actor",
             "vf_share_layers": True,
         },
+        # "model": {
+        #     "fcnet_hiddens": [64, 64],
+        #     "fcnet_activation": "relu",
+        # },
         "num_workers": 1,  # parallelism
         "framework": args.framework,
     }

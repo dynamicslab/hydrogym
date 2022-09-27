@@ -42,12 +42,6 @@ if __name__ == "__main__":
         filename=None,
     )
 
-    # env_config = {
-    #     'Re': 130,
-    #     'checkpoint': './output/checkpoint.h5',
-    #     'mesh': 'coarse'
-    # }
-
     config = {
         "log_level": "DEBUG",
         "env": hydrogym.env.PinballEnv,

@@ -1,3 +1,5 @@
+import gc
+
 import firedrake as fd
 import gym
 import matplotlib.pyplot as plt
@@ -65,6 +67,7 @@ class FlowEnv(gym.Env):
         self.flow.reset(q0=self.q0)
         self.solver.reset()
 
+        gc.collect()
         return self.flow.get_observations()
 
     def render(self, mode="human"):
@@ -106,7 +109,6 @@ class CylEnv(FlowEnv):
         # TODO: Need to actually restart everything
         # ... why is this not working???
         out = super().reset()
-        print(out)
         return out
 
     def render(self, mode="human", clim=None, levels=None, cmap="RdBu", **kwargs):
