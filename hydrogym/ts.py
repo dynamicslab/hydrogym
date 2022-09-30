@@ -2,18 +2,18 @@ from typing import Callable, Iterable, Optional, Tuple
 
 import firedrake as fd
 import numpy as np
-from scipy.optimize import fsolve
-import ufl
+
+# import ufl
 from firedrake import ds, dx, lhs, logging, rhs
 from ufl import div, dot, inner, nabla_grad
 
 # Typing
-from .core import FlowConfig
+from .flow.base import FlowConfigBase
 from .utils import white_noise
 
 
 class TransientSolver:
-    def __init__(self, flow: FlowConfig, dt: float):
+    def __init__(self, flow: FlowConfigBase, dt: float):
         self.flow = flow
         self.dt = dt
 
@@ -35,39 +35,31 @@ class TransientSolver:
     def step(self, iter, control=None, mode="direct"):
         pass
 
-    def enlist_controls(self, control):
-        # Check if scalar
-        if ufl.checks.is_ufl_scalar(control):
-            control = [control]
-        else:
-            try:
-                int(control)
-                control = [control]  # Make into a list of one if so
-            except TypeError:
-                assert isinstance(
-                    control, (list, tuple, np.ndarray)
-                ), "Control type not recognized"
-        return control
-
 
 class IPCS(TransientSolver):
     def __init__(
-        self, flow: FlowConfig, dt: float, eta: float = 0.0, debug=False, **kwargs
+        self, flow: FlowConfigBase, dt: float, eta: float = 0.0, debug=False, **kwargs
     ):
         super().__init__(flow, dt)
         self.debug = debug
 
-        # Set up random forcing (if applicable)
+        self.forcing_config = {
+            "eta": eta,
+            "n_samples": kwargs.get("max_iter", int(1e8)),
+            "cutoff": kwargs.get("noise_cutoff", 0.01 / flow.TAU),
+        }
+
+        self.reset()
+
+    def reset(self):
         self.initialize_functions()
-        self.initialize_forcing(
-            eta=eta,
-            n_samples=kwargs.get("max_iter", int(1e8)),
-            cutoff=kwargs.get("noise_cutoff", 0.01 / flow.TAU),
-        )
+
+        # Set up random forcing (if applicable)
+        self.initialize_forcing(**self.forcing_config)
+
         self.initialize_operators()
 
-        self.B = flow.initialize_control()
-        self.control = flow.get_control()
+        self.B = self.flow.control_vec()
 
     def initialize_forcing(self, eta, n_samples, cutoff):
         logging.log(logging.INFO, f"Initializing forcing with amplitude {eta}")
@@ -174,17 +166,19 @@ class IPCS(TransientSolver):
         logging.log(logging.DEBUG, f"iter: {iter}, solving velocity predictor")
         self.predictor.solve()
         if control is not None:
-            control = self.enlist_controls(control)
-            self.flow.update_state(control, self.dt)
-            for (B, ctrl) in zip(self.B, self.flow.ctrl_state):
+            control = self.flow.update_controls(control, self.dt)
+            print(control)
+            for (B, ctrl) in zip(self.B, control):
                 Bu, _ = B.split()
+                # print(ctrl)
+                # print(self.u + Bu*ctrl)
                 self.u += Bu * ctrl
 
-        logging.log(logging.DEBUG, f"Velocity predictor done, solving Poisson")
+        logging.log(logging.DEBUG, "Velocity predictor done, solving Poisson")
         self.poisson.solve()
-        logging.log(logging.DEBUG, f"Poisson done, solving projection step")
+        logging.log(logging.DEBUG, "Poisson done, solving projection step")
         self.projection.solve()
-        logging.log(logging.DEBUG, f"IPCS step finished")
+        logging.log(logging.DEBUG, "IPCS step finished")
 
         # Update previous solution
         self.u_n.assign(self.u)
@@ -201,11 +195,12 @@ class IPCS(TransientSolver):
         Return a LinearOperator that can act on numpy arrays (pulled from utils.get_array)
         """
         from scipy.sparse.linalg import LinearOperator
-        from .utils import (
+
+        from .utils import (  # Convert function to/from array
             get_array,
-            set_from_array,
             linalg,
-        )  # Convert function to/from array
+            set_from_array,
+        )
 
         flow = self.flow
         k = fd.Constant(self.dt)
@@ -273,7 +268,7 @@ class IPCS(TransientSolver):
 
         if return_operators:
             assert fd.COMM_WORLD.size == 1, "Must run in serial for scipy operators"
-            self.B = flow.initialize_control()
+            self.B = flow.control_vec()
 
             q = flow.q.copy(deepcopy=True)
 
@@ -304,7 +299,12 @@ class IPCS(TransientSolver):
 
 class LinearizedIPCS(IPCS):
     def __init__(
-        self, flow: FlowConfig, dt: float, base_flow: fd.Function, debug=False, **kwargs
+        self,
+        flow: FlowConfigBase,
+        dt: float,
+        base_flow: fd.Function,
+        debug=False,
+        **kwargs,
     ):
         self.qB = base_flow
         super().__init__(flow, dt, debug=debug, **kwargs)
@@ -388,7 +388,7 @@ class LinearizedIPCS(IPCS):
         assert fd.COMM_WORLD.size == 1, "Must run in serial for scipy operators"
 
         flow = self.flow
-        self.B = flow.initialize_control()
+        self.B = flow.control_vec()
 
         q = flow.q.copy(deepcopy=True)
 
@@ -442,7 +442,13 @@ class LinearizedIPCS(IPCS):
 
 class IPCS_diff(TransientSolver):
     def __init__(
-        self, flow: FlowConfig, dt: float, callbacks: Optional[Iterable[Callable]] = []
+        self,
+        flow: FlowConfigBase,
+        dt: float,
+        eta: float = 0.0,
+        debug=False,
+        **kwargs
+        # callbacks: Optional[Iterable[Callable]] = [],
     ):
         """
         Modified form of IPCS solver that is differentiable with respect to the control parameters
@@ -451,8 +457,15 @@ class IPCS_diff(TransientSolver):
             (might be able to get speed and differentiability with low-level access to the KSP objects?)
         """
         super().__init__(flow, dt)
-        self.callbacks = callbacks
+        # self.callbacks = callbacks
+        if eta > 0:
+            raise NotImplementedError("Random forcing not implemented for IPCS_diff")
+        # self.initialize_operators()
+        self.reset()
+
+    def reset(self):
         self.initialize_operators()
+        self.B = self.flow.control_vec()
 
     def initialize_operators(self):
         # Setup forms
@@ -510,7 +523,7 @@ class IPCS_diff(TransientSolver):
         self.A2 = fd.assemble(a2, bcs=self.bcp)
         self.A3 = fd.assemble(a3)
 
-        self.B = flow.initialize_control()
+        self.B = flow.control_vec()
 
     def step(self, iter, control=None):
         # Step 1: Tentative velocity step
@@ -528,7 +541,7 @@ class IPCS_diff(TransientSolver):
             },
         )
         if control is not None:
-            control = self.enlist_controls(control)
+            control = self.flow.update_controls(control, self.dt)
             for (B, ctrl) in zip(self.B, control):
                 Bu, _ = B.split()
                 self.u += ctrl * Bu

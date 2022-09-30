@@ -3,7 +3,6 @@ import time
 import firedrake as fd
 import firedrake_adjoint as fda
 import numpy as np
-import pytest
 
 import hydrogym as gym
 
@@ -34,7 +33,7 @@ def test_steady(tol=1e-3):
 
 def test_rotation(tol=1e-3):
     flow = gym.flow.Cylinder(Re=100, mesh="medium")
-    flow.set_control(fd.Constant(0.1))
+    flow.set_control(0.1)
     flow.solve_steady()
 
     # Lift/drag on cylinder
@@ -64,6 +63,7 @@ def test_control():
     num_steps = 10
     for iter in range(num_steps):
         y = flow.get_observations()
+        gym.print(y)
         flow = solver.step(iter, control=feedback_ctrl(y))
 
 
@@ -81,14 +81,13 @@ def test_env():
 def test_grad():
     flow = gym.flow.Cylinder(mesh="coarse")
 
-    omega = fd.Constant(0.0)
+    omega = fda.AdjFloat(0.0)
     flow.set_control(omega)
 
     flow.solve_steady()
     CL, CD = flow.compute_forces()
 
     fda.compute_gradient(CD, fda.Control(omega))
-
 
 
 def test_sensitivity(dt=1e-2, num_steps=10):
@@ -117,11 +116,11 @@ def test_env_grad():
     env_config = {"differentiable": True, "mesh": "coarse"}
     env = gym.env.CylEnv(env_config)
     y = env.reset()
-    K = fd.Constant(0.0)
+    K = fda.AdjFloat(0.0)
     J = fda.AdjFloat(0.0)
     for _ in range(10):
         y, reward, done, info = env.step(feedback_ctrl(y, K=K))
-        J = J - reward
+        J = J + reward
     dJdm = fda.compute_gradient(J, fda.Control(K))
     print(dJdm)
 
@@ -134,12 +133,7 @@ def test_linearizedNS():
 
 
 def solve_omega(torque, I_cm, t):
-    if len(I_cm) > 1:
-        pytest.fail("Environment with multiple control surfaces not yet supported")
-    answer = []
-    for I in I_cm:
-        answer.append(torque * t / I)
-    return answer
+    return [torque * t / I_cm]
 
 
 def test_no_damp():
@@ -179,6 +173,8 @@ def test_fixed_torque():
 
     # Apply steady torque of 35.971223 Nm, should converge to ~2 rad/sec with k_damp = 1/TAU
     tf = 1e-2  # sec
+    # TODO: @sammahnert can you calculate this as a function of TAU instead of hardcoding so that
+    #   it will still pass if we change TAU?
     torque = 35.971223  # Nm
 
     # Run sim
@@ -186,9 +182,9 @@ def test_fixed_torque():
     for iter in range(num_steps):
         flow = solver.step(iter, control=torque)
 
-    print(flow.get_ctrl_state())
+        print(flow.get_ctrl_state())
 
-    assert np.isclose(flow.get_ctrl_state(), 2.0)
+    assert np.isclose(flow.get_ctrl_state(), 2.0, atol=1e-3)
 
     print("finished @" + str(time.time() - time_start))
 
@@ -203,46 +199,47 @@ def isordered(arr):
 
 
 # sin function feeding into the controller
-def test_convergence_test_varying_torque():
-    print("")
-    print("Convergence Test with Varying Torque Commands")
-    time_start = time.time()
-    # larger dt to compensate for longer tf
-    dt_list = [1e-2, 5e-3, 2.5e-3, 1e-3]
-    dt_baseline = 5e-4
+# TODO: This is too big for a unit test - should go in examples or somewhere like that
+# def test_convergence_test_varying_torque():
+#     print("")
+#     print("Convergence Test with Varying Torque Commands")
+#     time_start = time.time()
+#     # larger dt to compensate for longer tf
+#     dt_list = [1e-2, 5e-3, 2.5e-3, 1e-3]
+#     dt_baseline = 5e-4
 
-    flow = gym.flow.Cylinder(mesh="coarse", control_method="indirect")
-    solver = gym.ts.IPCS(flow, dt=dt_baseline)
-    tf = 1e-1  # sec
-    torque = 50  # Nm
+#     flow = gym.flow.Cylinder(mesh="coarse", control_method="indirect")
+#     solver = gym.ts.IPCS(flow, dt=dt_baseline)
+#     tf = 1e-1  # sec
+#     # torque = 50  # Nm
 
-    # First establish a baseline
-    num_steps = int(tf / dt_baseline)
-    for iter in range(num_steps):
-        # let it run for 3/4 of a period of a sin wave in 0.1 second
-        input = np.sin(47.12 * dt_baseline)
-        flow = solver.step(iter, control=input)
+#     # First establish a baseline
+#     num_steps = int(tf / dt_baseline)
+#     for iter in range(num_steps):
+#         # let it run for 3/4 of a period of a sin wave in 0.1 second
+#         input = np.sin(47.12 * dt_baseline)
+#         flow = solver.step(iter, control=input)
 
-    baseline_solution = flow.get_ctrl_state()[0]
+#     baseline_solution = flow.get_ctrl_state()[0]
 
-    solutions = []
-    errors = []
+#     solutions = []
+#     errors = []
 
-    for dt in dt_list:
-        flow = gym.flow.Cylinder(mesh="coarse", control_method="indirect")
-        solver = gym.ts.IPCS(flow, dt=dt)
+#     for dt in dt_list:
+#         flow = gym.flow.Cylinder(mesh="coarse", control_method="indirect")
+#         solver = gym.ts.IPCS(flow, dt=dt)
 
-        num_steps = int(tf / dt)
-        for iter in range(num_steps):
-            input = np.sin(47.2 * dt)
-            flow = solver.step(iter, control=input)
-        solutions.append(flow.get_ctrl_state()[0])
-        errors.append(np.abs(solutions[-1] - baseline_solution))
+#         num_steps = int(tf / dt)
+#         for iter in range(num_steps):
+#             input = np.sin(47.2 * dt)
+#             flow = solver.step(iter, control=input)
+#         solutions.append(flow.get_ctrl_state()[0])
+#         errors.append(np.abs(solutions[-1] - baseline_solution))
 
-    # assert solutions converge to baseline solution
-    assert isordered(errors)
+#     # assert solutions converge to baseline solution
+#     assert isordered(errors)
 
-    print("finished @" + str(time.time() - time_start))
+#     print("finished @" + str(time.time() - time_start))
 
 
 # Shear force test cases (shear force not fully implemented yet)

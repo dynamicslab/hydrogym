@@ -4,7 +4,7 @@ import firedrake as fd
 import numpy as np
 from firedrake import logging
 
-from ..core import CallbackBase, FlowConfig
+from ..core import CallbackBase, PDEModel
 from .utils import is_rank_zero, print
 
 __all__ = [
@@ -31,7 +31,7 @@ class ParaviewCallback(CallbackBase):
         if self.postprocess is None:
             self.postprocess = lambda flow: (flow.u, flow.p)
 
-    def __call__(self, iter: int, t: float, flow: FlowConfig):
+    def __call__(self, iter: int, t: float, flow: PDEModel):
         if super().__call__(iter, t, flow):
             state = self.postprocess(flow)
             if iter % self.interval == 0:
@@ -115,6 +115,6 @@ class GenericCallback(CallbackBase):
         super().__init__(interval=interval)
         self.cb = callback
 
-    def __call__(self, iter: int, t: float, flow: FlowConfig):
+    def __call__(self, iter: int, t: float, flow: PDEModel):
         if super().__call__(iter, t, flow):
             self.cb(iter, t, flow)

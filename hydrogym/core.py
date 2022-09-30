@@ -1,35 +1,38 @@
-import firedrake as fd
-from firedrake import dx, ds
-
-import ufl
-from ufl import dot, inner, grad, nabla_grad, div, sym, curl
-
 from typing import Optional
 
+import firedrake as fd
+import numpy as np
+import pyadjoint
 
-class FlowConfig:
-    def __init__(self, mesh, Re, h5_file=None):
+
+class PDEModel:
+    ACT_DIM = 1
+
+    # Timescale used to smooth inputs
+    #  (should be less than any meaningful timescale of the system)
+    TAU = 0.0
+
+    def __init__(self, mesh, restart=None):
         self.mesh = mesh
         self.n = fd.FacetNormal(self.mesh)
         self.x, self.y = fd.SpatialCoordinate(self.mesh)
-        self.Re = fd.Constant(ufl.real(Re))
 
-        # Set up Taylor-Hood elements
-        self.velocity_space = fd.VectorFunctionSpace(mesh, "CG", 2)
-        self.pressure_space = fd.FunctionSpace(mesh, "CG", 1)
-        self.mixed_space = fd.MixedFunctionSpace(
-            [self.velocity_space, self.pressure_space]
-        )
-        self.q = fd.Function(self.mixed_space, name="q")
-        self.split_solution()  # Break out and rename solution
+        self.initialize_state()  # Set up function spaces and state
 
         # TODO: Do this without having to reinitialize everything?
-        if h5_file is not None:
-            self.load_checkpoint(h5_file)
+        if restart is not None:
+            self.load_checkpoint(restart)
 
-    @property
-    def nu(self):
-        return fd.Constant(1 / ufl.real(self.Re))
+        self.reset()  # Initializes control
+
+    def initialize_state(self):
+        """Set up function spaces, state vector, and any other"""
+        pass
+
+    def reset(self, q0=None):
+        if q0 is not None:
+            self.q.assign(q0)
+        self.reset_control()
 
     def save_checkpoint(self, h5_file, write_mesh=True, idx=None):
         with fd.CheckpointFile(h5_file, "w") as chk:
@@ -41,149 +44,18 @@ class FlowConfig:
         with fd.CheckpointFile(h5_file, "r") as chk:
             if read_mesh:
                 mesh = chk.load_mesh("mesh")
-                FlowConfig.__init__(self, mesh, self.Re)  # Reinitialize with new mesh
+                PDEModel.__init__(self, mesh)  # Reinitialize with new mesh
             else:
                 assert hasattr(self, "mesh")
             self.q.assign(chk.load_function(self.mesh, "q", idx=idx))
         self.split_solution()  # Reset functions so self.u, self.p point to the new solution
 
-    def split_solution(self):
-        self.u, self.p = self.q.split()
-        self.u.rename("u")
-        self.p.rename("p")
-
-    def vorticity(self, u=None):
-        if u is None:
-            u = self.u
-        vort = fd.project(curl(u), self.pressure_space)
-        vort.rename("vort")
-        return vort
-
-    def init_bcs(self, mixed=False):
+    def init_bcs(self):
         """Define all boundary conditions"""
         pass
 
-    def function_spaces(self, mixed=True):
-        if mixed:
-            V = self.mixed_space.sub(0)
-            Q = self.mixed_space.sub(1)
-        else:
-            V = self.velocity_space
-            Q = self.pressure_space
-        return V, Q
-
-    def collect_bcu(self):
-        """List of velocity boundary conditions"""
-
-    def collect_bcp(self):
-        """List of pressure boundary conditions"""
-
     def collect_bcs(self):
-        return self.collect_bcu() + self.collect_bcp()
-
-    # Define symmetric gradient
-    def epsilon(self, u):
-        return sym(nabla_grad(u))
-
-    # Define stress tensor
-    def sigma(self, u, p):
-        return 2 * self.nu * self.epsilon(u) - p * fd.Identity(len(u))
-
-    @property
-    def body_force(self):
-        return fd.interpolate(fd.Constant((0.0, 0.0)), self.velocity_space)
-
-    def solve_steady(self, solver_parameters={}, stabilization=None):
-        self.init_bcs(mixed=True)
-
-        F = self.steady_form(stabilization=stabilization)  # Nonlinear variational form
-        J = fd.derivative(F, self.q)  # Jacobian
-
-        bcs = self.collect_bcs()
-        problem = fd.NonlinearVariationalProblem(F, self.q, bcs, J)
-        solver = fd.NonlinearVariationalSolver(
-            problem, solver_parameters=solver_parameters
-        )
-        solver.solve()
-
-        return self.q.copy(deepcopy=True)
-
-    def steady_form(self, q=None, stabilization=None):
-        if q is None:
-            q = self.q
-        (u, p) = fd.split(q)
-        (v, s) = fd.TestFunctions(self.mixed_space)
-
-        F = (
-            inner(dot(u, nabla_grad(u)), v) * dx
-            + inner(self.sigma(u, p), self.epsilon(v)) * dx
-            + inner(p * self.n, v) * ds
-            - inner(self.nu * nabla_grad(u) * self.n, v) * ds
-            + inner(div(u), s) * dx
-        )
-
-        if stabilization == "gls":
-            # Galerkin least-squares stabilization (see Tezduyar, 1991)
-            res = lambda U, u, p: dot(U, nabla_grad(u)) - div(self.sigma(u, p))
-            h = fd.CellSize(self.mesh)
-            tau = ((4.0 * dot(u, u) / h**2) + (4.0 * self.nu / h**2) ** 2) ** (-0.5)
-            F += tau * inner(res(u, u, p), res(u, v, s)) * dx
-
-        return F
-
-    def mass_matrix(self, backend="petsc"):
-        (u, _) = fd.TrialFunctions(self.mixed_space)
-        (v, _) = fd.TestFunctions(self.mixed_space)
-        M = inner(u, v) * dx
-
-        if backend == "scipy":
-            from .utils import petsc_to_scipy
-
-            M = petsc_to_scipy(fd.assemble(M).petscmat)
-        return M
-
-    def save_mass_matrix(self, filename):
-        from scipy.sparse import save_npz
-
-        assert fd.COMM_WORLD.size == 1, "Not supported in parallel"
-
-        M = self.mass_matrix(backend="scipy")
-
-        if filename[-4:] != ".npz":
-            filename += ".npz"
-        save_npz(filename, M)
-
-    def linearize_dynamics(self, qB, adjoint=False):
-        F = self.steady_form(q=qB)
-        L = -fd.derivative(F, qB)
-        if adjoint:
-            from .utils.linalg import adjoint
-
-            return adjoint(L)
-        else:
-            return L
-
-    def initialize_control(self, act_idx=0):
-        """Return a PETSc.Vec corresponding to the column of the control matrix"""
         pass
-
-    def linearize(self, qB, adjoint=False, backend="petsc"):
-        assert backend in [
-            "petsc",
-            "scipy",
-        ], "Backend not recognized: use `petsc` or `scipy`"
-        A_form = self.linearize_dynamics(qB, adjoint=adjoint)
-        M_form = self.mass_matrix()
-        self.linearize_bcs()
-        A = fd.assemble(A_form, bcs=self.collect_bcs()).petscmat  # Dynamics matrix
-        M = fd.assemble(M_form, bcs=self.collect_bcs()).petscmat  # Mass matrix
-
-        sys = A, M
-        if backend == "scipy":
-            from .utils import system_to_scipy
-
-            sys = system_to_scipy(sys)
-        return sys
 
     def get_observations(self):
         pass
@@ -191,38 +63,36 @@ class FlowConfig:
     def evaluate_objective(self, q=None):
         pass
 
-    def set_control(self, u=None):
-        if u is None:
-            pass
-
-    def reset_control(self):
+    def set_control(self):
         pass
 
-    def get_inertia(self):
-        raise Exception(
-            "Indirect control is not yet implemented/supported in this Flow Environment"
-        )
+    def enlist_controls(self, control):
+        if isinstance(control, int) or isinstance(control, float):
+            control = [control]
+        return [pyadjoint.AdjFloat(c) for c in control]
+        # return [fd.Constant(c) for c in control]
 
-    def get_damping(self):
-        raise Exception(
-            "Indirect control is not yet implemented/supported in this Flow Environment"
-        )
+    def update_controls(self, act, dt):
+        """Adds a damping factor to the controller response
 
-    def get_ctrl_state(self):
-        raise Exception(
-            "Indirect control is not yet implemented/supported in this Flow Environment"
-        )
+        If actual control is u and input is v, effectively
+            du/dt = (1/tau)*(v - u)
+        """
+        act = self.enlist_controls(act)
+        assert len(act) == self.ACT_DIM
 
-    def update_state(self, control, dt):
-        raise Exception("State update not yet implemented in this environment")
+        for i, (u, v) in enumerate(zip(self.control, act)):
+            # self.control[i].assign(u + (dt/self.TAU)*(v - u))
+            self.control[i] += (dt / self.TAU) * (v - u)
+        return self.control
 
-    def num_controls(self):
-        return 0
+    def reset_control(self, mixed=False):
+        self.control = self.enlist_controls(np.zeros(self.ACT_DIM))
+        self.init_bcs(mixed=mixed)
 
     def dot(self, q1, q2):
-        u1, _ = q1.split()
-        u2, _ = q2.split()
-        return fd.assemble(inner(u1, u2) * dx)
+        """Inner product between states q1 and q2"""
+        pass
 
 
 class CallbackBase:
@@ -237,7 +107,7 @@ class CallbackBase:
         """
         self.interval = interval
 
-    def __call__(self, iter: int, t: float, flow: FlowConfig):
+    def __call__(self, iter: int, t: float, flow: PDEModel):
         """
         Check if this is an 'iostep' by comparing to `self.interval`
             This assumes that a child class will do something with this information

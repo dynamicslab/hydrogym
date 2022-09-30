@@ -1,3 +1,5 @@
+import gc
+
 import firedrake as fd
 import gym
 import matplotlib.pyplot as plt
@@ -8,7 +10,7 @@ from firedrake import logging
 class FlowEnv(gym.Env):
     from typing import Callable, Iterable, Optional, Tuple, TypeVar, Union
 
-    from .core import FlowConfig
+    from .flow.base import FlowConfigBase
     from .ts import TransientSolver
 
     ObsType = TypeVar("ObsType")
@@ -55,16 +57,17 @@ class FlowEnv(gym.Env):
         return obs
 
     def get_reward(self):
-        return 1 / self.flow.evaluate_objective()
+        return -self.flow.evaluate_objective()
 
     def check_complete(self):
         return self.iter > self.max_steps
 
     def reset(self) -> Union[ObsType, Tuple[ObsType, dict]]:
-        self.flow.q.assign(self.q0)
-        self.flow.reset_control()
-        self.solver.initialize_operators()
+        self.iter = 0
+        self.flow.reset(q0=self.q0)
+        self.solver.reset()
 
+        gc.collect()
         return self.flow.get_observations()
 
     def render(self, mode="human"):
@@ -85,7 +88,7 @@ class CylEnv(FlowEnv):
             from .ts import IPCS
 
         env_config["flow"] = Cylinder(
-            h5_file=env_config.get("checkpoint", None),
+            restart=env_config.get("checkpoint", None),
             Re=env_config.get("Re", 100),
             mesh=env_config.get("mesh", "medium"),
         )
@@ -101,6 +104,12 @@ class CylEnv(FlowEnv):
             shape=(1,),
             dtype=fd.utils.ScalarType,
         )
+
+    def reset(self):
+        # TODO: Need to actually restart everything
+        # ... why is this not working???
+        out = super().reset()
+        return out
 
     def render(self, mode="human", clim=None, levels=None, cmap="RdBu", **kwargs):
         if clim is None:
@@ -131,7 +140,7 @@ class PinballEnv(FlowEnv):
         else:
             from .ts import IPCS
         env_config["flow"] = Pinball(
-            h5_file=env_config.get("checkpoint", None),
+            restart=env_config.get("checkpoint", None),
             Re=env_config.get("Re", 100),
             mesh=env_config.get("mesh", "fine"),
         )
@@ -179,7 +188,7 @@ class CavityEnv(FlowEnv):
             from .ts import IPCS
 
         env_config["flow"] = Cavity(
-            h5_file=env_config.get("checkpoint", None),
+            restart=env_config.get("checkpoint", None),
             Re=env_config.get("Re", 7500),
             mesh=env_config.get("mesh", "fine"),
         )
@@ -207,7 +216,7 @@ class StepEnv(FlowEnv):
             from .ts import IPCS
 
         env_config["flow"] = Step(
-            h5_file=env_config.get("checkpoint", None),
+            restart=env_config.get("checkpoint", None),
             Re=env_config.get("Re", 600),
             mesh=env_config.get("mesh", "fine"),
         )

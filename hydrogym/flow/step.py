@@ -1,39 +1,31 @@
 import firedrake as fd
 import ufl
-from firedrake import ds, dx
-from ufl import dot, exp, grad, inner
+from firedrake import ds
+from ufl import dot, exp, grad
 
-from ..core import FlowConfig
+from .base import FlowConfigBase
 
 
-class Step(FlowConfig):
-    MAX_CONTROL = 0.1  # Arbitrary... should tune this
-    # TODO: Stability analysis for step (and resolvent)
+class Step(FlowConfigBase):
+    ACT_DIM = 1
+    MAX_CONTROL = 0.1  # Arbitrary... should tune this... TODO:  DEPRECATED??
     TAU = 0.005  # Time constant for controller damping (0.01*instability frequency)
-    # BASE_KE = 2.4833
+    DEFAULT_MESH = "fine"
+    DEFAULT_REYNOLDS = 500
 
     from .mesh.step import CONTROL, INLET, OUTLET, SENSOR, WALL
 
-    def __init__(self, h5_file=None, Re=500, mesh="fine"):
-        """
-        controller(t, y) -> omega
-        y = (CL, CD)
-        omega = scalar rotation rate
-        """
+    def get_mesh_loader(self):
         from .mesh.step import load_mesh
 
-        mesh = load_mesh(name=mesh)
+        return load_mesh
 
-        super().__init__(mesh, Re, h5_file=h5_file)
-
-        self.control = fd.Constant(0.0)
-        self.u_ctrl = ufl.as_tensor(
-            (0.0 * self.x, -self.x * (1600 * self.x + 560) / 147)
-        )  # Blowing/suction
-
+    def initialize_state(self):
+        super().initialize_state()
         self.U_inf = ufl.as_tensor((1.0 - ((self.y - 0.25) / 0.25) ** 2, 0.0 * self.y))
-
-        self.reset_control()
+        self.u_ctrl = [
+            ufl.as_tensor((0.0 * self.x, -self.x * (1600 * self.x + 560) / 147))
+        ]  # Blowing/suction
 
     @property
     def nu(self):
@@ -62,9 +54,9 @@ class Step(FlowConfig):
             # V, fd.interpolate(fd.Constant((0, 0)), V), self.WALL
         )
         self.bcp_outflow = fd.DirichletBC(Q, fd.Constant(0), self.OUTLET)
-        self.bcu_actuation = fd.DirichletBC(
-            V, fd.interpolate(fd.Constant((0, 0)), V), self.CONTROL
-        )
+        self.bcu_actuation = [
+            fd.DirichletBC(V, fd.interpolate(fd.Constant((0, 0)), V), self.CONTROL)
+        ]
 
         self.set_control(self.control)
 
@@ -77,46 +69,38 @@ class Step(FlowConfig):
         return [
             self.bcu_inflow,
             self.bcu_noslip,
-            self.bcu_actuation,
+            *self.bcu_actuation,
         ]
 
     def collect_bcp(self):
         return [self.bcp_outflow]
 
-    def set_control(self, control=None):
-        """
-        Sets the blowing/suction at the leading edge
-        """
-        if control is None:
-            control = 0.0
-        self.control.assign(control)
+    # def set_control(self, control=None):
+    #     """
+    #     Sets the blowing/suction at the leading edge
+    #     """
+    #     if control is None:
+    #         control = 0.0
+    #     self.control = self.enlist_controls(control)
 
-        if hasattr(self, "bcu_actuation"):
-            self.bcu_actuation._function_arg.assign(
-                fd.project(self.control * self.u_ctrl, self.velocity_space)
-            )
+    #     c = fd.Constant(self.control[0])
+    #     if hasattr(self, "bcu_actuation"):
+    #         self.bcu_actuation._function_arg.assign(
+    #             fd.project(c * self.u_ctrl, self.velocity_space)
+    #         )
 
-    def get_control(self):
-        return [self.control]
+    # def control_vec(self, act_idx=0):
+    #     (v, _) = fd.TestFunctions(self.mixed_space)
+    #     self.linearize_bcs()
 
-    def reset_control(self, mixed=False):
+    #     # self.linearize_bcs() should have reset control, need to perturb it now
+    #     self.set_control(1.0)
+    #     B = fd.assemble(
+    #         inner(fd.Constant((0, 0)), v) * dx, bcs=self.collect_bcs()
+    #     )  # As fd.Function
 
-        self.set_control(0.0)
-        self.init_bcs(mixed=mixed)
-
-    def initialize_control(self, act_idx=0):
-        (v, _) = fd.TestFunctions(self.mixed_space)
-        self.linearize_bcs()
-
-        # self.linearize_bcs() should have reset control, need to perturb it now
-        eps = fd.Constant(1.0)
-        self.set_control(eps)
-        B = fd.assemble(
-            inner(fd.Constant((0, 0)), v) * dx, bcs=self.collect_bcs()
-        )  # As fd.Function
-
-        self.reset_control()
-        return [B]
+    #     self.reset_control()
+    #     return [B]
 
     def get_observations(self, q=None):
         """Integral of wall-normal shear stress (see Barbagallo et al, 2009)"""

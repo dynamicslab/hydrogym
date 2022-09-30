@@ -1,56 +1,49 @@
 import firedrake as fd
 import numpy as np
 import ufl
-from firedrake import ds, dx
-from ufl import as_vector, atan_2, cos, dot, inner, sign, sin, sqrt
+from firedrake import ds
+from ufl import as_vector, atan_2, cos, dot, sign, sin, sqrt
 
-from ..core import FlowConfig
+from .base import FlowConfigBase
 
 
-class Cylinder(FlowConfig):
+class Cylinder(FlowConfigBase):
     from .mesh.cylinder import CYLINDER, FREESTREAM, INLET, OUTLET
 
+    DEFAULT_MESH = "medium"
+    DEFAULT_REYNOLDS = 100
+    ACT_DIM = 1
     MAX_CONTROL = 0.5 * np.pi
     # TAU = 0.556  # Time constant for controller damping (0.1*vortex shedding period)
     TAU = 0.0556  # Time constant for controller damping (0.01*vortex shedding period)
 
     def __init__(
-        self,
-        Re=100,
-        mesh="medium",
-        h5_file=None,
-        control_method="direct",
-        account_for_skin_friction=False,
+        self, account_for_skin_friction=False, control_method="direct", **kwargs
     ):
-        """
-        controller(t, y) -> omega
-        y = (CL, CD)
-        omega = scalar rotation rate
-        """
-        self.account_for_skin_friction = account_for_skin_friction
         self.control_method = control_method
+        self.account_for_skin_friction = account_for_skin_friction
+        super().__init__(**kwargs)
+
+    def get_mesh_loader(self):
         from .mesh.cylinder import load_mesh
 
-        mesh = load_mesh(name=mesh)
+        return load_mesh
 
+    def initialize_state(self):
+        super().initialize_state()
         self.U_inf = fd.Constant((1.0, 0.0))
-        super().__init__(mesh, Re, h5_file=h5_file)
 
-        # First set up tangential boundaries to cylinder
-        self.omega = fd.Constant(0.0)
+        # Set up tangential boundaries to cylinder
         theta = atan_2(ufl.real(self.y), ufl.real(self.x))  # Angle from origin
-        self.rad = fd.Constant(0.5)
-        self.u_tan = ufl.as_tensor(
-            (self.rad * sin(theta), self.rad * cos(theta))
-        )  # Tangential velocity
+        rad = fd.Constant(0.5)
+        self.u_ctrl = [
+            ufl.as_tensor((rad * sin(theta), rad * cos(theta)))
+        ]  # Tangential velocity
 
-        self.reset_control()
-
-        self.ctrl_state = [float(self.omega)]
         # I_cm = 1/2 M R**2
         # taking I_cm for a plexiglass cylinder with R=0.05m & length = 1m
-        self.I_cm = [0.0115846]
-        self.controller_damping_coeff = [1 / self.TAU]
+        self.I_cm = 0.0115846
+        self.k_damp = 1 / self.TAU
 
     def init_bcs(self, mixed=False):
         V, Q = self.function_spaces(mixed=mixed)
@@ -61,15 +54,15 @@ class Cylinder(FlowConfig):
         self.bcu_freestream = fd.DirichletBC(
             V.sub(1), fd.Constant(0.0), self.FREESTREAM
         )  # Symmetry BCs
-        self.bcu_cylinder = fd.DirichletBC(
-            V, fd.interpolate(fd.Constant((0, 0)), V), self.CYLINDER
-        )
+        self.bcu_actuation = [
+            fd.DirichletBC(V, fd.interpolate(fd.Constant((0, 0)), V), self.CYLINDER)
+        ]
         self.bcp_outflow = fd.DirichletBC(Q, fd.Constant(0), self.OUTLET)
 
-        self.update_rotation()
+        self.set_control(self.control)
 
     def collect_bcu(self):
-        return [self.bcu_inflow, self.bcu_freestream, self.bcu_cylinder]
+        return [self.bcu_inflow, self.bcu_freestream, *self.bcu_actuation]
 
     def collect_bcp(self):
         return [self.bcp_outflow]
@@ -112,19 +105,6 @@ class Cylinder(FlowConfig):
             * ds(self.CYLINDER)
         )
 
-    def update_rotation(self):
-        # If the boundary condition has already been defined, update it
-        #   otherwise, the control will be applied with self.init_bcs()
-        #
-        # TODO: Is this necessary, or could it be combined with `set_control()`?
-        if hasattr(self, "bcu_cylinder"):
-            self.bcu_cylinder._function_arg.assign(
-                fd.project(self.omega * self.u_tan, self.velocity_space)
-            )
-
-    def clamp(self, u):
-        return max(-self.MAX_CONTROL, min(self.MAX_CONTROL, u))
-
     def linearize_control(self, qB=None):
         """
         Solve linear problem with nonzero Dirichlet BCs to derive forcing term for unsteady DNS
@@ -135,7 +115,7 @@ class Cylinder(FlowConfig):
         A = self.linearize_dynamics(qB, adjoint=False)
         # M = self.mass_matrix()
         self.linearize_bcs()  # Linearize BCs first (sets freestream to zero)
-        self.set_control(1.0)  # Now change the cylinder rotation
+        self.set_control([1.0])  # Now change the cylinder rotation  TODO: FIX
 
         (v, _) = fd.TestFunctions(self.mixed_space)
         zero = fd.inner(fd.Constant((0, 0)), v) * fd.dx  # Zero RHS for linear form
@@ -144,51 +124,10 @@ class Cylinder(FlowConfig):
         fd.solve(A == zero, f, bcs=self.collect_bcs())
         return f
 
-    def set_control(self, omega=None):
-        """
-        Sets the rotation rate of the cylinder
-
-        Note that for time-varying controls it will be better to adjust the rotation rate
-        in the timestepper with `solver.step(iter, control=omega)`.  This method could be used
-        to change rotation rate for a steady-state solve, for instance, and is also used
-        internally to compute the control matrix
-        """
-        if omega is None:
-            omega = 0.0
-        self.omega.assign(omega)
-
-        # TODO: Limit max control in a differentiable way
-        # self.omega.assign(
-        #     self.clamp( omega )
-        # )
-
-        self.update_rotation()
-
-    def get_control(self):
-        return [self.omega]
-
-    def reset_control(self, mixed=False):
-        self.set_control(0.0)
-        self.init_bcs(mixed=mixed)
-
     def linearize_bcs(self, mixed=True):
         self.reset_control(mixed=mixed)
         self.bcu_inflow.set_value(fd.Constant((0, 0)))
         self.bcu_freestream.set_value(fd.Constant(0.0))
-
-    def initialize_control(self, act_idx=0):
-        (v, _) = fd.TestFunctions(self.mixed_space)
-        self.linearize_bcs()
-
-        # self.linearize_bcs() should have reset control, need to perturb it now
-        eps = fd.Constant(1.0)
-        self.set_control(eps)
-        B = fd.assemble(
-            inner(fd.Constant((0, 0)), v) * dx, bcs=self.collect_bcs()
-        )  # As fd.Function
-
-        self.reset_control()
-        return [B]
 
     def num_controls(self):
         return 1
@@ -197,21 +136,19 @@ class Cylinder(FlowConfig):
         return self.compute_forces()
 
     def set_damping(self, k_new):
-        if not isinstance(k_new, list):
-            k_new = [k_new]
-        self.controller_damping_coeff = k_new
+        self.k_damp = k_new
         return
 
     def get_inertia(self):
         return self.I_cm
 
     def get_damping(self):
-        return self.controller_damping_coeff
+        return self.k_damp
 
     def get_ctrl_state(self):
-        return self.ctrl_state
+        return self.control
 
-    def update_state(self, control, dt):
+    def update_controls(self, act, dt):
         if self.control_method == "indirect":
             """
             Update BCS of cylinder to new angular velocity using implicit euler solver according to diff eqn:
@@ -220,27 +157,22 @@ class Cylinder(FlowConfig):
                         = omega_t[i] + (control_t[i+1] - k_damping*omega_t[i+1] + shear_torque)/I_cm * dt
 
             omega_t[i+1] can be solved for directly in order to avoid using a costly root solver
+
+            TODO: Generalize for other flows and add to FlowConfigBase
             """
+            act = self.enlist_controls(act)
             if self.account_for_skin_friction:
                 F_s = self.shear_force()
                 tau_s = F_s * float(self.rad)
             else:
                 tau_s = 0
 
-            for (state, ctrl, I_cm, k_damp) in zip(
-                self.ctrl_state, control, self.I_cm, self.controller_damping_coeff
-            ):
-                self.ctrl_state = [
-                    (state + (ctrl + tau_s) * dt / I_cm) / (1 + k_damp * dt / I_cm)
-                ]
+            self.control[0] = (self.control[0] + (act[0] + tau_s) * dt / self.I_cm) / (
+                1 + self.k_damp * dt / self.I_cm
+            )
+            return self.control
         else:
-            """Add a damping factor to the controller response
-
-            If actual control is u and input is v, effectively
-                du/dt = (1/tau)*(v - u)
-            """
-            for (u, v) in zip(self.ctrl_state, control):
-                u = u + (dt / self.TAU) * (v - u)
+            return super().update_controls(act, dt)
 
     def evaluate_objective(self, q=None):
         CL, CD = self.compute_forces(q=q)

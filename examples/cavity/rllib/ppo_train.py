@@ -1,17 +1,20 @@
 # Modified from https://github.com/ray-project/ray/blob/master/rllib/examples/custom_env.py
 import os
-from common import *
 
 import ray
+
+# from common import *
+from common import CustomModel, TorchCustomModel, parser
+from firedrake import logging
 from ray import tune
 from ray.rllib.agents import ppo  # ray.rllib.algorithms in latest version
 from ray.rllib.models import ModelCatalog
 from ray.rllib.utils.test_utils import check_learning_achieved
 from ray.tune.logger import pretty_print
 
-from firedrake import logging
-logging.set_log_level(logging.DEBUG)
 import hydrogym
+
+logging.set_log_level(logging.DEBUG)
 
 if __name__ == "__main__":
     args = parser.parse_args()
@@ -24,25 +27,25 @@ if __name__ == "__main__":
     ModelCatalog.register_custom_model(
         "cav_actor", TorchCustomModel if args.framework == "torch" else CustomModel
     )
-        
+
     # Set up the printing callback
     log = hydrogym.io.LogCallback(
         postprocess=lambda flow: flow.collect_observations(),
         nvals=1,
         interval=1,
         print_fmt="t: {0:0.2f},\t\t m: {1:0.3f}",
-        filename=None
+        filename=None,
     )
 
     config = {
         "log_level": "DEBUG",
         "env": hydrogym.env.CavityEnv,
         "env_config": {
-            'Re': 5000,
-            'checkpoint': './output/checkpoint.h5',
-            'mesh': 'coarse',
-            'callbacks': [log],
-            'max_steps': 1000
+            "Re": 5000,
+            "checkpoint": "./output/checkpoint.h5",
+            "mesh": "coarse",
+            "callbacks": [log],
+            "max_steps": 1000,
         },
         # Use GPUs iff `RLLIB_NUM_GPUS` env var set to > 0.
         "num_gpus": int(os.environ.get("RLLIB_NUM_GPUS", "0")),
@@ -74,7 +77,7 @@ if __name__ == "__main__":
         for _ in range(args.stop_iters):
             result = trainer.train()
             print(pretty_print(result))
-            trainer.save('./rllib_checkpoint')
+            trainer.save("./rllib_checkpoint")
             # stop training of the target train steps or reward are reached
             if (
                 result["timesteps_total"] >= args.stop_timesteps

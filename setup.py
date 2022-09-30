@@ -1,8 +1,8 @@
-from setuptools import setup, find_packages
+from setuptools import setup
 
 setup(
-    name='hydrogym',
-    version='0.1.0',
+    name="hydrogym",
+    version="0.1.0",
     # packages=['jupyter',
     #           'jupyterhub',
     #           'ipykernel',
@@ -15,5 +15,5 @@ setup(
     #           'gym',
     #           'memory_profiler',
     #           'gmsh']
-    packages = []
+    packages=[],
 )
