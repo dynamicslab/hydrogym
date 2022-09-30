@@ -128,6 +128,7 @@ class MLPActorCritic(nn.Module):
 
     def step(self, obs):
         with torch.no_grad():
+            print(f"AC step with obs: {obs}")
             pi = self.pi._distribution(obs)
             a = pi.sample()
             logp_a = self.pi._log_prob_from_distribution(pi, a)

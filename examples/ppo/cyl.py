@@ -20,6 +20,7 @@ log = hydrogym.io.LogCallback(
 
 env_config = {
     "Re": 100,
+    "dt": 1e-3,
     "mesh": "coarse",
     "callbacks": [log],
     "checkpoint": "../cylinder/demo/checkpoint-coarse.h5",
@@ -30,7 +31,7 @@ n_layers = 2
 gamma = 0.99
 seed = 42
 steps = 100
-epochs = 50
+epochs = 1000
 
 ppo.ppo(
     lambda: gym.make("Cylinder-v0", env_config=env_config),

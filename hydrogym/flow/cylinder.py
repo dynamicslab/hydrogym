@@ -14,8 +14,8 @@ class Cylinder(FlowConfigBase):
     DEFAULT_REYNOLDS = 100
     ACT_DIM = 1
     MAX_CONTROL = 0.5 * np.pi
-    # TAU = 0.556  # Time constant for controller damping (0.1*vortex shedding period)
-    TAU = 0.0556  # Time constant for controller damping (0.01*vortex shedding period)
+    TAU = 0.556  # Time constant for controller damping (0.1*vortex shedding period)
+    # TAU = 0.0556  # Time constant for controller damping (0.01*vortex shedding period)
 
     # def __init__(self, Re=100, mesh="medium", restart=None):
     #     """

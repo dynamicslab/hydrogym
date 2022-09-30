@@ -169,6 +169,8 @@ class IPCS(TransientSolver):
             control = self.flow.update_controls(control, self.dt)
             for (B, ctrl) in zip(self.B, control):
                 Bu, _ = B.split()
+                # print(ctrl)
+                # print(self.u + Bu*ctrl)
                 self.u += Bu * ctrl
 
         logging.log(logging.DEBUG, "Velocity predictor done, solving Poisson")

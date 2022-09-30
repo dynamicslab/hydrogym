@@ -37,14 +37,15 @@ if __name__ == "__main__":
 
     config = {
         "log_level": "DEBUG",
-        "horizon": 100,
+        "horizon": 10000,
         "env": hydrogym.env.CylEnv,
         "env_config": {
             "Re": 100,
             "checkpoint": "../demo/checkpoint-coarse.h5",
             "mesh": "coarse",
             "callbacks": [log],
-            "max_steps": 100,
+            "max_steps": 10000,
+            "dt": 1e-3,
         },
         # Use GPUs iff `RLLIB_NUM_GPUS` env var set to > 0.
         "num_gpus": int(os.environ.get("RLLIB_NUM_GPUS", "0")),

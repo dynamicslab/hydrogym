@@ -70,6 +70,7 @@ class PDEModel:
         if isinstance(control, int) or isinstance(control, float):
             control = [control]
         return [pyadjoint.AdjFloat(c) for c in control]
+        # return [fd.Constant(c) for c in control]
 
     def update_controls(self, act, dt):
         """Adds a damping factor to the controller response
@@ -81,6 +82,7 @@ class PDEModel:
         assert len(act) == self.ACT_DIM
 
         for i, (u, v) in enumerate(zip(self.control, act)):
+            # self.control[i].assign(u + (dt/self.TAU)*(v - u))
             self.control[i] += (dt / self.TAU) * (v - u)
         return self.control
 
