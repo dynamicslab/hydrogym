@@ -172,8 +172,9 @@ class Cylinder(FlowConfigBase):
                 (self.control[0] + (act[0] + tau_s) * dt / self.I_cm)
                 / (1 + self.k_damp * dt / self.I_cm)
             ]
+            return self.control
         else:
-            super().update_controls(act, dt)
+            return super().update_controls(act, dt)
 
     def evaluate_objective(self, q=None):
         CL, CD = self.compute_forces(q=q)
