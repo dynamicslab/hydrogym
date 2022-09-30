@@ -14,8 +14,8 @@ class Cylinder(FlowConfigBase):
     DEFAULT_REYNOLDS = 100
     ACT_DIM = 1
     MAX_CONTROL = 0.5 * np.pi
-    TAU = 0.556  # Time constant for controller damping (0.1*vortex shedding period)
-    # TAU = 0.0556  # Time constant for controller damping (0.01*vortex shedding period)
+    # TAU = 0.556  # Time constant for controller damping (0.1*vortex shedding period)
+    TAU = 0.0556  # Time constant for controller damping (0.01*vortex shedding period)
 
     def __init__(
         self, account_for_skin_friction=False, control_method="direct", **kwargs
@@ -136,8 +136,6 @@ class Cylinder(FlowConfigBase):
         return self.compute_forces()
 
     def set_damping(self, k_new):
-        if not isinstance(k_new, list):
-            k_new = [k_new]
         self.k_damp = k_new
         return
 
@@ -162,16 +160,16 @@ class Cylinder(FlowConfigBase):
 
             TODO: Generalize for other flows and add to FlowConfigBase
             """
+            act = self.enlist_controls(act)
             if self.account_for_skin_friction:
                 F_s = self.shear_force()
                 tau_s = F_s * float(self.rad)
             else:
                 tau_s = 0
 
-            self.control[0] = [
-                (self.control[0] + (act[0] + tau_s) * dt / self.I_cm)
-                / (1 + self.k_damp * dt / self.I_cm)
-            ]
+            self.control[0] = (self.control[0] + (act[0] + tau_s) * dt / self.I_cm) / (
+                1 + self.k_damp * dt / self.I_cm
+            )
             return self.control
         else:
             return super().update_controls(act, dt)

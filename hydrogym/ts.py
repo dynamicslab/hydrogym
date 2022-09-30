@@ -167,6 +167,7 @@ class IPCS(TransientSolver):
         self.predictor.solve()
         if control is not None:
             control = self.flow.update_controls(control, self.dt)
+            print(control)
             for (B, ctrl) in zip(self.B, control):
                 Bu, _ = B.split()
                 # print(ctrl)
