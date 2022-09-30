@@ -105,8 +105,8 @@ def test_env_grad():
     env_config = {"Re": 500, "differentiable": True, "mesh": "medium"}
     env = gym.env.CavityEnv(env_config)
     y = env.reset()
-    omega = fd.Constant(1.0)
-    A = fd.Constant(0.1)
+    omega = fda.AdjFloat(1.0)
+    A = 0.1
     J = fda.AdjFloat(0.0)
     for _ in range(10):
         y, reward, done, info = env.step(A * sin(omega * env.solver.t))
