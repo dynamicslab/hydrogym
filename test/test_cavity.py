@@ -29,6 +29,17 @@ def test_actuation():
     flow.solve_steady()
 
 
+def test_step():
+    flow = gym.flow.Cavity(Re=500, mesh="medium")
+    dt = 1e-4
+
+    solver = gym.ts.IPCS(flow, dt=dt)
+
+    num_steps = 10
+    for iter in range(num_steps):
+        flow = solver.step(iter)
+
+
 def test_integrate():
     flow = gym.flow.Cavity(Re=500, mesh="medium")
     dt = 1e-4
@@ -102,3 +113,7 @@ def test_env_grad():
         J = J - reward
     dJdm = fda.compute_gradient(J, fda.Control(omega))
     print(dJdm)
+
+
+if __name__ == "__main__":
+    test_import_medium()

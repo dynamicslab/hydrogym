@@ -82,6 +82,18 @@ class Pinball(FlowConfigBase):
     def num_controls(self):
         return 3
 
+    # def update_state(self, control, dt):
+    #     if self.control_method == "indirect":
+    #         raise Exception("Indirect Control not yet implemented for this environment")
+    #     else:
+    #         """Add a damping factor to the controller response
+
+    #         If actual control is u and input is v, effectively
+    #             du/dt = (1/tau)*(v - u)
+    #         """
+    #         for (u, v) in zip(self.ctrl_state, control):
+    #             u = u + (dt / self.TAU) * (v - u)
+
     def get_observations(self):
         CL, CD = self.compute_forces()
         return [*CL, *CD]

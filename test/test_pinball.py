@@ -152,3 +152,6 @@ def test_sensitivity(dt=1e-2, num_steps=10):
 #     qB = flow.solve_steady()
 #     A, M = flow.linearize(qB, backend='scipy')
 #     A_adj, M = flow.linearize(qB, adjoint=True, backend='scipy')
+
+if __name__ == "__main__":
+    test_import_coarse()

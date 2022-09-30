@@ -195,7 +195,11 @@ class IPCS(TransientSolver):
         """
         from scipy.sparse.linalg import LinearOperator
 
-        from .utils import get_array, linalg, set_from_array
+        from .utils import (  # Convert function to/from array
+            get_array,
+            linalg,
+            set_from_array,
+        )
 
         flow = self.flow
         k = fd.Constant(self.dt)

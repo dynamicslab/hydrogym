@@ -114,6 +114,18 @@ class Cavity(FlowConfigBase):
         # m, = self.get_observations(q=q)
         # return m
 
+    def update_state(self, control, dt):
+        if self.control_method == "indirect":
+            raise Exception("Indirect Control not yet implemented for this environment")
+        else:
+            """Add a damping factor to the controller response
+
+            If actual control is u and input is v, effectively
+                du/dt = (1/tau)*(v - u)
+            """
+            for (u, v) in zip(self.ctrl_state, control):
+                u = u + (dt / self.TAU) * (v - u)
+
     # def solve_steady(self, **kwargs):
     #     if self.Re > 500:
     #         Re_final = self.Re.values()[0]
