@@ -5,13 +5,9 @@ import numpy as np
 
 from legacy.hydrogym.core import PDEModel
 
-ScalarType = np.float32  # TODO: Override with PETSc.ScalarType
-ActType = ScalarType  # TODO: Override with pyadjoint.AdjFloat
-ObsType = ScalarType
-
 
 class ActuatorBase:
-    def step(self, u: ActType, dt: float):
+    def step(self, u: float, dt: float):
         """Update the state of the actuator"""
         raise NotImplementedError
 
@@ -27,21 +23,22 @@ class PDEBase:
 
     ACT_DIM = 1  # Number of actuators/actions
     MAX_CONTROL = np.inf
-    DEFAULTS = {
-        "mesh": "",
-        "dt": 1e-2,
-        "Re": 1,
-    }
+    DEFAULT_MESH = ""
+    DEFAULT_DT = np.inf
 
     # Timescale used to smooth inputs
     #  (should be less than any meaningful timescale of the system)
     TAU = 0.0
 
+    ScalarType = np.float32
+    ActType = ScalarType
+    ObsType = ScalarType
     StateType = TypeVar("StateType")
+    MeshType = TypeVar("MeshType")
     BCType = TypeVar("BCType")
 
-    def __init__(self, config: dict):
-        self.mesh = self.mesh_loader(name=config.get("mesh", self.DEFAULTS["mesh"]))
+    def __init__(self, **config):
+        self.mesh = self.load_mesh(name=config.get("mesh", self.DEFAULT_MESH))
         self.initialize_state()
 
         if config.get("restart"):
@@ -49,13 +46,12 @@ class PDEBase:
 
         self.reset()
 
-    @property
-    def mesh_loader(self):
+    def load_mesh(self, name: str):
         """Mesh-loading function
 
         load_mesh(mesh_name: str): -> Mesh
         """
-        return lambda name: NotImplementedError
+        raise NotImplementedError
 
     def initialize_state(self):
         """Set up mesh, function spaces, state vector, etc"""
@@ -149,7 +145,7 @@ class PDEBase:
         """Convert scalar or array-like controls to a list of the correct type"""
         if isinstance(control, int) or isinstance(control, float):
             control = [control]
-        return [ActType(c) for c in control]
+        return [self.ActType(c) for c in control]
 
     def set_control(self, control: ActType = None):
         """Directly set the control state"""
@@ -268,7 +264,7 @@ class FlowEnv(gym.Env):
     def __init__(self, env_config: dict):
         self.flow: PDEModel = env_config.get("flow")(env_config)
         self.solver: TransientSolver = env_config.get("solver")(
-            self.flow, dt=env_config.get("dt", self.flow.DEFAULTS["dt"])
+            self.flow, dt=env_config.get("dt", self.flow.DEFAULT_DT)
         )
         self.callbacks: Iterable[CallbackBase] = env_config.get("callbacks", [])
         self.max_steps: int = env_config.get("max_steps", int(1e6))
@@ -276,15 +272,15 @@ class FlowEnv(gym.Env):
         self.q0: self.flow.StateType = self.flow.copy_state()
 
         self.observation_space = gym.spaces.Box(
-            low=-np.inf, high=np.inf, shape=(2,), dtype=ScalarType
+            low=-np.inf, high=np.inf, shape=(2,), dtype=PDEBase.ScalarType
         )
 
     def set_callbacks(self, callbacks: Iterable[CallbackBase]):
         self.callbacks = callbacks
 
     def step(
-        self, action: Iterable[ActType] = None
-    ) -> Tuple[ObsType, float, bool, dict]:
+        self, action: Iterable[PDEBase.ActType] = None
+    ) -> Tuple[PDEBase.ObsType, float, bool, dict]:
         """Advance the state of the environment.  See gym.Env documentation
 
         Args:
@@ -319,7 +315,7 @@ class FlowEnv(gym.Env):
     def check_complete(self):
         return self.iter > self.max_steps
 
-    def reset(self) -> Union[ObsType, Tuple[ObsType, dict]]:
+    def reset(self) -> Union[PDEBase.ObsType, Tuple[PDEBase.ObsType, dict]]:
         self.iter = 0
         self.flow.reset(q0=self.q0)
         self.solver.reset()
