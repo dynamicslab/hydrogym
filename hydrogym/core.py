@@ -10,6 +10,12 @@ ActType = ScalarType  # TODO: Override with pyadjoint.AdjFloat
 ObsType = ScalarType
 
 
+class ActuatorBase:
+    def step(self, u: ActType, dt: float):
+        """Update the state of the actuator"""
+        raise NotImplementedError
+
+
 class PDEBase:
     """
     Basic configuration of the state of the PDE model
@@ -106,6 +112,8 @@ class PDEBase:
             mixed (bool, optional):
                 determines a monolithic vs segregated formulation
                 (see `init_bcs`). Defaults to False.
+
+        TODO: Rewrite with ActuatorBase
         """
         self.control = self.enlist_controls(np.zeros(self.ACT_DIM))
         self.init_bcs(mixed=mixed)
@@ -141,7 +149,7 @@ class PDEBase:
         """Convert scalar or array-like controls to a list of the correct type"""
         if isinstance(control, int) or isinstance(control, float):
             control = [control]
-        return [self.ActType(c) for c in control]
+        return [ActType(c) for c in control]
 
     def set_control(self, control: ActType = None):
         """Directly set the control state"""
@@ -165,6 +173,8 @@ class PDEBase:
 
         Returns:
             Iterable[ActType]: Updated control state
+
+        TODO: Rewrite with ActuatorBase
         """
         act = self.enlist_controls(act)
         assert len(act) == self.ACT_DIM
@@ -190,6 +200,8 @@ class CallbackBase:
 
         Args:
             interval (int, optional): How often to take action. Defaults to 1.
+
+        TODO: Add a ControllerCallback
         """
         self.interval = interval
 
