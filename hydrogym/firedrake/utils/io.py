@@ -6,7 +6,7 @@ from firedrake import logging
 
 from hydrogym.core import CallbackBase, PDEModel
 
-from .util import is_rank_zero, print
+from .utils import is_rank_zero, print
 
 
 class ParaviewCallback(CallbackBase):

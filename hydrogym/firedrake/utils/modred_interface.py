@@ -2,7 +2,7 @@ import firedrake as fd
 import modred as mr
 import numpy as np
 
-from .util import set_from_array
+from .utils import set_from_array
 
 
 class Snapshot(mr.VecHandle):

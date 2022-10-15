@@ -6,7 +6,7 @@ from ufl import div, dot, ds, dx, inner, lhs, nabla_grad, rhs
 from hydrogym.core import TransientSolver
 
 from .flow import FlowConfig
-from .util import get_array, mass_matrix, set_from_array, white_noise
+from .utils import get_array, set_from_array, white_noise
 
 
 class NewtonSolver:
@@ -209,7 +209,7 @@ class IPCS(TransientSolver):
         """
         from scipy.sparse.linalg import LinearOperator
 
-        from .util import linalg
+        from .utils import linalg
 
         flow = self.flow
         k = fd.Constant(self.dt)
@@ -452,39 +452,3 @@ def integrate(flow, t_span, dt, method="IPCS", callbacks=[], **options):
 
     solver = METHODS[method](flow, dt, **options)
     return solver.solve(t_span, callbacks=callbacks)
-
-
-# TODO: Where does this belong? ... maybe in .util.modeling
-def linearize_dynamics(flow: FlowConfig, qB: fd.Function, adjoint: bool = False):
-    solver = NewtonSolver(flow)
-    F = solver.steady_form(q=qB)
-    L = -fd.derivative(F, qB)
-    if adjoint:
-        from .util.linalg import adjoint
-
-        return adjoint(L)
-    else:
-        return L
-
-
-# TODO:  Where does this belong? ... maybe in .util.modeling
-def linearize(
-    flow: FlowConfig, qB: fd.Function, adjoint: bool = False, backend: str = "petsc"
-):
-    assert backend in [
-        "petsc",
-        "scipy",
-    ], "Backend not recognized: use `petsc` or `scipy`"
-
-    A_form = linearize_dynamics(flow, qB, adjoint=adjoint)
-    M_form = mass_matrix(flow)
-    flow.linearize_bcs()
-    A = fd.assemble(A_form, bcs=flow.collect_bcs()).petscmat  # Dynamics matrix
-    M = fd.assemble(M_form, bcs=flow.collect_bcs()).petscmat  # Mass matrix
-
-    sys = A, M
-    if backend == "scipy":
-        from .util import system_to_scipy
-
-        sys = system_to_scipy(sys)
-    return sys

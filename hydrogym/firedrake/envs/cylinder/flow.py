@@ -41,10 +41,17 @@ class Cylinder(FlowConfig):
 
         # Set up tangential boundaries to cylinder
         theta = atan_2(ufl.real(self.y), ufl.real(self.x))  # Angle from origin
-        rad = fd.Constant(0.5)
+        self.rad = fd.Constant(0.5)
         self.u_ctrl = [
-            ufl.as_tensor((rad * sin(theta), rad * cos(theta)))
+            ufl.as_tensor((self.rad * sin(theta), self.rad * cos(theta)))
         ]  # Tangential velocity
+
+        # TODO: Put this in the DampedController class
+        if self.control_method == "indirect":
+            # I_cm = 1/2 M R**2
+            # taking I_cm for a plexiglass cylinder with R=0.05m & length = 1m
+            self.I_cm = 0.0115846
+            self.k_damp = 1 / self.TAU
 
     def init_bcs(self, mixed=False):
         V, Q = self.function_spaces(mixed=mixed)

@@ -3,9 +3,25 @@ from functools import wraps
 
 import firedrake as fd
 import numpy as np
-from firedrake.petsc import PETSc
 from scipy import sparse
 from ufl import dx, inner
+
+from hydrogym.firedrake import FlowConfig, NewtonSolver
+
+from . import linalg
+from .utils import get_array
+
+
+# Ignore deprecation warnings in projection
+def ignore_deprecation_warnings(f):
+    @wraps(f)
+    def inner(*args, **kwargs):
+        with warnings.catch_warnings(record=True) as _:
+            warnings.filterwarnings("ignore", category=DeprecationWarning)
+            response = f(*args, **kwargs)
+        return response
+
+    return inner
 
 
 def petsc_to_scipy(petsc_mat):
@@ -47,40 +63,6 @@ def save_mass_matrix(flow, filename):
     save_npz(filename, M)
 
 
-# Ignore deprecation warnings in projection
-def ignore_deprecation_warnings(f):
-    @wraps(f)
-    def inner(*args, **kwargs):
-        with warnings.catch_warnings(record=True) as _:
-            warnings.filterwarnings("ignore", category=DeprecationWarning)
-            response = f(*args, **kwargs)
-        return response
-
-    return inner
-
-
-# Parallel utility functions
-def print(s):
-    """Print only from first process"""
-    PETSc.Sys.Print(s)
-
-
-def is_rank_zero():
-    """Is this the first process?"""
-    return fd.COMM_WORLD.rank == 0
-
-
-def set_from_array(func, array):
-    with func.dat.vec as vec:
-        vec.setArray(array)
-
-
-def get_array(func):
-    with func.dat.vec_ro as vec:
-        array = vec.getArray()
-    return array
-
-
 @ignore_deprecation_warnings
 def snapshots_to_numpy(flow, filename, save_prefix, m):
     """
@@ -103,14 +85,31 @@ def snapshots_to_numpy(flow, filename, save_prefix, m):
             np.save(f"{save_prefix}{idx}.npy", get_array(flow.q))
 
 
-def white_noise(n_samples, fs, cutoff):
-    """Generate band-limited white noise"""
-    from scipy import signal
+def linearize_dynamics(flow: FlowConfig, qB: fd.Function, adjoint: bool = False):
+    solver = NewtonSolver(flow)
+    F = solver.steady_form(q=qB)
+    L = -fd.derivative(F, qB)
+    if adjoint:
+        return linalg.adjoint(L)
+    else:
+        return L
 
-    rng = fd.Generator(fd.PCG64())
-    noise = rng.standard_normal(n_samples)
 
-    # Set up butterworth filter
-    sos = signal.butter(N=4, Wn=cutoff, btype="lp", fs=fs, output="sos")
-    filt = signal.sosfilt(sos, noise)
-    return filt
+def linearize(
+    flow: FlowConfig, qB: fd.Function, adjoint: bool = False, backend: str = "petsc"
+):
+    assert backend in [
+        "petsc",
+        "scipy",
+    ], "Backend not recognized: use `petsc` or `scipy`"
+
+    A_form = linearize_dynamics(flow, qB, adjoint=adjoint)
+    M_form = mass_matrix(flow)
+    flow.linearize_bcs()
+    A = fd.assemble(A_form, bcs=flow.collect_bcs()).petscmat  # Dynamics matrix
+    M = fd.assemble(M_form, bcs=flow.collect_bcs()).petscmat  # Mass matrix
+
+    sys = A, M
+    if backend == "scipy":
+        sys = system_to_scipy(sys)
+    return sys

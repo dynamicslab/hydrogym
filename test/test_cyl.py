@@ -150,14 +150,14 @@ def test_env_grad():
     print(dJdm)
 
 
-def test_linearizedNS():
+def test_linearize():
     flow = fg.Cylinder(mesh="coarse")
 
     solver = fg.NewtonSolver(flow)
     qB = solver.solve()
 
-    A, M = fg.linearize(flow, qB, backend="scipy")
-    A_adj, M = fg.linearize(flow, qB, adjoint=True, backend="scipy")
+    A, M = fg.modeling.linearize(flow, qB, backend="scipy")
+    A_adj, M = fg.modeling.linearize(flow, qB, adjoint=True, backend="scipy")
 
 
 def solve_omega(torque, I_cm, t):
@@ -171,13 +171,12 @@ def test_no_damp():
     flow = fg.Cylinder(mesh="coarse", control_method="indirect")
     dt = 1e-2
     solver = fg.IPCS(flow, dt=dt)
-    flow.set_damping(0.0)
+    flow.k_damp = 0
 
     # Apply steady torque for 0.1 seconds... should match analytical solution!
     tf = 0.1  # sec
     torque = 0.05  # Nm
-    I_cm = flow.get_inertia()
-    analytical_sol = solve_omega(torque, I_cm, tf)
+    analytical_sol = solve_omega(torque, flow.I_cm, tf)
 
     # Run sim
     num_steps = int(tf / dt)

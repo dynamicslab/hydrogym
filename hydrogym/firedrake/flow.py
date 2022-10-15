@@ -113,15 +113,11 @@ class FlowConfig(PDEBase):
         """List of all boundary conditions"""
         return self.collect_bcu() + self.collect_bcp()
 
-    # TODO: This returns a UFL Form, not a fd.Function
-    #  Also, is this necessary?
-    def epsilon(self, u) -> fd.Function:
+    def epsilon(self, u) -> ufl.Form:
         """Symmetric gradient (strain) tensor"""
         return sym(nabla_grad(u))
 
-    # TODO: This returns a UFL Form, not a fd.Function
-    #  Also, is this necessary?
-    def sigma(self, u, p):
+    def sigma(self, u, p) -> ufl.Form:
         """Newtonian stress tensor"""
         return 2 * self.nu * self.epsilon(u) - p * fd.Identity(len(u))
 
@@ -176,25 +172,6 @@ class FlowConfig(PDEBase):
         # At the end the BC function spaces could be mixed or not
         self.reset_control(mixed=mixed)
         return B
-
-    # TODO: Figure out where to put this... utils?
-    # def linearize(self, qB, adjoint=False, backend="petsc"):
-    #     assert backend in [
-    #         "petsc",
-    #         "scipy",
-    #     ], "Backend not recognized: use `petsc` or `scipy`"
-    #     A_form = self.linearize_dynamics(qB, adjoint=adjoint)
-    #     M_form = self.mass_matrix()
-    #     self.linearize_bcs()
-    #     A = fd.assemble(A_form, bcs=self.collect_bcs()).petscmat  # Dynamics matrix
-    #     M = fd.assemble(M_form, bcs=self.collect_bcs()).petscmat  # Mass matrix
-
-    #     sys = A, M
-    #     if backend == "scipy":
-    #         from ..utils import system_to_scipy
-
-    #         sys = system_to_scipy(sys)
-    #     return sys
 
     def dot(self, q1: fd.Function, q2: fd.Function) -> float:
         """Energy inner product between two fields"""
