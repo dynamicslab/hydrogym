@@ -219,8 +219,10 @@ class CallbackBase:
 class TransientSolver:
     """Time-stepping code for updating the transient PDE"""
 
-    def __init__(self, flow: PDEBase, dt: float):
+    def __init__(self, flow: PDEBase, dt: float = None):
         self.flow = flow
+        if dt is None:
+            dt = flow.DEFAULT_DT
         self.dt = dt
         self.t = 0.0
 
@@ -259,9 +261,11 @@ class TransientSolver:
 
 class FlowEnv(gym.Env):
     def __init__(self, env_config: dict):
-        self.flow: PDEModel = env_config.get("flow")(env_config)
+        self.flow: PDEModel = env_config.get("flow")(
+            **env_config.get("flow_config", {})
+        )
         self.solver: TransientSolver = env_config.get("solver")(
-            self.flow, dt=env_config.get("dt", self.flow.DEFAULT_DT)
+            self.flow, **env_config.get("solver_config", {})
         )
         self.callbacks: Iterable[CallbackBase] = env_config.get("callbacks", [])
         self.max_steps: int = env_config.get("max_steps", int(1e6))

@@ -43,13 +43,18 @@ class FlowConfig(PDEBase):
     def set_state(self, q: fd.Function):
         """Set the current state fields
 
-        Should be overridden if a different assignment
-        mechansim is used (e.g. `Function.assign`)
-
         Args:
-            q (StateType): State to be assigned
+            q (fd.Function): State to be assigned
         """
         self.q.assign(q)
+
+    def copy_state(self, deepcopy: bool = True) -> fd.Function:
+        """Return a copy of the current state fields
+
+        Returns:
+            q (fd.Function): copy of the flow state
+        """
+        return self.q.copy(deepcopy=deepcopy)
 
     @property
     def nu(self):
@@ -123,17 +128,6 @@ class FlowConfig(PDEBase):
     @property
     def body_force(self):
         return fd.interpolate(fd.Constant((0.0, 0.0)), self.velocity_space)
-
-    # TODO: Where does this belong?
-    # def linearize_dynamics(self, qB, adjoint=False):
-    #     F = self.steady_form(q=qB)
-    #     L = -fd.derivative(F, qB)
-    #     if adjoint:
-    #         from ..utils.linalg import adjoint
-
-    #         return adjoint(L)
-    #     else:
-    #         return L
 
     def linearize_bcs(self):
         """Sets the boundary conditions appropriately for linearized flow"""

@@ -9,22 +9,22 @@ import hydrogym.firedrake as fg
 
 
 def test_import_coarse():
-    flow = fg.envs.Cylinder(mesh="coarse")
+    flow = fg.Cylinder(mesh="coarse")
     return flow
 
 
 def test_import_medium():
-    flow = fg.envs.Cylinder(mesh="medium")
+    flow = fg.Cylinder(mesh="medium")
     return flow
 
 
 def test_import_fine():
-    flow = fg.envs.Cylinder(mesh="fine")
+    flow = fg.Cylinder(mesh="fine")
     return flow
 
 
 def test_steady(tol=1e-3):
-    flow = fg.envs.Cylinder(Re=100, mesh="medium")
+    flow = fg.Cylinder(Re=100, mesh="medium")
     solver = fg.NewtonSolver(flow)
     solver.solve()
 
@@ -34,7 +34,7 @@ def test_steady(tol=1e-3):
 
 
 def test_steady_rotation(tol=1e-3):
-    flow = fg.envs.Cylinder(Re=100, mesh="medium")
+    flow = fg.Cylinder(Re=100, mesh="medium")
     flow.set_control(0.1)
 
     solver = fg.NewtonSolver(flow)
@@ -46,10 +46,30 @@ def test_steady_rotation(tol=1e-3):
     assert abs(CD - 1.2852) < tol  # Re = 100
 
 
+def test_steady_grad():
+    flow = fg.Cylinder(mesh="coarse")
+
+    omega = fda.AdjFloat(0.0)
+    flow.set_control(omega)
+
+    solver = fg.NewtonSolver(flow)
+    solver.solve()
+
+    CL, CD = flow.compute_forces()
+
+    fda.compute_gradient(CD, fda.Control(omega))
+
+
 def test_integrate():
-    flow = fg.flow.Cylinder(mesh="coarse")
+    flow = fg.Cylinder(mesh="coarse")
     dt = 1e-2
-    fg.ts.integrate(flow, t_span=(0, 10 * dt), dt=dt)
+    fg.integrate(flow, t_span=(0, 10 * dt), dt=dt)
+
+
+def test_integrate_diff():
+    flow = fg.Cylinder(mesh="coarse")
+    dt = 1e-2
+    fg.integrate(flow, t_span=(0, 10 * dt), dt=dt, method="IPCS_diff")
 
 
 # Simple opposition control on lift
@@ -59,10 +79,10 @@ def feedback_ctrl(y, K=0.1):
 
 
 def test_control():
-    flow = fg.flow.Cylinder(mesh="coarse")
+    flow = fg.Cylinder(mesh="coarse")
     dt = 1e-2
 
-    solver = fg.ts.IPCS(flow, dt=dt)
+    solver = fg.IPCS(flow, dt=dt)
 
     num_steps = 10
     for iter in range(num_steps):
@@ -72,8 +92,14 @@ def test_control():
 
 
 def test_env():
-    env_config = {"mesh": "coarse"}
-    env = fg.env.CylEnv(env_config)
+    env_config = {
+        "flow": fg.Cylinder,
+        "flow_config": {
+            "mesh": "coarse",
+        },
+        "solver": fg.IPCS,
+    }
+    env = fg.FlowEnv(env_config)
 
     u = 0.0
     for _ in range(10):
@@ -82,22 +108,10 @@ def test_env():
         u = feedback_ctrl(y)
 
 
-def test_grad():
-    flow = fg.flow.Cylinder(mesh="coarse")
-
-    omega = fda.AdjFloat(0.0)
-    flow.set_control(omega)
-
-    flow.solve_steady()
-    CL, CD = flow.compute_forces()
-
-    fda.compute_gradient(CD, fda.Control(omega))
-
-
 def test_sensitivity(dt=1e-2, num_steps=10):
     from ufl import dx, inner
 
-    flow = fg.flow.Cylinder(mesh="coarse")
+    flow = fg.Cylinder(mesh="coarse")
 
     # Store a copy of the initial condition to distinguish it from the time-varying solution
     q0 = flow.q.copy(deepcopy=True)
@@ -106,7 +120,7 @@ def test_sensitivity(dt=1e-2, num_steps=10):
     )  # Note the annotation flag so that the assignment is tracked
 
     # Time step forward as usual
-    flow = fg.ts.integrate(flow, t_span=(0, num_steps * dt), dt=dt, method="IPCS_diff")
+    flow = fg.integrate(flow, t_span=(0, num_steps * dt), dt=dt, method="IPCS_diff")
 
     # Define a cost functional... here we're just using the energy inner product
     J = 0.5 * fd.assemble(inner(flow.u, flow.u) * dx)
@@ -117,8 +131,15 @@ def test_sensitivity(dt=1e-2, num_steps=10):
 
 
 def test_env_grad():
-    env_config = {"differentiable": True, "mesh": "coarse"}
-    env = fg.env.CylEnv(env_config)
+    env_config = {
+        "flow": fg.Cylinder,
+        "flow_config": {
+            "mesh": "coarse",
+        },
+        "solver": fg.IPCS_diff,
+    }
+    env = fg.FlowEnv(env_config)
+
     y = env.reset()
     K = fda.AdjFloat(0.0)
     J = fda.AdjFloat(0.0)
@@ -130,10 +151,13 @@ def test_env_grad():
 
 
 def test_linearizedNS():
-    flow = fg.flow.Cylinder(mesh="coarse")
-    qB = flow.solve_steady()
-    A, M = flow.linearize(qB, backend="scipy")
-    A_adj, M = flow.linearize(qB, adjoint=True, backend="scipy")
+    flow = fg.Cylinder(mesh="coarse")
+
+    solver = fg.NewtonSolver(flow)
+    qB = solver.solve()
+
+    A, M = fg.linearize(flow, qB, backend="scipy")
+    A_adj, M = fg.linearize(flow, qB, adjoint=True, backend="scipy")
 
 
 def solve_omega(torque, I_cm, t):
@@ -144,9 +168,9 @@ def test_no_damp():
     print("")
     print("No Damp")
     time_start = time.time()
-    flow = fg.flow.Cylinder(mesh="coarse", control_method="indirect")
+    flow = fg.Cylinder(mesh="coarse", control_method="indirect")
     dt = 1e-2
-    solver = fg.ts.IPCS(flow, dt=dt)
+    solver = fg.IPCS(flow, dt=dt)
     flow.set_damping(0.0)
 
     # Apply steady torque for 0.1 seconds... should match analytical solution!
@@ -171,9 +195,9 @@ def test_fixed_torque():
     print("")
     print("Fixed Torque Convergence")
     time_start = time.time()
-    flow = fg.flow.Cylinder(mesh="coarse", control_method="indirect")
+    flow = fg.Cylinder(mesh="coarse", control_method="indirect")
     dt = 1e-3
-    solver = fg.ts.IPCS(flow, dt=dt)
+    solver = fg.IPCS(flow, dt=dt)
 
     # Apply steady torque of 35.971223 Nm, should converge to ~2 rad/sec with k_damp = 1/TAU
     tf = 1e-2  # sec
