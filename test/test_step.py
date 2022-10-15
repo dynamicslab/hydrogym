@@ -2,26 +2,26 @@ import firedrake as fd
 import firedrake_adjoint as fda
 from ufl import sin
 
-import hydrogym as gym
+import hydrogym as hg
 
 
 def test_import_coarse():
-    flow = gym.flow.Step(mesh="coarse")
+    flow = hg.flow.Step(mesh="coarse")
     return flow
 
 
 def test_import_medium():
-    flow = gym.flow.Step(mesh="medium")
+    flow = hg.flow.Step(mesh="medium")
     return flow
 
 
 def test_import_fine():
-    flow = gym.flow.Step(mesh="fine")
+    flow = hg.flow.Step(mesh="fine")
     return flow
 
 
 def test_steady(tol=1e-3):
-    flow = gym.flow.Step(Re=100, mesh="coarse")
+    flow = hg.flow.Step(Re=100, mesh="coarse")
     flow.solve_steady()
 
     (y,) = flow.get_observations()
@@ -30,30 +30,30 @@ def test_steady(tol=1e-3):
 
 
 def test_actuation():
-    flow = gym.flow.Step(Re=100, mesh="coarse")
+    flow = hg.flow.Step(Re=100, mesh="coarse")
     flow.set_control(1.0)
     flow.solve_steady()
 
 
 def test_integrate():
-    flow = gym.flow.Step(Re=100, mesh="coarse")
+    flow = hg.flow.Step(Re=100, mesh="coarse")
     dt = 1e-3
 
-    gym.integrate(flow, t_span=(0, 10 * dt), dt=dt, method="IPCS")
+    hg.integrate(flow, t_span=(0, 10 * dt), dt=dt, method="IPCS")
 
 
 def test_integrate_noise():
-    flow = gym.flow.Step(Re=100, mesh="coarse")
+    flow = hg.flow.Step(Re=100, mesh="coarse")
     dt = 1e-3
 
-    gym.integrate(flow, t_span=(0, 10 * dt), dt=dt, method="IPCS", eta=1.0)
+    hg.integrate(flow, t_span=(0, 10 * dt), dt=dt, method="IPCS", eta=1.0)
 
 
 def test_control():
-    flow = gym.flow.Step(Re=100, mesh="coarse")
+    flow = hg.flow.Step(Re=100, mesh="coarse")
     dt = 1e-3
 
-    solver = gym.ts.IPCS(flow, dt=dt)
+    solver = hg.ts.IPCS(flow, dt=dt)
 
     num_steps = 10
     for iter in range(num_steps):
@@ -63,14 +63,14 @@ def test_control():
 
 def test_env():
     env_config = {"Re": 100, "mesh": "coarse"}
-    env = gym.env.StepEnv(env_config)
+    env = hg.env.StepEnv(env_config)
 
     for _ in range(10):
         y, reward, done, info = env.step(0.1 * sin(env.solver.t))
 
 
 def test_grad():
-    flow = gym.flow.Step(Re=100, mesh="coarse")
+    flow = hg.flow.Step(Re=100, mesh="coarse")
 
     c = fda.AdjFloat(0.0)
     flow.set_control(c)
@@ -84,7 +84,7 @@ def test_grad():
 def test_sensitivity(dt=1e-3, num_steps=10):
     from ufl import dx, inner
 
-    flow = gym.flow.Step(Re=100, mesh="coarse")
+    flow = hg.flow.Step(Re=100, mesh="coarse")
 
     # Store a copy of the initial condition to distinguish it from the time-varying solution
     q0 = flow.q.copy(deepcopy=True)
@@ -93,7 +93,7 @@ def test_sensitivity(dt=1e-3, num_steps=10):
     )  # Note the annotation flag so that the assignment is tracked
 
     # Time step forward as usual
-    flow = gym.ts.integrate(flow, t_span=(0, num_steps * dt), dt=dt, method="IPCS_diff")
+    flow = hg.ts.integrate(flow, t_span=(0, num_steps * dt), dt=dt, method="IPCS_diff")
 
     # Define a cost functional... here we're just using the energy inner product
     J = 0.5 * fd.assemble(inner(flow.u, flow.u) * dx)

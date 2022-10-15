@@ -46,11 +46,8 @@ class PDEBase:
 
         self.reset()
 
-    def load_mesh(self, name: str):
-        """Mesh-loading function
-
-        load_mesh(mesh_name: str): -> Mesh
-        """
+    def load_mesh(self, name: str) -> MeshType:
+        """Load mesh from the file `name`"""
         raise NotImplementedError
 
     def initialize_state(self):
@@ -75,7 +72,7 @@ class PDEBase:
         Args:
             q (StateType): State to be assigned
         """
-        self.q = q  # TODO: Override with assign
+        self.q = q
 
     def state(self) -> StateType:
         """Return current state field(s) of the PDE"""

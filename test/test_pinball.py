@@ -3,21 +3,21 @@ import firedrake_adjoint as fda
 import numpy as np
 import pyadjoint
 
-import hydrogym as gym
+import hydrogym as hg
 
 
 def test_import_coarse():
-    flow = gym.flow.Pinball(mesh="coarse")
+    flow = hg.flow.Pinball(mesh="coarse")
     return flow
 
 
 def test_import_fine():
-    flow = gym.flow.Pinball(mesh="fine")
+    flow = hg.flow.Pinball(mesh="fine")
     return flow
 
 
 def test_steady(tol=1e-2):
-    flow = gym.flow.Pinball(Re=30, mesh="coarse")
+    flow = hg.flow.Pinball(Re=30, mesh="coarse")
     flow.solve_steady()
 
     CL_target = (0.0, 0.520, -0.517)  # Slight asymmetry in mesh
@@ -30,7 +30,7 @@ def test_steady(tol=1e-2):
 
 
 def test_rotation(tol=1e-2):
-    flow = gym.flow.Pinball(Re=30, mesh="coarse")
+    flow = hg.flow.Pinball(Re=30, mesh="coarse")
     flow.set_control((0.5, 0.5, 0.5))
     flow.solve_steady()
 
@@ -46,13 +46,13 @@ def test_rotation(tol=1e-2):
 
 
 def test_integrate():
-    flow = gym.flow.Pinball(mesh="coarse")
+    flow = hg.flow.Pinball(mesh="coarse")
     dt = 1e-2
-    gym.ts.integrate(flow, t_span=(0, 10 * dt), dt=dt)
+    hg.ts.integrate(flow, t_span=(0, 10 * dt), dt=dt)
 
 
 def test_control():
-    flow = gym.flow.Pinball(mesh="coarse")
+    flow = hg.flow.Pinball(mesh="coarse")
     dt = 1e-2
 
     # Simple opposition control on lift
@@ -62,7 +62,7 @@ def test_control():
         CL = y[:3]
         return K @ CL
 
-    solver = gym.ts.IPCS(flow, dt=dt)
+    solver = hg.ts.IPCS(flow, dt=dt)
 
     num_steps = 10
     for iter in range(num_steps):
@@ -72,7 +72,7 @@ def test_control():
 
 def test_env():
     env_config = {"Re": 30, "mesh": "coarse"}
-    env = gym.env.PinballEnv(env_config)
+    env = hg.env.PinballEnv(env_config)
 
     # Simple opposition control on lift
     def feedback_ctrl(y, K=None):
@@ -87,7 +87,7 @@ def test_env():
 
 
 def test_grad():
-    flow = gym.flow.Pinball(Re=30, mesh="coarse")
+    flow = hg.flow.Pinball(Re=30, mesh="coarse")
     n_cyl = len(flow.CYLINDER)
 
     # Option 1: List of AdjFloats
@@ -114,7 +114,7 @@ def test_env_grad():
         return K @ y
 
     env_config = {"Re": 30, "differentiable": True, "mesh": "coarse"}
-    env = gym.env.PinballEnv(env_config)
+    env = hg.env.PinballEnv(env_config)
     y = env.reset()
     n_cyl = env.flow.ACT_DIM
     K = pyadjoint.create_overloaded_object(np.zeros((n_cyl, 2 * n_cyl)))
@@ -128,7 +128,7 @@ def test_env_grad():
 def test_sensitivity(dt=1e-2, num_steps=10):
     from ufl import dx, inner
 
-    flow = gym.flow.Pinball(Re=30, mesh="coarse")
+    flow = hg.flow.Pinball(Re=30, mesh="coarse")
 
     # Store a copy of the initial condition to distinguish it from the time-varying solution
     q0 = flow.q.copy(deepcopy=True)
@@ -137,7 +137,7 @@ def test_sensitivity(dt=1e-2, num_steps=10):
     )  # Note the annotation flag so that the assignment is tracked
 
     # Time step forward as usual
-    flow = gym.ts.integrate(flow, t_span=(0, num_steps * dt), dt=dt, method="IPCS_diff")
+    flow = hg.ts.integrate(flow, t_span=(0, num_steps * dt), dt=dt, method="IPCS_diff")
 
     # Define a cost functional... here we're just using the energy inner product
     J = 0.5 * fd.assemble(inner(flow.u, flow.u) * dx)

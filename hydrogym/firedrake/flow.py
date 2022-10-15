@@ -40,6 +40,17 @@ class FlowConfig(PDEBase):
         self.q = fd.Function(self.mixed_space, name="q")
         self.split_solution()  # Break out and rename solution
 
+    def set_state(self, q: fd.Function):
+        """Set the current state fields
+
+        Should be overridden if a different assignment
+        mechansim is used (e.g. `Function.assign`)
+
+        Args:
+            q (StateType): State to be assigned
+        """
+        self.q.assign(q)
+
     @property
     def nu(self):
         return fd.Constant(1 / ufl.real(self.Re))
