@@ -1,6 +1,8 @@
 from hydrogym.core import FlowEnv
 
-from .envs import Cylinder
+from .actuator import DampedActuator
 from .flow import FlowConfig
-from .solvers import IPCS, IPCS_diff, NewtonSolver, integrate
+from .solver import IPCS, IPCS_diff, NewtonSolver, integrate
 from .utils import io, is_rank_zero, linalg, modeling, print
+
+from .envs import Cylinder  # isort:skip

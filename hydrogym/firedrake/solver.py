@@ -182,7 +182,7 @@ class IPCS(TransientSolver):
         logging.log(logging.DEBUG, f"iter: {iter}, solving velocity predictor")
         self.predictor.solve()
         if control is not None:
-            control = self.flow.update_controls(control, self.dt)
+            control = self.flow.update_actuators(control, self.dt)
             for (B, ctrl) in zip(self.B, control):
                 Bu, _ = B.split()
                 self.u += Bu * ctrl
@@ -407,7 +407,7 @@ class IPCS_diff(TransientSolver):
             },
         )
         if control is not None:
-            control = self.flow.update_controls(control, self.dt)
+            control = self.flow.update_actuators(control, self.dt)
             for (B, ctrl) in zip(self.B, control):
                 Bu, _ = B.split()
                 self.u += ctrl * Bu

@@ -1,13 +1,22 @@
-from typing import Iterable, Tuple, TypeVar, Union
+from typing import Any, Iterable, Tuple, TypeVar, Union
 
 import gym
 import numpy as np
 
-from legacy.hydrogym.core import PDEModel
-
 
 class ActuatorBase:
-    def step(self, u: float, dt: float):
+    ActType = np.float64
+
+    def __init__(self, **kwargs):
+        self.u = self.ActType(0.0)
+
+    def set_state(self, u: Union[float, ActType]):
+        self.u = self.ActType(u)
+
+    def get_state(self) -> ActType:
+        return self.u
+
+    def step(self, u: Union[float, ActType], dt: float):
         """Update the state of the actuator"""
         raise NotImplementedError
 
@@ -92,9 +101,9 @@ class PDEBase:
         """
         if q0 is not None:
             self.set_state(q0)
-        self.reset_control()
+        self.reset_controls()
 
-    def reset_control(self, mixed: bool = False):
+    def reset_controls(self, mixed: bool = False):
         """Reset the controls to a zero state
 
         Note that this is broken out from `reset` because
@@ -108,7 +117,8 @@ class PDEBase:
 
         TODO: Rewrite with ActuatorBase
         """
-        self.control = self.enlist_controls(np.zeros(self.ACT_DIM))
+        # self.control = self.enlist_controls(np.zeros(self.ACT_DIM))
+        self.actuators = [ActuatorBase() for _ in range(self.ACT_DIM)]
         self.init_bcs(mixed=mixed)
 
     def collect_bcs(self) -> Iterable[BCType]:
@@ -138,19 +148,24 @@ class PDEBase:
         """
         raise NotImplementedError
 
-    def enlist_controls(self, control: ActType) -> Iterable[ActType]:
-        """Convert scalar or array-like controls to a list of the correct type"""
-        if isinstance(control, int) or isinstance(control, float):
-            control = [control]
-        return [self.ActType(c) for c in control]
+    def enlist(self, x: Any) -> Iterable[Any]:
+        """Convert scalar or array-like to a list"""
+        if isinstance(x, int) or isinstance(x, float):
+            x = [x]
+        return list(x)
 
-    def set_control(self, control: ActType = None):
+    @property
+    def control_state(self) -> Iterable[ActType]:
+        return [a.get_state() for a in self.actuators]
+
+    def set_control(self, act: ActType = None):
         """Directly set the control state"""
-        if control is None:
-            control = np.zeros(self.ACT_DIM)
-        self.control = self.enlist_controls(control)
+        if act is None:
+            act = np.zeros(self.ACT_DIM)
+        for i, u in enumerate(self.enlist(act)):
+            self.actuators[i].set_state(u)
 
-    def update_controls(self, act: Iterable[ActType], dt: float) -> Iterable[ActType]:
+    def update_actuators(self, act: Iterable[ActType], dt: float) -> Iterable[ActType]:
         """Update the current controls state.
 
         May involve integrating a dynamics model rather than
@@ -165,16 +180,19 @@ class PDEBase:
             dt (float): Time step
 
         Returns:
-            Iterable[ActType]: Updated control state
+            Iterable[ActType]: Updated actuator state
 
         TODO: Rewrite with ActuatorBase
         """
-        act = self.enlist_controls(act)
+        act = self.enlist(act)
         assert len(act) == self.ACT_DIM
 
-        for i, (u, v) in enumerate(zip(self.control, act)):
-            self.control[i] += (dt / self.TAU) * (v - u)
-        return self.control
+        # for i, (u, v) in enumerate(zip(self.control, act)):
+        #     self.control[i] += (dt / self.TAU) * (v - u)
+        for i, u in enumerate(act):
+            self.actuators[i].step(u, dt)
+
+        return self.control_state
 
     def dot(self, q1: StateType, q2: StateType) -> float:
         """Inner product between states q1 and q2"""
@@ -228,7 +246,7 @@ class TransientSolver:
 
     def solve(
         self, t_span: Tuple[float, float], callbacks: Iterable[CallbackBase] = []
-    ) -> PDEModel:
+    ) -> PDEBase:
         """Solve the initial-value problem for the PDE.
 
         Args:
@@ -237,7 +255,7 @@ class TransientSolver:
                 List of callbacks to evaluate throughout the solve. Defaults to [].
 
         Returns:
-            PDEModel: The state of the PDE at the end of the solve
+            PDEBase: The state of the PDE at the end of the solve
         """
         for iter, t in enumerate(np.arange(*t_span, self.dt)):
             flow = self.step(iter)
@@ -261,9 +279,7 @@ class TransientSolver:
 
 class FlowEnv(gym.Env):
     def __init__(self, env_config: dict):
-        self.flow: PDEModel = env_config.get("flow")(
-            **env_config.get("flow_config", {})
-        )
+        self.flow: PDEBase = env_config.get("flow")(**env_config.get("flow_config", {}))
         self.solver: TransientSolver = env_config.get("solver")(
             self.flow, **env_config.get("solver_config", {})
         )

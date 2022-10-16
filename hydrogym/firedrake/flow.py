@@ -9,7 +9,8 @@ from firedrake import dx
 # from firedrake import logging
 from ufl import curl, inner, nabla_grad, sym
 
-from ..core import PDEBase
+from ..core import ActuatorBase, PDEBase
+from .actuator import DampedActuator
 
 
 class FlowConfig(PDEBase):
@@ -40,6 +41,8 @@ class FlowConfig(PDEBase):
         self.q = fd.Function(self.mixed_space, name="q")
         self.split_solution()  # Break out and rename solution
 
+        self.u_ctrl = [None]
+
     def set_state(self, q: fd.Function):
         """Set the current state fields
 
@@ -55,6 +58,27 @@ class FlowConfig(PDEBase):
             q (fd.Function): copy of the flow state
         """
         return self.q.copy(deepcopy=deepcopy)
+
+    def create_actuator(self) -> ActuatorBase:
+        return DampedActuator(damping=1 / self.TAU)
+
+    def reset_controls(self, mixed: bool = False):
+        """Reset the controls to a zero state
+
+        Note that this is broken out from `reset` because
+        the two are not necessarily called together (e.g.
+        for linearization or deriving the control vector)
+
+        Args:
+            mixed (bool, optional):
+                determines a monolithic vs segregated formulation
+                (see `init_bcs`). Defaults to False.
+
+        TODO: Rewrite with ActuatorBase
+        """
+        # self.control = self.enlist_controls(np.zeros(self.ACT_DIM))
+        self.actuators = [self.create_actuator() for _ in range(self.ACT_DIM)]
+        self.init_bcs(mixed=mixed)
 
     @property
     def nu(self):
@@ -129,7 +153,7 @@ class FlowConfig(PDEBase):
         """Sets the boundary conditions appropriately for linearized flow"""
         raise NotImplementedError
 
-    def set_control(self, control: ActType = None):
+    def set_control(self, act: ActType = None):
         """
         Directly sets the control state
 
@@ -138,11 +162,11 @@ class FlowConfig(PDEBase):
         to change control for a steady-state solve, for instance, and is also used
         internally to compute the control matrix
         """
-        super().set_control(control=control)
+        super().set_control(act)
 
         if hasattr(self, "bcu_actuation"):
             for i in range(self.ACT_DIM):
-                c = fd.Constant(self.control[i])
+                c = fd.Constant(self.actuators[i].get_state())
                 self.bcu_actuation[i]._function_arg.assign(
                     fd.interpolate(c * self.u_ctrl[i], self.velocity_space)
                 )
@@ -167,10 +191,10 @@ class FlowConfig(PDEBase):
             )
 
             # Have to have mixed function space for computing B functions
-            self.reset_control(mixed=True)
+            self.reset_controls(mixed=True)
 
         # At the end the BC function spaces could be mixed or not
-        self.reset_control(mixed=mixed)
+        self.reset_controls(mixed=mixed)
         return B
 
     def dot(self, q1: fd.Function, q2: fd.Function) -> float:

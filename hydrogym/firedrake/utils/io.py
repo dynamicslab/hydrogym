@@ -4,7 +4,7 @@ import firedrake as fd
 import numpy as np
 from firedrake import logging
 
-from hydrogym.core import CallbackBase, PDEModel
+from hydrogym.core import CallbackBase, PDEBase
 
 from .utils import is_rank_zero, print
 
@@ -24,7 +24,7 @@ class ParaviewCallback(CallbackBase):
         if self.postprocess is None:
             self.postprocess = lambda flow: (flow.u, flow.p)
 
-    def __call__(self, iter: int, t: float, flow: PDEModel):
+    def __call__(self, iter: int, t: float, flow: PDEBase):
         if super().__call__(iter, t, flow):
             state = self.postprocess(flow)
             if iter % self.interval == 0:
@@ -108,6 +108,6 @@ class GenericCallback(CallbackBase):
         super().__init__(interval=interval)
         self.cb = callback
 
-    def __call__(self, iter: int, t: float, flow: PDEModel):
+    def __call__(self, iter: int, t: float, flow: PDEBase):
         if super().__call__(iter, t, flow):
             self.cb(iter, t, flow)
