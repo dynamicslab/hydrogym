@@ -43,7 +43,7 @@ if __name__ == "__main__":
             "flow": hydrogym.firedrake.Cylinder,
             "flow_config": {
                 "Re": 100,
-                "checkpoint": "../demo/checkpoint-coarse.h5",
+                "restart": "../demo/checkpoint-coarse.h5",
                 "mesh": "coarse",
             },
             "solver": hydrogym.firedrake.IPCS,

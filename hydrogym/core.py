@@ -349,8 +349,8 @@ class FlowEnv(gym.Env):
 
         return self.flow.get_observations()
 
-    def render(self, mode="human"):
-        self.flow.render(mode=mode)
+    def render(self, mode="human", **kwargs):
+        self.flow.render(mode=mode, **kwargs)
 
     def close(self):
         for cb in self.callbacks:

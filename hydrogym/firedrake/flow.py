@@ -28,6 +28,22 @@ class FlowConfig(PDEBase):
     def load_mesh(self, name: str) -> ufl.Mesh:
         return fd.Mesh(f"{self.MESH_DIR}/{name}.msh", name="mesh")
 
+    def save_checkpoint(self, filename: str, write_mesh=True, idx=None):
+        with fd.CheckpointFile(filename, "w") as chk:
+            if write_mesh:
+                chk.save_mesh(self.mesh)  # optional
+            chk.save_function(self.q, idx=idx)
+
+    def load_checkpoint(self, filename: str, idx=None, read_mesh=True):
+        with fd.CheckpointFile(filename, "r") as chk:
+            if read_mesh:
+                self.mesh = chk.load_mesh("mesh")
+                self.initialize_state()
+            else:
+                assert hasattr(self, "mesh")
+            self.q.assign(chk.load_function(self.mesh, "q", idx=idx))
+        self.split_solution()  # Reset functions so self.u, self.p point to the new solution
+
     def initialize_state(self):
         # Set up UFL objects referring to the mesh
         self.n = fd.FacetNormal(self.mesh)

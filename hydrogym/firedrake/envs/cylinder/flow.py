@@ -2,6 +2,7 @@ import os
 from typing import Iterable
 
 import firedrake as fd
+import matplotlib.pyplot as plt
 import numpy as np
 import ufl
 from firedrake import ds
@@ -203,3 +204,22 @@ class Cylinder(FlowConfig):
         """The objective function for this flow is the drag coefficient"""
         CL, CD = self.compute_forces(q=q)
         return CD
+
+    def render(self, mode="human", clim=None, levels=None, cmap="RdBu", **kwargs):
+        if clim is None:
+            clim = (-2, 2)
+        if levels is None:
+            levels = np.linspace(*clim, 10)
+        vort = fd.project(fd.curl(self.u), self.pressure_space)
+        im = fd.tricontourf(
+            vort,
+            cmap=cmap,
+            levels=levels,
+            vmin=clim[0],
+            vmax=clim[1],
+            extend="both",
+            **kwargs,
+        )
+
+        cyl = plt.Circle((0, 0), 0.5, edgecolor="k", facecolor="gray")
+        im.axes.add_artist(cyl)
