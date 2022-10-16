@@ -31,6 +31,7 @@ class PDEBase:
     """
 
     ACT_DIM = 1  # Number of actuators/actions
+    OBS_DIM = 1  # Number of actuators/actions
     MAX_CONTROL = np.inf
     DEFAULT_MESH = ""
     DEFAULT_DT = np.inf
@@ -289,7 +290,16 @@ class FlowEnv(gym.Env):
         self.q0: self.flow.StateType = self.flow.copy_state()
 
         self.observation_space = gym.spaces.Box(
-            low=-np.inf, high=np.inf, shape=(2,), dtype=PDEBase.ScalarType
+            low=-np.inf,
+            high=np.inf,
+            shape=(self.flow.OBS_DIM,),
+            dtype=PDEBase.ScalarType,
+        )
+        self.action_space = gym.spaces.Box(
+            low=-self.flow.MAX_CONTROL,
+            high=self.flow.MAX_CONTROL,
+            shape=(self.flow.ACT_DIM,),
+            dtype=self.flow.ScalarType,
         )
 
     def set_callbacks(self, callbacks: Iterable[CallbackBase]):

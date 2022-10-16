@@ -17,6 +17,7 @@ class FlowConfig(PDEBase):
     DEFAULT_REYNOLDS = 1
     MESH_DIR = ""
 
+    ScalarType = fd.utils.ScalarType
     ActType = pyadjoint.AdjFloat
     ObsType = float
 

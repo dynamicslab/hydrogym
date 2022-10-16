@@ -168,7 +168,6 @@ def test_no_damp():
     solver = hgym.IPCS(flow, dt=dt)
 
     # Since this feature is still experimental, modify actuator attributes *after*
-    # TODO: turn on implicit integration as default and test with RL, differentiability
     flow.actuators[0].implicit = True
     flow.actuators[0].k = 0
 
