@@ -1,4 +1,4 @@
-from typing import Any, Iterable, Tuple, TypeVar, Union
+from typing import Any, Callable, Iterable, Tuple, TypeVar, Union
 
 import gym
 import numpy as np
@@ -246,7 +246,10 @@ class TransientSolver:
         self.t = 0.0
 
     def solve(
-        self, t_span: Tuple[float, float], callbacks: Iterable[CallbackBase] = []
+        self,
+        t_span: Tuple[float, float],
+        callbacks: Iterable[CallbackBase] = [],
+        controller: Callable = None,
     ) -> PDEBase:
         """Solve the initial-value problem for the PDE.
 
@@ -254,12 +257,19 @@ class TransientSolver:
             t_span (Tuple[float, float]): Tuple of start and end times
             callbacks (Iterable[CallbackBase], optional):
                 List of callbacks to evaluate throughout the solve. Defaults to [].
+            controller (Callable, optional):
+                Feedback/forward controller `u = ctrl(t, y)`
 
         Returns:
             PDEBase: The state of the PDE at the end of the solve
         """
         for iter, t in enumerate(np.arange(*t_span, self.dt)):
-            flow = self.step(iter)
+            if controller is not None:
+                y = self.flow.get_observations()
+                u = controller(t, y)
+            else:
+                u = None
+            flow = self.step(iter, control=u)
             for cb in callbacks:
                 cb(iter, t, flow)
 
