@@ -18,7 +18,7 @@ class Cylinder(FlowConfig):
 
     OBS_DIM = 2
     MAX_CONTROL = 0.5 * np.pi
-    TAU = 0.0556  # Time constant for controller damping (0.01*vortex shedding period)
+    TAU = 0.556  # Time constant for controller damping (0.1*vortex shedding period)
     I_CM = 0.0115846  # Moment of inertia  (TODO: Test and switch to this value)
     # I_CM = 1.0  # Moment of inertia
 
