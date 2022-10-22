@@ -13,7 +13,7 @@ dt = 1e-2
 
 
 def log_postprocess(flow):
-    return flow.collect_observations()
+    return flow.get_observations()
 
 
 # Set up the callback
