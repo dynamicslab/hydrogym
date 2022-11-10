@@ -11,6 +11,8 @@ from ufl import div, dot, inner, nabla_grad
 from .flow.base import FlowConfigBase
 from .utils import white_noise
 
+# import gc
+
 
 class TransientSolver:
     def __init__(self, flow: FlowConfigBase, dt: float):
@@ -50,6 +52,8 @@ class IPCS(TransientSolver):
         }
 
         self.reset()
+
+        self.rng = fd.RandomGenerator(fd.PCG64(seed=42))
 
     def reset(self):
         self.initialize_functions()
@@ -121,7 +125,7 @@ class IPCS(TransientSolver):
             + inner(flow.sigma(U, self.p_n), flow.epsilon(v)) * dx
             + dot(self.p_n * flow.n, v) * ds
             - dot(flow.nu * nabla_grad(U) * flow.n, v) * ds
-            - dot(self.eta * self.f, v) * dx
+            # - dot(self.eta * self.f, v) * dx
         )
         vel_prob = fd.LinearVariationalProblem(
             lhs(F1), rhs(F1), self.u, bcs=flow.collect_bcu()
@@ -159,8 +163,11 @@ class IPCS(TransientSolver):
         )
 
     def step(self, iter, control=None):
+        # gc.collect()
+        # self.reset()
+
         # Update perturbations (if applicable)
-        self.eta.assign(self.noise[self.noise_idx])
+        # self.eta.assign(self.noise[self.noise_idx])
 
         # Step 1: Tentative velocity step
         logging.log(logging.DEBUG, f"iter: {iter}, solving velocity predictor")
@@ -171,7 +178,13 @@ class IPCS(TransientSolver):
                 Bu, _ = B.split()
                 # print(ctrl)
                 # print(self.u + Bu*ctrl)
-                self.u += Bu * ctrl
+                # self.u += 0 * Bu  # Works
+
+                # ctrl = fd.COMM_WORLD.allreduce(self.rng.normal())
+                logging.log(logging.DEBUG, f"Control: {ctrl}")
+                self.u.assign(self.u + fd.Constant(ctrl) * Bu)
+
+                # self.u += ctrl * Bu
 
         logging.log(logging.DEBUG, "Velocity predictor done, solving Poisson")
         self.poisson.solve()

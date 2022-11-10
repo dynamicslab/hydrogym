@@ -133,6 +133,7 @@ class MLPActorCritic(nn.Module):
             a = pi.sample()
             logp_a = self.pi._log_prob_from_distribution(pi, a)
             v = self.v(obs)
+            print(f"Selected action: {a.numpy()}")
         return a.numpy(), v.numpy(), logp_a.numpy()
 
     def act(self, obs):
