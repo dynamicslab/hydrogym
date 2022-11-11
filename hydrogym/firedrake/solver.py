@@ -6,7 +6,7 @@ from ufl import div, dot, ds, dx, inner, lhs, nabla_grad, rhs
 from hydrogym.core import TransientSolver
 
 from .flow import FlowConfig
-from .utils import get_array, print, set_from_array, white_noise
+from .utils import get_array, set_from_array, white_noise
 
 
 class NewtonSolver:
@@ -184,9 +184,8 @@ class IPCS(TransientSolver):
         if control is not None:
             control = self.flow.update_actuators(control, self.dt)
             for (B, ctrl) in zip(self.B, control):
-                print(f"Actuation value: {ctrl}")
                 Bu, _ = B.split()
-                self.u += Bu * ctrl
+                self.u += Bu * fd.Constant(ctrl)
 
         logging.log(logging.DEBUG, "Velocity predictor done, solving Poisson")
         self.poisson.solve()

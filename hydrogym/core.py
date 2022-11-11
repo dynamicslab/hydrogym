@@ -5,7 +5,7 @@ import numpy as np
 
 
 class ActuatorBase:
-    ActType = np.float64
+    ActType = float
 
     def __init__(self, **kwargs):
         self.u = self.ActType(0.0)
@@ -40,7 +40,7 @@ class PDEBase:
     #  (should be less than any meaningful timescale of the system)
     TAU = 0.0
 
-    ScalarType = np.float32
+    ScalarType = float
     ActType = ScalarType
     ObsType = ScalarType
     StateType = TypeVar("StateType")

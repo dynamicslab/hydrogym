@@ -2,7 +2,8 @@ from typing import Iterable
 
 import firedrake as fd
 import numpy as np
-import pyadjoint
+
+# import pyadjoint
 import ufl
 from firedrake import dx
 
@@ -18,7 +19,8 @@ class FlowConfig(PDEBase):
     MESH_DIR = ""
 
     ScalarType = fd.utils.ScalarType
-    ActType = pyadjoint.AdjFloat
+    # ActType = pyadjoint.AdjFloat  # TODO
+    ActType = float
     ObsType = float
 
     def __init__(self, **config):

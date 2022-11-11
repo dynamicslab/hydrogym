@@ -21,6 +21,8 @@ class DampedActuator(ActuatorBase):
 
     def step(self, u: float, dt: float):
         """Update the state of the actuator"""
+        # self.u = self.ActType(u)
+
         u = self.ActType(u)  # Cast to appropriate type
         if self.implicit:
             self.u = (self.u + u * dt / self.m) / (1 + self.k * dt / self.m)
