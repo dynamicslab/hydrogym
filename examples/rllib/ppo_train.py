@@ -48,7 +48,7 @@ if __name__ == "__main__":
             },
             "solver": hydrogym.firedrake.IPCS,
             "solver_config": {
-                "dt": 1e-3,
+                "dt": 1e-2,
             },
             "callbacks": [log],
             "max_steps": 10000,
