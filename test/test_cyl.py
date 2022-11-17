@@ -171,11 +171,11 @@ def test_fixed_torque():
     dt = 1e-3
     solver = gym.ts.IPCS(flow, dt=dt)
 
-    # Apply steady torque of 35.971223 Nm, should converge to ~2 rad/sec with k_damp = 1/TAU
+    # Obtain a torque value for which the system converges to a steady state angular velocity
     tf = 1e-2  # sec
-    # TODO: @sammahnert can you calculate this as a function of TAU instead of hardcoding so that
-    #   it will still pass if we change TAU?
-    torque = 35.971223  # Nm
+    tau = flow.TAU
+    desired_angvel = 2
+    torque = desired_angvel/tau # Nm
 
     # Run sim
     num_steps = int(tf / dt)
