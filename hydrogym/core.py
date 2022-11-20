@@ -170,8 +170,6 @@ class PDEBase:
         control is `u` and input is `v`, effectively
             `du/dt = (1/tau)*(v - u)`
 
-        To directly set the control state, see `set_controls`
-
         Args:
             act (Iterable[ActType]): Action inputs
             dt (float): Time step
