@@ -32,14 +32,6 @@ class Cylinder(FlowConfig):
 
     MESH_DIR = os.path.abspath(f"{__file__}/..")
 
-    # def __init__(
-    #     self, account_for_skin_friction=False, control_method="direct", **config
-    # ):
-    #     """TODO: Move control method stuff to Actuator models"""
-    #     self.control_method = control_method
-    #     self.account_for_skin_friction = account_for_skin_friction
-    #     super().__init__(**config)
-
     def initialize_state(self):
         super().initialize_state()
         self.U_inf = fd.Constant((1.0, 0.0))
@@ -50,13 +42,6 @@ class Cylinder(FlowConfig):
         self.u_ctrl = [
             ufl.as_tensor((self.rad * sin(theta), self.rad * cos(theta)))
         ]  # Tangential velocity
-
-        # # TODO: Put this in the DampedController class
-        # if self.control_method == "indirect":
-        #     # I_cm = 1/2 M R**2
-        #     # taking I_cm for a plexiglass cylinder with R=0.05m & length = 1m
-        #     self.I_cm = 0.0115846
-        #     self.k_damp = 1 / self.TAU
 
     def init_bcs(self, mixed=False):
         V, Q = self.function_spaces(mixed=mixed)
@@ -73,7 +58,6 @@ class Cylinder(FlowConfig):
         self.bcp_outflow = fd.DirichletBC(Q, fd.Constant(0), self.OUTLET)
 
         # Reset the control with the current mixed (or not) function spaces
-        # TODO Is this still necessary?
         self.set_control(self.control_state)
 
     def create_actuator(self) -> DampedActuator:
@@ -169,37 +153,6 @@ class Cylinder(FlowConfig):
 
     def get_observations(self) -> Iterable[FlowConfig.ObsType]:
         return self.compute_forces()
-
-    # def update_actuators(self, act, dt):
-    #     """
-    #     TODO: Move this to a DampedActuator(ActuatorBase) class
-    #     """
-
-    #     if self.control_method == "indirect":
-    #         """
-    #         Update BCS of cylinder to new angular velocity using implicit euler solver according to diff eqn:
-
-    #         omega_t[i+1] = omega_t[i] + (d_omega/dt)_t[i+1] * dt
-    #                     = omega_t[i] + (control_t[i+1] - k_damping*omega_t[i+1] + shear_torque)/I_cm * dt
-
-    #         omega_t[i+1] can be solved for directly in order to avoid using a costly root solver
-
-    #         TODO: Generalize for other flows and add to FlowConfigBase
-    #         """
-    #         raise NotImplementedError
-    #         act = self.enlist(act)
-    #         if self.account_for_skin_friction:
-    #             F_s = self.shear_force()
-    #             tau_s = F_s * float(self.rad)
-    #         else:
-    #             tau_s = 0
-
-    #         self.control[0] = (self.control[0] + (act[0] + tau_s) * dt / self.I_cm) / (
-    #             1 + self.k_damp * dt / self.I_cm
-    #         )
-    #         return self.control
-    #     else:
-    #         return super().update_actuators(act, dt)
 
     def evaluate_objective(self, q: fd.Function = None) -> float:
         """The objective function for this flow is the drag coefficient"""

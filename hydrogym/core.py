@@ -116,9 +116,7 @@ class PDEBase:
                 determines a monolithic vs segregated formulation
                 (see `init_bcs`). Defaults to False.
 
-        TODO: Rewrite with ActuatorBase
         """
-        # self.control = self.enlist_controls(np.zeros(self.ACT_DIM))
         self.actuators = [ActuatorBase() for _ in range(self.ACT_DIM)]
         self.init_bcs(mixed=mixed)
 
@@ -188,8 +186,6 @@ class PDEBase:
         act = self.enlist(act)
         assert len(act) == self.ACT_DIM
 
-        # for i, (u, v) in enumerate(zip(self.control, act)):
-        #     self.control[i] += (dt / self.TAU) * (v - u)
         for i, u in enumerate(act):
             self.actuators[i].step(u, dt)
 

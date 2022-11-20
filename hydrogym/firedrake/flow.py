@@ -79,6 +79,7 @@ class FlowConfig(PDEBase):
         return self.q.copy(deepcopy=deepcopy)
 
     def create_actuator(self) -> ActuatorBase:
+        """Create a single actuator for this flow"""
         return DampedActuator(damping=1 / self.TAU)
 
     def reset_controls(self, mixed: bool = False):
@@ -93,9 +94,8 @@ class FlowConfig(PDEBase):
                 determines a monolithic vs segregated formulation
                 (see `init_bcs`). Defaults to False.
 
-        TODO: Rewrite with ActuatorBase
+        TODO: Allow for different kinds of actuators
         """
-        # self.control = self.enlist_controls(np.zeros(self.ACT_DIM))
         self.actuators = [self.create_actuator() for _ in range(self.ACT_DIM)]
         self.init_bcs(mixed=mixed)
 

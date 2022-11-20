@@ -46,17 +46,20 @@ def test_steady_rotation(tol=1e-3):
 
 
 def test_steady_grad():
-    flow = hgym.Cylinder(mesh="coarse")
+    flow = hgym.Cylinder(Re=100, mesh="coarse")
 
-    omega = fda.AdjFloat(0.0)
-    flow.set_control(omega)
+    omega = fda.AdjFloat(0.1)
+
+    # flow.set_control(omega)
+    flow.actuators[0].u = omega
 
     solver = hgym.NewtonSolver(flow)
     solver.solve()
 
-    CL, CD = flow.compute_forces()
+    J = flow.evaluate_objective()
+    dJ = fda.compute_gradient(J, fda.Control(omega))
 
-    fda.compute_gradient(CD, fda.Control(omega))
+    assert dJ > 0
 
 
 def test_integrate():
@@ -145,8 +148,10 @@ def test_env_grad():
     for _ in range(10):
         y, reward, done, info = env.step(feedback_ctrl(y, K=K))
         J = J + reward
-    dJdm = fda.compute_gradient(J, fda.Control(K))
-    print(dJdm)
+    dJ = fda.compute_gradient(J, fda.Control(K))
+
+    assert dJ > 0
+    print(dJ)
 
 
 def test_linearize():
@@ -297,4 +302,6 @@ def isordered(arr):
 #     assert shear_force > 0
 
 if __name__ == "__main__":
-    test_no_damp()
+    # test_no_damp()
+    test_steady_grad()
+    test_env_grad()
