@@ -2,7 +2,8 @@ from typing import Optional
 
 import firedrake as fd
 import numpy as np
-import pyadjoint
+
+# import pyadjoint
 
 
 class PDEModel:
@@ -67,10 +68,15 @@ class PDEModel:
         pass
 
     def enlist_controls(self, control):
-        if isinstance(control, int) or isinstance(control, float):
+        if (
+            isinstance(control, int)
+            or isinstance(control, float)
+            or isinstance(control, fd.Constant)
+        ):
             control = [control]
-        return [pyadjoint.AdjFloat(c) for c in control]
+        # return [pyadjoint.AdjFloat(c) for c in control]
         # return [fd.Constant(c) for c in control]
+        return list(control)
 
     def update_controls(self, act, dt):
         """Adds a damping factor to the controller response

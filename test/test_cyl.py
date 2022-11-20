@@ -82,12 +82,14 @@ def test_grad():
     flow = gym.flow.Cylinder(mesh="coarse")
 
     omega = fda.AdjFloat(0.0)
+    omega = fd.Constant(0.0)
     flow.set_control(omega)
 
     flow.solve_steady()
     CL, CD = flow.compute_forces()
 
-    fda.compute_gradient(CD, fda.Control(omega))
+    dJ = fda.compute_gradient(CD, fda.Control(omega))
+    print(dJ.values())
 
 
 def test_sensitivity(dt=1e-2, num_steps=10):
@@ -175,7 +177,7 @@ def test_fixed_torque():
     tf = 1e-2  # sec
     tau = flow.TAU
     desired_angvel = 2
-    torque = desired_angvel/tau # Nm
+    torque = desired_angvel / tau  # Nm
 
     # Run sim
     num_steps = int(tf / dt)
@@ -271,4 +273,5 @@ def isordered(arr):
 #     assert shear_force > 0
 
 if __name__ == "__main__":
-    test_import_coarse()
+    # test_import_coarse()
+    test_grad()
