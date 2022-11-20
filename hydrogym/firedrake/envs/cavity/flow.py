@@ -57,7 +57,7 @@ class Cavity(FlowConfig):
             fd.DirichletBC(V, fd.interpolate(fd.Constant((0, 0)), V), self.CONTROL)
         ]
 
-        self.set_control(self.control)
+        self.set_control(self.control_state)
 
     def collect_bcu(self):
         return [
