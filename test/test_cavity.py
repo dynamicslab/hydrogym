@@ -20,7 +20,7 @@ def test_import_fine():
     return flow
 
 
-def test_steady(tol=1e-3):
+def test_steady():
     flow = hgym.Cavity(Re=50, mesh="coarse")
 
     solver = hgym.NewtonSolver(flow)
