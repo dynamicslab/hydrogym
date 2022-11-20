@@ -20,7 +20,8 @@ class FlowConfig(PDEBase):
 
     ScalarType = fd.utils.ScalarType
     # ActType = pyadjoint.AdjFloat  # TODO
-    ActType = float
+    ActType = fd.Constant
+    # ActType = float
     ObsType = float
 
     def __init__(self, **config):

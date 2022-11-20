@@ -131,12 +131,20 @@ def test_env():
 
 
 def test_env_grad():
+    env_config = {
+        "flow": hgym.Pinball,
+        "flow_config": {
+            "Re": 30,
+            "mesh": "coarse",
+        },
+        "solver": hgym.IPCS_diff,
+    }
+    env = hgym.FlowEnv(env_config)
+
     # Simple feedback control on lift
     def feedback_ctrl(y, K):
         return K @ y
 
-    env_config = {"Re": 30, "differentiable": True, "mesh": "coarse"}
-    env = hgym.env.PinballEnv(env_config)
     y = env.reset()
     n_cyl = env.flow.ACT_DIM
     K = pyadjoint.create_overloaded_object(np.zeros((n_cyl, 2 * n_cyl)))
@@ -180,6 +188,6 @@ def test_sensitivity(dt=1e-2, num_steps=10):
 #     A_adj, M = flow.linearize(qB, adjoint=True, backend='scipy')
 
 if __name__ == "__main__":
-    test_import_coarse()
-    test_steady_rotation()
+    # test_import_coarse()
+    # test_steady_rotation()
     test_steady_grad()

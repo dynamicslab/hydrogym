@@ -48,10 +48,10 @@ def test_steady_rotation(tol=1e-3):
 def test_steady_grad():
     flow = hgym.Cylinder(Re=100, mesh="coarse")
 
+    # First test with AdjFloat
     omega = fda.AdjFloat(0.1)
 
-    # flow.set_control(omega)
-    flow.actuators[0].u = omega
+    flow.set_control(omega)
 
     solver = hgym.NewtonSolver(flow)
     solver.solve()
@@ -59,7 +59,7 @@ def test_steady_grad():
     J = flow.evaluate_objective()
     dJ = fda.compute_gradient(J, fda.Control(omega))
 
-    assert dJ > 0
+    assert abs(dJ) > 0
 
 
 def test_integrate():
@@ -129,7 +129,11 @@ def test_sensitivity(dt=1e-2, num_steps=10):
 
     # Compute the gradient with respect to the initial condition
     #   The option for Riesz representation here specifies that we should end up back in the primal space
-    fda.compute_gradient(J, fda.Control(q0), options={"riesz_representation": "L2"})
+    dJ = fda.compute_gradient(
+        J, fda.Control(q0), options={"riesz_representation": "L2"}
+    )
+
+    assert fd.assemble(inner(dJ, dJ) * dx) > 0
 
 
 def test_env_grad():
@@ -142,16 +146,22 @@ def test_env_grad():
     }
     env = hgym.FlowEnv(env_config)
 
+    # Simple opposition control on lift
+    def feedback_ctrl(y, K=0.1):
+        CL, CD = y
+        return K * CL
+
     y = env.reset()
-    K = fda.AdjFloat(0.0)
     J = fda.AdjFloat(0.0)
+    K = fda.AdjFloat(0.0)
     for _ in range(10):
-        y, reward, done, info = env.step(feedback_ctrl(y, K=K))
+        u = feedback_ctrl(y, K=K)
+        print(u, type(u))
+        y, reward, done, info = env.step(u)
         J = J + reward
     dJ = fda.compute_gradient(J, fda.Control(K))
 
-    assert dJ > 0
-    print(dJ)
+    assert abs(dJ.values()) > 0
 
 
 def test_linearize():
@@ -188,7 +198,8 @@ def test_no_damp():
 
     print(flow.control_state, analytical_sol)
 
-    assert np.isclose(flow.control_state, analytical_sol)
+    final_torque = fd.Constant(flow.control_state[0]).values()
+    assert np.isclose(final_torque, analytical_sol)
 
     print("finished @" + str(time.time() - time_start))
 
@@ -215,7 +226,8 @@ def test_fixed_torque():
 
         print(flow.control_state)
 
-    assert np.isclose(flow.control_state, 2.0, atol=1e-3)
+    final_torque = fd.Constant(flow.control_state[0]).values()
+    assert np.isclose(final_torque, 2.0, atol=1e-3)
 
     print("finished @" + str(time.time() - time_start))
 
@@ -304,4 +316,7 @@ def isordered(arr):
 if __name__ == "__main__":
     # test_no_damp()
     test_steady_grad()
+    test_sensitivity()
+    test_control()
+    # test_no_damp()
     test_env_grad()

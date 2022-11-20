@@ -5,18 +5,16 @@ import numpy as np
 
 
 class ActuatorBase:
-    ActType = float
-
     def __init__(self, **kwargs):
-        self.u = self.ActType(0.0)
+        self.u = 0.0
 
-    def set_state(self, u: Union[float, ActType]):
-        self.u = self.ActType(u)
+    def set_state(self, u: float):
+        self.u = u
 
-    def get_state(self) -> ActType:
+    def get_state(self) -> float:
         return self.u
 
-    def step(self, u: Union[float, ActType], dt: float):
+    def step(self, u: float, dt: float):
         """Update the state of the actuator"""
         raise NotImplementedError
 
@@ -149,7 +147,7 @@ class PDEBase:
 
     def enlist(self, x: Any) -> Iterable[Any]:
         """Convert scalar or array-like to a list"""
-        if isinstance(x, int) or isinstance(x, float):
+        if not isinstance(x, (list, tuple, np.ndarray)):
             x = [x]
         return list(x)
 
