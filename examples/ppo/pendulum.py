@@ -9,7 +9,7 @@ steps = 4000
 epochs = 50
 
 ppo.ppo(
-    lambda: gym.make("Pendulum-v0"),
+    lambda: gym.make("Pendulum-v1"),
     actor_critic=ppo.MLPActorCritic,
     ac_kwargs=dict(hidden_sizes=[n_hidden] * n_layers),
     gamma=gamma,

@@ -7,10 +7,22 @@ import hydrogym
 
 # logging.set_log_level(logging.DEBUG)
 
-gym.register(id="Cylinder-v0", entry_point="hydrogym.env:CylEnv")
+
+class CylEnv(hydrogym.FlowEnv):
+    def __init__(self, env_config):
+        config = {
+            "flow": hydrogym.firedrake.Cylinder,
+            "flow_config": env_config["flow"],
+            "solver": hydrogym.firedrake.IPCS,
+            "solver_config": env_config["solver"],
+        }
+        super().__init__(config)
+
+
+gym.register(id="Cylinder-v0", entry_point=CylEnv)
 
 # Set up the printing callback
-log = hydrogym.io.LogCallback(
+log = hydrogym.firedrake.utils.io.LogCallback(
     postprocess=lambda flow: flow.get_observations(),
     nvals=2,
     interval=10,
@@ -19,11 +31,15 @@ log = hydrogym.io.LogCallback(
 )
 
 env_config = {
-    "Re": 100,
-    "dt": 1e-3,
-    "mesh": "coarse",
-    "callbacks": [log],
-    "checkpoint": "../cylinder/demo/checkpoint-coarse.h5",
+    "flow": {
+        "Re": 100,
+        "mesh": "coarse",
+        "restart": "../demo/checkpoint-coarse.h5",
+    },
+    "solver": {
+        "dt": 1e-3,
+        "callbacks": [log],
+    },
 }
 
 n_hidden = 64
