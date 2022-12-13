@@ -5,6 +5,8 @@ import ufl
 from ufl import dot, inner, grad, nabla_grad, div, sym, curl
 
 from typing import Optional
+import ray
+
 
 class FlowConfig:
     def __init__(self, mesh, h5_file=None):
@@ -178,6 +180,27 @@ class FlowConfig:
         u1, _ = q1.split()
         u2, _ = q2.split()
         return fd.assemble(inner(u1, u2)*dx)
+
+
+@ray.remote
+class EvaluationActor:
+    """To remotely evaluate Firedrake solutions."""
+
+    def __init__(self, firedrake_instance: "Firedrake_instance", index: int, seeds: Union[ActorSeeds, tuple], state:dict):
+        """
+        Initialize a remote runner for a Firedrake problem instance.
+
+        Args:
+            firedrake_instance: The Firedrake problem instance to be run.
+            index: The index of the actor in question.
+            seed: An integer to be used as the seed.
+            state: The state dictionary to be loaded.
+        """
+       
+       # Add whole class and the two following to have the evaluation logic.
+       # Pipe Firedrake problem into Evotorch's harness, then simmer down the logic needed to have this 
+       #   code here running.
+
 
 class CallbackBase:
     def __init__(self, interval: Optional[int] = 1):
