@@ -6,28 +6,31 @@ Installation Instructions
 Installation
 ------------
 
-To use Lumache, first install it using pip:
+You can install Hydrogym via `pip` for local development without its development dependencies:
 
 .. code-block:: console
 
-   (.venv) $ pip install lumache
+   $ pip install hydrogym
 
-Creating recipes
-----------------
 
-To retrieve a list of random ingredients,
-you can use the ``lumache.get_random_ingredients()`` function:
+Development
+-----------
 
-.. autofunction:: lumache.get_random_ingredients
+To use Hydrogym in development mode, we first need to install [Poetry](https://python-poetry.org) onto our system. Following Poetry's installation instructions:
 
-The ``kind`` parameter should be either ``"meat"``, ``"fish"``,
-or ``"veggies"``. Otherwise, :py:func:`lumache.get_random_ingredients`
-will raise an exception.
+.. code-block:: console
 
-.. autoexception:: lumache.InvalidKindError
+   $ curl -sSL https://install.python-poetry.org | python3 -
 
-For example:
+and follow the instructions to have Poetry on our system. We can then perform a development install of Hydrogym by running
 
->>> import lumache
->>> lumache.get_random_ingredients()
-['shells', 'gorgonzola', 'parsley']
+.. code-block:: console
+
+   $ poetry install
+
+to get a virtual environment for testing or debugging we then have to run:
+
+.. code-block:: console
+
+   $ poetry shell
+
