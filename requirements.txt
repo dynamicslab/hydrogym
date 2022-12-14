@@ -16,5 +16,5 @@ seaborn
 control
 --no-binary=h5py h5py
 ray[rllib]
-torch #==1.10.0
+torch
 tensorboard
