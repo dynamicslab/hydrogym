@@ -18,16 +18,25 @@ HydroGym provides is an open-source library of challenge problems in data-driven
 
 # Quick Start
 
-The easiest way to get started is with the Docker container.  Assuming you have [Docker installed](https://docs.docker.com/get-docker/), you can build and launch the image easily with the scripts in the `docker` folder:
+To begin using Hydrogym we need to first recursively clone the Hydrogym repository
 
 ```bash
-cd docker && ./build.sh
-./launch.sh
+git clone --recursive https://github.com/dynamicslab/hydrogym.git
 ```
 
-Note that building the image will take a while the first time, but you shouldn't have to do it again unless you change the configuration.
+After which we can build the package with its dependencies with
 
-Once you're in the docker container, the first thing to do is activate the virtual environment where all of the important packages are installed with
+```bash
+python setup.py build_ext
+```
+
+by default it will build with Firedrake as its simulation engine. With our wheel built, we then only need to install it
+
+```bash
+pip install dist/*.whl
+```
+
+with which we then have the latest version of Hydrogym, and all of its dependencies inside of the virtualenv, installed.
 
 ```bash
 source $VENV/bin/activate
