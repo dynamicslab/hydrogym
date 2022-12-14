@@ -33,7 +33,7 @@ python setup.py build_ext
 by default it will build with Firedrake as its simulation engine. With our wheel built, we then only need to install it
 
 ```bash
-pip install dist/*.whl
+pip install .
 ```
 
 with which we then have the latest version of Hydrogym, and all of its dependencies inside of the virtualenv, installed.
