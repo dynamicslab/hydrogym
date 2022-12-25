@@ -6,6 +6,7 @@ authors = [
     { name="Ludger Paehler", email="ludger.paehler@tum.de" }
 ]
 description = "A Reinforcement Learning Benchmarking Environment for Fluid Dynamics"
+license = {file = "LICENSE"}
 readme = "README.md"
 requires-python = ">=3.8"
 classifiers=[
@@ -27,9 +28,22 @@ classifiers=[
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/dynamicslab/hydrogym"
-"Bug Tracker" = "https://github.com/dynamicslab/hydrogym/issues"
+documentation = "https://hydrogym.readthedocs.io/"
+repository = "https://github.com/dynamicslab/hydrogym"
 
 [build-system]
-requires = ["setuptools>=61.0"]
+requires = [
+    "setuptools>=61.0",
+    "dmsuite",
+    "gym",
+    "gmsh",
+    "modred",
+    "control",
+    "ray[rllib]",
+    "torch",
+    "evotorch",
+]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = {"hydrogym" = "hydrogym"}
