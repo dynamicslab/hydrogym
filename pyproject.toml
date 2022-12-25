@@ -1,0 +1,35 @@
+[project]
+name = "hydrogym"
+version = "0.1"
+authors = [
+    { name="Jared Callaham", email="jared.callaham@gmail.com" },
+    { name="Ludger Paehler", email="ludger.paehler@tum.de" }
+]
+description = "A Reinforcement Learning Benchmarking Environment for Fluid Dynamics"
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers=[
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: MacOS",
+    "Operating System :: Unix",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Atmospheric Science",
+    "Topic :: Scientific/Engineering :: Hydrology",
+    "Topic :: Scientific/Engineering :: Physics",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/dynamicslab/hydrogym"
+"Bug Tracker" = "https://github.com/dynamicslab/hydrogym/issues"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
