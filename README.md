@@ -27,7 +27,7 @@ git clone --recursive https://github.com/dynamicslab/hydrogym.git
 After which we can build the package with its dependencies with
 
 ```bash
-python setup.py build_ext
+python old_setup.py build_ext
 ```
 
 by default it will build with Firedrake as its simulation engine. With our wheel built, we then only need to install it
