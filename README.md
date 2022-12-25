@@ -13,7 +13,7 @@ HydroGym is an open-source library of challenge problems in data-driven modeling
     - Intermediate: Typical CFD interface with `hydrogym.FlowConfig` and `hydrogym.TransientSolver` classes
     - Low-level: Access to linearized operators and sparse scipy or PETSc CSR matrices
 * __Modeling and anlysis tools:__ Global stability analysis (via SLEPc) and modal decompositions (via modred)
-* __Scalable:__ Individual environments parallelized with MPI with **highly scalable [Ray](https://github.com/ray-project/ray) backend for the reinforcement learning training**.
+* __Scalable:__ Individual environments parallelized with MPI with a **highly scalable [Ray](https://github.com/ray-project/ray) backend reinforcement learning training**.
 
 # Quick Start
 
