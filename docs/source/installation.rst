@@ -6,28 +6,49 @@ Installation Instructions
 Installation
 ------------
 
-To use Lumache, first install it using pip:
+You can install Hydrogym via `pip` for local development without its development dependencies:
 
 .. code-block:: console
 
-   (.venv) $ pip install lumache
+   $ pip install hydrogym
 
-Creating recipes
-----------------
 
-To retrieve a list of random ingredients,
-you can use the ``lumache.get_random_ingredients()`` function:
+Development
+-----------
 
-.. autofunction:: lumache.get_random_ingredients
+To use Hydrogym in development mode, we first need to install [Poetry](https://python-poetry.org) onto our system. Following Poetry's installation instructions:
 
-The ``kind`` parameter should be either ``"meat"``, ``"fish"``,
-or ``"veggies"``. Otherwise, :py:func:`lumache.get_random_ingredients`
-will raise an exception.
+.. code-block:: console
 
-.. autoexception:: lumache.InvalidKindError
+   $ curl -sSL https://install.python-poetry.org | python3 -
 
-For example:
+and follow the instructions to have Poetry on our system. We can then perform a development install of Hydrogym by running
 
->>> import lumache
->>> lumache.get_random_ingredients()
-['shells', 'gorgonzola', 'parsley']
+.. code-block:: console
+
+   $ poetry install
+
+to get a virtual environment for testing or debugging we then have to run:
+
+.. code-block:: console
+
+   $ poetry shell
+
+On Supercomputers/HPC-Clusters
+------------------------------
+
+On supercomputers, or hpc-clusters you will most often find a module system which already contains some of the dependencies. In that case we need to pass a number of extra arguments to our `build.py` script such that it can use those modules as dependencies for the Firedrake install. For example:
+
+.. code-block:: console
+
+   $ python setup.py build_ext 
+
+The following options are available to point to system-wide installations of individual dependencies, and not have Firedrake reinstall everything:
+
+#. Option 1:
+
+   .. code-block:: console
+
+      $ python setup.py build_ext --option1=/../../..
+
+#. Option 2:
