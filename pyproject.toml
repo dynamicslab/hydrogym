@@ -1,14 +1,14 @@
-[project]
+[tool.poetry]
 name = "hydrogym"
 version = "0.1"
 authors = [
-    { name="Jared Callaham", email="jared.callaham@gmail.com" },
-    { name="Ludger Paehler", email="ludger.paehler@tum.de" }
+    "Jared Callaham <jared.callaham@gmail.com>",
+    "Ludger Paehler <ludger.paehler@tum.de>",
+    "Sam Ahnert <sammahnert@gmail.com>",
 ]
 description = "A Reinforcement Learning Benchmarking Environment for Fluid Dynamics"
-license = {file = "LICENSE"}
+license = "LICENSE"
 readme = "README.md"
-requires-python = ">=3.8"
 classifiers=[
     "Development Status :: 2 - Pre-Alpha",
     "Intended Audience :: Science/Research",
@@ -26,24 +26,25 @@ classifiers=[
     "Topic :: Scientific/Engineering :: Hydrology",
     "Topic :: Scientific/Engineering :: Physics",
 ]
-
-[project.urls]
 documentation = "https://hydrogym.readthedocs.io/"
 repository = "https://github.com/dynamicslab/hydrogym"
+include = [
+    { path = "hydrogym"}
+]
+exclude = [
+    "hydrogym/firedrake/*"
+]
+
+[tool.poetry.dependencies]
+control = "^0.9.2"
+dmsuite = "^0.1.1"
+evotorch = "^0.3.0"
+gmsh = "^4.11.1"
+gym = "^0.26.2"
+modred = "^2.1.0"
+python = "^3.8"
+torch = "1.13"  # Needs to be fixed to 1.13
 
 [build-system]
-requires = [
-    "setuptools>=61.0",
-    "dmsuite",
-    "gym",
-    "gmsh",
-    "modred",
-    "control",
-    "ray[rllib]",
-    "torch",
-    "evotorch",
-]
-build-backend = "setuptools.build_meta"
-
-[tool.setuptools]
-package-dir = {"hydrogym" = "hydrogym"}
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
