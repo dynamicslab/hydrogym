@@ -1,19 +1,8 @@
-jupyterlab
-ipykernel
-notebook
-ipywidgets
-mpltools
-nbformat
-nbconvert
 dmsuite
 gym
-memory_profiler
 gmsh
 modred
-seaborn
 control
---no-binary=h5py h5py
 ray[rllib]
 torch
 evotorch
-tensorboard
