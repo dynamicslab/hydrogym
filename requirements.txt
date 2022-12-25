@@ -1,8 +1,0 @@
-dmsuite
-gym
-gmsh
-modred
-control
-ray[rllib]
-torch
-evotorch
