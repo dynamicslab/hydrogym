@@ -3,7 +3,7 @@
 # -- Project information
 
 project = 'Hydrogym'
-copyright = '2022, something something to go here'
+copyright = '2022, Hydrogym Developers'
 author = 'tbd'
 
 release = '0.1'

@@ -1,18 +1,20 @@
 [tool.poetry]
 name = "hydrogym"
-version = "0.1"
+version = "0.1.1"
 authors = [
+    "Jared Callaham et al."
+]
+maintainers = [
     "Jared Callaham <jared.callaham@gmail.com>",
     "Ludger Paehler <ludger.paehler@tum.de>",
-    "Sam Ahnert <sammahnert@gmail.com>",
+    "Sam Ahnert <sammahnert@gmail.com",
 ]
 description = "A Reinforcement Learning Benchmarking Environment for Fluid Dynamics"
-license = "LICENSE"
+license = "MIT"
 readme = "README.md"
 classifiers=[
     "Development Status :: 2 - Pre-Alpha",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: MacOS",
     "Operating System :: Unix",
     "Programming Language :: Python",
