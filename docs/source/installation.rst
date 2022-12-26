@@ -110,23 +110,3 @@ If you feel unsure about the structure of the dependencies, you can always inspe
 .. code-block:: console
 
     $ poetry show --tree
-
-
-On Supercomputers/HPC-Clusters
-------------------------------
-
-On supercomputers, or hpc-clusters you will most often find a module system which already contains some of the dependencies. In that case we need to pass a number of extra arguments to our `build.py` script such that it can use those modules as dependencies for the Firedrake install. For example:
-
-.. code-block:: console
-
-   $ python setup.py build_ext 
-
-The following options are available to point to system-wide installations of individual dependencies, and not have Firedrake reinstall everything:
-
-#. Option 1:
-
-   .. code-block:: console
-
-      $ python setup.py build_ext --option1=/../../..
-
-#. Option 2:
