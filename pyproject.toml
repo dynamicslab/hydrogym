@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "hydrogym"
-version = "0.1.1"
+version = "0.1.2"
 authors = [
     "Jared Callaham et al."
 ]
