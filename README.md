@@ -55,6 +55,7 @@ For more detail, check out:
 
 * A quick tour of features in `notebooks/overview.ipynb`
 * Example codes for various simulation, modeling, and control tasks in `examples`
+* The [ReadTheDocs](https://hydrogym.readthedocs.io/en/latest/)
 
 # Flow configurations
 
