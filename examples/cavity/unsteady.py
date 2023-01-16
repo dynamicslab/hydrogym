@@ -1,5 +1,4 @@
 import firedrake as fd
-from ufl import sqrt
 
 import hydrogym.firedrake as hgym
 
@@ -24,23 +23,15 @@ for (i, Re) in enumerate(Re_init):
     solver = hgym.NewtonSolver(flow, solver_parameters=solver_parameters)
     flow.qB.assign(solver.solve())
 
-# Time step
+# *** 2: Transient solve with natural flow ***
 Tf = 500
 dt = 2.5e-4
-
-h = fd.CellSize(flow.mesh)
 
 
 def log_postprocess(flow):
     KE = 0.5 * fd.assemble(fd.inner(flow.u, flow.u) * fd.dx)
     TKE = flow.evaluate_objective()
-    CFL = (
-        fd.project(
-            dt * sqrt(flow.u.sub(0) ** 2 + flow.u.sub(1) ** 2) / h, flow.pressure_space
-        )
-        .vector()
-        .max()
-    )
+    CFL = flow.max_cfl(dt)
     return [CFL, KE, TKE]
 
 
@@ -60,10 +51,6 @@ callbacks = [
         print_fmt=print_fmt,
     ),
 ]
-
-# # Zero out the flow component before integration (currently will be the base flow)
-# flow.u.assign(fd.Constant((0.0, 0.0)))
-# flow.p.assign(0.0)
 
 # Random perturbation to base flow
 rng = fd.RandomGenerator(fd.PCG64(seed=1234))
