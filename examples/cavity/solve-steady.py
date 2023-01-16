@@ -1,63 +1,26 @@
 import firedrake as fd
 
-import hydrogym as hgym
+import hydrogym.firedrake as hgym
 
 output_dir = "output"
-Re = 4000
-
-
-# solver_parameters = {
-#     "snes_monitor": None,
-#     "ksp_type": "preonly",
-#     "mat_type": "aij",
-#     "pc_type": "lu",
-#     "pc_factor_mat_solver_type": "mumps",
-# }
-
-
-# solver_parameters = {
-#     "snes_monitor": None,
-#     "ksp_monitor": None,
-#     "ksp_type": "fgmres",
-#     "pc_type": "fieldsplit",
-#     "pc_fieldsplit_type": "schur",
-#     "pc_fieldsplit_detect_saddle_point": None,
-#     "pc_fieldsplit_schur_fact_type": "full",
-#     "pc_fieldsplit_schur_precondition": "selfp",
-#     "fieldsplit_0_ksp_type": "preonly",
-#     "fieldsplit_1_ksp_type": "gmres",
-#     "fieldsplit_1_pc_type": "hypre",
-#     "fieldsplit_1_hypre_type": "boomeramg",
-# }
-
-
-# solver_parameters = {
-#     "snes_monitor": None,
-#     "ksp_monitor": None,
-#     "mat_type": "matfree",
-#     "ksp_type": "fgmres",
-#     "pc_type": "fieldsplit",
-#     "pc_fieldsplit_type": "schur",
-#     "pc_fieldsplit_schur_fact_type": "diag",
-#     "fieldsplit_0_ksp_type": "preonly",
-#     "fieldsplit_0_pc_type": "python",
-#     "fieldsplit_0_pc_python_type": "firedrake.MassInvPC",
-#     "fieldsplit_1_Mp_ksp_type": "preonly",
-#     "fieldsplit_1_Mp_pc_type": "lu",
-# }
+mesh_resolution = "coarse"
+Re = 7500
 
 solver_parameters = {"snes_monitor": None}
 
-# First we have to ramp up the Reynolds number to get the steady state
+# Since this flow is at high Reynolds number we have to
+#    ramp to get the steady state
 Re_init = [500, 1000, 2000, 4000, Re]
-flow = hgym.flow.Cavity(Re=Re_init[0], mesh="fine")
-hgym.print(f"Steady solve at Re={Re_init[0]}")
-qB = flow.solve_steady(solver_parameters=solver_parameters)
+flow = hgym.Cavity(Re=Re_init[0], mesh=mesh_resolution)
 
-for (i, Re) in enumerate(Re_init[1:]):
+dof = flow.mixed_space.dim()
+hgym.print(f"Total dof: {dof} --- dof/rank: {int(dof/fd.COMM_WORLD.size)}")
+
+for (i, Re) in enumerate(Re_init):
     flow.Re.assign(Re)
-    hgym.print(f"Steady solve at Re={Re_init[i+1]}")
-    qB = flow.solve_steady(solver_parameters=solver_parameters)
+    hgym.print(f"Steady solve at Re={Re_init[i]}")
+    solver = hgym.NewtonSolver(flow, solver_parameters=solver_parameters)
+    qB = solver.solve()
 
 flow.save_checkpoint(f"{output_dir}/{Re}_steady.h5")
 vort = flow.vorticity()

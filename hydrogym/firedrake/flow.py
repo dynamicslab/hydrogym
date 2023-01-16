@@ -18,10 +18,10 @@ class FlowConfig(PDEBase):
     DEFAULT_REYNOLDS = 1
     MESH_DIR = ""
 
+    FUNCTIONS = ("q",)  # tuple of functions necessary for the flow
+
     ScalarType = fd.utils.ScalarType
-    # ActType = pyadjoint.AdjFloat  # TODO
     ActType = fd.Constant
-    # ActType = float
     ObsType = float
 
     def __init__(self, **config):
@@ -35,7 +35,8 @@ class FlowConfig(PDEBase):
         with fd.CheckpointFile(filename, "w") as chk:
             if write_mesh:
                 chk.save_mesh(self.mesh)  # optional
-            chk.save_function(self.q, idx=idx)
+            for f_name in self.FUNCTIONS:
+                chk.save_function(getattr(self, f_name), idx=idx)
 
     def load_checkpoint(self, filename: str, idx=None, read_mesh=True):
         with fd.CheckpointFile(filename, "r") as chk:
@@ -44,7 +45,10 @@ class FlowConfig(PDEBase):
                 self.initialize_state()
             else:
                 assert hasattr(self, "mesh")
-            self.q.assign(chk.load_function(self.mesh, "q", idx=idx))
+            for f_name in self.FUNCTIONS:
+                getattr(self, f_name).assign(
+                    chk.load_function(self.mesh, f_name, idx=idx)
+                )
         self.split_solution()  # Reset functions so self.u, self.p point to the new solution
 
     def initialize_state(self):
@@ -58,9 +62,10 @@ class FlowConfig(PDEBase):
         self.mixed_space = fd.MixedFunctionSpace(
             [self.velocity_space, self.pressure_space]
         )
-        self.q = fd.Function(self.mixed_space, name="q")
-        self.split_solution()  # Break out and rename solution
+        for f_name in self.FUNCTIONS:
+            setattr(self, f_name, fd.Function(self.mixed_space, name=f_name))
 
+        self.split_solution()  # Break out and rename main solution
         self.u_ctrl = [None]
 
     def set_state(self, q: fd.Function):

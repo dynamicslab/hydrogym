@@ -40,8 +40,6 @@ class NewtonSolver:
         F = (
             inner(dot(u, nabla_grad(u)), v) * dx
             + inner(self.flow.sigma(u, p), self.flow.epsilon(v)) * dx
-            + inner(p * self.flow.n, v) * ds
-            - inner(self.flow.nu * nabla_grad(u) * self.flow.n, v) * ds
             + inner(div(u), s) * dx
         )
         return F
