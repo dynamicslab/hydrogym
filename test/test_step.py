@@ -6,15 +6,15 @@ import hydrogym.firedrake as hgym
 
 
 def test_import_coarse():
-    flow = hgym.Step(mesh="coarse")
+    hgym.Step(mesh="coarse")
 
 
 def test_import_medium():
-    flow = hgym.Step(mesh="medium")
+    hgym.Step(mesh="medium")
 
 
 def test_import_fine():
-    flow = hgym.Step(mesh="fine")
+    hgym.Step(mesh="fine")
 
 
 def test_steady():

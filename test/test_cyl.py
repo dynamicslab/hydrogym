@@ -8,15 +8,15 @@ import hydrogym.firedrake as hgym
 
 
 def test_import_coarse():
-    flow = hgym.Cylinder(mesh="coarse")
+    hgym.Cylinder(mesh="coarse")
 
 
 def test_import_medium():
-    flow = hgym.Cylinder(mesh="medium")
+    hgym.Cylinder(mesh="medium")
 
 
 def test_import_fine():
-    flow = hgym.Cylinder(mesh="fine")
+    hgym.Cylinder(mesh="fine")
 
 
 def test_steady(tol=1e-3):
@@ -151,7 +151,7 @@ def test_fixed_torque():
     flow.actuators[0].implicit = True
 
     # Obtain a torque value for which the system converges to a steady state angular velocity
-    tf = 0.1*flow.TAU
+    tf = 0.1 * flow.TAU
     omega = 1.0
     torque = omega / flow.TAU  # Torque to reach steady-state value of `omega`
 

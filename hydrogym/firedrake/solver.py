@@ -305,7 +305,9 @@ class IPCS(TransientSolver):
                 B[:, i] = get_array(Bi)
             return A, B
 
+
 METHODS = {"IPCS": IPCS}
+
 
 def integrate(
     flow, t_span, dt, method="IPCS", callbacks=[], controller=None, **options

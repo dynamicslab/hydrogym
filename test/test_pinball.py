@@ -7,11 +7,11 @@ import hydrogym.firedrake as hgym
 
 
 def test_import_coarse():
-    flow = hgym.Pinball(mesh="coarse")
+    hgym.Pinball(mesh="coarse")
 
 
 def test_import_fine():
-    flow = hgym.Pinball(mesh="fine")
+    hgym.Pinball(mesh="fine")
 
 
 def test_steady(tol=1e-2):

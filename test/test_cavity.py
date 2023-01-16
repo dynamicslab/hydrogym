@@ -6,15 +6,15 @@ import hydrogym.firedrake as hgym
 
 
 def test_import_coarse():
-    flow = hgym.Cavity(mesh="coarse")
+    hgym.Cavity(mesh="coarse")
 
 
 def test_import_medium():
-    flow = hgym.Cavity(mesh="medium")
+    hgym.Cavity(mesh="medium")
 
 
 def test_import_fine():
-    flow = hgym.Cavity(mesh="fine")
+    hgym.Cavity(mesh="fine")
 
 
 def test_steady():
@@ -78,8 +78,6 @@ def test_grad():
 
     print(dy)
     assert abs(dy) > 0
-
-
 
 
 if __name__ == "__main__":
