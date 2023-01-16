@@ -1,4 +1,3 @@
-import firedrake as fd
 import firedrake_adjoint as fda
 from ufl import sin
 
