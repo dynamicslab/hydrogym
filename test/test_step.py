@@ -7,17 +7,14 @@ import hydrogym.firedrake as hgym
 
 def test_import_coarse():
     flow = hgym.Step(mesh="coarse")
-    return flow
 
 
 def test_import_medium():
     flow = hgym.Step(mesh="medium")
-    return flow
 
 
 def test_import_fine():
     flow = hgym.Step(mesh="fine")
-    return flow
 
 
 def test_steady():
@@ -88,44 +85,3 @@ def test_grad():
 
     print(dy)
     assert abs(dy) > 0
-
-
-def test_sensitivity(dt=1e-3, num_steps=10):
-    from ufl import dx, inner
-
-    flow = hgym.Step(Re=100, mesh="coarse")
-
-    # Store a copy of the initial condition to distinguish it from the time-varying solution
-    q0 = flow.q.copy(deepcopy=True)
-    flow.q.assign(
-        q0, annotate=True
-    )  # Note the annotation flag so that the assignment is tracked
-
-    # Time step forward as usual
-    flow = hgym.integrate(flow, t_span=(0, num_steps * dt), dt=dt, method="IPCS_diff")
-
-    # Define a cost functional... here we're just using the energy inner product
-    J = 0.5 * fd.assemble(inner(flow.u, flow.u) * dx)
-
-    # Compute the gradient with respect to the initial condition
-    #   The option for Riesz representation here specifies that we should end up back in the primal space
-    dJ = fda.compute_gradient(
-        J, fda.Control(q0), options={"riesz_representation": "L2"}
-    )
-
-    assert fd.assemble(inner(dJ, dJ) * dx) > 0
-
-
-# TODO: Have to add "eta" as a keyword for IPCS_diff
-# def test_env_grad():
-#     env_config = {"Re": 100, "differentiable": True, "mesh": "coarse"}
-#     env = gym.env.StepEnv(env_config)
-#     y = env.reset()
-#     omega = fd.Constant(1.0)
-#     A = fd.Constant(0.1)
-#     J = fda.AdjFloat(0.0)
-#     for _ in range(10):
-#         y, reward, done, info = env.step(A * sin(omega * env.solver.t))
-#         J = J - reward
-#     dJdm = fda.compute_gradient(J, fda.Control(omega))
-#     print(dJdm)

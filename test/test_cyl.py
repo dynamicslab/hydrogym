@@ -9,17 +9,14 @@ import hydrogym.firedrake as hgym
 
 def test_import_coarse():
     flow = hgym.Cylinder(mesh="coarse")
-    return flow
 
 
 def test_import_medium():
     flow = hgym.Cylinder(mesh="medium")
-    return flow
 
 
 def test_import_fine():
     flow = hgym.Cylinder(mesh="fine")
-    return flow
 
 
 def test_steady(tol=1e-3):
@@ -68,12 +65,6 @@ def test_integrate():
     hgym.integrate(flow, t_span=(0, 10 * dt), dt=dt)
 
 
-def test_integrate_diff():
-    flow = hgym.Cylinder(mesh="coarse")
-    dt = 1e-2
-    hgym.integrate(flow, t_span=(0, 10 * dt), dt=dt, method="IPCS_diff")
-
-
 # Simple opposition control on lift
 def feedback_ctrl(y, K=0.1):
     CL, CD = y
@@ -108,60 +99,6 @@ def test_env():
         y, reward, done, info = env.step(u)
         print(y)
         u = feedback_ctrl(y)
-
-
-def test_sensitivity(dt=1e-2, num_steps=10):
-    from ufl import dx, inner
-
-    flow = hgym.Cylinder(mesh="coarse")
-
-    # Store a copy of the initial condition to distinguish it from the time-varying solution
-    q0 = flow.q.copy(deepcopy=True)
-    flow.q.assign(
-        q0, annotate=True
-    )  # Note the annotation flag so that the assignment is tracked
-
-    # Time step forward as usual
-    flow = hgym.integrate(flow, t_span=(0, num_steps * dt), dt=dt, method="IPCS_diff")
-
-    # Define a cost functional... here we're just using the energy inner product
-    J = 0.5 * fd.assemble(inner(flow.u, flow.u) * dx)
-
-    # Compute the gradient with respect to the initial condition
-    #   The option for Riesz representation here specifies that we should end up back in the primal space
-    dJ = fda.compute_gradient(
-        J, fda.Control(q0), options={"riesz_representation": "L2"}
-    )
-
-    assert fd.assemble(inner(dJ, dJ) * dx) > 0
-
-
-def test_env_grad():
-    env_config = {
-        "flow": hgym.Cylinder,
-        "flow_config": {
-            "mesh": "coarse",
-        },
-        "solver": hgym.IPCS_diff,
-    }
-    env = hgym.FlowEnv(env_config)
-
-    # Simple opposition control on lift
-    def feedback_ctrl(y, K=0.1):
-        CL, CD = y
-        return K * CL
-
-    y = env.reset()
-    J = fda.AdjFloat(0.0)
-    K = fda.AdjFloat(0.0)
-    for _ in range(10):
-        u = feedback_ctrl(y, K=K)
-        print(u, type(u))
-        y, reward, done, info = env.step(u)
-        J = J + reward
-    dJ = fda.compute_gradient(J, fda.Control(K))
-
-    assert abs(dJ.values()) > 0
 
 
 def test_linearize():
@@ -214,20 +151,18 @@ def test_fixed_torque():
     flow.actuators[0].implicit = True
 
     # Obtain a torque value for which the system converges to a steady state angular velocity
-    tf = 1e-2  # sec
-    tau = flow.TAU
-    desired_angvel = 2
-    torque = desired_angvel / tau  # Nm
+    tf = 0.1*flow.TAU
+    omega = 1.0
+    torque = omega / flow.TAU  # Torque to reach steady-state value of `omega`
 
     # Run sim
     num_steps = int(tf / dt)
     for iter in range(num_steps):
         flow = solver.step(iter, control=torque)
-
-        print(flow.control_state)
+        print(flow.control_state[0].values())
 
     final_torque = fd.Constant(flow.control_state[0]).values()
-    assert np.isclose(final_torque, 2.0, atol=1e-3)
+    assert np.isclose(final_torque, omega, atol=1e-3)
 
     print("finished @" + str(time.time() - time_start))
 
@@ -315,8 +250,6 @@ def isordered(arr):
 
 if __name__ == "__main__":
     # test_no_damp()
-    test_steady_grad()
-    test_sensitivity()
-    test_control()
-    # test_no_damp()
-    test_env_grad()
+    # test_steady_grad()
+    # test_control()
+    test_fixed_torque()

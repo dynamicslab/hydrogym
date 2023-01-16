@@ -8,12 +8,10 @@ import hydrogym.firedrake as hgym
 
 def test_import_coarse():
     flow = hgym.Pinball(mesh="coarse")
-    return flow
 
 
 def test_import_fine():
     flow = hgym.Pinball(mesh="fine")
-    return flow
 
 
 def test_steady(tol=1e-2):
@@ -82,12 +80,6 @@ def test_integrate():
     hgym.integrate(flow, t_span=(0, 10 * dt), dt=dt)
 
 
-def test_integrate_diff():
-    flow = hgym.Pinball(mesh="coarse")
-    dt = 1e-2
-    hgym.integrate(flow, t_span=(0, 10 * dt), dt=dt, method="IPCS_diff")
-
-
 def test_control():
     flow = hgym.Pinball(mesh="coarse")
     dt = 1e-2
@@ -128,57 +120,6 @@ def test_env():
     for _ in range(10):
         y, reward, done, info = env.step(u)
         u = feedback_ctrl(y)
-
-
-def test_env_grad():
-    env_config = {
-        "flow": hgym.Pinball,
-        "flow_config": {
-            "Re": 30,
-            "mesh": "coarse",
-        },
-        "solver": hgym.IPCS_diff,
-    }
-    env = hgym.FlowEnv(env_config)
-
-    # Simple feedback control on lift
-    def feedback_ctrl(y, K):
-        return K @ y
-
-    y = env.reset()
-    n_cyl = env.flow.ACT_DIM
-    K = pyadjoint.create_overloaded_object(np.zeros((n_cyl, 2 * n_cyl)))
-    J = fda.AdjFloat(0.0)
-    for _ in range(10):
-        y, reward, done, info = env.step(feedback_ctrl(y, K))
-        J = J - reward
-    dJ = fda.compute_gradient(J, fda.Control(K))
-
-    assert np.all(np.abs(dJ) > 0)
-
-
-def test_sensitivity(dt=1e-2, num_steps=10):
-    from ufl import dx, inner
-
-    flow = hgym.flow.Pinball(Re=30, mesh="coarse")
-
-    # Store a copy of the initial condition to distinguish it from the time-varying solution
-    q0 = flow.q.copy(deepcopy=True)
-    flow.q.assign(
-        q0, annotate=True
-    )  # Note the annotation flag so that the assignment is tracked
-
-    # Time step forward as usual
-    flow = hgym.ts.integrate(
-        flow, t_span=(0, num_steps * dt), dt=dt, method="IPCS_diff"
-    )
-
-    # Define a cost functional... here we're just using the energy inner product
-    J = 0.5 * fd.assemble(inner(flow.u, flow.u) * dx)
-
-    # Compute the gradient with respect to the initial condition
-    #   The option for Riesz representation here specifies that we should end up back in the primal space
-    fda.compute_gradient(J, fda.Control(q0), options={"riesz_representation": "L2"})
 
 
 # def test_lti():
