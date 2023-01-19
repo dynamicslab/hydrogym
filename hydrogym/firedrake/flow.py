@@ -5,10 +5,8 @@ import numpy as np
 
 # import pyadjoint
 import ufl
-from firedrake import dx
-
-# from firedrake import logging
-from ufl import curl, inner, nabla_grad, sym
+from firedrake import dx, logging
+from ufl import curl, dot, inner, nabla_grad, sqrt, sym
 
 from ..core import ActuatorBase, PDEBase
 from .actuator import DampedActuator
@@ -46,9 +44,15 @@ class FlowConfig(PDEBase):
             else:
                 assert hasattr(self, "mesh")
             for f_name in self.FUNCTIONS:
-                getattr(self, f_name).assign(
-                    chk.load_function(self.mesh, f_name, idx=idx)
-                )
+                try:
+                    getattr(self, f_name).assign(
+                        chk.load_function(self.mesh, f_name, idx=idx)
+                    )
+                except RuntimeError:
+                    logging.log(
+                        logging.WARN,
+                        f"Function {f_name} not found in checkpoint, defaulting to zero.",
+                    )
         self.split_solution()  # Reset functions so self.u, self.p point to the new solution
 
     def initialize_state(self):
@@ -169,6 +173,12 @@ class FlowConfig(PDEBase):
     def sigma(self, u, p) -> ufl.Form:
         """Newtonian stress tensor"""
         return 2 * self.nu * self.epsilon(u) - p * fd.Identity(len(u))
+
+    def max_cfl(self, dt) -> float:
+        """Estimate of maximum CFL number"""
+        h = fd.CellSize(self.mesh)
+        CFL = fd.project(dt * sqrt(dot(self.u, self.u)) / h, self.pressure_space)
+        return CFL.vector().max()
 
     @property
     def body_force(self):
