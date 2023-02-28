@@ -77,6 +77,7 @@ make the situation slightly more realistic, we have instead implemented actuatio
 By default, the available measurements are the lift and drag coefficients on the cylinder.
 
 **References**
+
 * `Noack, et al (2003) <http://berndnoack.com/publications/2003_JFM_Noack.pdf>`_
 * `Sipp & Lebedev (2007) <https://www.cambridge.org/core/journals/journal-of-fluid-mechanics/article/abs/global-stability-of-base-and-mean-flows-a-general-approach-and-its-applications-to-cylinder-and-open-cavity-flows/EC31631718EB33AA5C671A8F7EAA043C>`_
 * `Sipp, et al (2010) <http://www.ladhyx.polytechnique.fr/people/meliga/pdf/AMR.pdf>`_
@@ -98,6 +99,7 @@ The dynamics of the pinball quickly become more complex than the cylinder; by Re
 is chaotic, making this a much more challenging control problem.
 
 **References**
+
 * `Deng, et al (2020) <https://arxiv.org/pdf/1812.08529>`_
 * `Bieker, et al (2020) <https://link.springer.com/article/10.1007/s00162-020-00520-4>`_
 * `Peitz, Otto, & Rowley (2020) <https://arxiv.org/abs/2003.07094>`_
@@ -115,6 +117,7 @@ to the shear layer oscillations, leading to quasiperiodic dynamics.  In the benc
 present in the cylinder and pinball flows.
 
 **References**
+
 * `Sipp & Lebedev (2007) <https://www.cambridge.org/core/journals/journal-of-fluid-mechanics/article/abs/global-stability-of-base-and-mean-flows-a-general-approach-and-its-applications-to-cylinder-and-open-cavity-flows/EC31631718EB33AA5C671A8F7EAA043C>`_
 * `Sipp, et al (2010) <http://www.ladhyx.polytechnique.fr/people/meliga/pdf/AMR.pdf>`_
 * `Callaham, Brunton, Loiseau (2021) <https://www.cambridge.org/core/services/aop-cambridge-core/content/view/CC2980F9AA4AC20A7453C3056ED950C4/S0022112021009940a.pdf/on-the-role-of-nonlinear-correlations-in-reduced-order-modelling.pdf>`_
@@ -131,6 +134,7 @@ of the domain.  Hence, this flow configuration is forced by small-amplitude rand
 analysis shows the flow is most sensitive to disturbances.
 
 **References**
+
 * `Boujo & Gallaire (2015) <https://www.cambridge.org/core/journals/journal-of-fluid-mechanics/article/abs/sensitivity-and-openloop-control-of-stochastic-response-in-a-noise-amplifier-flow-the-backwardfacing-step/3CEEBB6AD9784D555FDA086AF81BD416>`_
 * `Beneddine, et al (2016) <https://hal.inria.fr/hal-01445633/>`_
 * `Ducimetière, et al (2022) <https://www.cambridge.org/core/journals/journal-of-fluid-mechanics/article/weak-nonlinearity-for-strong-nonnormality/ADCBEAB2B445907FF022DD5E4F79A001>`_
