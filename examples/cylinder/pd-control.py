@@ -35,7 +35,7 @@ callbacks = [
 flow = hgym.Cylinder(
     Re=100,
     mesh="coarse",
-    restart=f"{output_dir}/checkpoint-coarse.h5",
+    restart="../demo/checkpoint-coarse.h5",
     callbacks=callbacks,
 )
 Tf = 1000
