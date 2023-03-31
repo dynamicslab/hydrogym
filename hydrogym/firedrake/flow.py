@@ -2,10 +2,10 @@ from typing import Iterable
 
 import firedrake as fd
 import numpy as np
-
-# import pyadjoint
+import pyadjoint
 import ufl
 from firedrake import dx, logging
+from mpi4py import MPI
 from ufl import curl, dot, inner, nabla_grad, sqrt, sym
 
 from ..core import ActuatorBase, PDEBase
@@ -174,11 +174,12 @@ class FlowConfig(PDEBase):
         """Newtonian stress tensor"""
         return 2 * self.nu * self.epsilon(u) - p * fd.Identity(len(u))
 
+    @pyadjoint.no_annotations
     def max_cfl(self, dt) -> float:
         """Estimate of maximum CFL number"""
         h = fd.CellSize(self.mesh)
-        CFL = fd.project(dt * sqrt(dot(self.u, self.u)) / h, self.pressure_space)
-        return CFL.vector().max()
+        CFL = fd.interpolate(dt * sqrt(dot(self.u, self.u)) / h, self.pressure_space)
+        return self.mesh.comm.allreduce(CFL.vector().max(), op=MPI.MAX)
 
     @property
     def body_force(self):

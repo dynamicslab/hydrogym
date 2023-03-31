@@ -32,8 +32,7 @@ dt = 2.5e-4
 def log_postprocess(flow):
     KE = 0.5 * fd.assemble(fd.inner(flow.u, flow.u) * fd.dx)
     TKE = flow.evaluate_objective()
-    # CFL = flow.max_cfl(dt)
-    CFL = 0.0
+    CFL = flow.max_cfl(dt)
     mem_usage = psutil.virtual_memory().percent
     return [CFL, KE, TKE, mem_usage]
 
@@ -57,7 +56,7 @@ callbacks = [
     ),
 ]
 
-# Random perturbation to base flow
+# Random perturbation to base flow for initialization
 rng = fd.RandomGenerator(fd.PCG64(seed=1234))
 flow.q += rng.normal(flow.mixed_space, 0.0, 1e-2)
 
