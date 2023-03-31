@@ -6,7 +6,12 @@
 
 # About this Package
 
+__IMPORTANT NOTE: This package is still ahead of an official public release, so consider anything here as an early beta. In other words, we're not guaranteeing any of this is working or correct yet. Use at your own risk__
+
 HydroGym is an open-source library of challenge problems in data-driven modeling and control of fluid dynamics.
+It is roughly designed as an abstract interface for control of PDEs that is compatible with typical reinforcement learning APIs
+(in particular Ray/RLLib and OpenAI Gym) along with specific numerical solver implementations for some canonical flow control problems.
+Currently these "environments" are all implemented using the [Firedrake](https://www.firedrakeproject.org/) finite element library.
 
 ## Features
 * __Hierarchical:__ Designed for analysis and controller design **from a high-level black-box interface to low-level operator access**
@@ -18,13 +23,18 @@ HydroGym is an open-source library of challenge problems in data-driven modeling
 
 # Installation
 
-To begin using Hydrogym we can install its latest release via [PyPI](https://pypi.org/project/hydrogym/) with pip
+By design, the core components of Hydrogym are independent of the underlying solvers in order to avoid custom or complex
+third-party library installations.
+This means that the latest release of Hydrogym can be simply installed via [PyPI](https://pypi.org/project/hydrogym/):
 
 ```bash
 pip install hydrogym
 ```
 
-which provides the core functionality, and is able to launch reinforcement learning training on a Ray-cluster without an underlying Firedrake install. If you want to play around with Hydrogym locally on e.g. your laptop, we recommend a local Firedrake install. The instructions for which can be found in the [Installation Docs](https://hydrogym.readthedocs.io/en/latest/installation.html).
+However, the package assumes that the solver backend is available, so in order to run simulations locally you will
+need to _separately_ ensure the solver backend is installed (again, currently all the environments are implemented with Firedrake).
+Alternatively (and this is important for large-scale RL training), the core Hydrogym package can (or will soon be able to) launch reinforcement learning training on a Ray-cluster without an underlying Firedrake install.
+For more information and suggested approaches see the [Installation Docs](https://hydrogym.readthedocs.io/en/latest/installation.html).
 
 # Quickstart Guide
 
@@ -37,8 +47,8 @@ which provides the core functionality, and is able to launch reinforcement learn
  and then setting up a Hydrogym environment instance
  
 ```python
-import hydrogym as hgym
-env = hgym.env.CylEnv(Re=100) # Cylinder wake flow configuration
+import hydrogym.firedrake as hgym
+env = hgym.FlowEnv({"flow": hgym.Cylinder}) # Cylinder wake flow configuration
 for i in range(num_steps):
     action = 0.0   # Put your control law here
     (lift, drag), reward, done, info = env.step(action)
@@ -64,5 +74,6 @@ There are currently a number of main flow configurations, the most prominent of 
 - Periodic cyclinder wake at Re=100
 - Chaotic pinball at Re=130
 - Open cavity at Re=7500
+- Backwards-facing step at Re=600
 
 with visualizations of the flow configurations available in the [docs](docs/FlowConfigurations.md).

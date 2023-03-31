@@ -3,6 +3,7 @@ FROM firedrakeproject/firedrake-env:latest AS hydrogym
 USER root
 RUN apt-get upgrade && apt-get update && \
         apt-get install -y libhdf5-dev libxcursor-dev libxinerama1 texlive
+RUN mkdir /home/hydrogym && chown -R firedrake /home/hydrogym
 
 USER firedrake
 WORKDIR /home/firedrake
@@ -28,22 +29,13 @@ RUN bash -c ". $VENV_COMPLEX/bin/activate && pip install --upgrade pip setuptool
 # RUN sudo pip3 git+https://github.com/barkm/torch-fenics.git@master
 
 # Install hydrogym package
-COPY --chown=firedrake hydrogym /home/hydrogym
-COPY --chown=firedrake setup.py /home/hydrogym
-COPY --chown=firedrake requirements.txt /home/hydrogym
+WORKDIR /home
+RUN git clone https://github.com/dynamicslab/hydrogym.git
 RUN bash -c ". $VENV/bin/activate && pip install -e /home/hydrogym"
 RUN bash -c ". $VENV_COMPLEX/bin/activate && pip install -e /home/hydrogym"
-
-# Install an iPython kernel for firedrake (https://github.com/firedrakeproject/firedrake/blob/master/docker/Dockerfile.jupyter)
-#  TODO: THIS SHOULD BE IN AN EXTERNAL FILE...
-RUN bash -c ". $VENV/bin/activate && pip install -r /home/hydrogym/requirements.txt"
-RUN bash -c ". $VENV_COMPLEX/bin/activate && pip install -r /home/hydrogym/requirements.txt"
-RUN bash -c ". $VENV/bin/activate && jupyter nbextension enable --py widgetsnbextension --sys-prefix"
-RUN bash -c ". $VENV_COMPLEX/bin/activate && jupyter nbextension enable --py widgetsnbextension --sys-prefix"
 
 # python -m pip install torch --extra-index-url https://download.pytorch.org/whl/cpu
 
 # Final configuration
 ENV OMP_NUM_THREADS=1
-WORKDIR /home
 CMD ["/bin/bash"]
