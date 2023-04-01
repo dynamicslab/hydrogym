@@ -46,8 +46,8 @@ print_fmt = (
     "t: {0:0.3f}\t\tCFL: {1:0.3f}\t\t KE: {2:0.6e}\t\t TKE: {3:0.6e}\t\t Mem: {4:0.1f}"
 )
 callbacks = [
-    hgym.io.ParaviewCallback(interval=100, filename=pvd_out, postprocess=compute_vort),
-    hgym.io.CheckpointCallback(interval=100, filename=checkpoint),
+    # hgym.io.ParaviewCallback(interval=100, filename=pvd_out, postprocess=compute_vort),
+    # hgym.io.CheckpointCallback(interval=100, filename=checkpoint),
     hgym.io.LogCallback(
         postprocess=log_postprocess,
         nvals=4,

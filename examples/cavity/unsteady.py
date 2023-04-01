@@ -51,7 +51,7 @@ callbacks = [
         postprocess=log_postprocess,
         nvals=4,
         interval=10,
-        # filename=f"{output_dir}/stats.dat",
+        filename=f"{output_dir}/stats.dat",
         print_fmt=print_fmt,
     ),
 ]
