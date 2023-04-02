@@ -25,7 +25,7 @@ if __name__ == "__main__":
     # Can also register the env creator function explicitly with:
     # register_env("corridor", lambda config: SimpleCorridor(config))
     ModelCatalog.register_custom_model(
-        "cav_actor", TorchCustomModel if args.framework == "torch" else CustomModel
+        "cav_actor", TorchCustomModel
     )
 
     # Set up the printing callback
