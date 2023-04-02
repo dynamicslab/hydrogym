@@ -1,12 +1,9 @@
 import argparse
 
-from ray.rllib.models.tf.fcnet import FullyConnectedNetwork
-from ray.rllib.models.tf.tf_modelv2 import TFModelV2
 from ray.rllib.models.torch.fcnet import FullyConnectedNetwork as TorchFC
 from ray.rllib.models.torch.torch_modelv2 import TorchModelV2
-from ray.rllib.utils.framework import try_import_tf, try_import_torch
+from ray.rllib.utils.framework import try_import_torch
 
-tf1, tf, tfv = try_import_tf()
 torch, nn = try_import_torch()
 
 parser = argparse.ArgumentParser()
@@ -15,7 +12,7 @@ parser.add_argument(
 )
 parser.add_argument(
     "--framework",
-    choices=["tf", "tf2", "tfe", "torch"],
+    choices=["torch"],
     default="torch",
     help="The DL framework specifier.",
 )
@@ -47,24 +44,6 @@ parser.add_argument(
     action="store_true",
     help="Init Ray in local mode for easier debugging.",
 )
-
-
-class CustomModel(TFModelV2):
-    """Example of a keras custom model that just delegates to an fc-net."""
-
-    def __init__(self, obs_space, action_space, num_outputs, model_config, name):
-        super(CustomModel, self).__init__(
-            obs_space, action_space, num_outputs, model_config, name
-        )
-        self.model = FullyConnectedNetwork(
-            obs_space, action_space, num_outputs, model_config, name
-        )
-
-    def forward(self, input_dict, state, seq_lens):
-        return self.model.forward(input_dict, state, seq_lens)
-
-    def value_function(self):
-        return self.model.value_function()
 
 
 class TorchCustomModel(TorchModelV2, nn.Module):
