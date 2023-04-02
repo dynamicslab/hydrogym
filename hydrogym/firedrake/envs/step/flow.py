@@ -12,6 +12,8 @@ class Step(FlowConfig):
     DEFAULT_MESH = "fine"
     DEFAULT_DT = 1e-4
 
+    FUNCTIONS = ("q", "qB")  # This flow needs a base flow to compute fluctuation KE
+
     MAX_CONTROL = 0.1  # Arbitrary... should tune this... TODO:  DEPRECATED??
     TAU = 0.005  # Time constant for controller damping (0.01*instability frequency)
 
@@ -38,7 +40,7 @@ class Step(FlowConfig):
     @property
     def body_force(self):
         delta = 0.1
-        x0, y0 = 1.0, 0.25
+        x0, y0 = -1.0, 0.25
         return ufl.as_tensor(
             (
                 exp(-((self.x - x0) ** 2 + (self.y - y0) ** 2) / delta**2),
@@ -84,9 +86,12 @@ class Step(FlowConfig):
         m = fd.assemble(-dot(grad(u[0]), self.n) * ds(self.SENSOR))
         return (m,)
 
-    def evaluate_objective(self, q=None):
+    def evaluate_objective(self, q=None, qB=None):
         if q is None:
             q = self.q
+        if qB is None:
+            qB = self.qB
         (u, p) = q.split()
-        KE = 0.5 * fd.assemble(fd.inner(u, u) * fd.dx)
+        (uB, pB) = qB.split()
+        KE = 0.5 * fd.assemble(fd.inner(u - uB, u - uB) * fd.dx)
         return KE

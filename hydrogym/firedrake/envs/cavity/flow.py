@@ -12,6 +12,8 @@ class Cavity(FlowConfig):
     DEFAULT_MESH = "fine"
     DEFAULT_DT = 1e-4
 
+    FUNCTIONS = ("q", "qB")  # This flow needs a base flow to compute fluctuation KE
+
     MAX_CONTROL = 0.1
     TAU = 0.075  # Time constant for controller damping (0.01*instability frequency)
 
@@ -84,12 +86,12 @@ class Cavity(FlowConfig):
         m = fd.assemble(-dot(grad(u[0]), self.n) * ds(self.SENSOR))
         return (m,)
 
-    def evaluate_objective(self, q=None):
-        # TODO: This should be *fluctuation* kinetic energy
+    def evaluate_objective(self, q=None, qB=None):
         if q is None:
             q = self.q
+        if qB is None:
+            qB = self.qB
         (u, p) = q.split()
-        KE = 0.5 * fd.assemble(fd.inner(u, u) * fd.dx)
+        (uB, pB) = qB.split()
+        KE = 0.5 * fd.assemble(fd.inner(u - uB, u - uB) * fd.dx)
         return KE
-        # m, = self.get_observations(q=q)
-        # return m
