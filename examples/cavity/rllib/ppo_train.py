@@ -1,6 +1,5 @@
 # Modified from https://github.com/ray-project/ray/blob/master/rllib/examples/custom_env.py
 import os
-
 import ray
 
 # from common import *
@@ -54,7 +53,6 @@ if __name__ == "__main__":
             "vf_share_layers": True,
         },
         "num_workers": 1,  # parallelism
-        "framework": args.framework,
     }
 
     stop = {
