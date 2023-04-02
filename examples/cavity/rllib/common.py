@@ -11,12 +11,6 @@ parser.add_argument(
     "--run", type=str, default="PPO", help="The RLlib-registered algorithm to use."
 )
 parser.add_argument(
-    "--framework",
-    choices=["torch"],
-    default="torch",
-    help="The DL framework specifier.",
-)
-parser.add_argument(
     "--as-test",
     action="store_true",
     help="Whether this script should be run as a test: --stop-reward must "
