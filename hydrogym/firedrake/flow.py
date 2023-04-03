@@ -23,8 +23,9 @@ class FlowConfig(PDEBase):
     ObsType = float
 
     def __init__(self, **config):
-        super().__init__(**config)
         self.Re = fd.Constant(ufl.real(config.get("Re", self.DEFAULT_REYNOLDS)))
+        self.actuator_integration = config.get("actuator_integration", "explicit")
+        super().__init__(**config)
 
     def load_mesh(self, name: str) -> ufl.Mesh:
         return fd.Mesh(f"{self.MESH_DIR}/{name}.msh", name="mesh")
@@ -90,7 +91,9 @@ class FlowConfig(PDEBase):
 
     def create_actuator(self) -> ActuatorBase:
         """Create a single actuator for this flow"""
-        return DampedActuator(damping=1 / self.TAU)
+        return DampedActuator(
+            damping=1 / self.TAU, integration=self.actuator_integration
+        )
 
     def reset_controls(self, mixed: bool = False):
         """Reset the controls to a zero state

@@ -111,16 +111,17 @@ def test_linearize():
     A_adj, M = hgym.modeling.linearize(flow, qB, adjoint=True, backend="scipy")
 
 
-def test_no_damp():
+def test_act_implicit_no_damp():
     print("")
     print("No Damp")
     time_start = time.time()
-    flow = hgym.Cylinder(mesh="coarse", control_method="indirect")
+    flow = hgym.Cylinder(mesh="coarse", actuator_integration="implicit")
     dt = 1e-2
     solver = hgym.IPCS(flow, dt=dt)
 
-    # Since this feature is still experimental, modify actuator attributes *after*
-    flow.actuators[0].implicit = True
+    assert flow.actuators[0].integration == "implicit"
+
+    # Since this feature is still experimental, modify actuator attributes *after*=
     flow.actuators[0].k = 0
 
     # Apply steady torque for 0.1 seconds... should match analytical solution!
@@ -133,7 +134,7 @@ def test_no_damp():
     for iter in range(num_steps):
         flow = solver.step(iter, control=torque)
 
-    print(flow.control_state, analytical_sol)
+    print(flow.control_state[0].values(), analytical_sol)
 
     final_torque = fd.Constant(flow.control_state[0]).values()
     assert np.isclose(final_torque, analytical_sol)
@@ -141,14 +142,15 @@ def test_no_damp():
     print("finished @" + str(time.time() - time_start))
 
 
-def test_fixed_torque():
+def test_act_implicit_fixed_torque():
     print("")
     print("Fixed Torque Convergence")
     time_start = time.time()
-    flow = hgym.Cylinder(mesh="coarse", control_method="indirect")
+    flow = hgym.Cylinder(mesh="coarse", actuator_integration="implicit")
     dt = 1e-3
     solver = hgym.IPCS(flow, dt=dt)
-    flow.actuators[0].implicit = True
+
+    assert flow.actuators[0].integration == "implicit"
 
     # Obtain a torque value for which the system converges to a steady state angular velocity
     tf = 0.1 * flow.TAU
@@ -249,7 +251,5 @@ def isordered(arr):
 #     assert shear_force > 0
 
 if __name__ == "__main__":
-    # test_no_damp()
     # test_steady_grad()
-    # test_control()
-    test_fixed_torque()
+    test_control()

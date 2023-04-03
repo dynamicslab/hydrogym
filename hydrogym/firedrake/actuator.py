@@ -11,23 +11,26 @@ class DampedActuator(ActuatorBase):
         self,
         damping: float,
         inertia: float = 1.0,
-        implicit_integration: bool = False,
+        integration: str = "explicit",
     ):
         self.k = damping
         self.m = inertia
         self._u = pyadjoint.AdjFloat(0.0)
         self.u = fd.Constant(0.0)
-        self.implicit = implicit_integration
+
+        assert integration in ("explicit", "implicit")
+        self.integration = integration
 
     def set_state(self, u: float):
         self.u.assign(u)
 
     def step(self, u: float, dt: float):
         """Update the state of the actuator"""
-        if self.implicit:
+        if self.integration == "implicit":
             self._u = (self._u + u * dt / self.m) / (1 + self.k * dt / self.m)
-        else:
-            self._u = self._u + self.k * dt * (u - self._u)
+
+        elif self.integration == "explicit":
+            self._u = self._u + (self.k / self.m) * dt * (u - self._u)
 
             # Use with fd.Constant
             # self.u.assign(self.u + self.k * dt * (u - self.u), annotate=True)

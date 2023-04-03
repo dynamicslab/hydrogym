@@ -20,7 +20,7 @@ class Cylinder(FlowConfig):
     MAX_CONTROL = 0.5 * np.pi
     TAU = 0.556  # Time constant for controller damping (0.1*vortex shedding period)
     # TAU = 0.0556  # Time constant for controller damping (0.01*vortex shedding period)
-    I_CM = 0.0115846  # Moment of inertia  (TODO: Test and switch to this value)
+    I_CM = 0.0115846  # Moment of inertia
     # I_CM = 1.0  # Moment of inertia
 
     # Domain labels
@@ -61,7 +61,11 @@ class Cylinder(FlowConfig):
         self.set_control(self.control_state)
 
     def create_actuator(self) -> DampedActuator:
-        return DampedActuator(damping=1 / self.TAU, inertia=self.I_CM)
+        return DampedActuator(
+            damping=1 / self.TAU,
+            inertia=self.I_CM,
+            integration=self.actuator_integration,
+        )
 
     def collect_bcu(self) -> Iterable[fd.DirichletBC]:
         return [self.bcu_inflow, self.bcu_freestream, *self.bcu_actuation]

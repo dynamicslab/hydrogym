@@ -68,7 +68,11 @@ class Pinball(FlowConfig):
 
     def create_actuator(self) -> Iterable[DampedActuator]:
         """Create a single actuator for this flow"""
-        return DampedActuator(damping=1 / self.TAU, inertia=self.I_CM)
+        return DampedActuator(
+            damping=1 / self.TAU,
+            inertia=self.I_CM,
+            integration=self.actuator_integration,
+        )
 
     def collect_bcu(self) -> Iterable[fd.DirichletBC]:
         return [self.bcu_inflow, self.bcu_freestream, *self.bcu_actuation]
