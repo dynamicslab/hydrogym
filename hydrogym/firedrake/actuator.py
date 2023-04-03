@@ -1,27 +1,32 @@
 import firedrake as fd
+import numpy as np
 import pyadjoint
 
 from ..core import ActuatorBase
 
 
 class DampedActuator(ActuatorBase):
-    # TODO: turn on implicit integration as default and
-    #   test with RL, differentiability
     def __init__(
         self,
         damping: float,
         inertia: float = 1.0,
         integration: str = "explicit",
+        state: float = 0.0,
     ):
         self.k = damping
         self.m = inertia
-        self._u = pyadjoint.AdjFloat(0.0)
-        self.u = fd.Constant(0.0)
+        self._u = pyadjoint.AdjFloat(state)
+        self.u = fd.Constant(state)
 
         assert integration in ("explicit", "implicit")
         self.integration = integration
 
+    @property
+    def value(self) -> np.ndarray:
+        return self.u.values()[0]
+
     def set_state(self, u: float):
+        self._u = pyadjoint.AdjFloat(u)
         self.u.assign(u)
 
     def step(self, u: float, dt: float):
@@ -31,8 +36,5 @@ class DampedActuator(ActuatorBase):
 
         elif self.integration == "explicit":
             self._u = self._u + (self.k / self.m) * dt * (u - self._u)
-
-            # Use with fd.Constant
-            # self.u.assign(self.u + self.k * dt * (u - self.u), annotate=True)
 
         self.u.assign(self._u, annotate=True)

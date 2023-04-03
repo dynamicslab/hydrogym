@@ -5,8 +5,8 @@ import numpy as np
 
 
 class ActuatorBase:
-    def __init__(self, **kwargs):
-        self.u = 0.0
+    def __init__(self, state=0.0, **kwargs):
+        self.u = state
 
     def set_state(self, u: float):
         self.u = u
@@ -49,10 +49,10 @@ class PDEBase:
         self.mesh = self.load_mesh(name=config.get("mesh", self.DEFAULT_MESH))
         self.initialize_state()
 
+        self.reset()
+
         if config.get("restart"):
             self.load_checkpoint(config["restart"])
-
-        self.reset()
 
     def load_mesh(self, name: str) -> MeshType:
         """Load mesh from the file `name`"""

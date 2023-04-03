@@ -37,6 +37,9 @@ class FlowConfig(PDEBase):
             for f_name in self.FUNCTIONS:
                 chk.save_function(getattr(self, f_name), idx=idx)
 
+            act_state = np.array([act.value for act in self.actuators])
+            chk.set_attr("/", "act_state", act_state)
+
     def load_checkpoint(self, filename: str, idx=None, read_mesh=True):
         with fd.CheckpointFile(filename, "r") as chk:
             if read_mesh:
@@ -54,6 +57,12 @@ class FlowConfig(PDEBase):
                         logging.WARN,
                         f"Function {f_name} not found in checkpoint, defaulting to zero.",
                     )
+
+            if chk.has_attr("/", "act_state"):
+                act_state = chk.get_attr("/", "act_state")
+                for i in range(self.ACT_DIM):
+                    self.actuators[i].set_state(act_state[i])
+
         self.split_solution()  # Reset functions so self.u, self.p point to the new solution
 
     def initialize_state(self):
@@ -213,10 +222,12 @@ class FlowConfig(PDEBase):
     def control_vec(self, mixed=False):
         """Return a list of PETSc.Vecs corresponding to the columns of the control matrix"""
         (v, _) = fd.TestFunctions(self.mixed_space)
+
+        # Save actuator state to be restored later
+        act_state = np.array([act.value for act in self.actuators])
+
         self.linearize_bcs()
         # self.linearize_bcs() should have reset control, need to perturb it now
-
-        fd.assemble(inner(fd.Constant((0, 0)), v) * dx, bcs=self.collect_bcs())
 
         B = []
         for i in range(self.ACT_DIM):
@@ -234,6 +245,11 @@ class FlowConfig(PDEBase):
 
         # At the end the BC function spaces could be mixed or not
         self.reset_controls(mixed=mixed)
+
+        # Restore the actuator state
+        for i in range(self.ACT_DIM):
+            self.actuators[i].set_state(act_state[i])
+
         return B
 
     def dot(self, q1: fd.Function, q2: fd.Function) -> float:
