@@ -279,6 +279,10 @@ class TransientSolver:
         """
         raise NotImplementedError
 
+    def reset(self):
+        """Reset variables for the timestepper"""
+        self.t = 0.0
+
 
 class FlowEnv(gym.Env):
     def __init__(self, env_config: dict):

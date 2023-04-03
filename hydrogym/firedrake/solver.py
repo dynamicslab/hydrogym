@@ -66,6 +66,8 @@ class IPCS(TransientSolver):
         self.reset()
 
     def reset(self):
+        super().reset()
+
         self.initialize_functions()
 
         # Set up random forcing (if applicable)
