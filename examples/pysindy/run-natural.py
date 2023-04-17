@@ -7,11 +7,11 @@ output_dir = "output"
 checkpoint_dir = "checkpoints"
 pvd_out = None
 restart = None
-checkpoint = f"{checkpoint_dir}/checkpoint.h5"
+checkpoint = f"{checkpoint_dir}/checkpoint_coarse.h5"
 
 rng = fd.RandomGenerator(fd.PCG64(seed=1234))
 
-flow = hgym.Cylinder(Re=100, h5_file=restart)
+flow = hgym.Cylinder(Re=100, restart=restart, mesh="coarse")
 solver = hgym.NewtonSolver(flow, solver_parameters={"snes_monitor": None})
 solver.solve()
 
@@ -41,10 +41,7 @@ log = hgym.utils.io.LogCallback(
     filename=f"{output_dir}/results.dat",
 )
 
-# callbacks = [log, hgym.utils.io.CheckpointCallback(interval=100, filename=checkpoint)]
-callbacks = [
-    log,
-]
+callbacks = [log, hgym.utils.io.CheckpointCallback(interval=1000, filename=checkpoint)]
 
 hgym.print("Beginning integration")
 hgym.integrate(flow, t_span=(0, Tf), dt=dt, callbacks=callbacks, method="IPCS")

@@ -25,7 +25,9 @@ def get_array(func):
 
 
 def white_noise(n_samples, fs, cutoff):
-    """Generate band-limited white noise"""
+    """Generate band-limited white noise
+
+    TODO: Check that this is parallel-safe"""
     from scipy import signal
 
     rng = fd.Generator(fd.PCG64())
