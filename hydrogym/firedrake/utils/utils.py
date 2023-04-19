@@ -30,10 +30,11 @@ def white_noise(n_samples, fs, cutoff):
     import numpy as np
     from scipy import signal
 
+    rng = fd.Generator(fd.PCG64())
+
     comm = fd.COMM_WORLD
     if comm.rank == 0:
         # Generate white noise
-        rng = fd.Generator(fd.PCG64())
         w = rng.standard_normal(n_samples)
 
         # Set up butterworth filter
