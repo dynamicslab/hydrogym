@@ -25,15 +25,23 @@ def get_array(func):
 
 
 def white_noise(n_samples, fs, cutoff):
-    """Generate band-limited white noise
+    """Generate band-limited white noise"""
 
-    TODO: Check that this is parallel-safe"""
+    import numpy as np
     from scipy import signal
 
-    rng = fd.Generator(fd.PCG64())
-    noise = rng.standard_normal(n_samples)
+    comm = fd.COMM_WORLD
+    if comm.rank == 0:
+        # Generate white noise
+        rng = fd.Generator(fd.PCG64())
+        w = rng.standard_normal(n_samples)
 
-    # Set up butterworth filter
-    sos = signal.butter(N=4, Wn=cutoff, btype="lp", fs=fs, output="sos")
-    filt = signal.sosfilt(sos, noise)
-    return filt
+        # Set up butterworth filter
+        sos = signal.butter(N=4, Wn=cutoff, btype="lp", fs=fs, output="sos")
+        x = signal.sosfilt(sos, w)
+    else:
+        x = np.empty(n_samples, dtype=np.float64)
+
+    # Send the same array to all MPI ranks
+    comm.Bcast(x, root=0)
+    return x
