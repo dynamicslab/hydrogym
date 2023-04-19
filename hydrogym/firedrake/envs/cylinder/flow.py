@@ -11,7 +11,7 @@ from ufl import as_vector, atan_2, cos, dot, sign, sin, sqrt
 from hydrogym.firedrake import DampedActuator, FlowConfig
 
 
-class Cylinder(FlowConfig):
+class CylinderBase(FlowConfig):
     DEFAULT_REYNOLDS = 100
     DEFAULT_MESH = "medium"
     DEFAULT_DT = 1e-2
@@ -35,13 +35,13 @@ class Cylinder(FlowConfig):
     def initialize_state(self):
         super().initialize_state()
         self.U_inf = fd.Constant((1.0, 0.0))
-
-        # Set up tangential boundaries to cylinder
-        theta = atan_2(ufl.real(self.y), ufl.real(self.x))  # Angle from origin
         self.rad = fd.Constant(0.5)
-        self.u_ctrl = [
-            ufl.as_tensor((self.rad * sin(theta), self.rad * cos(theta)))
-        ]  # Tangential velocity
+        self.u_ctrl = [self.control_vector]
+
+    @property
+    def control_vector(self):
+        """Velocity vector for boundary condition"""
+        raise NotImplementedError
 
     def init_bcs(self, mixed=False):
         V, Q = self.function_spaces(mixed=mixed)
@@ -181,3 +181,53 @@ class Cylinder(FlowConfig):
 
         cyl = plt.Circle((0, 0), 0.5, edgecolor="k", facecolor="gray")
         im.axes.add_artist(cyl)
+
+
+class Cylinder(CylinderBase):
+    @property
+    def control_vector(self):
+        """Velocity vector for boundary condition
+
+        https://arxiv.org/abs/1808.07664
+        """
+
+        # Set up tangential boundaries to cylinder
+        theta = atan_2(ufl.real(self.y), ufl.real(self.x))  # Angle from origin
+        pi = ufl.pi
+
+        omega = pi / 18  # 10 degree jet width
+
+        theta_up = 0.5 * pi
+        A_up = ufl.conditional(
+            abs(theta - theta_up) < omega / 2,
+            pi
+            / (2 * omega * self.rad**2)
+            * ufl.cos((pi / omega) * (theta - theta_up)),
+            0.0,
+        )
+
+        theta_lo = -0.5 * pi
+        A_lo = ufl.conditional(
+            abs(theta - theta_lo) < omega / 2,
+            pi
+            / (2 * omega * self.rad**2)
+            * ufl.cos((pi / omega) * (theta - theta_lo)),
+            0.0,
+        )
+
+        # Normal velocity (blowing/suction) at the cylinder wall
+        return ufl.as_tensor((self.x, self.y)) * (A_up + A_lo)
+
+
+class RotaryCylinder(CylinderBase):
+    @property
+    def control_vector(self):
+        """Velocity vector for boundary condition
+
+        Rotary control
+        """
+        # Set up tangential boundaries to cylinder
+        theta = atan_2(ufl.real(self.y), ufl.real(self.x))  # Angle from origin
+
+        # Tangential velocity of the cylinder
+        return ufl.as_tensor((self.rad * sin(theta), self.rad * cos(theta)))

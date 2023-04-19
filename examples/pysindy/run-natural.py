@@ -7,11 +7,11 @@ output_dir = "output"
 checkpoint_dir = "checkpoints"
 pvd_out = None
 restart = None
-checkpoint = f"{checkpoint_dir}/checkpoint_coarse.h5"
+checkpoint = f"{checkpoint_dir}/checkpoint.h5"
 
 rng = fd.RandomGenerator(fd.PCG64(seed=1234))
 
-flow = hgym.Cylinder(Re=100, restart=restart, mesh="coarse")
+flow = hgym.Cylinder(Re=100, restart=restart, mesh="medium")
 solver = hgym.NewtonSolver(flow, solver_parameters={"snes_monitor": None})
 solver.solve()
 
