@@ -34,19 +34,19 @@ print_fmt = (
 log = hgym.io.LogCallback(
     postprocess=log_postprocess,
     nvals=4,
-    interval=10,
+    interval=1,
     print_fmt=print_fmt,
     filename=f"{output_dir}/results_controlled.dat",
 )
 
 
 callbacks = [
-    paraview,
+    # paraview,
     log,
 ]
 
-Tf = 600
-dt = 1e-3
+Tf = 300
+dt = 1e-4
 n_steps = int(Tf // dt)
 
 u = np.zeros(n_steps)  # Actuation history
@@ -55,12 +55,12 @@ dy = np.zeros(n_steps)  # Derivative of lift coefficient
 
 # See notebooks/sindy.ipynb for derivation
 Kp = 0.0  # Proportional gain
-Kd = -0.866  # Derivative gain
+# Kd = -65.4  # Derivative gain
+Kd = -0.2  # Derivative gain
 
 # Kp = -4.0    # Proportional gain
 # Kd = 0.0  # Derivative gain
 
-# tau = 0.1 * flow.TAU
 tau = 0.1 * flow.TAU
 
 
@@ -70,7 +70,8 @@ def controller(t, obs):
     i = int(np.round(t / dt))
 
     # Turn on feedback control halfway through
-    if i > n_steps // 2:
+    # if i > n_steps // 2:
+    if i > 10:
         u[i] = -Kp * y[i - 1] - Kd * dy[i - 1]
 
     CL, CD = obs
@@ -83,10 +84,10 @@ def controller(t, obs):
         y[i] = y[i - 1] + (dt / tau) * (CL - y[i - 1])
 
     # Estimate derivative
-    # dy[i] = (y[i] - y[i - 1]) / dt
+    dy[i] = (y[i] - y[i - 1]) / dt
 
-    dy_hat = (y[i] - y[i - 1]) / dt
-    dy[i] = dy[i - 1] + (dt / tau) * (dy_hat - dy[i - 1])
+    # dy_hat = (y[i] - y[i - 1]) / dt
+    # dy[i] = dy[i - 1] + (dt / tau) * (dy_hat - dy[i - 1])
 
     sio.savemat(f"{output_dir}/pd-control.mat", {"y": y, "dy": dy, "u": u})
 
