@@ -1,62 +1,71 @@
 <p align="center">
-	<a rel="nofollow">
-		<img src="docs/imgs/logo.svg" />
+	<a rel="nofollow">	
+		<img src="docs/source/_static/imgs/logo.svg" />
 	</a>
 </p>
 
+# About this Package
 
-HydroGym provides is an open-source library of challenge problems in data-driven modeling and control of fluid dynamics.
+__IMPORTANT NOTE: This package is still ahead of an official public release, so consider anything here as an early beta. In other words, we're not guaranteeing any of this is working or correct yet. Use at your own risk__
 
-### Features
-* __Hierarchical:__ Designed for analysis and controller design from a high-level black-box interface to low-level operator access
+HydroGym is an open-source library of challenge problems in data-driven modeling and control of fluid dynamics.
+It is roughly designed as an abstract interface for control of PDEs that is compatible with typical reinforcement learning APIs
+(in particular Ray/RLLib and OpenAI Gym) along with specific numerical solver implementations for some canonical flow control problems.
+Currently these "environments" are all implemented using the [Firedrake](https://www.firedrakeproject.org/) finite element library.
+
+## Features
+* __Hierarchical:__ Designed for analysis and controller design **from a high-level black-box interface to low-level operator access**
     - High-level: `hydrogym.env.FlowEnv` classes implement the OpenAI `gym.Env` interface
     - Intermediate: Typical CFD interface with `hydrogym.FlowConfig` and `hydrogym.TransientSolver` classes
     - Low-level: Access to linearized operators and sparse scipy or PETSc CSR matrices
-* __Differentiable:__ Adjoint-enabled for PDE-constrained optimization via pyadjoint (extensible to PyTorch, Jax, etc... planned for future)
 * __Modeling and anlysis tools:__ Global stability analysis (via SLEPc) and modal decompositions (via modred)
-* __Scalable:__ Since linear algebra backend is PETSc, fully parallelized with MPI (including pyadjoint, SLEPc, modred)
+* __Scalable:__ Individual environments parallelized with MPI with a **highly scalable [Ray](https://github.com/ray-project/ray) backend reinforcement learning training**.
 
-# Quick Start
+# Installation
 
-The easiest way to get started is with the Docker container.  Assuming you have [Docker installed](https://docs.docker.com/get-docker/), you can build and launch the image easily with the scripts in the `docker` folder:
-
-```bash
-cd docker && ./build.sh
-./launch.sh
-```
-
-Note that building the image will take a while the first time, but you shouldn't have to do it again unless you change the configuration.
-
-Once you're in the docker container, the first thing to do is activate the virtual environment where all of the important packages are installed with
+By design, the core components of Hydrogym are independent of the underlying solvers in order to avoid custom or complex
+third-party library installations.
+This means that the latest release of Hydrogym can be simply installed via [PyPI](https://pypi.org/project/hydrogym/):
 
 ```bash
-source $VENV/bin/activate
+pip install hydrogym
 ```
 
-If you try to run something and get an error like "python: command not found" you probably missed this step.
+However, the package assumes that the solver backend is available, so in order to run simulations locally you will
+need to _separately_ ensure the solver backend is installed (again, currently all the environments are implemented with Firedrake).
+Alternatively (and this is important for large-scale RL training), the core Hydrogym package can (or will soon be able to) launch reinforcement learning training on a Ray-cluster without an underlying Firedrake install.
+For more information and suggested approaches see the [Installation Docs](https://hydrogym.readthedocs.io/en/latest/installation.html).
 
-Then you can get running in the interpreter as easy as:
+# Quickstart Guide
 
-
+ Having installed Hydrogym into our virtual environment experimenting with Hydrogym is as easy as starting the Python interpreter
+ 
+ ```bash
+ python
+ ```
+ 
+ and then setting up a Hydrogym environment instance
+ 
 ```python
-import hydrogym as gym
-env = gym.env.CylEnv(Re=100) # Cylinder wake flow configuration
+import hydrogym.firedrake as hgym
+env = hgym.FlowEnv({"flow": hgym.Cylinder}) # Cylinder wake flow configuration
 for i in range(num_steps):
-	action = 0.0   # Put your control law here
+    action = 0.0   # Put your control law here
     (lift, drag), reward, done, info = env.step(action)
 ```
 
-Or to test that you can run things in parallel, try to run the steady-state Newton solver on the cylinder wake with 4 processors:
+To test that you can run individual environment instances in a multithreaded fashion, run the steady-state Newton solver on the cylinder wake with 4 processors:
 
 ```bash
-cd /home/hydrogym/examples/cylinder
-mpiexec -np 4 python solve-steady.py
+cd /path/to/hydrogym/examples/cylinder
+mpiexec -np 4 python pd-control.py
 ```
 
 For more detail, check out:
 
 * A quick tour of features in `notebooks/overview.ipynb`
 * Example codes for various simulation, modeling, and control tasks in `examples`
+* The [ReadTheDocs](https://hydrogym.readthedocs.io/en/latest/)
 
 # Flow configurations
 
@@ -65,5 +74,6 @@ There are currently a number of main flow configurations, the most prominent of 
 - Periodic cyclinder wake at Re=100
 - Chaotic pinball at Re=130
 - Open cavity at Re=7500
+- Backwards-facing step at Re=600
 
-with visualizations of the flow configurations available in the [docs](docs/FlowConfigurations.md). For the time being the cylinder wake is the most well-developed flow configuration, although the pinball should also be pretty reliable.  The cavity is in development (the boundary conditions are a little iffy and there's no actuation implemented yet) and the backwards-facing step is still planned.
+with visualizations of the flow configurations available in the [docs](docs/FlowConfigurations.md).

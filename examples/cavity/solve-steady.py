@@ -1,26 +1,27 @@
 import firedrake as fd
-from firedrake.petsc import PETSc
-from ufl import curl
 
-import hydrogym as gym
+import hydrogym.firedrake as hgym
 
-output_dir = 'output'
-Re = 2000
-Re_init = 1000
+output_dir = "output"
+mesh_resolution = "coarse"
+Re = 7500
 
-# flow = gym.flow.Cavity(Re=Re, mesh='medium')
+solver_parameters = {"snes_monitor": None}
 
-h5_file = f'{output_dir}/{Re_init}_steady.h5'
-flow = gym.flow.Cavity(Re=Re, h5_file=h5_file)
+# Since this flow is at high Reynolds number we have to
+#    ramp to get the steady state
+Re_init = [500, 1000, 2000, 4000, Re]
+flow = hgym.Cavity(Re=Re_init[0], mesh=mesh_resolution)
 
-solver_parameters={"snes_monitor": None,
-                   "ksp_type": "gmres",
-                   "mat_type": "aij",
-                   "pc_type": "lu",
-                   "pc_factor_mat_solver_type": "mumps"}
+dof = flow.mixed_space.dim()
+hgym.print(f"Total dof: {dof} --- dof/rank: {int(dof/fd.COMM_WORLD.size)}")
 
-# flow.set_control(1.0)
-flow.solve_steady(solver_parameters=solver_parameters)
+for (i, Re) in enumerate(Re_init):
+    flow.Re.assign(Re)
+    hgym.print(f"Steady solve at Re={Re_init[i]}")
+    solver = hgym.NewtonSolver(flow, solver_parameters=solver_parameters)
+    qB = solver.solve()
+
 flow.save_checkpoint(f"{output_dir}/{Re}_steady.h5")
 vort = flow.vorticity()
 pvd = fd.File(f"{output_dir}/{Re}_steady.pvd")

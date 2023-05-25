@@ -1,0 +1,31 @@
+name: Upload Package to PyPi
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  package-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python
+      uses: actions/setup-python@v3
+      with:
+        python-version: 3.9
+    - name: Install Poetry
+      run: |
+        python -m pip install --upgrade pip
+        pip install poetry
+        poetry config virtualenvs.in-project false
+        poetry config virtualenvs.path ~/.virtualenvs
+        poetry config pypi-token.pypi ${{ secrets.PYPI_API_TOKEN }}
+    - name: Build package
+      run: |
+        poetry build
+    - name: Publish package to PyPI
+      run: |
+        poetry publish
