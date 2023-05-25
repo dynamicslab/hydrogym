@@ -1,4 +1,4 @@
-import gym
+import gymnasium as gym
 import ppo
 
 import hydrogym

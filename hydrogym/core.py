@@ -1,6 +1,6 @@
 from typing import Any, Callable, Iterable, Tuple, TypeVar, Union
 
-import gym
+import gymnasium as gym
 import numpy as np
 
 
@@ -194,27 +194,6 @@ class PDEBase:
     def render(self, **kwargs):
         """Plot the current PDE state (called by `gym.Env`)"""
         raise NotImplementedError
-
-
-
-@ray.remote
-class EvaluationActor:
-    """To remotely evaluate Firedrake solutions."""
-
-    def __init__(self, firedrake_instance: "Firedrake_instance", index: int, seeds: Union[ActorSeeds, tuple], state:dict):
-        """
-        Initialize a remote runner for a Firedrake problem instance.
-
-        Args:
-            firedrake_instance: The Firedrake problem instance to be run.
-            index: The index of the actor in question.
-            seed: An integer to be used as the seed.
-            state: The state dictionary to be loaded.
-        """
-       
-       # Add whole class and the two following to have the evaluation logic.
-       # Pipe Firedrake problem into Evotorch's harness, then simmer down the logic needed to have this 
-       #   code here running.
 
 
 class CallbackBase:

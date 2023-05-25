@@ -1,4 +1,4 @@
-import gym
+import gymnasium as gym
 import ppo
 
 n_hidden = 64
