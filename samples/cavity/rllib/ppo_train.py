@@ -1,9 +1,10 @@
 # Modified from https://github.com/ray-project/ray/blob/master/rllib/examples/custom_env.py
 import os
+
 import ray
 
 # from common import *
-from common import CustomModel, TorchCustomModel, parser
+from common import TorchCustomModel, parser
 from firedrake import logging
 from ray import tune
 from ray.rllib.agents import ppo  # ray.rllib.algorithms in latest version
@@ -23,9 +24,7 @@ if __name__ == "__main__":
 
     # Can also register the env creator function explicitly with:
     # register_env("corridor", lambda config: SimpleCorridor(config))
-    ModelCatalog.register_custom_model(
-        "cav_actor", TorchCustomModel
-    )
+    ModelCatalog.register_custom_model("cav_actor", TorchCustomModel)
 
     # Set up the printing callback
     log = hydrogym.io.LogCallback(

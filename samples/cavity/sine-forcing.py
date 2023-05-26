@@ -36,9 +36,7 @@ env_config = {
         "dt": dt,
     },
     "callbacks": [
-        hgym.io.ParaviewCallback(
-            interval=1000, filename=pvd_out, postprocess=compute_vort
-        ),
+        hgym.io.ParaviewCallback(interval=1000, filename=pvd_out, postprocess=compute_vort),
         hgym.io.LogCallback(
             postprocess=log_postprocess,
             nvals=3,

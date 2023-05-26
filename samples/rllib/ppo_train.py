@@ -1,11 +1,12 @@
 # Modified from https://github.com/ray-project/ray/blob/master/rllib/examples/custom_env.py
 import os
 
+import common
 import ray
-from common import CustomModel, TorchCustomModel, parser
+from common import TorchCustomModel, parser
 from firedrake import logging
 from ray import tune
-from ray.rllib.agents import ppo  # ray.rllib.algorithms in latest version
+from ray.rllib.agents import ppo  # ray.rllib.algorithms in the latest version
 from ray.rllib.models import ModelCatalog
 from ray.rllib.utils.test_utils import check_learning_achieved
 from ray.tune.logger import pretty_print
@@ -23,7 +24,7 @@ if __name__ == "__main__":
     # Can also register the env creator function explicitly with:
     # register_env("corridor", lambda config: SimpleCorridor(config))
     ModelCatalog.register_custom_model(
-        "cyl_actor", TorchCustomModel if args.framework == "torch" else CustomModel
+        "cyl_actor", TorchCustomModel if args.framework == "torch" else common.CustomModel
     )
 
     # Set up the printing callback

@@ -20,8 +20,11 @@ def log_postprocess(flow):
     return CL, CD, mem_usage
 
 
-# Set up the callback
-print_fmt = "t: {0:0.2f},\t\t CL: {1:0.3f},\t\t CD: {2:0.03f}\t\t Mem: {3:0.1f}"  # This will format the output
+"""
+Set up the callback.
+"""
+# Format the output
+print_fmt = "t: {0:0.2f},\t\t CL: {1:0.3f},\t\t CD: {2:0.03f}\t\t Mem: {3:0.1f}"
 log = hgym.utils.io.LogCallback(
     postprocess=log_postprocess,
     nvals=3,
