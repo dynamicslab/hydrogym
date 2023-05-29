@@ -52,6 +52,7 @@ modred = "^2.1.0"
 python = "^3.10"
 torch = "^2.0.0"
 gymnasium = "^0.28.1"
+evotorch = "^0.4.1"
 
 [tool.poetry.group.interactive.dependencies]
 jupyterlab = "^3.5.2"
