@@ -27,6 +27,7 @@ class Pinball(FlowConfig):
     y0 = [0.0, 0.5 * rad, -0.5 * rad]
 
     ACT_DIM = len(CYLINDER)
+    OBS_DIM = 2 * len(CYLINDER) # [CL, CD] for each cyliner
     MAX_CONTROL = 0.5 * np.pi
     TAU = 1.0  # TODO: Tune this based on vortex shedding period
     I_CM = 1.0  # Moment of inertia
