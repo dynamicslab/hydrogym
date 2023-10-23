@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import ufl
 from firedrake import ds
-from ufl import as_vector, atan_2, cos, dot, sign, sin, sqrt
+from ufl import as_vector, atan2, cos, dot, sign, sin, sqrt
 
 from hydrogym.firedrake import DampedActuator, FlowConfig
 
