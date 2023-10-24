@@ -195,7 +195,7 @@ class PDEBase:
         """Plot the current PDE state (called by `gym.Env`)"""
         raise NotImplementedError
 
-
+'''
 
 @ray.remote
 class EvaluationActor:
@@ -215,7 +215,7 @@ class EvaluationActor:
        # Add whole class and the two following to have the evaluation logic.
        # Pipe Firedrake problem into Evotorch's harness, then simmer down the logic needed to have this 
        #   code here running.
-
+'''
 
 class CallbackBase:
     def __init__(self, interval: int = 1):

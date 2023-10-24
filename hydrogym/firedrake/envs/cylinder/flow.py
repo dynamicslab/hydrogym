@@ -37,7 +37,7 @@ class Cylinder(FlowConfig):
         self.U_inf = fd.Constant((1.0, 0.0))
 
         # Set up tangential boundaries to cylinder
-        theta = atan_2(ufl.real(self.y), ufl.real(self.x))  # Angle from origin
+        theta = atan2(ufl.real(self.y), ufl.real(self.x))  # Angle from origin
         self.rad = fd.Constant(0.5)
         self.u_ctrl = [
             ufl.as_tensor((self.rad * sin(theta), self.rad * cos(theta)))

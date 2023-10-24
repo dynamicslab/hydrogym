@@ -42,7 +42,7 @@ class Pinball(FlowConfig):
         self.rad = fd.Constant(self.rad)
         self.u_ctrl = []
         for cyl_idx in range(len(self.CYLINDER)):
-            theta = atan_2(
+            theta = atan2(
                 ufl.real(self.y - self.y0[cyl_idx]), ufl.real(self.x - self.x0[cyl_idx])
             )  # Angle from center of cylinder
 
