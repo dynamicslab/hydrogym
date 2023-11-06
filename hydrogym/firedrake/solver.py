@@ -1,7 +1,9 @@
 import firedrake as fd
 import numpy as np
 from firedrake import logging
-from ufl import div, dot, ds, dx, inner, lhs, nabla_grad, rhs
+from ufl import div, dot, ds, dx, inner, lhs, nabla_grad, rhs, as_ufl
+
+import ufl
 
 from hydrogym.core import TransientSolver
 
@@ -185,7 +187,7 @@ class IPCS(TransientSolver):
             control = self.flow.update_actuators(control, self.dt)
             for (B, ctrl) in zip(self.B, control):
                 Bu, _ = B.split()
-                self.u += Bu * fd.Constant(ctrl)
+                self.u += Bu.riesz_representation(riesz_map = 'l2') * fd.Constant(ctrl)
 
         logging.log(logging.DEBUG, "Velocity predictor done, solving Poisson")
         self.poisson.solve()
