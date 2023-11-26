@@ -195,13 +195,15 @@ class PDEBase:
         """Plot the current PDE state (called by `gym.Env`)"""
         raise NotImplementedError
 
+
 '''
 
 @ray.remote
 class EvaluationActor:
     """To remotely evaluate Firedrake solutions."""
 
-    def __init__(self, firedrake_instance: "Firedrake_instance", index: int, seeds: Union[ActorSeeds, tuple], state:dict):
+    def __init__(self, firedrake_instance: "Firedrake_instance", index: int, seeds:
+            Union[ActorSeeds, tuple], state:dict):
         """
         Initialize a remote runner for a Firedrake problem instance.
 
@@ -216,6 +218,7 @@ class EvaluationActor:
        # Pipe Firedrake problem into Evotorch's harness, then simmer down the logic needed to have this 
        #   code here running.
 '''
+
 
 class CallbackBase:
     def __init__(self, interval: int = 1):

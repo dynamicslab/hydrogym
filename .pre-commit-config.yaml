@@ -14,7 +14,9 @@ repos:
     hooks:
     - id: isort
       args: ["--profile", "black", "--filter-files"]
-  - repo: https://github.com/pycqa/flake8
-    rev: 4.0.1
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    # Ruff version.
+    rev: v0.1.6
     hooks:
-    - id: flake8
+      # Run the linter.
+      - id: ruff

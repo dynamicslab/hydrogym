@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "hydrogym"
-version = "0.1.2.1"
+version = "0.1.2.2"
 authors = [
     "Jared Callaham et al."
 ]
@@ -51,7 +51,7 @@ gmsh = "^4.11.1"
 gym = "^0.26.2"
 modred = "^2.1.0"
 python = "^3.10"
-torch = "^2.0.0"
+torch = "^2.0"
 
 [tool.poetry.group.dev.dependencies]
 jupyterlab = "^3.5.2"
@@ -64,12 +64,19 @@ nbconvert = "^7.2.7"
 memory-profiler = "^0.61.0"
 seaborn = "^0.12.1"
 tensorboard = "^2.11.0"
+ruff = "^0.1.6"
+black = "^23.11.0"
 
 # In case one seeks to add a further backend, their further dependencies need to be added to the 
 # poetry dependencies above, as well as be specified here s.t. these additional dependencies
 # can then later be installed with ```pip install hydrogym[sim_backend]```
 [tool.poetry.extras]
 #sim_backend = ["sim_framework"]
+
+[tool.ruff]
+line-length = 120
+select = ["E", "F"]
+ignore = ["F401"]
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

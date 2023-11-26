@@ -1,9 +1,8 @@
 import firedrake as fd
 import numpy as np
-from firedrake import logging
-from ufl import div, dot, ds, dx, inner, lhs, nabla_grad, rhs, as_ufl
-
 import ufl
+from firedrake import logging
+from ufl import as_ufl, div, dot, ds, dx, inner, lhs, nabla_grad, rhs
 
 from hydrogym.core import TransientSolver
 
@@ -185,7 +184,7 @@ class IPCS(TransientSolver):
         self.predictor.solve()
         if control is not None:
             control = self.flow.update_actuators(control, self.dt)
-            for (B, ctrl) in zip(self.B, control):
+            for B, ctrl in zip(self.B, control):
                 Bu, _ = B.split()
                 self.u += Bu * fd.Constant(ctrl)
 
@@ -303,7 +302,7 @@ class IPCS(TransientSolver):
             N = q.vector().size()
             A = LinearOperator(shape=(N, N), matvec=lmatvec, rmatvec=rmatvec)
             B = np.zeros((N, len(self.B)))
-            for (i, Bi) in enumerate(self.B):
+            for i, Bi in enumerate(self.B):
                 B[:, i] = get_array(Bi)
             return A, B
 

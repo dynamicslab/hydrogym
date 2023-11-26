@@ -41,7 +41,8 @@ def test_steady_rotation(tol=1e-3):
     assert abs(CL - 0.0594) < tol
     assert abs(CD - 1.2852) < tol  # Re = 100
 
-'''
+
+"""
 def test_steady_grad():
     flow = hgym.Cylinder(Re=100, mesh="coarse")
 
@@ -57,7 +58,8 @@ def test_steady_grad():
     dJ = fda.compute_gradient(J, fda.Control(omega))
 
     assert abs(dJ) > 0
-'''
+"""
+
 
 def test_integrate():
     flow = hgym.Cylinder(mesh="coarse")
