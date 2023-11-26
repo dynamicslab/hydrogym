@@ -1,0 +1,5 @@
+name: Linting
+
+on:
+  release:
+    types: [published]

@@ -1,0 +1,5 @@
+name: Black Formatting
+
+on:
+  release:
+    types: [published]
