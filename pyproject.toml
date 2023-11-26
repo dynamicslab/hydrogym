@@ -74,6 +74,7 @@ black = "^23.11.0"
 #sim_backend = ["sim_framework"]
 
 [tool.ruff.lint]
+line-length = 120
 select = ["E", "F"]
 ignore = ["F401"]
 
