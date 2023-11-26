@@ -64,6 +64,8 @@ nbconvert = "^7.2.7"
 memory-profiler = "^0.61.0"
 seaborn = "^0.12.1"
 tensorboard = "^2.11.0"
+ruff = "^0.1.6"
+black = "^23.11.0"
 
 # In case one seeks to add a further backend, their further dependencies need to be added to the 
 # poetry dependencies above, as well as be specified here s.t. these additional dependencies
