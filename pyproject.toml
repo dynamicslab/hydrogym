@@ -73,7 +73,7 @@ black = "^23.11.0"
 [tool.poetry.extras]
 #sim_backend = ["sim_framework"]
 
-[tool.ruff.lint]
+[tool.ruff]
 line-length = 120
 select = ["E", "F"]
 ignore = ["F401"]
