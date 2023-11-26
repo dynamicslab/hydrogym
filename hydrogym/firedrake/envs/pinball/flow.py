@@ -27,7 +27,7 @@ class Pinball(FlowConfig):
     y0 = [0.0, 0.5 * rad, -0.5 * rad]
 
     ACT_DIM = len(CYLINDER)
-    OBS_DIM = 2 * len(CYLINDER) # [CL, CD] for each cyliner
+    OBS_DIM = 2 * len(CYLINDER)  # [CL, CD] for each cyliner
     MAX_CONTROL = 0.5 * np.pi
     TAU = 1.0  # TODO: Tune this based on vortex shedding period
     I_CM = 1.0  # Moment of inertia
@@ -120,6 +120,6 @@ class Pinball(FlowConfig):
             **kwargs,
         )
 
-        for (x0, y0) in zip(self.flow.x0, self.flow.y0):
+        for x0, y0 in zip(self.flow.x0, self.flow.y0):
             cyl = plt.Circle((x0, y0), self.flow.rad, edgecolor="k", facecolor="gray")
             im.axes.add_artist(cyl)

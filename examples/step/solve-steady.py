@@ -17,7 +17,7 @@ flow = hgym.Step(Re=Re, mesh=mesh_resolution)
 dof = flow.mixed_space.dim()
 hgym.print(f"Total dof: {dof} --- dof/rank: {int(dof/fd.COMM_WORLD.size)}")
 
-for (i, Re) in enumerate(Re_init):
+for i, Re in enumerate(Re_init):
     flow.Re.assign(Re)
     hgym.print(f"Steady solve at Re={Re_init[i]}")
     solver = hgym.NewtonSolver(flow, solver_parameters=solver_parameters)

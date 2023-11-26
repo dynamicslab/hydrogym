@@ -1,5 +1,6 @@
 # Modified from https://github.com/ray-project/ray/blob/master/rllib/examples/custom_env.py
 import os
+
 import ray
 
 # from common import *
@@ -23,9 +24,7 @@ if __name__ == "__main__":
 
     # Can also register the env creator function explicitly with:
     # register_env("corridor", lambda config: SimpleCorridor(config))
-    ModelCatalog.register_custom_model(
-        "cav_actor", TorchCustomModel
-    )
+    ModelCatalog.register_custom_model("cav_actor", TorchCustomModel)
 
     # Set up the printing callback
     log = hydrogym.io.LogCallback(
