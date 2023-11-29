@@ -1,10 +1,5 @@
 <p align="center">
-	<a rel="nofollow">	
-		<img src="docs/source/_static/imgs/logo.svg" />
-	</a>
-</p>
-
-<p align="center">
+<a rel="nofollow"><img alt="HydroGym Logo" src="docs/source/_static/imgs/logo.svg"></a>
 <a href="https://github.com/astral-sh/ruff"><img alt="Ruff" src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json"></a>
 <a href="https://python.org/"><img alt="Language: Python" src="https://img.shields.io/badge/language-Python-orange.svg"></a>
 <a href="https://spdx.org/licenses/MIT.html"><img alt="License WarpX" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
