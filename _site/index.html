@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en-US">
+  <head>
+    <meta charset="UTF-8">
+
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>HydroGym | A Platform for Reinforcement Learning Control in Fluid Dynamics</title>
+<meta name="generator" content="Jekyll v4.3.2" />
+<meta property="og:title" content="HydroGym" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="A Platform for Reinforcement Learning Control in Fluid Dynamics" />
+<meta property="og:description" content="A Platform for Reinforcement Learning Control in Fluid Dynamics" />
+<link rel="canonical" href="http://localhost:4000/" />
+<meta property="og:url" content="http://localhost:4000/" />
+<meta property="og:site_name" content="HydroGym" />
+<meta property="og:type" content="website" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="HydroGym" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"WebSite","description":"A Platform for Reinforcement Learning Control in Fluid Dynamics","headline":"HydroGym","name":"HydroGym","url":"http://localhost:4000/"}</script>
+<!-- End Jekyll SEO tag -->
+
+    <link rel="preconnect" href="https://fonts.gstatic.com">
+    <link rel="preload" href="https://fonts.googleapis.com/css?family=Open+Sans:400,700&display=swap" as="style" type="text/css" crossorigin>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#157878">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="stylesheet" href="/assets/css/style.css?v=">
+    <!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-J6LQ0C8LND"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-J6LQ0C8LND');
+</script>
+
+  </head>
+  <body>
+    <a id="skip-to-content" href="#content">Skip to the content.</a>
+
+    <header class="page-header" role="banner">
+      <h1 class="project-name">HydroGym</h1>
+      <h2 class="project-tagline">A Platform for Reinforcement Learning Control in Fluid Dynamics</h2>
+      
+        <a href="https://arxiv.org/abs/2309.15432" class="btn">ArXiv Preprint</a>
+        <a href="https://github.com/dynamicslab/HydroGym" class="btn">Package</a>
+        <a href="https://huggingface.co/datasets/dynamicslab/hydrogym-paper" class="btn">Experiment Artifacts</a>
+      
+    </header>
+
+    <main id="content" class="main-content" role="main">
+      <h2 id="abstract">Abstract</h2>
+
+<p>The modeling and control of fluid flows remains a grand challenge problem of the modern era, with potentially
+transformative scientific, technological, and industrial impact. Better fluid flow control may enable drag reduction,
+mixing enhancement, and noise reduction in domains as diverse as transportation, energy, and medicine.
+Reinforcement learning has proven a highly effective control paradigm in complex environments such as robotics, games,
+and protein folding, built on scalable platforms focused on standardized benchmark problems.
+In contrast, progress in flow control is challenging because of the relative scarcity of such platforms and benchmarks in
+conjunction with the computational complexity of fluid simulations, which require heavily parallelized, specialized solvers. 
+As a result, the engineering burden of encapsulating these simulations in benchmark environments has proven to be a significant
+barrier. In this paper we present a new solver-independent reinforcement learning platform for flow control called HydroGym,
+connecting sophisticated flow control benchmark problems, a scalable runtime, and state-of-the-art reinforcement learning as well as
+differentiable reinforcement learning algorithms. We have implemented an initial set of four fully validated non-differentiable
+fluid flow environments, and one differentiable fluid flow environment that typify various flow control challenges, and which
+are all evaluated with a broad set of reinforcement learning algorithms. This platform is designed to be scalable and
+extensible, with computations scaling seamlessly from laptops to high-performance computing resources with a standardardized
+reinforcement learning environment interface for ease of implementing new flow environments. Thus, HydroGym provides a
+platform to simultaneously advance flow control research with state-of-the-art techniques in non-differentiable, as well as
+differentiable reinforcement learning, while also providing sophisticated challenge environments to advance scientific
+machine learning research.</p>
+
+<h2 id="construction-of-hydrogym">Construction of HydroGym</h2>
+
+<h2 id="benchmarking">Benchmarking</h2>
+
+<h2 id="authors">Authors</h2>
+
+<div style="display:table;margin: 0 auto;">
+<div class="cards">
+    <div class="card">
+        <img src="paehler.jpg" height="300" width="300" alt="ludger" />
+        <p style="text-align:center;"><a href="https://ludger.fyi">Ludger Paehler</a></p>
+    </div>
+    <div class="card">
+        <img class="middle-img" src="callaham.jpeg" height="300" width="300" alt="jan" />
+        <p style="text-align:center;"><a href="https://amath.washington.edu/people/jared-callaham">Jared Callaham</a></p>
+    </div>
+    <div class="card">
+        <img src="ahnert.jpeg" height="300" width="300" alt="steffen" />
+        <p style="text-align:center;"><a href="https://www.linkedin.com/in/samuel-ahnert-870287146">Samuel Ahnert</a></p>
+    </div>
+    <div class="card">
+        <img src="adams.jpg" height="300" width="300" alt="klaus" />
+        <p style="text-align:center;"><a href="https://www.epc.ed.tum.de/en/aer/members/cv/prof-adams/">Nikolaus A. Adams</a></p>
+    </div>
+    <div class="card">
+        <img src="brunton.png" height="300" width="300" alt="steven" />
+        <p style="text-align:center;"><a href="https://eigensteve.com">Steven L. Brunton</a></p>
+    </div>
+</div>
+</div>
+
+<h2 id="corresponding-authors">Corresponding Authors</h2>
+
+<ul>
+  <li>Ludger Paehler (<a href="mailto:ludger.paehler@tum.de?subject=HydroGym">ludger.paehler@tum.de</a>)</li>
+  <li>Steven L. Brunton (<a href="mailto:sbrunton@uw.edu?subject=HydroGym">sbrunton@uw.edu</a>)</li>
+</ul>
+
+<h2 id="citation">Citation</h2>
+
+<div class="language-bibtex highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nc">@inproceedings</span><span class="p">{</span><span class="nl">paehler2024HydroGym</span><span class="p">,</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+
+      <footer class="site-footer">
+        
+        <span class="site-footer-credits">This page was generated by <a href="https://pages.github.com">GitHub Pages</a>.</span>
+      </footer>
+    </main>
+  </body>
+</html>
