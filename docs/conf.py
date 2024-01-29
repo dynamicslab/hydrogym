@@ -3,8 +3,8 @@
 # -- Project information
 
 project = "Hydrogym"
-copyright = "2022, Hydrogym Developers"
-author = "tbd"
+copyright = "2023, Hydrogym Developers"
+author = "Ludger Paehler"
 
 release = "0.1"
 version = "0.1.0"
@@ -20,6 +20,7 @@ extensions = [
 ]
 
 intersphinx_mapping = {
+    "rtd": ("https://docs.readthedocs.io/en/stable/", None),
     "python": ("https://docs.python.org/3/", None),
     "sphinx": ("https://www.sphinx-doc.org/en/master/", None),
 }
@@ -30,6 +31,9 @@ templates_path = ["_templates"]
 # -- Options for HTML output
 
 html_theme = "alabaster"
+
+# Custom paths for static files
+html_static_path = ["_static"]
 
 # -- Options for EPUB output
 epub_show_urls = "footnote"
