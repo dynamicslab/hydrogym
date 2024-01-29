@@ -44,11 +44,14 @@ Core Features
    :caption: API Reference
 
    api
+   torch_rl
+   rllib
 
 
 .. toctree::
    :maxdepth: 1
    :caption: Developer Notes
 
+   docker_development
    distributed_backend
    further_backend
