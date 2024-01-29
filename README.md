@@ -1,5 +1,5 @@
 <p align="center">
-<a rel="nofollow"><img alt="HydroGym Logo" src="docs/source/_static/imgs/logo.svg"></a>
+<a rel="nofollow"><img alt="HydroGym Logo" src="docs/_static/imgs/logo.svg"></a>
 </p>
 
 <p align="center">
