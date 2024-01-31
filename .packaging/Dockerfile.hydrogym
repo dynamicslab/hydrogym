@@ -6,9 +6,6 @@ FROM lpaehler/hydrogym-env:stable
 USER firedrake
 WORKDIR /home/firedrake
 
-# Cloning HydroGym
-RUN curl -L -O https://github.com/dynamicslab/hydrogym/archive/main.zip 
-
 # Activation of the virtual environment
 RUN bash -c "source firedrake/bin/activate"
 
