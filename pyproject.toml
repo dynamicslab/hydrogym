@@ -19,10 +19,7 @@ classifiers=[
     "Operating System :: Unix",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Topic :: Scientific/Engineering :: Atmospheric Science",
     "Topic :: Scientific/Engineering :: Hydrology",
@@ -46,7 +43,6 @@ issues = "https://github.com/dynamicslab/hydrogym/issues"
 [tool.poetry.dependencies]
 control = "^0.9.2"
 dmsuite = "^0.1.1"
-evotorch = "^0.3.0"
 gmsh = "^4.11.1"
 gym = "^0.26.2"
 modred = "^2.1.0"

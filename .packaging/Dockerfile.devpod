@@ -1,0 +1,12 @@
+# Full Firedrake pre-installed with all of it enabled
+FROM lpaehler/hydrogym-env:stable
+
+# Activation of the virtual environment
+RUN bash -c "source firedrake/bin/activate"
+
+# Clone HydroGym
+RUN bash -c "git clone https://github.com/dynamicslab/hydrogym.git"
+
+# Installation of HydroGym's dependencies, and only the
+# the dependencies
+RUN bash -c "cd hydrogym && pip install -r requirements.txt"
