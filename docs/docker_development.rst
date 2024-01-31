@@ -50,5 +50,18 @@ the containers is the right one for your development use-case.
    * - `hydrogym <https://hub.docker.com/repository/docker/lpaehler/hydrogym/general>`_
      - 22.5GB
 
+.. note::
+
+   The startup of the dev container can take up to 20 minutes the first time, but will cache the container after which the
+   startup will take less than a minute.
+
+Currently the dev container suffers from a slight misconfiguration in the post-deployment setting, as such one needs to run
+the following commands before developing inside of the container:
+
+.. code-block:: console
+
+   $ source /home/firedrake/firedrake/bin/activate
+   $ pip install -e .
+
 For more information regarding the way devcontainer works please see
 `Microsoft's documentation <https://code.visualstudio.com/docs/devcontainers/containers>`_.
