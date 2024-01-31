@@ -36,23 +36,18 @@ Depending on your internet connection, and the level on which you want to work o
 the containers is the right one for your development use-case.
 
 .. list-table:: Size of the Docker Containers
-   :widths: 25 40 25
+   :widths: 40 40
    :header-rows: 1
 
    * - Name of the Container
-     - Available under
      - Size of the Container
-   * - hydrogym-firedrake-env
-     - `lpaehler/hydrogym-firedrake-env <https://hub.docker.com/repository/docker/lpaehler/hydrogym-firedrake-env/general>`_
+   * - `hydrogym-firedrake-env <https://hub.docker.com/repository/docker/lpaehler/hydrogym-firedrake-env/general>`_
      - 6.22GB
-   * - hydrogym-env
-     - `lpaehler/hydrogym-env <https://hub.docker.com/repository/docker/lpaehler/hydrogym-env/general>`_
+   * - `hydrogym-env <https://hub.docker.com/repository/docker/lpaehler/hydrogym-env/general>`_
      - 9.78GB
-   * - hydrogym-devpod
-     - `lpaehler/hydrogym-devpod <https://hub.docker.com/repository/docker/lpaehler/hydrogym-devpod/general>`_
+   * - `hydrogym-devpod <https://hub.docker.com/repository/docker/lpaehler/hydrogym-devpod/general>`_
      - 18.3GB
-   * - hydrogym
-     - `lpaehler/hydrogym <https://hub.docker.com/repository/docker/lpaehler/hydrogym/general>`_
+   * - `hydrogym <https://hub.docker.com/repository/docker/lpaehler/hydrogym/general>`_
      - 22.5GB
 
 For more information regarding the way devcontainer works please see
