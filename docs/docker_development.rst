@@ -50,7 +50,7 @@ the containers is the right one for your development use-case.
      - 9.78GB
    * - hydrogym-devpod
      - `lpaehler/hydrogym-devpod <https://hub.docker.com/repository/docker/lpaehler/hydrogym-devpod/general>`_
-     - 9.78GB
+     - 18.3GB
    * - hydrogym
      - `lpaehler/hydrogym <https://hub.docker.com/repository/docker/lpaehler/hydrogym/general>`_
      - 22.5GB
