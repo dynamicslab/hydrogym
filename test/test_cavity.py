@@ -1,24 +1,27 @@
 import firedrake_adjoint as fda
 from ufl import sin
+import pytest
 
 import hydrogym.firedrake as hgym
 
 
 def test_import_coarse():
     hgym.Cavity(mesh="coarse")
+    # missing the assertion
 
 
 def test_import_medium():
     hgym.Cavity(mesh="medium")
+    # missing the assertion
 
 
 def test_import_fine():
     hgym.Cavity(mesh="fine")
+    # missing the assertion
 
 
 def test_steady():
     flow = hgym.Cavity(Re=50, mesh="coarse")
-
     solver = hgym.NewtonSolver(flow)
     solver.solve()
 
@@ -26,7 +29,6 @@ def test_steady():
 def test_steady_actuation():
     flow = hgym.Cavity(Re=50, mesh="coarse")
     flow.set_control(1.0)
-
     solver = hgym.NewtonSolver(flow)
     solver.solve()
 
@@ -34,7 +36,6 @@ def test_steady_actuation():
 def test_integrate():
     flow = hgym.Cavity(Re=50, mesh="coarse")
     dt = 1e-4
-
     hgym.integrate(flow, t_span=(0, 10 * dt), dt=dt)
 
 
@@ -77,7 +78,3 @@ def test_grad():
 
     print(dy)
     assert abs(dy) > 0
-
-
-if __name__ == "__main__":
-    test_import_medium()
