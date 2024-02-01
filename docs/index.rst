@@ -53,5 +53,6 @@ Core Features
    :caption: Developer Notes
 
    docker_development
+   testing
    distributed_backend
    further_backend
