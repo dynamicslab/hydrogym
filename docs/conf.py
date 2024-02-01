@@ -3,8 +3,8 @@
 # -- Project information
 
 project = "Hydrogym"
-copyright = "2023, Hydrogym Developers"
-author = "Ludger Paehler"
+copyright = "2024, Hydrogym Developers"
+author = "The HydroGym Developers"
 
 release = "0.1"
 version = "0.1.0"
