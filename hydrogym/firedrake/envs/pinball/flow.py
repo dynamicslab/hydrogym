@@ -24,7 +24,7 @@ class Pinball(FlowConfig):
 
     rad = 0.5
     x0 = [0.0, rad * 1.5 * 1.866, rad * 1.5 * 1.866]
-    y0 = [0.0, 0.5 * rad, -0.5 * rad]
+    y0 = [0.0, 1.5 * rad, -1.5 * rad]
 
     ACT_DIM = len(CYLINDER)
     OBS_DIM = 2 * len(CYLINDER)  # [CL, CD] for each cyliner
