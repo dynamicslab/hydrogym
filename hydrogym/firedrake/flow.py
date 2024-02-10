@@ -238,7 +238,7 @@ class FlowConfig(PDEBase):
             # Control as Function
             B.append(
                 fd.assemble(
-                    inner(fd.Constant((0, 0)), v) * dx, cs=self.collect_bcs()
+                    inner(fd.Constant((0, 0)), v) * dx, bcs=self.collect_bcs()
                 ).riesz_representation(riesz_map="l2")
             )
 
