@@ -23,30 +23,16 @@ Core Features
 
    While there exists a pip-install, this project is still under heavy active development with breaking changes happening with little to no lead time.
 
-installation
-quickstart
-basics
 
 .. toctree::
-   :maxdepth: 1
-   :caption: User Documentation
+   :hidden:
+   :maxdepth: 2
 
-   ray
-   parallel_scaling
-
-.. toctree::
-   :maxdepth: 1
-   :caption: API Reference
-
-   api
-   torch_rl
-   rllib
-
-.. toctree::
-   :maxdepth: 1
-   :caption: Developer Notes
-
-   docker_development
-   testing
-   distributed_backend
-   further_backend
+   installation
+   quickstart
+   basics
+   user_docs/index
+   integrations/index
+   glossary
+   dev_notes/index
+   api_reference/index
