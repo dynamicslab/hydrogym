@@ -23,14 +23,8 @@ Core Features
 
    While there exists a pip-install, this project is still under heavy active development with breaking changes happening with little to no lead time.
 
-
-.. toctree::
-   :maxdepth: 1
-   :caption: Getting Started
-
-   installation
-   quickstart
-
+installation
+quickstart
 
 .. toctree::
    :maxdepth: 1
@@ -46,7 +40,6 @@ Core Features
    api
    torch_rl
    rllib
-
 
 .. toctree::
    :maxdepth: 1
