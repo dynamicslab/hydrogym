@@ -1,3 +1,0 @@
-TorchRL Integration
-===================
-

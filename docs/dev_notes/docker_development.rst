@@ -36,24 +36,32 @@ Depending on your internet connection, and the level on which you want to work o
 the containers is the right one for your development use-case.
 
 .. list-table:: Size of the Docker Containers
-   :widths: 25 40 25
+   :widths: 40 40
    :header-rows: 1
 
    * - Name of the Container
-     - Available under
      - Size of the Container
-   * - hydrogym-firedrake-env
-     - `lpaehler/hydrogym-firedrake-env <https://hub.docker.com/repository/docker/lpaehler/hydrogym-firedrake-env/general>`_
+   * - `hydrogym-firedrake-env <https://hub.docker.com/repository/docker/lpaehler/hydrogym-firedrake-env/general>`_
      - 6.22GB
-   * - hydrogym-env
-     - `lpaehler/hydrogym-env <https://hub.docker.com/repository/docker/lpaehler/hydrogym-env/general>`_
+   * - `hydrogym-env <https://hub.docker.com/repository/docker/lpaehler/hydrogym-env/general>`_
      - 9.78GB
-   * - hydrogym-devpod
-     - `lpaehler/hydrogym-devpod <https://hub.docker.com/repository/docker/lpaehler/hydrogym-devpod/general>`_
-     - 9.78GB
-   * - hydrogym
-     - `lpaehler/hydrogym <https://hub.docker.com/repository/docker/lpaehler/hydrogym/general>`_
+   * - `hydrogym-devpod <https://hub.docker.com/repository/docker/lpaehler/hydrogym-devpod/general>`_
+     - 18.3GB
+   * - `hydrogym <https://hub.docker.com/repository/docker/lpaehler/hydrogym/general>`_
      - 22.5GB
+
+.. note::
+
+   The startup of the dev container can take up to 20 minutes the first time, but will cache the container after which the
+   startup will take less than a minute.
+
+Currently the dev container suffers from a slight misconfiguration in the post-deployment setting, as such one needs to run
+the following commands before developing inside of the container:
+
+.. code-block:: console
+
+   $ source /home/firedrake/firedrake/bin/activate
+   $ pip install -e .
 
 For more information regarding the way devcontainer works please see
 `Microsoft's documentation <https://code.visualstudio.com/docs/devcontainers/containers>`_.
