@@ -226,9 +226,7 @@ class FlowConfig(PDEBase):
         B = []
         for i, bcu in enumerate(self.bcu_actuation):
             domain = bcu.sub_domain
-            bcs = [
-                fd.DirichletBC(V, fd.interpolate(self.u_ctrl[i], V), domain)
-            ]
+            bcs = [fd.DirichletBC(V, fd.interpolate(self.u_ctrl[i], V), domain)]
 
             # Control as Function
             B.append(fd.project(fd.Constant((0, 0)), V, bcs=bcs))
