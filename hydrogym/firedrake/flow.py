@@ -221,36 +221,17 @@ class FlowConfig(PDEBase):
 
     def control_vec(self, mixed=False):
         """Return a list of PETSc.Vecs corresponding to the columns of the control matrix"""
-        (v, _) = fd.TestFunctions(self.mixed_space)
-
-        # Save actuator state to be restored later
-        act_state = np.array([act.value for act in self.actuators])
-
-        self.linearize_bcs()
-        # self.linearize_bcs() should have reset control, need to perturb it now
+        V, Q = self.function_spaces(mixed=mixed)
 
         B = []
-        for i in range(self.ACT_DIM):
-            c = np.zeros(self.ACT_DIM)
-            c[i] = 1.0  # Perturb the ith control
-            self.set_control(c)
+        for i, bcu in enumerate(self.bcu_actuation):
+            domain = bcu.sub_domain
+            bcs = [
+                fd.DirichletBC(V, fd.interpolate(self.u_ctrl[i], V), domain)
+            ]
 
             # Control as Function
-            B.append(
-                fd.assemble(
-                    inner(fd.Constant((0, 0)), v) * dx, cs=self.collect_bcs()
-                ).riesz_representation(riesz_map="l2")
-            )
-
-            # Have to have mixed function space for computing B functions
-            self.reset_controls(mixed=True)
-
-        # At the end the BC function spaces could be mixed or not
-        self.reset_controls(mixed=mixed)
-
-        # Restore the actuator state
-        for i in range(self.ACT_DIM):
-            self.actuators[i].set_state(act_state[i])
+            B.append(fd.project(fd.Constant((0, 0)), V, bcs=bcs))
 
         return B
 

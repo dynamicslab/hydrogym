@@ -184,8 +184,7 @@ class IPCS(TransientSolver):
         self.predictor.solve()
         if control is not None:
             control = self.flow.update_actuators(control, self.dt)
-            for B, ctrl in zip(self.B, control):
-                Bu, _ = B.split()
+            for Bu, ctrl in zip(self.B, control):
                 self.u += Bu * fd.Constant(ctrl)
 
         logging.log(logging.DEBUG, "Velocity predictor done, solving Poisson")

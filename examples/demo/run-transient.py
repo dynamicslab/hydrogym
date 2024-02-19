@@ -5,9 +5,9 @@ import hydrogym.firedrake as hgym
 output_dir = "."
 pvd_out = None
 restart = None
-checkpoint = "checkpoint-coarse.h5"
+checkpoint = "checkpoint.h5"
 
-flow = hgym.Cylinder(Re=100, h5_file=restart, mesh="coarse")
+flow = hgym.Cylinder(Re=100, h5_file=restart, mesh="medium")
 
 # Time step
 Tf = 300
@@ -30,10 +30,10 @@ log = hgym.utils.io.LogCallback(
     filename=None,
 )
 
-# callbacks = [log, hgym.utils.io.CheckpointCallback(interval=100, filename=checkpoint)]
-callbacks = [
-    log,
-]
+callbacks = [log, hgym.utils.io.CheckpointCallback(interval=100, filename=checkpoint)]
+# callbacks = [
+#     log,
+# ]
 
 hgym.print("Beginning integration")
 hgym.integrate(flow, t_span=(0, Tf), dt=dt, callbacks=callbacks, method="IPCS")
