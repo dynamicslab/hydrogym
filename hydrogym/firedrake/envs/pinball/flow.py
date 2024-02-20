@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import ufl
 from firedrake import ds
+from firedrake.pyplot import tricontourf
 from ufl import atan2, cos, dot, sin
 
 from hydrogym.firedrake import DampedActuator, FlowConfig
@@ -60,8 +61,7 @@ class Pinball(FlowConfig):
             V.sub(1), fd.Constant(0.0), self.FREESTREAM
         )  # Symmetry BCs
         self.bcu_actuation = [
-            fd.DirichletBC(V, fd.interpolate(fd.Constant((0, 0)), V), cyl)
-            for cyl in self.CYLINDER
+            fd.DirichletBC(V, fd.Constant((0.0, 0.0)), cyl) for cyl in self.CYLINDER
         ]
         self.bcp_outflow = fd.DirichletBC(Q, fd.Constant(0), self.OUTLET)
 
@@ -110,7 +110,7 @@ class Pinball(FlowConfig):
         if levels is None:
             levels = np.linspace(*clim, 10)
         vort = fd.project(fd.curl(self.flow.u), self.flow.pressure_space)
-        im = fd.tricontourf(
+        im = tricontourf(
             vort,
             cmap=cmap,
             levels=levels,

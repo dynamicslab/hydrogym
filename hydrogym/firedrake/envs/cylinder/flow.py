@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import ufl
 from firedrake import ds
+from firedrake.pyplot import tricontourf
 from ufl import as_vector, atan2, cos, dot, sign, sin, sqrt
 
 from hydrogym.firedrake import DampedActuator, FlowConfig
@@ -48,13 +49,10 @@ class Cylinder(FlowConfig):
 
         # Define actual boundary conditions
         self.bcu_inflow = fd.DirichletBC(V, self.U_inf, self.INLET)
-        # self.bcu_freestream = fd.DirichletBC(V, self.U_inf, self.FREESTREAM)
         self.bcu_freestream = fd.DirichletBC(
             V.sub(1), fd.Constant(0.0), self.FREESTREAM
         )  # Symmetry BCs
-        self.bcu_actuation = [
-            fd.DirichletBC(V, fd.interpolate(fd.Constant((0, 0)), V), self.CYLINDER)
-        ]
+        self.bcu_actuation = [fd.DirichletBC(V, fd.Constant((0, 0)), self.CYLINDER)]
         self.bcp_outflow = fd.DirichletBC(Q, fd.Constant(0), self.OUTLET)
 
         # Reset the control with the current mixed (or not) function spaces
@@ -169,7 +167,7 @@ class Cylinder(FlowConfig):
         if levels is None:
             levels = np.linspace(*clim, 10)
         vort = fd.project(fd.curl(self.u), self.pressure_space)
-        im = fd.tricontourf(
+        im = tricontourf(
             vort,
             cmap=cmap,
             levels=levels,

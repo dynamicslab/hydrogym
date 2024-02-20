@@ -5,6 +5,7 @@ import numpy as np
 import pyadjoint
 import ufl
 from firedrake import dx, logging
+from firedrake.__future__ import interpolate
 from mpi4py import MPI
 from ufl import curl, dot, inner, nabla_grad, sqrt, sym
 
@@ -126,7 +127,7 @@ class FlowConfig(PDEBase):
         return fd.Constant(1 / ufl.real(self.Re))
 
     def split_solution(self):
-        self.u, self.p = self.q.split()
+        self.u, self.p = self.q.subfunctions
         self.u.rename("u")
         self.p.rename("p")
 
@@ -190,12 +191,14 @@ class FlowConfig(PDEBase):
     def max_cfl(self, dt) -> float:
         """Estimate of maximum CFL number"""
         h = fd.CellSize(self.mesh)
-        CFL = fd.interpolate(dt * sqrt(dot(self.u, self.u)) / h, self.pressure_space)
+        CFL = fd.assemble(
+            interpolate(dt * sqrt(dot(self.u, self.u)) / h, self.pressure_space)
+        )
         return self.mesh.comm.allreduce(CFL.vector().max(), op=MPI.MAX)
 
     @property
     def body_force(self):
-        return fd.interpolate(fd.Constant((0.0, 0.0)), self.velocity_space)
+        return fd.Function(self.velocity_space).assign(fd.Constant((0.0, 0.0)))
 
     def linearize_bcs(self):
         """Sets the boundary conditions appropriately for linearized flow"""
@@ -215,9 +218,10 @@ class FlowConfig(PDEBase):
         if hasattr(self, "bcu_actuation"):
             for i in range(self.ACT_DIM):
                 c = fd.Constant(self.actuators[i].get_state())
-                self.bcu_actuation[i]._function_arg.assign(
-                    fd.interpolate(c * self.u_ctrl[i], self.velocity_space)
+                bc_function = fd.assemble(
+                    interpolate(c * self.u_ctrl[i], self.velocity_space)
                 )
+                self.bcu_actuation[i]._function_arg.assign(bc_function)
 
     def control_vec(self, mixed=False):
         """Return a list of PETSc.Vecs corresponding to the columns of the control matrix"""
@@ -226,7 +230,8 @@ class FlowConfig(PDEBase):
         B = []
         for i, bcu in enumerate(self.bcu_actuation):
             domain = bcu.sub_domain
-            bcs = [fd.DirichletBC(V, fd.interpolate(self.u_ctrl[i], V), domain)]
+            bc_function = fd.assemble(interpolate(self.u_ctrl[i], V))
+            bcs = [fd.DirichletBC(V, bc_function, domain)]
 
             # Control as Function
             B.append(fd.project(fd.Constant((0, 0)), V, bcs=bcs))
@@ -235,6 +240,6 @@ class FlowConfig(PDEBase):
 
     def dot(self, q1: fd.Function, q2: fd.Function) -> float:
         """Energy inner product between two fields"""
-        u1, _ = q1.split()
-        u2, _ = q2.split()
+        u1 = q1.subfunctions[0]
+        u2 = q2.subfunctions[0]
         return fd.assemble(inner(u1, u2) * dx)

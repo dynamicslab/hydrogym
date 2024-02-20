@@ -54,12 +54,10 @@ class Step(FlowConfig):
         # Define actual boundary conditions
         self.bcu_inflow = fd.DirichletBC(V, self.U_inf, self.INLET)
         self.bcu_noslip = fd.DirichletBC(
-            V, fd.interpolate(fd.Constant((0, 0)), V), (self.WALL, self.SENSOR)
+            V, fd.Constant((0, 0)), (self.WALL, self.SENSOR)
         )
         self.bcp_outflow = fd.DirichletBC(Q, fd.Constant(0), self.OUTLET)
-        self.bcu_actuation = [
-            fd.DirichletBC(V, fd.interpolate(fd.Constant((0, 0)), V), self.CONTROL)
-        ]
+        self.bcu_actuation = [fd.DirichletBC(V, fd.Constant((0, 0)), self.CONTROL)]
 
         self.set_control(self.control_state)
 
@@ -82,7 +80,7 @@ class Step(FlowConfig):
         """Integral of wall-normal shear stress (see Barbagallo et al, 2009)"""
         if q is None:
             q = self.q
-        (u, p) = q.split()
+        u = q.subfunctions[0]
         m = fd.assemble(-dot(grad(u[0]), self.n) * ds(self.SENSOR))
         return (m,)
 
@@ -91,7 +89,7 @@ class Step(FlowConfig):
             q = self.q
         if qB is None:
             qB = self.qB
-        (u, p) = q.split()
-        (uB, pB) = qB.split()
+        u = q.subfunctions[0]
+        uB = qB.subfunctions[0]
         KE = 0.5 * fd.assemble(fd.inner(u - uB, u - uB) * fd.dx)
         return KE

@@ -217,7 +217,7 @@ class IPCS(TransientSolver):
         if qB is None:
             uB = flow.u.copy(deepcopy=True)
         else:
-            uB = qB.split()[0].copy(deepcopy=True)
+            uB = qB.subfunctions[0].copy(deepcopy=True)
 
         flow.linearize_bcs(mixed=False)
         (u, p) = self.q_trial
@@ -283,7 +283,7 @@ class IPCS(TransientSolver):
 
             def matvec(q_vec, mode):
                 set_from_array(q, q_vec)
-                u, p = q.split()
+                u, p = q.subfunctions
                 self.u_n.assign(q.sub(0))
                 self.p_n.assign(q.sub(1))
 
