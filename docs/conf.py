@@ -20,7 +20,7 @@ extensions = [
     "sphinx.ext.intersphinx",
     "sphinx.ext.viewcode",
     "sphinx.ext.napoleon",
-    "sphinx.ext.mathjax"
+    "sphinx.ext.mathjax",
 ]
 
 intersphinx_mapping = {
@@ -44,14 +44,12 @@ html_favicon = "_static/imgs/logo.svg"
 html_static_path = ["_static"]
 
 html_theme_options = {
-  'repository_url': 'https://github.com/dynamicslab/hydrogym',
-  'use_repository_button': True,  # add a 'link to repository' button
-  'use_issues_button': True,  # add an 'Open an Issue' button
-  'path_to_docs': (
-    'docs'
-  ),  # used to compute the path to launch notebooks in colab
-  'prev_next_buttons_location': None,
-  'show_navbar_depth': 1,
+    "repository_url": "https://github.com/dynamicslab/hydrogym",
+    "use_repository_button": True,  # add a 'link to repository' button
+    "use_issues_button": True,  # add an 'Open an Issue' button
+    "path_to_docs": ("docs"),  # used to compute the path to launch notebooks in colab
+    "prev_next_buttons_location": None,
+    "show_navbar_depth": 1,
 }
 
 # -- Options for EPUB output
