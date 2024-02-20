@@ -8,7 +8,7 @@ pvd_out = None
 restart = None
 checkpoint = "checkpoint-sym.h5"
 
-flow = hgym.Pinball(Re=30, h5_file=restart, mesh="fine")
+flow = hgym.Pinball(Re=30, restart=restart, mesh="fine")
 
 # Time step
 Tf = 50

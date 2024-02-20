@@ -7,7 +7,7 @@ pvd_out = None
 restart = None
 checkpoint = "checkpoint-coarse.h5"
 
-flow = hgym.Pinball(Re=10, h5_file=restart, mesh="coarse")
+flow = hgym.Pinball(Re=10, restart=restart, mesh="coarse")
 
 # Time step
 Tf = 100

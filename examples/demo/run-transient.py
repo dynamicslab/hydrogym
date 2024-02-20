@@ -7,7 +7,7 @@ pvd_out = None
 restart = None
 checkpoint = "checkpoint.h5"
 
-flow = hgym.Cylinder(Re=100, h5_file=restart, mesh="medium")
+flow = hgym.Cylinder(Re=100, restart=restart, mesh="medium")
 
 # Time step
 Tf = 300
