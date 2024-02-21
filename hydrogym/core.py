@@ -6,13 +6,14 @@ import numpy as np
 
 class ActuatorBase:
     def __init__(self, state=0.0, **kwargs):
-        self.u = state
+        self.x = state
 
+    # TODO: Use get/set property instead of get_, set_
     def set_state(self, u: float):
-        self.u = u
+        self.x = u
 
     def get_state(self) -> float:
-        return self.u
+        return self.x
 
     def step(self, u: float, dt: float):
         """Update the state of the actuator"""
@@ -176,8 +177,6 @@ class PDEBase:
 
         Returns:
             Iterable[ActType]: Updated actuator state
-
-        TODO: Rewrite with ActuatorBase
         """
         act = self.enlist(act)
         assert len(act) == self.ACT_DIM

@@ -13,6 +13,15 @@ from ..core import ActuatorBase, PDEBase
 from .actuator import DampedActuator
 
 
+class ScaledDirichletBC(fd.DirichletBC):
+    def __init__(self, V, g, sub_domain, method=None):
+        self._scale = fd.Constant(1.0)
+        super().__init__(V, self._scale * g, sub_domain, method)
+
+    def set_scale(self, c):
+        self._scale.assign(c)
+
+
 class FlowConfig(PDEBase):
     DEFAULT_REYNOLDS = 1
     MESH_DIR = ""
@@ -25,7 +34,6 @@ class FlowConfig(PDEBase):
 
     def __init__(self, **config):
         self.Re = fd.Constant(ufl.real(config.get("Re", self.DEFAULT_REYNOLDS)))
-        self.actuator_integration = config.get("actuator_integration", "explicit")
         super().__init__(**config)
 
     def load_mesh(self, name: str) -> ufl.Mesh:
@@ -101,9 +109,7 @@ class FlowConfig(PDEBase):
 
     def create_actuator(self) -> ActuatorBase:
         """Create a single actuator for this flow"""
-        return DampedActuator(
-            damping=1 / self.TAU, integration=self.actuator_integration
-        )
+        return DampedActuator(1 / self.TAU)
 
     def reset_controls(self, mixed: bool = False):
         """Reset the controls to a zero state
@@ -213,15 +219,17 @@ class FlowConfig(PDEBase):
         to change control for a steady-state solve, for instance, and is also used
         internally to compute the control matrix
         """
-        super().set_control(act)
+        if act is not None:
+            super().set_control(act)
 
-        if hasattr(self, "bcu_actuation"):
-            for i in range(self.ACT_DIM):
-                c = fd.Constant(self.actuators[i].get_state())
-                bc_function = fd.assemble(
-                    interpolate(c * self.u_ctrl[i], self.velocity_space)
-                )
-                self.bcu_actuation[i]._function_arg.assign(bc_function)
+            if hasattr(self, "bcu_actuation"):
+                for i in range(self.ACT_DIM):
+                    c = fd.Constant(self.actuators[i].get_state())
+                    self.bcu_actuation[i].set_scale(c)
+                    # bc_function = fd.assemble(
+                    #     interpolate(c * self.u_ctrl[i], self.velocity_space)
+                    # )
+                    # self.bcu_actuation[i]._function_arg.assign(bc_function)
 
     def control_vec(self, mixed=False):
         """Return a list of PETSc.Vecs corresponding to the columns of the control matrix"""
