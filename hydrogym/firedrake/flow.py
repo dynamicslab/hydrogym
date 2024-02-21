@@ -15,6 +15,7 @@ from .actuator import DampedActuator
 
 class ScaledDirichletBC(fd.DirichletBC):
     def __init__(self, V, g, sub_domain, method=None):
+        self.unscaled_function_arg = g
         self._scale = fd.Constant(1.0)
         super().__init__(V, self._scale * g, sub_domain, method)
 
@@ -226,10 +227,6 @@ class FlowConfig(PDEBase):
                 for i in range(self.ACT_DIM):
                     c = fd.Constant(self.actuators[i].get_state())
                     self.bcu_actuation[i].set_scale(c)
-                    # bc_function = fd.assemble(
-                    #     interpolate(c * self.u_ctrl[i], self.velocity_space)
-                    # )
-                    # self.bcu_actuation[i]._function_arg.assign(bc_function)
 
     def control_vec(self, mixed=False):
         """Return a list of PETSc.Vecs corresponding to the columns of the control matrix"""

@@ -118,11 +118,24 @@ class SemiImplicitBDF(TransientSolver):
         L = rhs(weak_form)
         bcs = self.flow.collect_bcs()
         bdf_prob = fd.LinearVariationalProblem(a, L, q, bcs=bcs)
+
+        # Schur complement preconditioner. See:
+        # https://www.firedrakeproject.org/demos/saddle_point_systems.py.html
         solver_parameters = {
-            "ksp_type": "gmres",
-            # "pc_type": "hypre",
-            # "pc_hypre_type": "boomeramg",
+            "ksp_type": "fgmres",
+            "ksp_rtol": 1e-6,
+            "pc_type": "fieldsplit",
+            "pc_fieldsplit_type": "schur",
+            "pc_fieldsplit_schur_fact_type": "full",
+            "pc_fieldsplit_schur_precondition": "selfp",
+            # Default preconditioner for the inv(A)
+            #   (ilu in serial, bjacobi in parallel)
+            "fieldsplit_0_ksp_type": "preonly",
+            # Hypre AMG preconditioner for inv(S)
+            "fieldsplit_1_ksp_type": "preonly",
+            "fieldsplit_1_pc_type": "hypre",
         }
+
         petsc_solver = fd.LinearVariationalSolver(
             bdf_prob, solver_parameters=solver_parameters
         )
