@@ -34,10 +34,11 @@ class DampedActuator(ActuatorBase):
         self.x = fd.Constant(state)
 
     @property
-    def value(self) -> np.ndarray:
+    def state(self) -> np.ndarray:
         return self.x.values()[0]
 
-    def set_state(self, u: float):
+    @state.setter
+    def state(self, u: float):
         self._x = pyadjoint.AdjFloat(u)
         self.x.assign(u)
 

@@ -224,18 +224,17 @@ class FlowConfig(PDEBase):
 
             if hasattr(self, "bcu_actuation"):
                 for i in range(self.ACT_DIM):
-                    c = fd.Constant(self.actuators[i].get_state())
-                    self.bcu_actuation[i].set_scale(c)
+                    self.bcu_actuation[i].set_scale(self.actuators[i].state)
 
     def control_vec(self, mixed=False):
-        """Return a list of PETSc.Vecs corresponding to the columns of the control matrix"""
+        """Functions corresponding to the columns of the control matrix"""
         V, Q = self.function_spaces(mixed=mixed)
 
         B = []
-        for i, bcu in enumerate(self.bcu_actuation):
+        for bcu in self.bcu_actuation:
             domain = bcu.sub_domain
             u_ctrl = bcu.unscaled_function_arg
-            bc_function = fd.assemble(interpolate(u_ctrl[i], V))
+            bc_function = fd.assemble(interpolate(u_ctrl, V))
             bcs = [fd.DirichletBC(V, bc_function, domain)]
 
             # Control as Function

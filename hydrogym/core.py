@@ -8,12 +8,13 @@ class ActuatorBase:
     def __init__(self, state=0.0, **kwargs):
         self.x = state
 
-    # TODO: Use get/set property instead of get_, set_
-    def set_state(self, u: float):
-        self.x = u
-
-    def get_state(self) -> float:
+    @property
+    def state(self) -> float:
         return self.x
+
+    @state.setter
+    def state(self, u: float):
+        self.x = u
 
     def step(self, u: float, dt: float):
         """Update the state of the actuator"""
@@ -154,14 +155,14 @@ class PDEBase:
 
     @property
     def control_state(self) -> Iterable[ActType]:
-        return [a.get_state() for a in self.actuators]
+        return [a.state for a in self.actuators]
 
     def set_control(self, act: ActType = None):
         """Directly set the control state"""
         if act is None:
             act = np.zeros(self.ACT_DIM)
         for i, u in enumerate(self.enlist(act)):
-            self.actuators[i].set_state(u)
+            self.actuators[i].state = u
 
     def update_actuators(self, act: Iterable[ActType], dt: float) -> Iterable[ActType]:
         """Update the current controls state.
