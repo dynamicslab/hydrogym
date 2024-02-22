@@ -12,7 +12,7 @@ flow = hgym.Cylinder(Re=100, restart=restart, mesh="medium")
 
 # Time step
 Tf = 300
-dt = 1e-2
+dt = 0.01
 
 
 def log_postprocess(flow):
@@ -36,6 +36,11 @@ callbacks = [
     log,
 ]
 
+
+def controller(t, y):
+    return [1.0]
+
+
 hgym.print("Beginning integration")
 hgym.integrate(
     flow,
@@ -43,4 +48,5 @@ hgym.integrate(
     dt=dt,
     callbacks=callbacks,
     method="BDF",
+    controller=controller,
 )

@@ -1,8 +1,11 @@
 import firedrake as fd
 import numpy as np
+from firedrake import logging
 from ufl import as_ufl, div, dot, ds, dx, inner, lhs, nabla_grad, rhs
 
+from hydrogym.core import TransientSolver
 from hydrogym.firedrake import FlowConfig
+from hydrogym.firedrake.utils import white_noise
 
 __all__ = ["NewtonSolver"]
 
@@ -41,3 +44,56 @@ class NewtonSolver:
             + inner(div(u), s) * dx
         )
         return F
+
+
+class NavierStokesTransientSolver(TransientSolver):
+    def __init__(
+        self,
+        flow: FlowConfig,
+        dt: float = None,
+        eta: float = 0.0,
+        debug: bool = False,
+        max_noise_iter: int = int(1e8),
+        noise_cutoff: float = None,
+    ):
+        super().__init__(flow, dt)
+        self.debug = debug
+
+        self.forcing_config = {
+            "eta": eta,
+            "n_samples": max_noise_iter,
+            "cutoff": noise_cutoff or 0.01 / flow.TAU,
+        }
+
+        self.reset()
+
+    def reset(self):
+        super().reset()
+
+        self.initialize_functions()
+
+        # Set up random forcing (if applicable)
+        self.initialize_forcing(**self.forcing_config)
+
+        self.initialize_operators()
+
+    def initialize_forcing(self, eta, n_samples, cutoff):
+        logging.log(logging.INFO, f"Initializing forcing with amplitude {eta}")
+        self.f = self.flow.body_force
+        self.eta = fd.Constant(0.0)  # Current forcing amplitude
+
+        if eta > 0:
+            self.noise = eta * white_noise(
+                n_samples=n_samples,
+                fs=1 / self.dt,
+                cutoff=cutoff,
+            )
+        else:
+            self.noise = np.zeros(n_samples)
+        self.noise_idx = 0
+
+    def initialize_functions(self):
+        pass
+
+    def initialize_operators(self):
+        pass

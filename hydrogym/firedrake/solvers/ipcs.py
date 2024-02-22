@@ -1,64 +1,15 @@
 import firedrake as fd
 import numpy as np
-import ufl
 from firedrake import logging
-from ufl import as_ufl, div, dot, ds, dx, inner, lhs, nabla_grad, rhs
+from ufl import div, dot, ds, dx, inner, lhs, nabla_grad, rhs
 
-from hydrogym.core import TransientSolver
-
-from ..flow import FlowConfig
-from ..utils import get_array, set_from_array, white_noise
+from ..utils import get_array, set_from_array
+from .base import NavierStokesTransientSolver
 
 __all__ = ["IPCS"]
 
 
-class IPCS(TransientSolver):
-    def __init__(
-        self,
-        flow: FlowConfig,
-        dt: float = None,
-        eta: float = 0.0,
-        debug=False,
-        **kwargs,
-    ):
-        super().__init__(flow, dt)
-        self.debug = debug
-
-        self.forcing_config = {
-            "eta": eta,
-            "n_samples": kwargs.get("max_iter", int(1e8)),
-            "cutoff": kwargs.get("noise_cutoff", 0.01 / flow.TAU),
-        }
-
-        self.reset()
-
-    def reset(self):
-        super().reset()
-
-        self.initialize_functions()
-
-        # Set up random forcing (if applicable)
-        self.initialize_forcing(**self.forcing_config)
-
-        self.initialize_operators()
-
-        self.B = self.flow.control_vec()
-
-    def initialize_forcing(self, eta, n_samples, cutoff):
-        logging.log(logging.INFO, f"Initializing forcing with amplitude {eta}")
-        self.f = self.flow.body_force
-        self.eta = fd.Constant(0.0)  # Current forcing amplitude
-
-        if eta > 0:
-            self.noise = eta * white_noise(
-                n_samples=n_samples,
-                fs=1 / self.dt,
-                cutoff=cutoff,
-            )
-        else:
-            self.noise = np.zeros(n_samples)
-        self.noise_idx = 0
-
+class IPCS(NavierStokesTransientSolver):
     def initialize_functions(self):
         flow = self.flow
 
@@ -145,18 +96,22 @@ class IPCS(TransientSolver):
         # Update perturbations (if applicable)
         self.eta.assign(self.noise[self.noise_idx])
 
-        # Step 1: Tentative velocity step
+        if control is not None:
+            bc_scale = self.flow.update_actuators(control, self.dt)
+            self.flow.set_control(bc_scale)
+
+        # Step 1: Velocity predictor step
         logging.log(logging.DEBUG, f"iter: {iter}, solving velocity predictor")
         self.predictor.solve()
-        if control is not None:
-            control = self.flow.update_actuators(control, self.dt)
-            for Bu, ctrl in zip(self.B, control):
-                self.u += Bu * fd.Constant(ctrl)
 
+        # Step 2: Pressure Poisson equation
         logging.log(logging.DEBUG, "Velocity predictor done, solving Poisson")
         self.poisson.solve()
+
+        # Step 3: Projection step (pressure correction)
         logging.log(logging.DEBUG, "Poisson done, solving projection step")
         self.projection.solve()
+
         logging.log(logging.DEBUG, "IPCS step finished")
 
         # Update previous solution
@@ -175,7 +130,7 @@ class IPCS(TransientSolver):
         """
         from scipy.sparse.linalg import LinearOperator
 
-        from .utils import linalg
+        from ..utils import linalg
 
         flow = self.flow
         k = fd.Constant(self.dt)

@@ -1,13 +1,8 @@
 import firedrake as fd
-import numpy as np
-import ufl
-from firedrake import logging
-from ufl import as_ufl, div, dot, ds, dx, inner, lhs, nabla_grad, rhs
-
-from hydrogym.core import TransientSolver
+from ufl import div, dot, ds, dx, inner, lhs, nabla_grad, rhs
 
 from ..flow import FlowConfig
-from ..utils import get_array, set_from_array, white_noise
+from .base import NavierStokesTransientSolver
 
 _alpha_BDF = [1.0, 3.0 / 2.0, 11.0 / 6.0]
 _beta_BDF = [
@@ -22,53 +17,18 @@ _beta_EXT = [
 ]
 
 
-class SemiImplicitBDF(TransientSolver):
+class SemiImplicitBDF(NavierStokesTransientSolver):
     def __init__(
         self,
         flow: FlowConfig,
         dt: float = None,
-        eta: float = 0.0,
         order: int = 3,
-        debug=False,
         **kwargs,
     ):
-        super().__init__(flow, dt)
-        self.debug = debug
-
-        self.forcing_config = {
-            "eta": eta,
-            "n_samples": kwargs.get("max_iter", int(1e8)),
-            "cutoff": kwargs.get("noise_cutoff", 0.01 / flow.TAU),
-        }
-
         self.k = order  # Order of the BDF/EXT scheme
 
+        super().__init__(flow, dt, **kwargs)
         self.reset()
-
-    def reset(self):
-        super().reset()
-
-        self.initialize_functions()
-
-        # Set up random forcing (if applicable)
-        self.initialize_forcing(**self.forcing_config)
-
-        self.initialize_operators()
-
-    def initialize_forcing(self, eta, n_samples, cutoff):
-        logging.log(logging.INFO, f"Initializing forcing with amplitude {eta}")
-        self.f = self.flow.body_force
-        self.eta = fd.Constant(0.0)  # Current forcing amplitude
-
-        if eta > 0:
-            self.noise = eta * white_noise(
-                n_samples=n_samples,
-                fs=1 / self.dt,
-                cutoff=cutoff,
-            )
-        else:
-            self.noise = np.zeros(n_samples)
-        self.noise_idx = 0
 
     def initialize_functions(self):
         flow = self.flow
