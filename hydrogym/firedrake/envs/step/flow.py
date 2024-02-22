@@ -4,7 +4,7 @@ import firedrake as fd
 import ufl
 from ufl import dot, ds, exp, grad
 
-from hydrogym.firedrake import FlowConfig
+from hydrogym.firedrake import FlowConfig, ScaledDirichletBC
 
 
 class Step(FlowConfig):
@@ -26,13 +26,6 @@ class Step(FlowConfig):
 
     MESH_DIR = os.path.abspath(f"{__file__}/..")
 
-    def initialize_state(self):
-        super().initialize_state()
-        self.U_inf = ufl.as_tensor((1.0 - ((self.y - 0.25) / 0.25) ** 2, 0.0 * self.y))
-        self.u_ctrl = [
-            ufl.as_tensor((0.0 * self.x, -self.x * (1600 * self.x + 560) / 147))
-        ]  # Blowing/suction
-
     @property
     def nu(self):
         return fd.Constant(0.5 / ufl.real(self.Re))
@@ -51,14 +44,17 @@ class Step(FlowConfig):
     def init_bcs(self, mixed=False):
         V, Q = self.function_spaces(mixed=mixed)
 
-        # Define actual boundary conditions
+        # Define static boundary conditions
+        self.U_inf = ufl.as_tensor((1.0 - ((self.y - 0.25) / 0.25) ** 2, 0.0 * self.y))
         self.bcu_inflow = fd.DirichletBC(V, self.U_inf, self.INLET)
         self.bcu_noslip = fd.DirichletBC(
             V, fd.Constant((0, 0)), (self.WALL, self.SENSOR)
         )
         self.bcp_outflow = fd.DirichletBC(Q, fd.Constant(0), self.OUTLET)
-        self.bcu_actuation = [fd.DirichletBC(V, fd.Constant((0, 0)), self.CONTROL)]
 
+        # Define time-varying boundary conditions for actuation
+        u_bc = ufl.as_tensor((0.0 * self.x, -self.x * (1600 * self.x + 560) / 147))
+        self.bcu_actuation = [ScaledDirichletBC(V, u_bc, self.CONTROL)]
         self.set_control(self.control_state)
 
     def linearize_bcs(self, mixed=True):

@@ -8,11 +8,18 @@ pvd_out = None
 restart = None
 checkpoint = "checkpoint-sym.h5"
 
-flow = hgym.Pinball(Re=30, h5_file=restart, mesh="fine")
+flow = hgym.Pinball(Re=30, h5_file=restart, mesh="coarse")
 
 # Time step
 Tf = 1.0
-dt = 1e-2
+
+# # user time: 2:24 (fine), 0:26 (coarse)
+# method = "IPCS"
+# dt = 1e-2
+
+# user time: 0:50 (fine), 0:07 (coarse)
+method = "BDF"
+dt = 0.1
 
 
 def log_postprocess(flow):
@@ -49,5 +56,5 @@ hgym.integrate(
     dt=dt,
     controller=controller,
     callbacks=callbacks,
-    method="IPCS",
+    method=method,
 )

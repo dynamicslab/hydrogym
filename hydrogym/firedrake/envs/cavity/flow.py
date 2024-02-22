@@ -4,7 +4,7 @@ import firedrake as fd
 import ufl
 from ufl import dot, ds, grad
 
-from hydrogym.firedrake import FlowConfig
+from hydrogym.firedrake import FlowConfig, ScaledDirichletBC
 
 
 class Cavity(FlowConfig):
@@ -29,18 +29,11 @@ class Cavity(FlowConfig):
 
     MESH_DIR = os.path.abspath(f"{__file__}/..")
 
-    def initialize_state(self):
-        super().initialize_state()
-
-        self.U_inf = fd.Constant((1.0, 0.0))
-        self.u_ctrl = [
-            ufl.as_tensor((0.0 * self.x, -self.x * (1600 * self.x + 560) / 147))
-        ]  # Blowing/suction
-
     def init_bcs(self, mixed=False):
         V, Q = self.function_spaces(mixed=mixed)
 
-        # Define actual boundary conditions
+        # Define static boundary conditions
+        self.U_inf = fd.Constant((1.0, 0.0))
         self.bcu_inflow = fd.DirichletBC(V, self.U_inf, self.INLET)
         self.bcu_freestream = fd.DirichletBC(
             V.sub(1), fd.Constant(0.0), self.FREESTREAM
@@ -49,7 +42,12 @@ class Cavity(FlowConfig):
         # Free-slip on top boundary
         self.bcu_slip = fd.DirichletBC(V.sub(1), fd.Constant(0.0), self.SLIP)
         self.bcp_outflow = fd.DirichletBC(Q, fd.Constant(0), self.OUTLET)
-        self.bcu_actuation = [fd.DirichletBC(V, fd.Constant((0, 0)), self.CONTROL)]
+
+        # Define time-varying boundary conditions for actuation
+        # This matches Barbagallo et al (2009), "Closed-loop control of an open cavity
+        # flow using reduced-order models" https://doi.org/10.1017/S0022112009991418
+        u_bc = ufl.as_tensor((0.0 * self.x, -self.x * (1600 * self.x + 560) / 147))
+        self.bcu_actuation = [ScaledDirichletBC(V, u_bc, self.CONTROL)]
 
         self.set_control(self.control_state)
 
