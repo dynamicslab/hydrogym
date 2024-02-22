@@ -31,10 +31,16 @@ log = hgym.utils.io.LogCallback(
     filename=None,
 )
 
-callbacks = [log, hgym.utils.io.CheckpointCallback(interval=100, filename=checkpoint)]
-# callbacks = [
-#     log,
-# ]
+# callbacks = [log, hgym.utils.io.CheckpointCallback(interval=100, filename=checkpoint)]
+callbacks = [
+    log,
+]
 
 hgym.print("Beginning integration")
-hgym.integrate(flow, t_span=(0, Tf), dt=dt, callbacks=callbacks, method="IPCS")
+hgym.integrate(
+    flow,
+    t_span=(0, Tf),
+    dt=dt,
+    callbacks=callbacks,
+    method="BDF",
+)

@@ -6,8 +6,8 @@ from ufl import as_ufl, div, dot, ds, dx, inner, lhs, nabla_grad, rhs
 
 from hydrogym.core import TransientSolver
 
-from .flow import FlowConfig
-from .utils import get_array, set_from_array, white_noise
+from ..flow import FlowConfig
+from ..utils import get_array, set_from_array, white_noise
 
 _alpha_BDF = [1.0, 3.0 / 2.0, 11.0 / 6.0]
 _beta_BDF = [
@@ -28,7 +28,7 @@ class SemiImplicitBDF(TransientSolver):
         flow: FlowConfig,
         dt: float = None,
         eta: float = 0.0,
-        k: int = 1,
+        order: int = 3,
         debug=False,
         **kwargs,
     ):
@@ -41,7 +41,7 @@ class SemiImplicitBDF(TransientSolver):
             "cutoff": kwargs.get("noise_cutoff", 0.01 / flow.TAU),
         }
 
-        self.k = k  # Order of the BDF/EXT scheme
+        self.k = order  # Order of the BDF/EXT scheme
 
         self.reset()
 
@@ -160,8 +160,7 @@ class SemiImplicitBDF(TransientSolver):
         # Pass input through actuator "dynamics" or filter
         if control is not None:
             bc_scale = self.flow.update_actuators(control, self.dt)
-
-        self.flow.set_control(bc_scale)
+            self.flow.set_control(bc_scale)
 
         # Solve the linear problem
         if iter > self.k - 1:

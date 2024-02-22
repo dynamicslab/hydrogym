@@ -6,44 +6,10 @@ from ufl import as_ufl, div, dot, ds, dx, inner, lhs, nabla_grad, rhs
 
 from hydrogym.core import TransientSolver
 
-from .flow import FlowConfig
-from .utils import get_array, set_from_array, white_noise
+from ..flow import FlowConfig
+from ..utils import get_array, set_from_array, white_noise
 
-
-class NewtonSolver:
-    def __init__(self, flow: FlowConfig, solver_parameters: dict = {}):
-        self.flow = flow
-        self.solver_parameters = solver_parameters
-
-    def solve(self, q: fd.Function = None):
-        """Solve the steady-state problem from initial guess `q`"""
-        if q is None:
-            q = self.flow.q
-
-        self.flow.init_bcs(mixed=True)
-
-        F = self.steady_form(q)  # Nonlinear variational form
-        J = fd.derivative(F, q)  # Jacobian with automatic differentiation
-
-        bcs = self.flow.collect_bcs()
-        problem = fd.NonlinearVariationalProblem(F, q, bcs, J)
-        solver = fd.NonlinearVariationalSolver(
-            problem, solver_parameters=self.solver_parameters
-        )
-        solver.solve()
-
-        return q.copy(deepcopy=True)
-
-    def steady_form(self, q: fd.Function):
-        (u, p) = fd.split(q)
-        (v, s) = fd.TestFunctions(self.flow.mixed_space)
-
-        F = (
-            inner(dot(u, nabla_grad(u)), v) * dx
-            + inner(self.flow.sigma(u, p), self.flow.epsilon(v)) * dx
-            + inner(div(u), s) * dx
-        )
-        return F
+__all__ = ["IPCS"]
 
 
 class IPCS(TransientSolver):
@@ -304,16 +270,3 @@ class IPCS(TransientSolver):
             for i, Bi in enumerate(self.B):
                 B[:, i] = get_array(Bi)
             return A, B
-
-
-METHODS = {"IPCS": IPCS}
-
-
-def integrate(
-    flow, t_span, dt, method="IPCS", callbacks=[], controller=None, **options
-):
-    if method not in METHODS:
-        raise ValueError(f"`method` must be one of {METHODS.keys()}")
-
-    solver = METHODS[method](flow, dt, **options)
-    return solver.solve(t_span, callbacks=callbacks, controller=controller)
