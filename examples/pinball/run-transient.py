@@ -1,3 +1,4 @@
+import numpy as np
 import psutil
 
 import hydrogym.firedrake as hgym
@@ -5,13 +6,20 @@ import hydrogym.firedrake as hgym
 output_dir = "."
 pvd_out = None
 restart = None
-checkpoint = "checkpoint-coarse.h5"
+checkpoint = "checkpoint.h5"
 
-flow = hgym.Pinball(Re=10, h5_file=restart, mesh="coarse")
+flow = hgym.Pinball(Re=30, h5_file=restart, mesh="fine")
 
 # Time step
-Tf = 100
-dt = 1e-3
+Tf = 1.0
+
+# # user time: 2:24 (fine), 0:26 (coarse)
+# method = "IPCS"
+# dt = 1e-2
+
+# user time: 0:50 (fine), 0:07 (coarse)
+method = "BDF"
+dt = 0.1
 
 
 def log_postprocess(flow):
@@ -26,15 +34,27 @@ print_fmt = "t: {0:0.2f},\t\t CL[0]: {1:0.3f},\t\t CL[1]: {2:0.03f},\t\t CL[2]: 
 log = hgym.utils.io.LogCallback(
     postprocess=log_postprocess,
     nvals=4,
-    interval=10,
+    interval=1,
     print_fmt=print_fmt,
-    filename=None,
+    filename="coeffs.dat",
 )
 
-callbacks = [log, hgym.utils.io.CheckpointCallback(interval=100, filename=checkpoint)]
-# callbacks = [
-#     log,
-# ]
+# callbacks = [log, hgym.utils.io.CheckpointCallback(interval=100, filename=checkpoint)]
+callbacks = [
+    log,
+]
+
+
+def controller(t, obs):
+    return np.array([0.0, 1.0, 1.0])
+
 
 hgym.print("Beginning integration")
-hgym.integrate(flow, t_span=(0, Tf), dt=dt, callbacks=callbacks, method="IPCS")
+hgym.integrate(
+    flow,
+    t_span=(0, Tf),
+    dt=dt,
+    # controller=controller,
+    callbacks=callbacks,
+    method=method,
+)

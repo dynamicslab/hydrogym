@@ -47,7 +47,7 @@ class FlowConfig(PDEBase):
             for f_name in self.FUNCTIONS:
                 chk.save_function(getattr(self, f_name), idx=idx)
 
-            act_state = np.array([act.value for act in self.actuators])
+            act_state = np.array([act.state for act in self.actuators])
             chk.set_attr("/", "act_state", act_state)
 
     def load_checkpoint(self, filename: str, idx=None, read_mesh=True):
@@ -71,7 +71,7 @@ class FlowConfig(PDEBase):
             if chk.has_attr("/", "act_state"):
                 act_state = chk.get_attr("/", "act_state")
                 for i in range(self.ACT_DIM):
-                    self.actuators[i].set_state(act_state[i])
+                    self.actuators[i].state = act_state[i]
 
         self.split_solution()  # Reset functions so self.u, self.p point to the new solution
 
