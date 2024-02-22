@@ -11,6 +11,7 @@ flow = hgym.Cylinder(Re=100, restart=restart, mesh="medium")
 
 # Time step
 Tf = 300
+Tf = 1.0
 dt = 0.1
 
 
@@ -30,10 +31,10 @@ log = hgym.utils.io.LogCallback(
     filename=None,
 )
 
-callbacks = [log, hgym.utils.io.CheckpointCallback(interval=10, filename=checkpoint)]
-# callbacks = [
-#     log,
-# ]
+# callbacks = [log, hgym.utils.io.CheckpointCallback(interval=10, filename=checkpoint)]
+callbacks = [
+    log,
+]
 
 
 def controller(t, y):
