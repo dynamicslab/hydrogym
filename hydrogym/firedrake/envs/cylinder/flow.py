@@ -9,7 +9,7 @@ from firedrake import ds
 from firedrake.pyplot import tricontourf
 from ufl import as_vector, atan2, cos, dot, sign, sin, sqrt
 
-from hydrogym.firedrake import DampedActuator, FlowConfig, ScaledDirichletBC
+from hydrogym.firedrake import FlowConfig, ScaledDirichletBC
 
 
 class Cylinder(FlowConfig):
@@ -31,26 +31,24 @@ class Cylinder(FlowConfig):
 
     MESH_DIR = os.path.abspath(f"{__file__}/..")
 
-    def initialize_state(self):
-        super().initialize_state()
-        self.U_inf = fd.Constant((1.0, 0.0))
-
-        # Set up tangential boundaries to cylinder
-        theta = atan2(ufl.real(self.y), ufl.real(self.x))  # Angle from origin
-        self.rad = fd.Constant(0.5)
-        # Tangential velocity
-        self.u_ctrl = [ufl.as_tensor((self.rad * sin(theta), self.rad * cos(theta)))]
-
     def init_bcs(self, mixed=False):
         V, Q = self.function_spaces(mixed=mixed)
 
-        # Define actual boundary conditions
+        # Define the static boundary conditions
+        self.U_inf = fd.Constant((1.0, 0.0))
         self.bcu_inflow = fd.DirichletBC(V, self.U_inf, self.INLET)
         self.bcu_freestream = fd.DirichletBC(
             V.sub(1), fd.Constant(0.0), self.FREESTREAM
         )  # Symmetry BCs
-        self.bcu_actuation = [ScaledDirichletBC(V, self.u_ctrl[0], self.CYLINDER)]
         self.bcp_outflow = fd.DirichletBC(Q, fd.Constant(0), self.OUTLET)
+
+        # Define time-varying boundary conditions for the actuation
+        # Set up tangential boundaries to cylinder
+        theta = atan2(ufl.real(self.y), ufl.real(self.x))  # Angle from origin
+        self.rad = fd.Constant(0.5)
+        # Tangential velocity
+        u_bc = ufl.as_tensor((self.rad * sin(theta), self.rad * cos(theta)))
+        self.bcu_actuation = [ScaledDirichletBC(V, u_bc, self.CYLINDER)]
 
         # Reset the control with the current mixed (or not) function spaces
         self.set_control(self.control_state)

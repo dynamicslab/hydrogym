@@ -90,7 +90,6 @@ class FlowConfig(PDEBase):
             setattr(self, f_name, fd.Function(self.mixed_space, name=f_name))
 
         self.split_solution()  # Break out and rename main solution
-        self.u_ctrl = [None]
 
     def set_state(self, q: fd.Function):
         """Set the current state fields
@@ -235,7 +234,8 @@ class FlowConfig(PDEBase):
         B = []
         for i, bcu in enumerate(self.bcu_actuation):
             domain = bcu.sub_domain
-            bc_function = fd.assemble(interpolate(self.u_ctrl[i], V))
+            u_ctrl = bcu.unscaled_function_arg
+            bc_function = fd.assemble(interpolate(u_ctrl[i], V))
             bcs = [fd.DirichletBC(V, bc_function, domain)]
 
             # Control as Function

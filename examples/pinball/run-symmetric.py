@@ -11,7 +11,7 @@ checkpoint = "checkpoint-sym.h5"
 flow = hgym.Pinball(Re=30, h5_file=restart, mesh="fine")
 
 # Time step
-Tf = 50
+Tf = 1.0
 dt = 1e-2
 
 
@@ -37,10 +37,10 @@ log = hgym.utils.io.LogCallback(
     filename="symmetric.dat",
 )
 
-callbacks = [log, hgym.utils.io.CheckpointCallback(interval=100, filename=checkpoint)]
-# callbacks = [
-#     log,
-# ]
+# callbacks = [log, hgym.utils.io.CheckpointCallback(interval=100, filename=checkpoint)]
+callbacks = [
+    log,
+]
 
 hgym.print("Beginning integration")
 hgym.integrate(
