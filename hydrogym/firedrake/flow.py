@@ -35,7 +35,7 @@ class FlowConfig(PDEBase):
 
     def __init__(self, velocity_order=2, **config):
         self.Re = fd.Constant(ufl.real(config.get("Re", self.DEFAULT_REYNOLDS)))
-        self.velocity_order = 2
+        self.velocity_order = velocity_order
         super().__init__(**config)
 
     def load_mesh(self, name: str) -> ufl.Mesh:
