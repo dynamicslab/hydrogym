@@ -33,8 +33,9 @@ class FlowConfig(PDEBase):
     ActType = fd.Constant
     ObsType = float
 
-    def __init__(self, **config):
+    def __init__(self, velocity_order=2, **config):
         self.Re = fd.Constant(ufl.real(config.get("Re", self.DEFAULT_REYNOLDS)))
+        self.velocity_order = 2
         super().__init__(**config)
 
     def load_mesh(self, name: str) -> ufl.Mesh:
@@ -81,7 +82,9 @@ class FlowConfig(PDEBase):
         self.x, self.y = fd.SpatialCoordinate(self.mesh)
 
         # Set up Taylor-Hood elements
-        self.velocity_space = fd.VectorFunctionSpace(self.mesh, "CG", 2)
+        self.velocity_space = fd.VectorFunctionSpace(
+            self.mesh, "CG", self.velocity_order
+        )
         self.pressure_space = fd.FunctionSpace(self.mesh, "CG", 1)
         self.mixed_space = fd.MixedFunctionSpace(
             [self.velocity_space, self.pressure_space]

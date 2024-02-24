@@ -1,5 +1,5 @@
 import firedrake as fd
-from ufl import div, dot, ds, dx, inner, lhs, nabla_grad, rhs
+from ufl import div, dot, ds, dx, grad, inner, lhs, nabla_grad, rhs, sym
 
 from ..flow import FlowConfig
 from .base import NavierStokesTransientSolver
@@ -23,9 +23,11 @@ class SemiImplicitBDF(NavierStokesTransientSolver):
         flow: FlowConfig,
         dt: float = None,
         order: int = 3,
+        stabilization: str = "none",
         **kwargs,
     ):
         self.k = order  # Order of the BDF/EXT scheme
+        self.stabilization = stabilization
 
         super().__init__(flow, dt, **kwargs)
         self.reset()
@@ -52,25 +54,52 @@ class SemiImplicitBDF(NavierStokesTransientSolver):
         h = fd.Constant(self.dt)
 
         (u, p) = self.q_trial
-        (w, s) = self.q_test
+        (v, s) = self.q_test
 
         # Combinations of functions for form construction
         k_idx = k - 1
-        u_EXT = sum(beta * u_n for beta, u_n in zip(_beta_EXT[k_idx], self.u_prev))
+        # The "wind" w is the extrapolation estimate of u[n+1]
+        w = sum(beta * u_n for beta, u_n in zip(_beta_EXT[k_idx], self.u_prev))
         u_BDF = sum(beta * u_n for beta, u_n in zip(_beta_BDF[k_idx], self.u_prev))
         alpha_k = _alpha_BDF[k_idx]
         u_t = (alpha_k * u - u_BDF) / h  # BDF estimate of time derivative
 
         # Semi-implicit weak form
+        nu = flow.nu
         weak_form = (
-            dot(u_t, w) * dx
-            + dot(dot(u_EXT, nabla_grad(u)), w) * dx
-            + inner(flow.sigma(u, p), flow.epsilon(w)) * dx
-            + dot(p * flow.n, w) * ds
-            - dot(flow.nu * nabla_grad(u) * flow.n, w) * ds
-            - dot(self.eta * self.f, w) * dx
+            dot(u_t, v) * dx
+            + dot(dot(w, nabla_grad(u)), v) * dx
+            + inner(flow.sigma(u, p), flow.epsilon(v)) * dx
             + dot(div(u), s) * dx
+            - dot(self.eta * self.f, v) * dx
         )
+
+        # # Stabilization
+        if self.stabilization == "supg":
+            # Residual (TODO: Use grad(sigma(u, p))) instead of -nu * div(sym(grad(u))) + grad(p)
+            Lu = (
+                u_t
+                - nu * div(2 * sym(grad(u)))
+                + dot(w, grad(u))
+                + grad(p)
+                - self.eta * self.f
+            )
+            # Lv = -nu * div(2*sym(grad(v))) + dot(w, grad(v)) + grad(s)
+            Lv = dot(grad(v), w)
+
+            h = fd.CellSize(flow.mesh)
+            # Ck = 60 * 2 ** (flow.velocity_order - 2)
+            # sigma_BDF = self.k
+            tau_M = (
+                (4.0 * dot(w, w) / (h**2))
+                + 9.0 * (4.0 * nu / h**2) ** 2
+                + 4.0 / self.dt**2  # TODO: What should the constant here be?
+            ) ** (-0.5)
+            weak_form += tau_M * inner(Lu, Lv) * dx
+
+            # LSIC
+            tau_C = h**2 / tau_M
+            weak_form += tau_C * inner(div(u), div(v)) * dx
 
         # Construct variational problem and PETSc solver
         q = self.flow.q
@@ -78,6 +107,8 @@ class SemiImplicitBDF(NavierStokesTransientSolver):
         L = rhs(weak_form)
         bcs = self.flow.collect_bcs()
         bdf_prob = fd.LinearVariationalProblem(a, L, q, bcs=bcs)
+
+        # TODO: Set preconditioning via config
 
         # Schur complement preconditioner. See:
         # https://www.firedrakeproject.org/demos/saddle_point_systems.py.html
@@ -96,6 +127,19 @@ class SemiImplicitBDF(NavierStokesTransientSolver):
             # Single multigrid cycle preconditioner for inv(S)
             "fieldsplit_1_ksp_type": "preonly",
             "fieldsplit_1_pc_type": "hypre",
+        }
+
+        # # GMRES with default preconditioner
+        # solver_parameters = {
+        #     "ksp_type": "gmres",
+        #     "ksp_rtol": 1e-6,
+        # }
+
+        # Direct LU solver
+        solver_parameters = {
+            "ksp_type": "preonly",
+            "pc_type": "lu",
+            "pc_factor_mat_solver_type": "mumps",
         }
 
         petsc_solver = fd.LinearVariationalSolver(

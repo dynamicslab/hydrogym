@@ -7,11 +7,16 @@ pvd_out = None
 restart = None
 checkpoint = "checkpoint.h5"
 
-flow = hgym.Cylinder(Re=100, restart=restart, mesh="medium")
+flow = hgym.Cylinder(
+    Re=100,
+    restart=restart,
+    mesh="medium",
+    velocity_order=1,
+)
 
 # Time step
-Tf = 300
-dt = 0.1
+Tf = 300.0
+dt = 0.05
 
 
 def log_postprocess(flow):
@@ -30,10 +35,10 @@ log = hgym.utils.io.LogCallback(
     filename=None,
 )
 
-callbacks = [log, hgym.utils.io.CheckpointCallback(interval=10, filename=checkpoint)]
-# callbacks = [
-#     log,
-# ]
+callbacks = [
+    log,
+    # hgym.utils.io.CheckpointCallback(interval=10, filename=checkpoint),
+]
 
 
 def controller(t, y):
@@ -47,5 +52,6 @@ hgym.integrate(
     dt=dt,
     callbacks=callbacks,
     method="BDF",
+    stabilization="supg",
     # controller=controller,
 )
