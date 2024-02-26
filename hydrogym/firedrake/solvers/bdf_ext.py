@@ -79,7 +79,6 @@ class SemiImplicitBDF(NavierStokesTransientSolver):
         u_t = (alpha_k * u - u_BDF) / h  # BDF estimate of time derivative
 
         # Semi-implicit weak form
-        nu = flow.nu
         weak_form = (
             dot(u_t, v) * dx
             + dot(dot(w, nabla_grad(u)), v) * dx
