@@ -107,8 +107,6 @@ class SemiImplicitBDF(NavierStokesTransientSolver):
         bcs = self.flow.collect_bcs()
         bdf_prob = fd.LinearVariationalProblem(a, L, q, bcs=bcs)
 
-        # TODO: Set preconditioning via config
-
         # Schur complement preconditioner. See:
         # https://www.firedrakeproject.org/demos/saddle_point_systems.py.html
         solver_parameters = {
@@ -126,19 +124,6 @@ class SemiImplicitBDF(NavierStokesTransientSolver):
             # Single multigrid cycle preconditioner for inv(S)
             "fieldsplit_1_ksp_type": "preonly",
             "fieldsplit_1_pc_type": "hypre",
-        }
-
-        # # GMRES with default preconditioner
-        # solver_parameters = {
-        #     "ksp_type": "gmres",
-        #     "ksp_rtol": 1e-6,
-        # }
-
-        # Direct LU solver
-        solver_parameters = {
-            "ksp_type": "preonly",
-            "pc_type": "lu",
-            "pc_factor_mat_solver_type": "mumps",
         }
 
         petsc_solver = fd.LinearVariationalSolver(
