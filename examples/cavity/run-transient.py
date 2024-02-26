@@ -9,7 +9,11 @@ pvd_out = None
 Re = 7500
 restart = f"{output_dir}/{Re}_steady.h5"
 
-flow = hgym.Cavity(Re=Re, restart=restart)
+flow = hgym.Cavity(
+    Re=Re,
+    restart=restart,
+    velocity_order=1,
+)
 
 # Store base flow for computing TKE
 flow.qB.assign(flow.q)
@@ -21,11 +25,12 @@ flow.q += rng.normal(flow.mixed_space, 0.0, 1e-2)
 # Time step
 Tf = 1.0
 
-method = "IPCS"
-dt = 2.5e-4
+# method = "IPCS"
+# dt = 2.5e-4
 
-# method = "BDF"
-# dt = 5e-3  # 12:13
+method = "BDF"
+stabilization = "gls"
+dt = 5e-3
 
 
 def log_postprocess(flow):
@@ -59,4 +64,5 @@ hgym.integrate(
     dt=dt,
     callbacks=callbacks,
     method=method,
+    stabilization=stabilization,
 )

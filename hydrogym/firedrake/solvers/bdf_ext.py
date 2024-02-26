@@ -103,7 +103,7 @@ class SemiImplicitBDF(NavierStokesTransientSolver):
             tau_M = (
                 (4.0 * dot(w, w) / (h**2))
                 + 9.0 * (4.0 * nu / h**2) ** 2
-                + 4.0 * (1 / self.dt) ** 2
+                + 4.0 / (self.dt ** 2)
             ) ** (-0.5)
 
         #
