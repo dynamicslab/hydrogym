@@ -3,7 +3,7 @@ import firedrake as fd
 import hydrogym.firedrake as hgym
 
 output_dir = "output"
-mesh_resolution = "coarse"
+mesh_resolution = "fine"
 Re = 7500
 
 solver_parameters = {"snes_monitor": None}

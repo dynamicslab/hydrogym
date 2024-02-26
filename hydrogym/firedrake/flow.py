@@ -5,11 +5,22 @@ import numpy as np
 import pyadjoint
 import ufl
 from firedrake import dx, logging
+from firedrake.__future__ import interpolate
 from mpi4py import MPI
 from ufl import curl, dot, inner, nabla_grad, sqrt, sym
 
 from ..core import ActuatorBase, PDEBase
 from .actuator import DampedActuator
+
+
+class ScaledDirichletBC(fd.DirichletBC):
+    def __init__(self, V, g, sub_domain, method=None):
+        self.unscaled_function_arg = g
+        self._scale = fd.Constant(1.0)
+        super().__init__(V, self._scale * g, sub_domain, method)
+
+    def set_scale(self, c):
+        self._scale.assign(c)
 
 
 class FlowConfig(PDEBase):
@@ -24,7 +35,6 @@ class FlowConfig(PDEBase):
 
     def __init__(self, **config):
         self.Re = fd.Constant(ufl.real(config.get("Re", self.DEFAULT_REYNOLDS)))
-        self.actuator_integration = config.get("actuator_integration", "explicit")
         super().__init__(**config)
 
     def load_mesh(self, name: str) -> ufl.Mesh:
@@ -37,7 +47,7 @@ class FlowConfig(PDEBase):
             for f_name in self.FUNCTIONS:
                 chk.save_function(getattr(self, f_name), idx=idx)
 
-            act_state = np.array([act.value for act in self.actuators])
+            act_state = np.array([act.state for act in self.actuators])
             chk.set_attr("/", "act_state", act_state)
 
     def load_checkpoint(self, filename: str, idx=None, read_mesh=True):
@@ -61,7 +71,7 @@ class FlowConfig(PDEBase):
             if chk.has_attr("/", "act_state"):
                 act_state = chk.get_attr("/", "act_state")
                 for i in range(self.ACT_DIM):
-                    self.actuators[i].set_state(act_state[i])
+                    self.actuators[i].state = act_state[i]
 
         self.split_solution()  # Reset functions so self.u, self.p point to the new solution
 
@@ -80,7 +90,6 @@ class FlowConfig(PDEBase):
             setattr(self, f_name, fd.Function(self.mixed_space, name=f_name))
 
         self.split_solution()  # Break out and rename main solution
-        self.u_ctrl = [None]
 
     def set_state(self, q: fd.Function):
         """Set the current state fields
@@ -100,9 +109,7 @@ class FlowConfig(PDEBase):
 
     def create_actuator(self) -> ActuatorBase:
         """Create a single actuator for this flow"""
-        return DampedActuator(
-            damping=1 / self.TAU, integration=self.actuator_integration
-        )
+        return DampedActuator(1 / self.TAU)
 
     def reset_controls(self, mixed: bool = False):
         """Reset the controls to a zero state
@@ -126,7 +133,7 @@ class FlowConfig(PDEBase):
         return fd.Constant(1 / ufl.real(self.Re))
 
     def split_solution(self):
-        self.u, self.p = self.q.split()
+        self.u, self.p = self.q.subfunctions
         self.u.rename("u")
         self.p.rename("p")
 
@@ -190,12 +197,14 @@ class FlowConfig(PDEBase):
     def max_cfl(self, dt) -> float:
         """Estimate of maximum CFL number"""
         h = fd.CellSize(self.mesh)
-        CFL = fd.interpolate(dt * sqrt(dot(self.u, self.u)) / h, self.pressure_space)
+        CFL = fd.assemble(
+            interpolate(dt * sqrt(dot(self.u, self.u)) / h, self.pressure_space)
+        )
         return self.mesh.comm.allreduce(CFL.vector().max(), op=MPI.MAX)
 
     @property
     def body_force(self):
-        return fd.interpolate(fd.Constant((0.0, 0.0)), self.velocity_space)
+        return fd.Function(self.velocity_space).assign(fd.Constant((0.0, 0.0)))
 
     def linearize_bcs(self):
         """Sets the boundary conditions appropriately for linearized flow"""
@@ -210,52 +219,31 @@ class FlowConfig(PDEBase):
         to change control for a steady-state solve, for instance, and is also used
         internally to compute the control matrix
         """
-        super().set_control(act)
+        if act is not None:
+            super().set_control(act)
 
-        if hasattr(self, "bcu_actuation"):
-            for i in range(self.ACT_DIM):
-                c = fd.Constant(self.actuators[i].get_state())
-                self.bcu_actuation[i]._function_arg.assign(
-                    fd.interpolate(c * self.u_ctrl[i], self.velocity_space)
-                )
+            if hasattr(self, "bcu_actuation"):
+                for i in range(self.ACT_DIM):
+                    self.bcu_actuation[i].set_scale(self.actuators[i].state)
 
     def control_vec(self, mixed=False):
-        """Return a list of PETSc.Vecs corresponding to the columns of the control matrix"""
-        (v, _) = fd.TestFunctions(self.mixed_space)
-
-        # Save actuator state to be restored later
-        act_state = np.array([act.value for act in self.actuators])
-
-        self.linearize_bcs()
-        # self.linearize_bcs() should have reset control, need to perturb it now
+        """Functions corresponding to the columns of the control matrix"""
+        V, Q = self.function_spaces(mixed=mixed)
 
         B = []
-        for i in range(self.ACT_DIM):
-            c = np.zeros(self.ACT_DIM)
-            c[i] = 1.0  # Perturb the ith control
-            self.set_control(c)
+        for bcu in self.bcu_actuation:
+            domain = bcu.sub_domain
+            u_ctrl = bcu.unscaled_function_arg
+            bc_function = fd.assemble(interpolate(u_ctrl, V))
+            bcs = [fd.DirichletBC(V, bc_function, domain)]
 
             # Control as Function
-            B.append(
-                fd.assemble(
-                    inner(fd.Constant((0, 0)), v) * dx, bcs=self.collect_bcs()
-                ).riesz_representation(riesz_map="l2")
-            )
-
-            # Have to have mixed function space for computing B functions
-            self.reset_controls(mixed=True)
-
-        # At the end the BC function spaces could be mixed or not
-        self.reset_controls(mixed=mixed)
-
-        # Restore the actuator state
-        for i in range(self.ACT_DIM):
-            self.actuators[i].set_state(act_state[i])
+            B.append(fd.project(fd.Constant((0, 0)), V, bcs=bcs))
 
         return B
 
     def dot(self, q1: fd.Function, q2: fd.Function) -> float:
         """Energy inner product between two fields"""
-        u1, _ = q1.split()
-        u2, _ = q2.split()
+        u1 = q1.subfunctions[0]
+        u2 = q2.subfunctions[0]
         return fd.assemble(inner(u1, u2) * dx)

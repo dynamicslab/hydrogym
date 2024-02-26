@@ -6,9 +6,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import ufl
 from firedrake import ds
+from firedrake.pyplot import tricontourf
 from ufl import as_vector, atan2, cos, dot, sign, sin, sqrt
 
-from hydrogym.firedrake import DampedActuator, FlowConfig
+from hydrogym.firedrake import FlowConfig, ScaledDirichletBC
 
 
 class Cylinder(FlowConfig):
@@ -18,10 +19,8 @@ class Cylinder(FlowConfig):
 
     OBS_DIM = 2
     MAX_CONTROL = 0.5 * np.pi
-    TAU = 0.556  # Time constant for controller damping (0.1*vortex shedding period)
-    # TAU = 0.0556  # Time constant for controller damping (0.01*vortex shedding period)
-    I_CM = 0.0115846  # Moment of inertia
-    # I_CM = 1.0  # Moment of inertia
+    # TAU = 0.556  # Time constant for controller damping (0.1*vortex shedding period)
+    TAU = 0.0556  # Time constant for controller damping (0.01*vortex shedding period)
 
     # Domain labels
     FLUID = 1
@@ -32,40 +31,27 @@ class Cylinder(FlowConfig):
 
     MESH_DIR = os.path.abspath(f"{__file__}/..")
 
-    def initialize_state(self):
-        super().initialize_state()
-        self.U_inf = fd.Constant((1.0, 0.0))
-
-        # Set up tangential boundaries to cylinder
-        theta = atan2(ufl.real(self.y), ufl.real(self.x))  # Angle from origin
-        self.rad = fd.Constant(0.5)
-        self.u_ctrl = [
-            ufl.as_tensor((self.rad * sin(theta), self.rad * cos(theta)))
-        ]  # Tangential velocity
-
     def init_bcs(self, mixed=False):
         V, Q = self.function_spaces(mixed=mixed)
 
-        # Define actual boundary conditions
+        # Define the static boundary conditions
+        self.U_inf = fd.Constant((1.0, 0.0))
         self.bcu_inflow = fd.DirichletBC(V, self.U_inf, self.INLET)
-        # self.bcu_freestream = fd.DirichletBC(V, self.U_inf, self.FREESTREAM)
         self.bcu_freestream = fd.DirichletBC(
             V.sub(1), fd.Constant(0.0), self.FREESTREAM
         )  # Symmetry BCs
-        self.bcu_actuation = [
-            fd.DirichletBC(V, fd.interpolate(fd.Constant((0, 0)), V), self.CYLINDER)
-        ]
         self.bcp_outflow = fd.DirichletBC(Q, fd.Constant(0), self.OUTLET)
+
+        # Define time-varying boundary conditions for the actuation
+        # Set up tangential boundaries to cylinder
+        theta = atan2(ufl.real(self.y), ufl.real(self.x))  # Angle from origin
+        self.rad = fd.Constant(0.5)
+        # Tangential velocity
+        u_bc = ufl.as_tensor((self.rad * sin(theta), self.rad * cos(theta)))
+        self.bcu_actuation = [ScaledDirichletBC(V, u_bc, self.CYLINDER)]
 
         # Reset the control with the current mixed (or not) function spaces
         self.set_control(self.control_state)
-
-    def create_actuator(self) -> DampedActuator:
-        return DampedActuator(
-            damping=1 / self.TAU,
-            inertia=self.I_CM,
-            integration=self.actuator_integration,
-        )
 
     def collect_bcu(self) -> Iterable[fd.DirichletBC]:
         return [self.bcu_inflow, self.bcu_freestream, *self.bcu_actuation]
@@ -169,7 +155,7 @@ class Cylinder(FlowConfig):
         if levels is None:
             levels = np.linspace(*clim, 10)
         vort = fd.project(fd.curl(self.u), self.pressure_space)
-        im = fd.tricontourf(
+        im = tricontourf(
             vort,
             cmap=cmap,
             levels=levels,
