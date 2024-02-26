@@ -16,7 +16,7 @@ flow = hgym.Cylinder(
 
 # Time step
 Tf = 1.0
-dt = 0.1
+dt = 0.1  # Tested as high as 0.25
 
 
 def log_postprocess(flow):
@@ -52,6 +52,6 @@ hgym.integrate(
     dt=dt,
     callbacks=callbacks,
     method="BDF",
-    stabilization="supg",
+    stabilization="gls",
     # controller=controller,
 )

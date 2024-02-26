@@ -106,13 +106,15 @@ class SemiImplicitBDF(NavierStokesTransientSolver):
                 + 4.0 * (1 / self.dt) ** 2
             ) ** (-0.5)
 
+        #
         # Stabilization
-        if self.stabilization == "supg":
-            # Strong momentum residual
-            Lu = u_t + dot(w, nabla_grad(u)) - div(flow.sigma(u, p)) - self.eta * self.f
-            # Lv = -nu * div(2*sym(grad(v))) + dot(w, grad(v)) + grad(s)
-            Lv = dot(grad(v), w)
+        #
 
+        # Strong momentum residual
+        Lu = u_t + dot(w, nabla_grad(u)) - div(flow.sigma(u, p)) - self.eta * self.f
+
+        if self.stabilization == "supg":
+            Lv = dot(grad(v), w)
             weak_form += tau_M * inner(Lu, Lv) * dx
 
             # LSIC (continuity residual)
@@ -120,7 +122,13 @@ class SemiImplicitBDF(NavierStokesTransientSolver):
             weak_form += tau_C * inner(div(u), div(v)) * dx
 
         elif self.stabilization == "gls":
-            raise NotImplementedError("GLS stabilization not implemented")
+            Lv = dot(w, grad(v)) - div(flow.sigma(v, s))
+
+            weak_form += tau_M * inner(Lu, Lv) * dx
+
+            # LSIC
+            tau_C = h**2 / tau_M
+            weak_form += tau_C * inner(div(u), div(v)) * dx
 
         # Construct variational problem and PETSc solver
         q = self.flow.q
@@ -131,24 +139,24 @@ class SemiImplicitBDF(NavierStokesTransientSolver):
 
         # TODO: Set preconditioning via config
 
-        # # Schur complement preconditioner. See:
-        # # https://www.firedrakeproject.org/demos/saddle_point_systems.py.html
-        # solver_parameters = {
-        #     "ksp_type": "fgmres",
-        #     "ksp_rtol": 1e-6,
-        #     "pc_type": "fieldsplit",
-        #     "pc_fieldsplit_type": "schur",
-        #     "pc_fieldsplit_schur_fact_type": "full",
-        #     "pc_fieldsplit_schur_precondition": "selfp",
-        #     #
-        #     # Default preconditioner for inv(A)
-        #     #   (ilu in serial, bjacobi in parallel)
-        #     "fieldsplit_0_ksp_type": "preonly",
-        #     #
-        #     # Single multigrid cycle preconditioner for inv(S)
-        #     "fieldsplit_1_ksp_type": "preonly",
-        #     "fieldsplit_1_pc_type": "hypre",
-        # }
+        # Schur complement preconditioner. See:
+        # https://www.firedrakeproject.org/demos/saddle_point_systems.py.html
+        solver_parameters = {
+            "ksp_type": "fgmres",
+            "ksp_rtol": 1e-6,
+            "pc_type": "fieldsplit",
+            "pc_fieldsplit_type": "schur",
+            "pc_fieldsplit_schur_fact_type": "full",
+            "pc_fieldsplit_schur_precondition": "selfp",
+            #
+            # Default preconditioner for inv(A)
+            #   (ilu in serial, bjacobi in parallel)
+            "fieldsplit_0_ksp_type": "preonly",
+            #
+            # Single multigrid cycle preconditioner for inv(S)
+            "fieldsplit_1_ksp_type": "preonly",
+            "fieldsplit_1_pc_type": "hypre",
+        }
 
         # # GMRES with default preconditioner
         # solver_parameters = {
@@ -156,12 +164,12 @@ class SemiImplicitBDF(NavierStokesTransientSolver):
         #     "ksp_rtol": 1e-6,
         # }
 
-        # Direct LU solver
-        solver_parameters = {
-            "ksp_type": "preonly",
-            "pc_type": "lu",
-            "pc_factor_mat_solver_type": "mumps",
-        }
+        # # Direct LU solver
+        # solver_parameters = {
+        #     "ksp_type": "preonly",
+        #     "pc_type": "lu",
+        #     "pc_factor_mat_solver_type": "mumps",
+        # }
 
         petsc_solver = fd.LinearVariationalSolver(
             bdf_prob, solver_parameters=solver_parameters
