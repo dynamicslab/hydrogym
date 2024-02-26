@@ -1,8 +1,9 @@
 import firedrake as fd
-from ufl import div, dot, ds, dx, grad, inner, lhs, nabla_grad, rhs, sym
+from ufl import div, dot, dx, grad, inner, lhs, nabla_grad, rhs, sym
 
 from ..flow import FlowConfig
 from .base import NavierStokesTransientSolver
+from .stabilization import ns_stabilization
 
 _alpha_BDF = [1.0, 3.0 / 2.0, 11.0 / 6.0]
 _beta_BDF = [
@@ -24,10 +25,19 @@ class SemiImplicitBDF(NavierStokesTransientSolver):
         dt: float = None,
         order: int = 3,
         stabilization: str = "none",
+        rtol=1e-6,
         **kwargs,
     ):
         self.k = order  # Order of the BDF/EXT scheme
         self.stabilization = stabilization
+        self.ksp_rtol = rtol  # Krylov solver tolerance
+
+        if stabilization not in ns_stabilization:
+            raise ValueError(
+                f"Stabilization type {stabilization} not recognized. "
+                f"Available options: {ns_stabilization.keys()}"
+            )
+        self.StabilizationType = ns_stabilization[stabilization]
 
         super().__init__(flow, dt, **kwargs)
         self.reset()
@@ -69,7 +79,6 @@ class SemiImplicitBDF(NavierStokesTransientSolver):
         u_t = (alpha_k * u - u_BDF) / h  # BDF estimate of time derivative
 
         # Semi-implicit weak form
-        nu = flow.nu
         weak_form = (
             dot(u_t, v) * dx
             + dot(dot(w, nabla_grad(u)), v) * dx
@@ -78,61 +87,17 @@ class SemiImplicitBDF(NavierStokesTransientSolver):
             - dot(self.eta * self.f, v) * dx
         )
 
-        # Stabilization parameters
-        constant_defn = "alfi"
-        h = fd.CellSize(flow.mesh)
-
-        if constant_defn == "wikipedia":
-            # https://en.wikipedia.org/wiki/Streamline_upwind_Petrov%E2%80%93Galerkin_pressure-stabilizing_Petrov%E2%80%93Galerkin_formulation_for_incompressible_Navier%E2%80%93Stokes_equations
-            C_k = 60 * 2 ** (flow.velocity_order - 2)
-            sigma_BDF = self.k
-            tau_M = (
-                (dot(w, w) / (h**2))
-                + C_k * (nu / h**2) ** 2
-                + (sigma_BDF / self.dt) ** 2
-            ) ** (-0.5)
-
-        elif constant_defn == "varmint":
-            # https://github.com/david-kamensky/VarMINT/blob/master/VarMINT.py
-            # C_I = 3.0  # Also sometimes 6.0 * flow.velocity_order ** 4
-            C_k = 6.0 * flow.velocity_order**4
-            tau_M = (
-                (dot(w, w) / (h**2))
-                + C_k * (nu / h**2) ** 2
-                + 4.0 * (1 / self.dt) ** 2
-            ) ** (-0.5)
-
-        elif constant_defn == "alfi":
-            # https://github.com/florianwechsung/alfi/blob/master/alfi/stabilisation.py
-            tau_M = (
-                (4.0 * dot(w, w) / (h**2))
-                + 9.0 * (4.0 * nu / h**2) ** 2
-                + 4.0 / (self.dt ** 2)
-            ) ** (-0.5)
-
-        #
-        # Stabilization
-        #
-
-        # Strong momentum residual
-        Lu = u_t + dot(w, nabla_grad(u)) - div(flow.sigma(u, p)) - self.eta * self.f
-
-        if self.stabilization == "supg":
-            Lv = dot(grad(v), w)
-            weak_form += tau_M * inner(Lu, Lv) * dx
-
-            # LSIC (continuity residual)
-            tau_C = h**2 / tau_M
-            weak_form += tau_C * inner(div(u), div(v)) * dx
-
-        elif self.stabilization == "gls":
-            Lv = dot(w, grad(v)) - div(flow.sigma(v, s))
-
-            weak_form += tau_M * inner(Lu, Lv) * dx
-
-            # LSIC
-            tau_C = h**2 / tau_M
-            weak_form += tau_C * inner(div(u), div(v)) * dx
+        # Stabilization (SUPG, GLS, etc.)
+        stab = self.StabilizationType(
+            flow,
+            self.q_trial,
+            self.q_test,
+            wind=w,
+            dt=self.dt,
+            u_t=u_t,
+            f=self.eta * self.f,
+        )
+        weak_form = stab.stabilize(weak_form)
 
         # Construct variational problem and PETSc solver
         q = self.flow.q
@@ -141,13 +106,11 @@ class SemiImplicitBDF(NavierStokesTransientSolver):
         bcs = self.flow.collect_bcs()
         bdf_prob = fd.LinearVariationalProblem(a, L, q, bcs=bcs)
 
-        # TODO: Set preconditioning via config
-
         # Schur complement preconditioner. See:
         # https://www.firedrakeproject.org/demos/saddle_point_systems.py.html
         solver_parameters = {
             "ksp_type": "fgmres",
-            "ksp_rtol": 1e-6,
+            "ksp_rtol": self.ksp_rtol,
             "pc_type": "fieldsplit",
             "pc_fieldsplit_type": "schur",
             "pc_fieldsplit_schur_fact_type": "full",
@@ -161,19 +124,6 @@ class SemiImplicitBDF(NavierStokesTransientSolver):
             "fieldsplit_1_ksp_type": "preonly",
             "fieldsplit_1_pc_type": "hypre",
         }
-
-        # # GMRES with default preconditioner
-        # solver_parameters = {
-        #     "ksp_type": "gmres",
-        #     "ksp_rtol": 1e-6,
-        # }
-
-        # # Direct LU solver
-        # solver_parameters = {
-        #     "ksp_type": "preonly",
-        #     "pc_type": "lu",
-        #     "pc_factor_mat_solver_type": "mumps",
-        # }
 
         petsc_solver = fd.LinearVariationalSolver(
             bdf_prob, solver_parameters=solver_parameters

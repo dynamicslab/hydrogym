@@ -30,7 +30,7 @@ Tf = 1.0
 
 method = "BDF"
 stabilization = "gls"
-dt = 5e-3
+dt = 1e-2
 
 
 def log_postprocess(flow):
