@@ -48,6 +48,10 @@ class SemiImplicitBDF(NavierStokesTransientSolver):
 
         self.u_prev = [q.subfunctions[0] for q in q_prev]
 
+        # Assign the current solution to all `u_prev`
+        for u in self.u_prev:
+            u.assign(flow.q.subfunctions[0])
+
     def _make_order_k_solver(self, k):
         # Setup functions and spaces
         flow = self.flow
