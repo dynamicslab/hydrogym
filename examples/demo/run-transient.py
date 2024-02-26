@@ -15,8 +15,8 @@ flow = hgym.Cylinder(
 )
 
 # Time step
-Tf = 300.0
-dt = 0.05
+Tf = 1.0
+dt = 0.1
 
 
 def log_postprocess(flow):

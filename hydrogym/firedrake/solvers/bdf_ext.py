@@ -74,32 +74,53 @@ class SemiImplicitBDF(NavierStokesTransientSolver):
             - dot(self.eta * self.f, v) * dx
         )
 
-        # # Stabilization
-        if self.stabilization == "supg":
-            # Residual (TODO: Use grad(sigma(u, p))) instead of -nu * div(sym(grad(u))) + grad(p)
-            Lu = (
-                u_t
-                - nu * div(2 * sym(grad(u)))
-                + dot(w, grad(u))
-                + grad(p)
-                - self.eta * self.f
-            )
-            # Lv = -nu * div(2*sym(grad(v))) + dot(w, grad(v)) + grad(s)
-            Lv = dot(grad(v), w)
+        # Stabilization parameters
+        constant_defn = "alfi"
+        h = fd.CellSize(flow.mesh)
 
-            h = fd.CellSize(flow.mesh)
-            # Ck = 60 * 2 ** (flow.velocity_order - 2)
-            # sigma_BDF = self.k
+        if constant_defn == "wikipedia":
+            # https://en.wikipedia.org/wiki/Streamline_upwind_Petrov%E2%80%93Galerkin_pressure-stabilizing_Petrov%E2%80%93Galerkin_formulation_for_incompressible_Navier%E2%80%93Stokes_equations
+            C_k = 60 * 2 ** (flow.velocity_order - 2)
+            sigma_BDF = self.k
+            tau_M = (
+                (dot(w, w) / (h**2))
+                + C_k * (nu / h**2) ** 2
+                + (sigma_BDF / self.dt) ** 2
+            ) ** (-0.5)
+
+        elif constant_defn == "varmint":
+            # https://github.com/david-kamensky/VarMINT/blob/master/VarMINT.py
+            # C_I = 3.0  # Also sometimes 6.0 * flow.velocity_order ** 4
+            C_k = 6.0 * flow.velocity_order**4
+            tau_M = (
+                (dot(w, w) / (h**2))
+                + C_k * (nu / h**2) ** 2
+                + 4.0 * (1 / self.dt) ** 2
+            ) ** (-0.5)
+
+        elif constant_defn == "alfi":
+            # https://github.com/florianwechsung/alfi/blob/master/alfi/stabilisation.py
             tau_M = (
                 (4.0 * dot(w, w) / (h**2))
                 + 9.0 * (4.0 * nu / h**2) ** 2
-                + 4.0 / self.dt**2  # TODO: What should the constant here be?
+                + 4.0 * (1 / self.dt) ** 2
             ) ** (-0.5)
+
+        # Stabilization
+        if self.stabilization == "supg":
+            # Strong momentum residual
+            Lu = u_t + dot(w, nabla_grad(u)) - div(flow.sigma(u, p)) - self.eta * self.f
+            # Lv = -nu * div(2*sym(grad(v))) + dot(w, grad(v)) + grad(s)
+            Lv = dot(grad(v), w)
+
             weak_form += tau_M * inner(Lu, Lv) * dx
 
-            # LSIC
+            # LSIC (continuity residual)
             tau_C = h**2 / tau_M
             weak_form += tau_C * inner(div(u), div(v)) * dx
+
+        elif self.stabilization == "gls":
+            raise NotImplementedError("GLS stabilization not implemented")
 
         # Construct variational problem and PETSc solver
         q = self.flow.q
@@ -110,24 +131,24 @@ class SemiImplicitBDF(NavierStokesTransientSolver):
 
         # TODO: Set preconditioning via config
 
-        # Schur complement preconditioner. See:
-        # https://www.firedrakeproject.org/demos/saddle_point_systems.py.html
-        solver_parameters = {
-            "ksp_type": "fgmres",
-            "ksp_rtol": 1e-6,
-            "pc_type": "fieldsplit",
-            "pc_fieldsplit_type": "schur",
-            "pc_fieldsplit_schur_fact_type": "full",
-            "pc_fieldsplit_schur_precondition": "selfp",
-            #
-            # Default preconditioner for inv(A)
-            #   (ilu in serial, bjacobi in parallel)
-            "fieldsplit_0_ksp_type": "preonly",
-            #
-            # Single multigrid cycle preconditioner for inv(S)
-            "fieldsplit_1_ksp_type": "preonly",
-            "fieldsplit_1_pc_type": "hypre",
-        }
+        # # Schur complement preconditioner. See:
+        # # https://www.firedrakeproject.org/demos/saddle_point_systems.py.html
+        # solver_parameters = {
+        #     "ksp_type": "fgmres",
+        #     "ksp_rtol": 1e-6,
+        #     "pc_type": "fieldsplit",
+        #     "pc_fieldsplit_type": "schur",
+        #     "pc_fieldsplit_schur_fact_type": "full",
+        #     "pc_fieldsplit_schur_precondition": "selfp",
+        #     #
+        #     # Default preconditioner for inv(A)
+        #     #   (ilu in serial, bjacobi in parallel)
+        #     "fieldsplit_0_ksp_type": "preonly",
+        #     #
+        #     # Single multigrid cycle preconditioner for inv(S)
+        #     "fieldsplit_1_ksp_type": "preonly",
+        #     "fieldsplit_1_pc_type": "hypre",
+        # }
 
         # # GMRES with default preconditioner
         # solver_parameters = {
