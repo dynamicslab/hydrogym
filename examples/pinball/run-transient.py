@@ -8,7 +8,12 @@ pvd_out = None
 restart = None
 checkpoint = "checkpoint.h5"
 
-flow = hgym.Pinball(Re=30, restart=restart, mesh="fine")
+flow = hgym.Pinball(
+    Re=30,
+    restart=restart,
+    mesh="fine",
+    velocity_order=1,
+)
 
 # Time step
 Tf = 1.0
@@ -19,6 +24,7 @@ Tf = 1.0
 
 # user time: 0:50 (fine), 0:07 (coarse)
 method = "BDF"
+stabilization = "gls"
 dt = 0.1
 
 
@@ -57,4 +63,5 @@ hgym.integrate(
     # controller=controller,
     callbacks=callbacks,
     method=method,
+    stabilization=stabilization,
 )
