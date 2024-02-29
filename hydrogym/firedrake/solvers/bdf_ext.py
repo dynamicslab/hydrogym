@@ -24,14 +24,17 @@ class SemiImplicitBDF(NavierStokesTransientSolver):
         flow: FlowConfig,
         dt: float = None,
         order: int = 3,
-        stabilization: str = "none",
+        stabilization: str = "default",
         rtol=1e-6,
         **kwargs,
     ):
         self.k = order  # Order of the BDF/EXT scheme
-        self.stabilization = stabilization
         self.ksp_rtol = rtol  # Krylov solver tolerance
 
+        if stabilization == "default":
+            stabilization = flow.DEFAULT_STABILIZATION
+
+        self.stabilization = stabilization
         if stabilization not in ns_stabilization:
             raise ValueError(
                 f"Stabilization type {stabilization} not recognized. "

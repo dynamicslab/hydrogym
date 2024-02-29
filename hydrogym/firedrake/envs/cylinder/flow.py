@@ -16,6 +16,8 @@ class Cylinder(FlowConfig):
     DEFAULT_REYNOLDS = 100
     DEFAULT_MESH = "medium"
     DEFAULT_DT = 1e-2
+    DEFAULT_VELOCITY_ORDER = 1
+    DEFAULT_STABILIZATION = "gls"
 
     OBS_DIM = 2
     MAX_CONTROL = 0.5 * np.pi

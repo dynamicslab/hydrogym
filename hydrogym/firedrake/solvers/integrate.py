@@ -9,9 +9,7 @@ METHODS = {
 }
 
 
-def integrate(
-    flow, t_span, dt, method="IPCS", callbacks=[], controller=None, **options
-):
+def integrate(flow, t_span, dt, method="BDF", callbacks=[], controller=None, **options):
     if method not in METHODS:
         raise ValueError(f"`method` must be one of {METHODS.keys()}")
 

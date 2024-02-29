@@ -16,6 +16,8 @@ class Pinball(FlowConfig):
     DEFAULT_REYNOLDS = 30
     DEFAULT_MESH = "fine"
     DEFAULT_DT = 1e-2
+    DEFAULT_VELOCITY_ORDER = 1
+    DEFAULT_STABILIZATION = "gls"
 
     FLUID = 1
     INLET = 2

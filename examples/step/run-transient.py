@@ -13,7 +13,6 @@ flow = hgym.Step(
     Re=Re,
     mesh=mesh_resolution,
     restart=restart,
-    velocity_order=1,
 )
 
 # Store base flow for computing TKE
@@ -23,10 +22,6 @@ dof = flow.mixed_space.dim()
 hgym.print(f"Total dof: {dof} --- dof/rank: {int(dof/fd.COMM_WORLD.size)}")
 
 tf = 1.0
-
-# method = "IPCS"
-# dt = 1e-3
-
 method = "BDF"
 stabilization = "gls"
 dt = 0.01
@@ -51,11 +46,10 @@ callbacks = [
         postprocess=log_postprocess,
         nvals=4,
         interval=interval,
-        filename=f"{output_dir}/{method}_stats.dat",
+        filename=f"{output_dir}/stats.dat",
         print_fmt=print_fmt,
     ),
 ]
-
 
 hgym.integrate(
     flow,

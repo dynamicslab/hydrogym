@@ -12,20 +12,7 @@ flow = hgym.Pinball(
     Re=30,
     restart=restart,
     mesh="fine",
-    velocity_order=1,
 )
-
-# Time step
-Tf = 1.0
-
-# # user time: 2:24 (fine), 0:26 (coarse)
-# method = "IPCS"
-# dt = 1e-2
-
-# user time: 0:50 (fine), 0:07 (coarse)
-method = "BDF"
-stabilization = "gls"
-dt = 0.1
 
 
 def log_postprocess(flow):
@@ -55,13 +42,19 @@ def controller(t, obs):
     return np.array([0.0, 1.0, 1.0])
 
 
+# Simulation config
+Tf = 1.0
+method = "BDF"
+stabilization = "gls"
+dt = 0.1
+
 hgym.print("Beginning integration")
 hgym.integrate(
     flow,
     t_span=(0, Tf),
     dt=dt,
-    # controller=controller,
     callbacks=callbacks,
     method=method,
     stabilization=stabilization,
+    # controller=controller,
 )

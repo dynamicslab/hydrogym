@@ -11,7 +11,6 @@ flow = hgym.Cylinder(
     Re=100,
     restart=restart,
     mesh="medium",
-    velocity_order=1,
 )
 
 # Time step
@@ -51,7 +50,5 @@ hgym.integrate(
     t_span=(0, Tf),
     dt=dt,
     callbacks=callbacks,
-    method="BDF",
-    stabilization="gls",
     # controller=controller,
 )

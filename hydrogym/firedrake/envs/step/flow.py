@@ -11,6 +11,8 @@ class Step(FlowConfig):
     DEFAULT_REYNOLDS = 500
     DEFAULT_MESH = "fine"
     DEFAULT_DT = 1e-4
+    DEFAULT_VELOCITY_ORDER = 1
+    DEFAULT_STABILIZATION = "gls"
 
     FUNCTIONS = ("q", "qB")  # This flow needs a base flow to compute fluctuation KE
 
