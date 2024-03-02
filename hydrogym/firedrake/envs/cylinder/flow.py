@@ -13,13 +13,12 @@ from hydrogym.firedrake import FlowConfig, ScaledDirichletBC
 
 __all__ = ["Cylinder", "RotaryCylinder"]
 
-__all__ = ["Cylinder", "RotaryCylinder"]
-
 
 class CylinderBase(FlowConfig):
     DEFAULT_REYNOLDS = 100
     DEFAULT_MESH = "medium"
-    DEFAULT_DT = 1e-2
+    DEFAULT_VELOCITY_ORDER = 1
+    DEFAULT_STABILIZATION = "gls"
 
     OBS_DIM = 2
     # TAU = 0.556  # Time constant for controller damping (0.1*vortex shedding period)
@@ -175,7 +174,7 @@ class CylinderBase(FlowConfig):
 
 class RotaryCylinder(CylinderBase):
     MAX_CONTROL = 0.5 * np.pi
-    DEFAULT_DT = 1e-2
+    DEFAULT_DT = 1e-1
 
     @property
     def cyl_velocity_field(self):
