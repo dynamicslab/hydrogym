@@ -1,7 +1,9 @@
+import abc
 from typing import Any, Callable, Iterable, Tuple, TypeVar, Union
 
 import gym
 import numpy as np
+from numpy.typing import ArrayLike
 
 
 class ActuatorBase:
@@ -21,7 +23,7 @@ class ActuatorBase:
         raise NotImplementedError
 
 
-class PDEBase:
+class PDEBase(metaclass=abc.ABCMeta):
     """
     Basic configuration of the state of the PDE model
 
@@ -30,8 +32,6 @@ class PDEBase:
     any information about solving the time-varying equations
     """
 
-    ACT_DIM = 1  # Number of actuators/actions
-    OBS_DIM = 1  # Number of actuators/actions
     MAX_CONTROL = np.inf
     DEFAULT_MESH = ""
     DEFAULT_DT = np.inf
@@ -40,9 +40,6 @@ class PDEBase:
     #  (should be less than any meaningful timescale of the system)
     TAU = 0.0
 
-    ScalarType = float
-    ActType = ScalarType
-    ObsType = ScalarType
     StateType = TypeVar("StateType")
     MeshType = TypeVar("MeshType")
     BCType = TypeVar("BCType")
@@ -56,14 +53,29 @@ class PDEBase:
         if config.get("restart"):
             self.load_checkpoint(config["restart"])
 
+    @property
+    @abc.abstractmethod
+    def num_inputs(self) -> int:
+        """Length of the control vector (number of actuators)"""
+        pass
+
+    @property
+    @abc.abstractmethod
+    def num_outputs(self) -> int:
+        """Number of scalar observed variables"""
+        pass
+
+    @abc.abstractmethod
     def load_mesh(self, name: str) -> MeshType:
         """Load mesh from the file `name`"""
-        raise NotImplementedError
+        pass
 
+    @abc.abstractmethod
     def initialize_state(self):
         """Set up mesh, function spaces, state vector, etc"""
-        raise NotImplementedError
+        pass
 
+    @abc.abstractmethod
     def init_bcs(self, mixed: bool = False):
         """Initialize any boundary conditions for the PDE.
 
@@ -71,7 +83,7 @@ class PDEBase:
             mixed (bool, optional): determines a monolithic vs segregated formulation
                 (may not always be necessary). Defaults to False.
         """
-        raise NotImplementedError
+        pass
 
     def set_state(self, q: StateType):
         """Set the current state fields
@@ -88,9 +100,10 @@ class PDEBase:
         """Return current state field(s) of the PDE"""
         return self.q
 
+    @abc.abstractmethod
     def copy_state(self, deepcopy=True):
         """Return a copy of the flow state"""
-        raise NotImplementedError
+        pass
 
     def reset(self, q0: StateType = None):
         """Reset the PDE to an initial state
@@ -117,24 +130,28 @@ class PDEBase:
                 (see `init_bcs`). Defaults to False.
 
         """
-        self.actuators = [ActuatorBase() for _ in range(self.ACT_DIM)]
+        self.actuators = [ActuatorBase() for _ in range(self.num_inputs)]
         self.init_bcs(mixed=mixed)
 
     def collect_bcs(self) -> Iterable[BCType]:
         """Return the set of boundary conditions"""
         return []
 
+    @abc.abstractmethod
     def save_checkpoint(self, filename: str):
-        raise NotImplementedError
+        pass
 
+    @abc.abstractmethod
     def load_checkpoint(self, filename: str):
-        raise NotImplementedError
+        pass
 
-    def get_observations(self) -> Iterable[ObsType]:
+    @abc.abstractmethod
+    def get_observations(self) -> Iterable[ArrayLike]:
         """Return the set of measurements/observations"""
-        raise NotImplementedError
+        pass
 
-    def evaluate_objective(self, q: StateType = None) -> ScalarType:
+    @abc.abstractmethod
+    def evaluate_objective(self, q: StateType = None) -> ArrayLike:
         """Return the objective function to be minimized
 
         Args:
@@ -143,9 +160,9 @@ class PDEBase:
                 the current PDE state. Defaults to None.
 
         Returns:
-            ScalarType: objective function (negative of reward)
+            ArrayLike: objective function (negative of reward)
         """
-        raise NotImplementedError
+        pass
 
     def enlist(self, x: Any) -> Iterable[Any]:
         """Convert scalar or array-like to a list"""
@@ -154,17 +171,19 @@ class PDEBase:
         return list(x)
 
     @property
-    def control_state(self) -> Iterable[ActType]:
+    def control_state(self) -> Iterable[ArrayLike]:
         return [a.state for a in self.actuators]
 
-    def set_control(self, act: ActType = None):
+    def set_control(self, act: ArrayLike = None):
         """Directly set the control state"""
         if act is None:
-            act = np.zeros(self.ACT_DIM)
+            act = np.zeros(self.num_inputs)
         for i, u in enumerate(self.enlist(act)):
             self.actuators[i].state = u
 
-    def update_actuators(self, act: Iterable[ActType], dt: float) -> Iterable[ActType]:
+    def update_actuators(
+        self, act: Iterable[ArrayLike], dt: float
+    ) -> Iterable[ArrayLike]:
         """Update the current controls state.
 
         May involve integrating a dynamics model rather than
@@ -173,14 +192,14 @@ class PDEBase:
             `du/dt = (1/tau)*(v - u)`
 
         Args:
-            act (Iterable[ActType]): Action inputs
+            act (Iterable[ArrayLike]): Action inputs
             dt (float): Time step
 
         Returns:
-            Iterable[ActType]: Updated actuator state
+            Iterable[ArrayLike]: Updated actuator state
         """
         act = self.enlist(act)
-        assert len(act) == self.ACT_DIM
+        assert len(act) == self.num_inputs
 
         for i, u in enumerate(act):
             self.actuators[i].step(u, dt)
@@ -191,9 +210,10 @@ class PDEBase:
         """Inner product between states q1 and q2"""
         return np.dot(q1, q2)
 
+    @abc.abstractmethod
     def render(self, **kwargs):
         """Plot the current PDE state (called by `gym.Env`)"""
-        raise NotImplementedError
+        pass
 
 
 '''
@@ -322,29 +342,29 @@ class FlowEnv(gym.Env):
         self.observation_space = gym.spaces.Box(
             low=-np.inf,
             high=np.inf,
-            shape=(self.flow.OBS_DIM,),
-            dtype=PDEBase.ScalarType,
+            shape=(self.flow.num_outputs,),
+            dtype=float,
         )
         self.action_space = gym.spaces.Box(
             low=-self.flow.MAX_CONTROL,
             high=self.flow.MAX_CONTROL,
-            shape=(self.flow.ACT_DIM,),
-            dtype=self.flow.ScalarType,
+            shape=(self.flow.num_inputs,),
+            dtype=float,
         )
 
     def set_callbacks(self, callbacks: Iterable[CallbackBase]):
         self.callbacks = callbacks
 
     def step(
-        self, action: Iterable[PDEBase.ActType] = None
-    ) -> Tuple[PDEBase.ObsType, float, bool, dict]:
+        self, action: Iterable[ArrayLike] = None
+    ) -> Tuple[ArrayLike, float, bool, dict]:
         """Advance the state of the environment.  See gym.Env documentation
 
         Args:
-            action (Iterable[ActType], optional): Control inputs. Defaults to None.
+            action (Iterable[ArrayLike], optional): Control inputs. Defaults to None.
 
         Returns:
-            Tuple[ObsType, float, bool, dict]: obs, reward, done, info
+            Tuple[ArrayLike, float, bool, dict]: obs, reward, done, info
         """
         self.solver.step(self.iter, control=action)
         self.iter += 1
@@ -372,7 +392,7 @@ class FlowEnv(gym.Env):
     def check_complete(self):
         return self.iter > self.max_steps
 
-    def reset(self) -> Union[PDEBase.ObsType, Tuple[PDEBase.ObsType, dict]]:
+    def reset(self) -> Union[ArrayLike, Tuple[ArrayLike, dict]]:
         self.iter = 0
         self.flow.reset(q0=self.q0)
         self.solver.reset()

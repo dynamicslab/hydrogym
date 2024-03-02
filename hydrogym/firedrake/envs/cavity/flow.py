@@ -31,6 +31,14 @@ class Cavity(FlowConfig):
 
     MESH_DIR = os.path.abspath(f"{__file__}/..")
 
+    @property
+    def num_inputs(self) -> int:
+        return 1  # Blowing/suction on leading edge
+
+    @property
+    def num_outputs(self) -> int:
+        return 1  # Shear stress on trailing edge
+
     def init_bcs(self, mixed=False):
         V, Q = self.function_spaces(mixed=mixed)
 

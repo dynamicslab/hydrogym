@@ -29,6 +29,14 @@ class Step(FlowConfig):
     MESH_DIR = os.path.abspath(f"{__file__}/..")
 
     @property
+    def num_inputs(self) -> int:
+        return 1  # Blowing/suction on edge of step
+
+    @property
+    def num_outputs(self) -> int:
+        return 1  # Shear stress on downstream wall
+
+    @property
     def nu(self):
         return fd.Constant(0.5 / ufl.real(self.Re))
 
