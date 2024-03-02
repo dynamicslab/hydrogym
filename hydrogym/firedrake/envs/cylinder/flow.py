@@ -1,5 +1,4 @@
 import os
-from typing import Iterable
 
 import firedrake as fd
 import matplotlib.pyplot as plt
@@ -11,9 +10,11 @@ from ufl import as_vector, atan2, cos, dot, sign, sin, sqrt
 
 from hydrogym.firedrake import FlowConfig, ScaledDirichletBC
 
-__all__ = ["Cylinder", "RotaryCylinder"]
-
-__all__ = ["Cylinder", "RotaryCylinder"]
+# Velocity probes
+xp = np.linspace(1.0, 10.0, 16)
+yp = np.linspace(-2.0, 2.0, 4)
+X, Y = np.meshgrid(xp, yp)
+probes = [(x, y) for x, y in zip(X.ravel(), Y.ravel())]
 
 
 class CylinderBase(FlowConfig):
@@ -21,7 +22,7 @@ class CylinderBase(FlowConfig):
     DEFAULT_MESH = "medium"
     DEFAULT_DT = 1e-2
 
-    OBS_DIM = 2
+    MAX_CONTROL = 0.5 * np.pi
     # TAU = 0.556  # Time constant for controller damping (0.1*vortex shedding period)
     TAU = 0.0556  # Time constant for controller damping (0.01*vortex shedding period)
 
@@ -33,6 +34,29 @@ class CylinderBase(FlowConfig):
     CYLINDER = 5
 
     MESH_DIR = os.path.abspath(f"{__file__}/..")
+
+    @property
+    def num_inputs(self) -> int:
+        return 1  # Rotary control
+
+    @property
+    def num_outputs(self) -> int:
+        # This may be lift/drag or a grid of velocity probes
+        return self._num_outputs
+
+    def __init__(self, **config):
+        obs_type = config.pop("observation_type", "lift_drag")
+        supported_obs_types = {
+            "lift_drag": (2, self.compute_forces),
+            "velocity_probes": (2 * len(probes), self.velocity_probe),
+        }
+
+        if obs_type not in supported_obs_types:
+            raise ValueError(f"Invalid observation type {obs_type}")
+
+        self._num_outputs, self._get_observations = supported_obs_types[obs_type]
+
+        super().__init__(**config)
 
     def init_bcs(self, mixed=False):
         V, Q = self.function_spaces(mixed=mixed)
@@ -57,13 +81,13 @@ class CylinderBase(FlowConfig):
         """Velocity vector for boundary condition"""
         raise NotImplementedError
 
-    def collect_bcu(self) -> Iterable[fd.DirichletBC]:
+    def collect_bcu(self) -> list[fd.DirichletBC]:
         return [self.bcu_inflow, self.bcu_freestream, *self.bcu_actuation]
 
-    def collect_bcp(self) -> Iterable[fd.DirichletBC]:
+    def collect_bcp(self) -> list[fd.DirichletBC]:
         return [self.bcp_outflow]
 
-    def compute_forces(self, q: fd.Function = None) -> Iterable[float]:
+    def compute_forces(self, q: fd.Function = None) -> tuple[float]:
         """Compute dimensionless lift/drag coefficients on cylinder
 
         Args:
@@ -81,6 +105,10 @@ class CylinderBase(FlowConfig):
         CL = fd.assemble(2 * force[1] * ds(self.CYLINDER))
         CD = fd.assemble(2 * force[0] * ds(self.CYLINDER))
         return CL, CD
+
+    def velocity_probe(self, q: fd.Function = None) -> float:
+        """Probe velocity in the wake"""
+        pass
 
     # get net shear force acting tangential to the surface of the cylinder
     def shear_force(self, q: fd.Function = None) -> float:
@@ -145,8 +173,8 @@ class CylinderBase(FlowConfig):
         self.bcu_inflow.set_value(fd.Constant((0, 0)))
         self.bcu_freestream.set_value(fd.Constant(0.0))
 
-    def get_observations(self) -> Iterable[FlowConfig.ObsType]:
-        return self.compute_forces()
+    def get_observations(self) -> tuple[float]:
+        return self._get_observations()
 
     def evaluate_objective(self, q: fd.Function = None) -> float:
         """The objective function for this flow is the drag coefficient"""

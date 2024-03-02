@@ -27,8 +27,6 @@ class Pinball(FlowConfig):
     x0 = [0.0, rad * 1.5 * 1.866, rad * 1.5 * 1.866]
     y0 = [0.0, 1.5 * rad, -1.5 * rad]
 
-    ACT_DIM = len(CYLINDER)
-    OBS_DIM = 2 * len(CYLINDER)  # [CL, CD] for each cyliner
     MAX_CONTROL = 0.5 * np.pi
     TAU = 1.0  # TODO: Tune this based on vortex shedding period
 
@@ -61,6 +59,14 @@ class Pinball(FlowConfig):
             self.bcu_actuation.append(ScaledDirichletBC(V, u_bc, sub_domain))
 
         self.set_control(self.control_state)
+
+    @property
+    def num_inputs(self) -> int:
+        return len(self.CYLINDER)
+
+    @property
+    def num_outputs(self) -> int:
+        return 2 * len(self.CYLINDER)  # [CL, CD] for each cyliner
 
     def collect_bcu(self) -> Iterable[fd.DirichletBC]:
         return [self.bcu_inflow, self.bcu_freestream, *self.bcu_actuation]

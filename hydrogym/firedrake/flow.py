@@ -7,6 +7,7 @@ import ufl
 from firedrake import dx, logging
 from firedrake.__future__ import interpolate
 from mpi4py import MPI
+from numpy.typing import ArrayLike
 from ufl import curl, dot, inner, nabla_grad, sqrt, sym
 
 from ..core import ActuatorBase, PDEBase
@@ -31,10 +32,6 @@ class FlowConfig(PDEBase):
     MESH_DIR = ""
 
     FUNCTIONS = ("q",)  # tuple of functions necessary for the flow
-
-    ScalarType = fd.utils.ScalarType
-    ActType = fd.Constant
-    ObsType = float
 
     def __init__(self, velocity_order=None, **config):
         self.Re = fd.Constant(ufl.real(config.get("Re", self.DEFAULT_REYNOLDS)))
@@ -78,7 +75,7 @@ class FlowConfig(PDEBase):
 
             if chk.has_attr("/", "act_state"):
                 act_state = chk.get_attr("/", "act_state")
-                for i in range(self.ACT_DIM):
+                for i in range(self.num_inputs):
                     self.actuators[i].state = act_state[i]
 
         self.split_solution()  # Reset functions so self.u, self.p point to the new solution
@@ -135,7 +132,7 @@ class FlowConfig(PDEBase):
 
         TODO: Allow for different kinds of actuators
         """
-        self.actuators = [self.create_actuator() for _ in range(self.ACT_DIM)]
+        self.actuators = [self.create_actuator() for _ in range(self.num_inputs)]
         self.init_bcs(mixed=mixed)
 
     @property
@@ -220,7 +217,7 @@ class FlowConfig(PDEBase):
         """Sets the boundary conditions appropriately for linearized flow"""
         raise NotImplementedError
 
-    def set_control(self, act: ActType = None):
+    def set_control(self, act: ArrayLike = None):
         """
         Directly sets the control state
 
@@ -233,7 +230,7 @@ class FlowConfig(PDEBase):
             super().set_control(act)
 
             if hasattr(self, "bcu_actuation"):
-                for i in range(self.ACT_DIM):
+                for i in range(self.num_inputs):
                     u = np.clip(
                         self.actuators[i].state, -self.MAX_CONTROL, self.MAX_CONTROL
                     )

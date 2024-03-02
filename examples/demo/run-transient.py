@@ -7,15 +7,24 @@ pvd_out = None
 restart = None
 checkpoint = "checkpoint.h5"
 
+velocity_order = 2
+stabilization = "none"
+
+# This uses Taylor-Hood elements for smooth vorticity visualizations. Use linear
+# for better performance). Uncomment the following lines (these are also the defaults):
+# velocity_order = 1
+# stabilization = "gls"
+
 flow = hgym.Cylinder(
     Re=100,
     restart=restart,
     mesh="medium",
+    velocity_order=velocity_order,
 )
 
 # Time step
-Tf = 1.0
-dt = 0.1
+Tf = 300.0
+dt = 0.1  # Tested as high as 0.25
 
 
 def log_postprocess(flow):
@@ -36,7 +45,7 @@ log = hgym.utils.io.LogCallback(
 
 callbacks = [
     log,
-    # hgym.utils.io.CheckpointCallback(interval=10, filename=checkpoint),
+    hgym.utils.io.CheckpointCallback(interval=100, filename=checkpoint),
 ]
 
 
@@ -50,5 +59,6 @@ hgym.integrate(
     t_span=(0, Tf),
     dt=dt,
     callbacks=callbacks,
+    stabilization=stabilization,
     # controller=controller,
 )
