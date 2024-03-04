@@ -17,8 +17,7 @@ __all__ = ["Cylinder", "RotaryCylinder"]
 class CylinderBase(FlowConfig):
     DEFAULT_REYNOLDS = 100
     DEFAULT_MESH = "medium"
-    DEFAULT_VELOCITY_ORDER = 1
-    DEFAULT_STABILIZATION = "gls"
+    DEFAULT_DT = 1e-2
 
     OBS_DIM = 2
     # TAU = 0.556  # Time constant for controller damping (0.1*vortex shedding period)
