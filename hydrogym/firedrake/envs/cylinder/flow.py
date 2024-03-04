@@ -13,6 +13,8 @@ from hydrogym.firedrake import FlowConfig, ScaledDirichletBC
 
 __all__ = ["Cylinder", "RotaryCylinder"]
 
+__all__ = ["Cylinder", "RotaryCylinder"]
+
 
 class CylinderBase(FlowConfig):
     DEFAULT_REYNOLDS = 100
