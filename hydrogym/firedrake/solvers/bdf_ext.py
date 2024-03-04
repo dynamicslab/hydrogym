@@ -1,8 +1,9 @@
 import firedrake as fd
-from ufl import div, dot, ds, dx, inner, lhs, nabla_grad, rhs
+from ufl import div, dot, dx, grad, inner, lhs, nabla_grad, rhs, sym
 
 from ..flow import FlowConfig
 from .base import NavierStokesTransientSolver
+from .stabilization import ns_stabilization
 
 _alpha_BDF = [1.0, 3.0 / 2.0, 11.0 / 6.0]
 _beta_BDF = [
@@ -23,9 +24,23 @@ class SemiImplicitBDF(NavierStokesTransientSolver):
         flow: FlowConfig,
         dt: float = None,
         order: int = 3,
+        stabilization: str = "default",
+        rtol=1e-6,
         **kwargs,
     ):
         self.k = order  # Order of the BDF/EXT scheme
+        self.ksp_rtol = rtol  # Krylov solver tolerance
+
+        if stabilization == "default":
+            stabilization = flow.DEFAULT_STABILIZATION
+
+        self.stabilization = stabilization
+        if stabilization not in ns_stabilization:
+            raise ValueError(
+                f"Stabilization type {stabilization} not recognized. "
+                f"Available options: {ns_stabilization.keys()}"
+            )
+        self.StabilizationType = ns_stabilization[stabilization]
 
         super().__init__(flow, dt, **kwargs)
         self.reset()
@@ -56,25 +71,36 @@ class SemiImplicitBDF(NavierStokesTransientSolver):
         h = fd.Constant(self.dt)
 
         (u, p) = self.q_trial
-        (w, s) = self.q_test
+        (v, s) = self.q_test
 
         # Combinations of functions for form construction
         k_idx = k - 1
-        u_EXT = sum(beta * u_n for beta, u_n in zip(_beta_EXT[k_idx], self.u_prev))
+        # The "wind" w is the extrapolation estimate of u[n+1]
+        w = sum(beta * u_n for beta, u_n in zip(_beta_EXT[k_idx], self.u_prev))
         u_BDF = sum(beta * u_n for beta, u_n in zip(_beta_BDF[k_idx], self.u_prev))
         alpha_k = _alpha_BDF[k_idx]
         u_t = (alpha_k * u - u_BDF) / h  # BDF estimate of time derivative
 
         # Semi-implicit weak form
         weak_form = (
-            dot(u_t, w) * dx
-            + dot(dot(u_EXT, nabla_grad(u)), w) * dx
-            + inner(flow.sigma(u, p), flow.epsilon(w)) * dx
-            + dot(p * flow.n, w) * ds
-            - dot(flow.nu * nabla_grad(u) * flow.n, w) * ds
-            - dot(self.eta * self.f, w) * dx
+            dot(u_t, v) * dx
+            + dot(dot(w, nabla_grad(u)), v) * dx
+            + inner(flow.sigma(u, p), flow.epsilon(v)) * dx
             + dot(div(u), s) * dx
+            - dot(self.eta * self.f, v) * dx
         )
+
+        # Stabilization (SUPG, GLS, etc.)
+        stab = self.StabilizationType(
+            flow,
+            self.q_trial,
+            self.q_test,
+            wind=w,
+            dt=self.dt,
+            u_t=u_t,
+            f=self.eta * self.f,
+        )
+        weak_form = stab.stabilize(weak_form)
 
         # Construct variational problem and PETSc solver
         q = self.flow.q
@@ -87,7 +113,7 @@ class SemiImplicitBDF(NavierStokesTransientSolver):
         # https://www.firedrakeproject.org/demos/saddle_point_systems.py.html
         solver_parameters = {
             "ksp_type": "fgmres",
-            "ksp_rtol": 1e-6,
+            "ksp_rtol": self.ksp_rtol,
             "pc_type": "fieldsplit",
             "pc_fieldsplit_type": "schur",
             "pc_fieldsplit_schur_fact_type": "full",

@@ -5,15 +5,28 @@ from ufl import as_ufl, div, dot, ds, dx, inner, lhs, nabla_grad, rhs
 
 from hydrogym.core import TransientSolver
 from hydrogym.firedrake import FlowConfig
+from hydrogym.firedrake.solvers.stabilization import ns_stabilization
 from hydrogym.firedrake.utils import white_noise
 
 __all__ = ["NewtonSolver"]
 
 
 class NewtonSolver:
-    def __init__(self, flow: FlowConfig, solver_parameters: dict = {}):
+    def __init__(
+        self,
+        flow: FlowConfig,
+        stabilization: str = "none",
+        solver_parameters: dict = {},
+    ):
         self.flow = flow
         self.solver_parameters = solver_parameters
+
+        if stabilization not in ns_stabilization:
+            raise ValueError(
+                f"Stabilization type {stabilization} not recognized. "
+                f"Available options: {ns_stabilization.keys()}"
+            )
+        self.stabilization_type = ns_stabilization[stabilization]
 
     def solve(self, q: fd.Function = None):
         """Solve the steady-state problem from initial guess `q`"""
@@ -43,6 +56,14 @@ class NewtonSolver:
             + inner(self.flow.sigma(u, p), self.flow.epsilon(v)) * dx
             + inner(div(u), s) * dx
         )
+        stab = self.stabilization_type(
+            self.flow,
+            q_trial=(u, p),
+            q_test=(v, s),
+            wind=u,
+        )
+        F = stab.stabilize(F)
+
         return F
 
 

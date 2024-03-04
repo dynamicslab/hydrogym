@@ -13,6 +13,9 @@ class IPCS(NavierStokesTransientSolver):
     def initialize_functions(self):
         flow = self.flow
 
+        if flow.velocity_order < 2:
+            raise ValueError("IPCS requires at least second-order velocity elements")
+
         # Trial/test functions for linear sub-problems
         V, Q = flow.function_spaces(mixed=False)
         u = fd.TrialFunction(V)

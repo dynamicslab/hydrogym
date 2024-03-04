@@ -18,15 +18,6 @@ flow.qB.assign(flow.q)
 rng = fd.RandomGenerator(fd.PCG64(seed=1234))
 flow.q += rng.normal(flow.mixed_space, 0.0, 1e-2)
 
-# Time step
-Tf = 1.0
-
-method = "IPCS"
-dt = 2.5e-4
-
-# method = "BDF"
-# dt = 5e-3  # 12:13
-
 
 def log_postprocess(flow):
     KE = 0.5 * fd.assemble(fd.inner(flow.u, flow.u) * fd.dx)
@@ -52,6 +43,13 @@ callbacks = [
 ]
 
 
+# End time of the simulation
+Tf = 1.0
+method = "BDF"  # Time-stepping method
+stabilization = "gls"  # Stabilization method
+dt = 1e-2
+
+
 hgym.print("Beginning integration")
 hgym.integrate(
     flow,
@@ -59,4 +57,5 @@ hgym.integrate(
     dt=dt,
     callbacks=callbacks,
     method=method,
+    stabilization=stabilization,
 )

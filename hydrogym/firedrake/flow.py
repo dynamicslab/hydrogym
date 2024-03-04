@@ -25,6 +25,8 @@ class ScaledDirichletBC(fd.DirichletBC):
 
 class FlowConfig(PDEBase):
     DEFAULT_REYNOLDS = 1
+    DEFAULT_VELOCITY_ORDER = 2  # Taylor-Hood elements
+    DEFAULT_STABILIZATION = "none"
     MESH_DIR = ""
 
     FUNCTIONS = ("q",)  # tuple of functions necessary for the flow
@@ -33,8 +35,13 @@ class FlowConfig(PDEBase):
     ActType = fd.Constant
     ObsType = float
 
-    def __init__(self, **config):
+    def __init__(self, velocity_order=None, **config):
         self.Re = fd.Constant(ufl.real(config.get("Re", self.DEFAULT_REYNOLDS)))
+
+        if velocity_order is None:
+            velocity_order = self.DEFAULT_VELOCITY_ORDER
+        self.velocity_order = velocity_order
+
         super().__init__(**config)
 
     def load_mesh(self, name: str) -> ufl.Mesh:
@@ -81,7 +88,9 @@ class FlowConfig(PDEBase):
         self.x, self.y = fd.SpatialCoordinate(self.mesh)
 
         # Set up Taylor-Hood elements
-        self.velocity_space = fd.VectorFunctionSpace(self.mesh, "CG", 2)
+        self.velocity_space = fd.VectorFunctionSpace(
+            self.mesh, "CG", self.velocity_order
+        )
         self.pressure_space = fd.FunctionSpace(self.mesh, "CG", 1)
         self.mixed_space = fd.MixedFunctionSpace(
             [self.velocity_space, self.pressure_space]
