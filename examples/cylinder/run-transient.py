@@ -2,20 +2,27 @@ import psutil
 
 import hydrogym.firedrake as hgym
 
-output_dir = "."
+output_dir = "output"
 pvd_out = None
 restart = None
-checkpoint = "checkpoint.h5"
+mesh_resolution = "medium"
 
-flow = hgym.Cylinder(
+element_type = "p1p1"
+velocity_order = 1
+stabilization = "gls"
+
+checkpoint = f"{output_dir}/checkpoint_{mesh_resolution}_{element_type}.h5"
+
+flow = hgym.RotaryCylinder(
     Re=100,
     restart=restart,
-    mesh="medium",
+    mesh=mesh_resolution,
+    velocity_order=velocity_order,
 )
 
 # Time step
-Tf = 1.0
-dt = 0.1
+tf = 300.0
+dt = 0.01
 
 
 def log_postprocess(flow):
@@ -34,21 +41,18 @@ log = hgym.utils.io.LogCallback(
     filename=None,
 )
 
+interval = int(100 / dt)
 callbacks = [
     log,
-    # hgym.utils.io.CheckpointCallback(interval=10, filename=checkpoint),
+    hgym.utils.io.CheckpointCallback(interval=interval, filename=checkpoint),
 ]
-
-
-def controller(t, y):
-    return [flow.MAX_CONTROL]
 
 
 hgym.print("Beginning integration")
 hgym.integrate(
     flow,
-    t_span=(0, Tf),
+    t_span=(0, tf),
     dt=dt,
     callbacks=callbacks,
-    # controller=controller,
+    stabilization=stabilization,
 )
