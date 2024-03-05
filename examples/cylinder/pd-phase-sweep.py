@@ -37,7 +37,7 @@ callbacks = [
         nvals=3,
         interval=1,
         print_fmt="t: {0:0.2f},\t\t CL: {1:0.3f},\t\t CD: {2:0.03f},\t\t RAM: {3:0.1f}%",
-        filename=f"{output_dir}/pd-control.dat",
+        filename=f"{output_dir}/phase-sweep.dat",
     ),
 ]
 
@@ -52,13 +52,13 @@ flow = hgym.RotaryCylinder(
 
 
 omega = 1 / 5.56  # Vortex shedding frequency
-k = 2.0  # Base gain
-theta = 4.0  # Phase angle
-kp = k * np.cos(theta)
-kd = k * np.sin(theta)
+k = 0.1  # Base gain
+ctrl_time = 10 / omega  # Time for each phasor - approx 10 vortex shedding periods
+n_phase = 20
+phasors = np.linspace(0.0, 2 * np.pi, n_phase)  # Phasor angles
 
-tf = 100.0
-dt = 0.01
+tf = (n_phase + 1) * ctrl_time
+dt = 1e-2
 n_steps = int(tf // dt) + 2
 
 u = np.zeros(n_steps)  # Actuation history
@@ -66,23 +66,31 @@ x = np.zeros(n_steps)  # Actuator state
 y_raw = np.zeros(n_steps)  # Lift coefficient (unfiltered)
 y = np.zeros(n_steps)  # Lift coefficient (filtered)
 dy = np.zeros(n_steps)  # Derivative of lift coefficient
+theta = np.zeros(n_steps)
 
 CL, CD = flow.get_observations()
 y[0] = CL
 y_raw[0] = CL
 
 i = 0
-tau = 10 * flow.TAU
+tau = 0.1 / omega
 
 
 def controller(t, obs):
     global i  # FIXME: Don't use global variable here
+
     i += 1
 
-    # Turn on feedback control halfway through
-    if t > tf / 2:
-        # if t > 10:
-        u[i] = -kp * y[i - 1] - kd * dy[i - 1]
+    # Loop over phase angles for phasor control
+    # First interval is zero actuation
+    kp = 0.0
+    kd = 0.0
+    for j in range(n_phase):
+        if t > (j + 1) * ctrl_time:
+            theta[i] = phasors[j]
+            kp = k * np.cos(theta[i])
+            kd = k * np.sin(theta[i])
+            u[i] = -kp * y[i - 1] - kd * dy[i - 1]
 
     CL, CD = obs
 
@@ -100,9 +108,10 @@ def controller(t, obs):
             "u": u[:i],
             "x": x[:i],
             "CL": y_raw[:i],
+            "theta": theta[:i],
             "t": np.arange(0, i * dt, dt),
         }
-        sio.savemat(f"{output_dir}/pd-control.mat", data)
+        sio.savemat(f"{output_dir}/phase-sweep.mat", data)
 
     return u[i]
 

@@ -11,6 +11,7 @@ from ufl import curl, dot, inner, nabla_grad, sqrt, sym
 
 from ..core import ActuatorBase, PDEBase
 from .actuator import DampedActuator
+from .utils import print
 
 
 class ScaledDirichletBC(fd.DirichletBC):
