@@ -1,8 +1,12 @@
 import psutil
+import os
 
 import hydrogym.firedrake as hgym
 
 output_dir = "output"
+if not os.path.exists(output_dir):
+    os.makedirs(output_dir)
+
 pvd_out = None
 restart = None
 mesh_resolution = "medium"
