@@ -35,7 +35,6 @@ callbacks = [
     # hgym.io.ParaviewCallback(
     #     interval=10, filename=f"{output_dir}/pd-control.pvd", postprocess=compute_vort
     # ),
-    # hgym.utils.io.CheckpointCallback(interval=100, filename=checkpoint),
     hgym.io.LogCallback(
         postprocess=log_postprocess,
         nvals=3,
@@ -97,20 +96,3 @@ hgym.integrate(
     controller=controller,
     stabilization=stabilization,
 )
-
-# for i in range(1, n_steps):
-#     # Turn on feedback control halfway through
-#     if i > n_steps // 2:
-#         u[i] = -Kp * y[i - 1] - Kd * dy[i - 1]
-
-#     # Advance state and collect measurements
-#     (CL, CD), _, _, _ = env.step(u[i])
-
-#     # Low-pass filter and estimate derivative
-#     y[i] = y[i - 1] + (dt / env.flow.TAU) * (CL - y[i - 1])
-#     dy[i] = (y[i] - y[i - 1]) / dt
-
-#     hg.print(
-#         f"Step: {i:04d},\t\t CL: {y[i]:0.4f}, \t\tCL_dot: {dy[i]:0.4f},\t\tu: {u[i]:0.4f}"
-#     )
-#     sio.savemat(f"{output_dir}/pd-control.mat", {"y": y, "u": u})
