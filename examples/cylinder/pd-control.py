@@ -80,8 +80,19 @@ tau = 10 * flow.TAU
 
 # Bilinear filter coefficients for derivative
 N = 100
-a = [N*dt + 2, N*dt - 2]
-b = [2*N, -2*N]
+filter_type = "bilinear"
+if filter_type == "none":
+    a = [1, -1]
+    b = [1, 0]
+elif filter_type == "forward":
+    a = [1, N*dt - 1]
+    b = [N, -N]
+elif filter_type == "backward":
+    a = [N*dt + 1, -1]
+    b = [N, -N]
+elif filter_type == "bilinear":
+    a = [N*dt + 2, N*dt - 2]
+    b = [2*N, -2*N]
 
 def controller(t, obs):
     global i  # FIXME: Don't use global variable here
