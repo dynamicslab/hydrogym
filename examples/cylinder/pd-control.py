@@ -1,10 +1,13 @@
 import numpy as np
-import psutil
+import psutil  # For memory tracking
+import os
 import scipy.io as sio
 
 import hydrogym.firedrake as hgym
 
 output_dir = "output"
+if not os.path.exists(output_dir):
+    os.makedirs(output_dir)
 
 mesh_resolution = "medium"
 
@@ -12,6 +15,7 @@ element_type = "p1p1"
 velocity_order = 1
 stabilization = "gls"
 
+# Make sure to run the transient simulation first to generate the restart file
 restart = f"{output_dir}/checkpoint_{mesh_resolution}_{element_type}.h5"
 checkpoint = f"{output_dir}/pd_{mesh_resolution}_{element_type}.h5"
 
@@ -74,6 +78,10 @@ y_raw[0] = CL
 i = 0
 tau = 10 * flow.TAU
 
+# Bilinear filter coefficients for derivative
+N = 100
+a = [N*dt + 2, N*dt - 2]
+b = [2*N, -2*N]
 
 def controller(t, obs):
     global i  # FIXME: Don't use global variable here
@@ -90,6 +98,7 @@ def controller(t, obs):
     y[i] = y[i - 1] + (dt / tau) * (CL - y[i - 1])
     dy[i] = (y[i] - y[i - 1]) / dt
     y_raw[i] = CL
+    # dy[i] = (b[0]*y_raw[i] + b[1]*y_raw[i-1] - a[1]*dy[i-1]) / a[0]
 
     x[i] = flow.actuators[0].state
 
