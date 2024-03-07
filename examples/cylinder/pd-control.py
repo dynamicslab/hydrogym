@@ -1,12 +1,12 @@
+import os
+
+import matplotlib.pyplot as plt
 import numpy as np
 import psutil  # For memory tracking
-import os
 import scipy.io as sio
-import matplotlib.pyplot as plt
+from pd import PDController
 
 import hydrogym.firedrake as hgym
-
-from pd import PDController
 
 output_dir = "output"
 if not os.path.exists(output_dir):
@@ -75,11 +75,13 @@ pd_controller = PDController(
     N=20,
 )
 
+
 def controller(t, obs):
     # Turn on control halfway through
     if t < tf / 2:
         return 0.0
     return pd_controller(t, obs)
+
 
 hgym.integrate(
     flow,
@@ -100,10 +102,10 @@ CD = data[:, 2]
 
 fig, axs = plt.subplots(2, 1, figsize=(7, 4), sharex=True)
 axs[0].plot(t, CL)
-axs[0].set_ylabel(r'$C_L$')
+axs[0].set_ylabel(r"$C_L$")
 axs[1].grid()
 axs[1].plot(t, CD)
-axs[1].set_ylabel(r'$C_D$')
+axs[1].set_ylabel(r"$C_D$")
 axs[1].grid()
-axs[1].set_xlabel('Time $t$')
+axs[1].set_xlabel("Time $t$")
 plt.show()

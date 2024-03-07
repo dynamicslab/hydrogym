@@ -8,18 +8,17 @@ def deriv_filter(filter_type, N, dt):
         a = [dt, 0]
         b = [1, -1]
     elif filter_type == "forward":
-        a = [1, N*dt - 1]
+        a = [1, N * dt - 1]
         b = [N, -N]
     elif filter_type == "backward":
-        a = [N*dt + 1, -1]
+        a = [N * dt + 1, -1]
         b = [N, -N]
     elif filter_type == "bilinear":
-        a = [N*dt + 2, N*dt - 2]
-        b = [2*N, -2*N]
+        a = [N * dt + 2, N * dt - 2]
+        b = [2 * N, -2 * N]
     else:
         raise ValueError(f"Unknown filter type: {filter_type}")
     return a, b
-
 
 
 class PDController:
@@ -39,7 +38,6 @@ class PDController:
 
         self.debug_file = debug_file
 
-
     def __call__(self, t, obs):
         self.i += 1
 
@@ -54,8 +52,7 @@ class PDController:
         # Low-pass filter and estimate derivative
         y[i] = y[i - 1] + (1 / N) * (CL - y[i - 1])
         # Use the filtered measurement to avoid direct feedthrough
-        dy[i] = (b[0]*y[i] + b[1]*y[i-1] - a[1]*dy[i-1]) / a[0]
-
+        dy[i] = (b[0] * y[i] + b[1] * y[i - 1] - a[1] * dy[i - 1]) / a[0]
 
         if self.debug_file is not None and i % 100 == 0:
             data = {

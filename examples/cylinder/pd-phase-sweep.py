@@ -1,10 +1,10 @@
-import numpy as np
-import psutil
 import os
 
-import hydrogym.firedrake as hgym
-
+import numpy as np
+import psutil
 from pd import PDController
+
+import hydrogym.firedrake as hgym
 
 output_dir = "output"
 if not os.path.exists(output_dir):
@@ -16,7 +16,6 @@ element_type = "p1p1"
 velocity_order = 1
 stabilization = "gls"
 
-# Make sure to run the transient simulation first to generate the restart file
 restart = f"{output_dir}/checkpoint_{mesh_resolution}_{element_type}.h5"
 checkpoint = f"{output_dir}/pd_{mesh_resolution}_{element_type}.h5"
 
@@ -75,6 +74,7 @@ pd_controller = PDController(
     N=20,
 )
 
+
 def controller(t, obs):
 
     # Loop over phase angles for phasor control
@@ -83,9 +83,8 @@ def controller(t, obs):
     pd_controller.kd = 0.0
     for j in range(n_phase):
         if t > (j + 1) * ctrl_time:
-            theta[i] = phasors[j]
-            pd_controller.kp = k * np.cos(theta[i])
-            pd_controller.kd = k * np.sin(theta[i])
+            pd_controller.kp = k * np.cos(phasors[j])
+            pd_controller.kd = k * np.sin(phasors[j])
 
     return pd_controller(t, obs)
 
