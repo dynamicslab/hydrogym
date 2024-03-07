@@ -173,7 +173,7 @@ class CylinderBase(FlowConfig):
 
 class RotaryCylinder(CylinderBase):
     MAX_CONTROL = 0.5 * np.pi
-    DEFAULT_DT = 1e-1
+    DEFAULT_DT = 1e-2
 
     @property
     def cyl_velocity_field(self):
