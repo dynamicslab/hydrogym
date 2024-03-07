@@ -1,10 +1,14 @@
 import numpy as np
 import psutil
-import scipy.io as sio
+import os
 
 import hydrogym.firedrake as hgym
 
+from pd import PDController
+
 output_dir = "output"
+if not os.path.exists(output_dir):
+    os.makedirs(output_dir)
 
 mesh_resolution = "medium"
 
@@ -12,6 +16,7 @@ element_type = "p1p1"
 velocity_order = 1
 stabilization = "gls"
 
+# Make sure to run the transient simulation first to generate the restart file
 restart = f"{output_dir}/checkpoint_{mesh_resolution}_{element_type}.h5"
 checkpoint = f"{output_dir}/pd_{mesh_resolution}_{element_type}.h5"
 
@@ -61,59 +66,28 @@ tf = (n_phase + 1) * ctrl_time
 dt = 1e-2
 n_steps = int(tf // dt) + 2
 
-u = np.zeros(n_steps)  # Actuation history
-x = np.zeros(n_steps)  # Actuator state
-y_raw = np.zeros(n_steps)  # Lift coefficient (unfiltered)
-y = np.zeros(n_steps)  # Lift coefficient (filtered)
-dy = np.zeros(n_steps)  # Derivative of lift coefficient
-theta = np.zeros(n_steps)
-
-CL, CD = flow.get_observations()
-y[0] = CL
-y_raw[0] = CL
-
-i = 0
-tau = 0.1 / omega
-
+pd_controller = PDController(
+    0.0,
+    0.0,
+    dt,
+    n_steps,
+    filter_type="bilinear",
+    N=20,
+)
 
 def controller(t, obs):
-    global i  # FIXME: Don't use global variable here
-
-    i += 1
 
     # Loop over phase angles for phasor control
     # First interval is zero actuation
-    kp = 0.0
-    kd = 0.0
+    pd_controller.kp = 0.0
+    pd_controller.kd = 0.0
     for j in range(n_phase):
         if t > (j + 1) * ctrl_time:
             theta[i] = phasors[j]
-            kp = k * np.cos(theta[i])
-            kd = k * np.sin(theta[i])
-            u[i] = -kp * y[i - 1] - kd * dy[i - 1]
+            pd_controller.kp = k * np.cos(theta[i])
+            pd_controller.kd = k * np.sin(theta[i])
 
-    CL, CD = obs
-
-    # Low-pass filter and estimate derivative
-    y[i] = y[i - 1] + (dt / tau) * (CL - y[i - 1])
-    dy[i] = (y[i] - y[i - 1]) / dt
-    y_raw[i] = CL
-
-    x[i] = flow.actuators[0].state
-
-    if i % 100 == 0:
-        data = {
-            "y": y[:i],
-            "dy": dy[:i],
-            "u": u[:i],
-            "x": x[:i],
-            "CL": y_raw[:i],
-            "theta": theta[:i],
-            "t": np.arange(0, i * dt, dt),
-        }
-        sio.savemat(f"{output_dir}/phase-sweep.mat", data)
-
-    return u[i]
+    return pd_controller(t, obs)
 
 
 hgym.integrate(
