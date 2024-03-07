@@ -6,15 +6,6 @@ import hydrogym.firedrake as hgym
 
 output_dir = "output"
 
-mesh_resolution = "medium"
-
-element_type = "p1p1"
-velocity_order = 1
-stabilization = "gls"
-
-restart = f"{output_dir}/checkpoint_{mesh_resolution}_{element_type}.h5"
-checkpoint = f"{output_dir}/pd_{mesh_resolution}_{element_type}.h5"
-
 
 def compute_vort(flow):
     return (flow.u, flow.p, flow.vorticity())
@@ -31,90 +22,57 @@ callbacks = [
     # hgym.io.ParaviewCallback(
     #     interval=10, filename=f"{output_dir}/pd-control.pvd", postprocess=compute_vort
     # ),
-    # hgym.utils.io.CheckpointCallback(interval=100, filename=checkpoint),
     hgym.io.LogCallback(
         postprocess=log_postprocess,
         nvals=3,
-        interval=1,
+        interval=10,
         print_fmt="t: {0:0.2f},\t\t CL: {1:0.3f},\t\t CD: {2:0.03f},\t\t RAM: {3:0.1f}%",
-        filename=f"{output_dir}/pd-control.dat",
+        filename=None,
     ),
 ]
 
 
-flow = hgym.RotaryCylinder(
+flow = hgym.Cylinder(
     Re=100,
-    mesh=mesh_resolution,
-    restart=restart,
+    mesh="coarse",
+    restart="../demo/checkpoint-coarse.h5",
     callbacks=callbacks,
-    velocity_order=velocity_order,
 )
-
-
-omega = 1 / 5.56  # Vortex shedding frequency
-k = 2.0  # Base gain
-theta = 4.0  # Phase angle
-kp = k * np.cos(theta)
-kd = k * np.sin(theta)
-
-tf = 100.0
-dt = 0.01
-n_steps = int(tf // dt) + 2
+Tf = 1000
+dt = 1e-2
+n_steps = int(Tf // dt)
 
 u = np.zeros(n_steps)  # Actuation history
-x = np.zeros(n_steps)  # Actuator state
-y_raw = np.zeros(n_steps)  # Lift coefficient (unfiltered)
-y = np.zeros(n_steps)  # Lift coefficient (filtered)
+y = np.zeros(n_steps)  # Lift coefficient
 dy = np.zeros(n_steps)  # Derivative of lift coefficient
 
-CL, CD = flow.get_observations()
-y[0] = CL
-y_raw[0] = CL
-
-i = 0
-tau = 10 * flow.TAU
+Kp = -4.0  # Proportional gain
+Kd = 0.0  # Derivative gain
 
 
 def controller(t, obs):
-    global i  # FIXME: Don't use global variable here
-    i += 1
+    # return np.sin(t)
+
+    i = int(t // dt)
 
     # Turn on feedback control halfway through
-    if t > tf / 2:
-        # if t > 10:
-        u[i] = -kp * y[i - 1] - kd * dy[i - 1]
+    # if i > n_steps // 2:
+    #     u[i] = -Kp * y[i - 1] - Kd * dy[i - 1]
+
+    u[i] = -Kp * y[i - 1] - Kd * dy[i - 1]
 
     CL, CD = obs
 
     # Low-pass filter and estimate derivative
-    y[i] = y[i - 1] + (dt / tau) * (CL - y[i - 1])
+    y[i] = y[i - 1] + (dt / flow.TAU) * (CL - y[i - 1])
     dy[i] = (y[i] - y[i - 1]) / dt
-    y_raw[i] = CL
 
-    x[i] = flow.actuators[0].state
-
-    if i % 100 == 0:
-        data = {
-            "y": y[:i],
-            "dy": dy[:i],
-            "u": u[:i],
-            "x": x[:i],
-            "CL": y_raw[:i],
-            "t": np.arange(0, i * dt, dt),
-        }
-        sio.savemat(f"{output_dir}/pd-control.mat", data)
+    sio.savemat(f"{output_dir}/pd-control.mat", {"y": y, "u": u})
 
     return u[i]
 
 
-hgym.integrate(
-    flow,
-    t_span=(0, tf),
-    dt=dt,
-    callbacks=callbacks,
-    controller=controller,
-    stabilization=stabilization,
-)
+hgym.integrate(flow, t_span=(0, Tf), dt=dt, callbacks=callbacks, controller=controller)
 
 # for i in range(1, n_steps):
 #     # Turn on feedback control halfway through
