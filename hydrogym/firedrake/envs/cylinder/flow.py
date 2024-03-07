@@ -14,7 +14,14 @@ from hydrogym.firedrake import FlowConfig, ScaledDirichletBC
 xp = np.linspace(1.0, 10.0, 16)
 yp = np.linspace(-2.0, 2.0, 4)
 X, Y = np.meshgrid(xp, yp)
-probes = [(x, y) for x, y in zip(X.ravel(), Y.ravel())]
+DEFAULT_VEL_PROBES = [(x, y) for x, y in zip(X.ravel(), Y.ravel())]
+
+# Pressure probes (spaced equally around the cylinder)
+RADIUS = 0.5
+DEFAULT_PRES_PROBES = [
+    (RADIUS * np.cos(theta), RADIUS * np.sin(theta))
+    for theta in np.linspace(0, 2 * np.pi, 21)[:-1]
+]
 
 
 class CylinderBase(FlowConfig):
@@ -47,14 +54,29 @@ class CylinderBase(FlowConfig):
     def __init__(self, **config):
         obs_type = config.pop("observation_type", "lift_drag")
         supported_obs_types = {
-            "lift_drag": (2, self.compute_forces),
-            "velocity_probes": (2 * len(probes), self.velocity_probe),
+            "lift_drag": self.compute_forces,
+            "velocity_probes": self.velocity_probe,
+            "pressure_probes": self.pressure_probe,
         }
 
         if obs_type not in supported_obs_types:
             raise ValueError(f"Invalid observation type {obs_type}")
 
-        self._num_outputs, self._get_observations = supported_obs_types[obs_type]
+        self.probes = config.pop("probes", None)
+        if self.probes is None:
+            self.probes = {
+                "lift_drag": [],
+                "velocity_probes": DEFAULT_VEL_PROBES,
+                "pressure_probes": DEFAULT_PRES_PROBES,
+            }[obs_type]
+
+        self._get_observations = supported_obs_types[obs_type]
+
+        self._num_outputs = {
+            "lift_drag": 2,
+            "velocity_probes": 2 * len(self.probes),
+            "pressure_probes": len(self.probes),
+        }[obs_type]
 
         super().__init__(**config)
 
@@ -106,9 +128,23 @@ class CylinderBase(FlowConfig):
         CD = fd.assemble(2 * force[0] * ds(self.CYLINDER))
         return CL, CD
 
-    def velocity_probe(self, q: fd.Function = None) -> float:
-        """Probe velocity in the wake"""
-        pass
+    def velocity_probe(self, q: fd.Function = None) -> list[float]:
+        """Probe velocity in the wake.
+
+        Returns a list of velocities at the probe locations, ordered as
+        (u1, u2, ..., uN, v1, v2, ..., vN) where N is the number of probes.
+        """
+        if q is None:
+            q = self.q
+        u = q.subfunctions[0]
+        return np.stack(u.at(self.probes)).flatten("F")
+
+    def pressure_probe(self, q: fd.Function = None) -> list[float]:
+        """Probe pressure around the cylinder"""
+        if q is None:
+            q = self.q
+        p = q.subfunctions[1]
+        return np.stack(p.at(self.probes))
 
     # get net shear force acting tangential to the surface of the cylinder
     def shear_force(self, q: fd.Function = None) -> float:
@@ -209,7 +245,7 @@ class RotaryCylinder(CylinderBase):
     def cyl_velocity_field(self):
         # Set up tangential boundaries to cylinder
         theta = atan2(ufl.real(self.y), ufl.real(self.x))  # Angle from origin
-        self.rad = fd.Constant(0.5)
+        self.rad = fd.Constant(RADIUS)
         # Tangential velocity
         return ufl.as_tensor((self.rad * sin(theta), self.rad * cos(theta)))
 
@@ -229,7 +265,7 @@ class Cylinder(CylinderBase):
         # Set up tangential boundaries to cylinder
         theta = atan2(ufl.real(self.y), ufl.real(self.x))  # Angle from origin
         pi = ufl.pi
-        self.rad = fd.Constant(0.5)
+        self.rad = fd.Constant(RADIUS)
 
         omega = pi / 18  # 10 degree jet width
 
