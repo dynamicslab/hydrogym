@@ -20,7 +20,7 @@ DEFAULT_VEL_PROBES = [(x, y) for x, y in zip(X.ravel(), Y.ravel())]
 RADIUS = 0.5
 DEFAULT_PRES_PROBES = [
     (RADIUS * np.cos(theta), RADIUS * np.sin(theta))
-    for theta in np.linspace(0, 2 * np.pi, 21)[:-1]
+    for theta in np.linspace(0, 2 * np.pi, 20, endpoint=False)
 ]
 
 
