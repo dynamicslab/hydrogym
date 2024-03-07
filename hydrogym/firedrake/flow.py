@@ -11,6 +11,7 @@ from ufl import curl, dot, inner, nabla_grad, sqrt, sym
 
 from ..core import ActuatorBase, PDEBase
 from .actuator import DampedActuator
+from .utils import print
 
 
 class ScaledDirichletBC(fd.DirichletBC):
@@ -233,7 +234,10 @@ class FlowConfig(PDEBase):
 
             if hasattr(self, "bcu_actuation"):
                 for i in range(self.ACT_DIM):
-                    self.bcu_actuation[i].set_scale(self.actuators[i].state)
+                    u = np.clip(
+                        self.actuators[i].state, -self.MAX_CONTROL, self.MAX_CONTROL
+                    )
+                    self.bcu_actuation[i].set_scale(u)
 
     def control_vec(self, mixed=False):
         """Functions corresponding to the columns of the control matrix"""

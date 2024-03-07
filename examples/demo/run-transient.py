@@ -41,7 +41,7 @@ callbacks = [
 
 
 def controller(t, y):
-    return [1.0]
+    return [flow.MAX_CONTROL]
 
 
 hgym.print("Beginning integration")

@@ -11,14 +11,17 @@ from ufl import as_vector, atan2, cos, dot, sign, sin, sqrt
 
 from hydrogym.firedrake import FlowConfig, ScaledDirichletBC
 
+__all__ = ["Cylinder", "RotaryCylinder"]
 
-class Cylinder(FlowConfig):
+__all__ = ["Cylinder", "RotaryCylinder"]
+
+
+class CylinderBase(FlowConfig):
     DEFAULT_REYNOLDS = 100
     DEFAULT_MESH = "medium"
     DEFAULT_DT = 1e-2
 
     OBS_DIM = 2
-    MAX_CONTROL = 0.5 * np.pi
     # TAU = 0.556  # Time constant for controller damping (0.1*vortex shedding period)
     TAU = 0.0556  # Time constant for controller damping (0.01*vortex shedding period)
 
@@ -43,15 +46,16 @@ class Cylinder(FlowConfig):
         self.bcp_outflow = fd.DirichletBC(Q, fd.Constant(0), self.OUTLET)
 
         # Define time-varying boundary conditions for the actuation
-        # Set up tangential boundaries to cylinder
-        theta = atan2(ufl.real(self.y), ufl.real(self.x))  # Angle from origin
-        self.rad = fd.Constant(0.5)
-        # Tangential velocity
-        u_bc = ufl.as_tensor((self.rad * sin(theta), self.rad * cos(theta)))
+        u_bc = self.cyl_velocity_field
         self.bcu_actuation = [ScaledDirichletBC(V, u_bc, self.CYLINDER)]
 
         # Reset the control with the current mixed (or not) function spaces
         self.set_control(self.control_state)
+
+    @property
+    def cyl_velocity_field(self):
+        """Velocity vector for boundary condition"""
+        raise NotImplementedError
 
     def collect_bcu(self) -> Iterable[fd.DirichletBC]:
         return [self.bcu_inflow, self.bcu_freestream, *self.bcu_actuation]
@@ -167,3 +171,57 @@ class Cylinder(FlowConfig):
 
         cyl = plt.Circle((0, 0), 0.5, edgecolor="k", facecolor="gray")
         im.axes.add_artist(cyl)
+
+
+class RotaryCylinder(CylinderBase):
+    MAX_CONTROL = 0.5 * np.pi
+    DEFAULT_DT = 1e-2
+
+    @property
+    def cyl_velocity_field(self):
+        # Set up tangential boundaries to cylinder
+        theta = atan2(ufl.real(self.y), ufl.real(self.x))  # Angle from origin
+        self.rad = fd.Constant(0.5)
+        # Tangential velocity
+        return ufl.as_tensor((self.rad * sin(theta), self.rad * cos(theta)))
+
+
+class Cylinder(CylinderBase):
+    MAX_CONTROL = 0.1
+    DEFAULT_DT = 1e-2
+
+    @property
+    def cyl_velocity_field(self):
+        """Velocity vector for boundary condition
+
+        Blowing/suction actuation on the cylinder wall, following Rabault, et al (2018)
+        https://arxiv.org/abs/1808.07664
+        """
+
+        # Set up tangential boundaries to cylinder
+        theta = atan2(ufl.real(self.y), ufl.real(self.x))  # Angle from origin
+        pi = ufl.pi
+        self.rad = fd.Constant(0.5)
+
+        omega = pi / 18  # 10 degree jet width
+
+        theta_up = 0.5 * pi
+        A_up = ufl.conditional(
+            abs(theta - theta_up) < omega / 2,
+            pi
+            / (2 * omega * self.rad**2)
+            * ufl.cos((pi / omega) * (theta - theta_up)),
+            0.0,
+        )
+
+        theta_lo = -0.5 * pi
+        A_lo = ufl.conditional(
+            abs(theta - theta_lo) < omega / 2,
+            pi
+            / (2 * omega * self.rad**2)
+            * ufl.cos((pi / omega) * (theta - theta_lo)),
+            0.0,
+        )
+
+        # Normal velocity (blowing/suction) at the cylinder wall
+        return ufl.as_tensor((self.x, self.y)) * (A_up + A_lo)
