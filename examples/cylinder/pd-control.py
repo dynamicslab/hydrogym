@@ -2,8 +2,11 @@ import numpy as np
 import psutil  # For memory tracking
 import os
 import scipy.io as sio
+import matplotlib.pyplot as plt
 
 import hydrogym.firedrake as hgym
+
+from pd import PDController
 
 output_dir = "output"
 if not os.path.exists(output_dir):
@@ -54,8 +57,6 @@ flow = hgym.RotaryCylinder(
     velocity_order=velocity_order,
 )
 
-
-omega = 1 / 5.56  # Vortex shedding frequency
 k = 2.0  # Base gain
 theta = 4.0  # Phase angle
 kp = k * np.cos(theta)
@@ -65,67 +66,20 @@ tf = 100.0
 dt = 0.01
 n_steps = int(tf // dt) + 2
 
-u = np.zeros(n_steps)  # Actuation history
-x = np.zeros(n_steps)  # Actuator state
-y_raw = np.zeros(n_steps)  # Lift coefficient (unfiltered)
-y = np.zeros(n_steps)  # Lift coefficient (filtered)
-dy = np.zeros(n_steps)  # Derivative of lift coefficient
-
-CL, CD = flow.get_observations()
-y[0] = CL
-y_raw[0] = CL
-
-i = 0
-tau = 10 * flow.TAU
-
-# Bilinear filter coefficients for derivative
-N = 100
-filter_type = "bilinear"
-if filter_type == "none":
-    a = [1, -1]
-    b = [1, 0]
-elif filter_type == "forward":
-    a = [1, N*dt - 1]
-    b = [N, -N]
-elif filter_type == "backward":
-    a = [N*dt + 1, -1]
-    b = [N, -N]
-elif filter_type == "bilinear":
-    a = [N*dt + 2, N*dt - 2]
-    b = [2*N, -2*N]
+pd_controller = PDController(
+    kp,
+    kd,
+    dt,
+    n_steps,
+    filter_type="bilinear",
+    N=20,
+)
 
 def controller(t, obs):
-    global i  # FIXME: Don't use global variable here
-    i += 1
-
-    # Turn on feedback control halfway through
-    if t > tf / 2:
-        # if t > 10:
-        u[i] = -kp * y[i - 1] - kd * dy[i - 1]
-
-    CL, CD = obs
-
-    # Low-pass filter and estimate derivative
-    y[i] = y[i - 1] + (dt / tau) * (CL - y[i - 1])
-    dy[i] = (y[i] - y[i - 1]) / dt
-    y_raw[i] = CL
-    # dy[i] = (b[0]*y_raw[i] + b[1]*y_raw[i-1] - a[1]*dy[i-1]) / a[0]
-
-    x[i] = flow.actuators[0].state
-
-    if i % 100 == 0:
-        data = {
-            "y": y[:i],
-            "dy": dy[:i],
-            "u": u[:i],
-            "x": x[:i],
-            "CL": y_raw[:i],
-            "t": np.arange(0, i * dt, dt),
-        }
-        sio.savemat(f"{output_dir}/pd-control.mat", data)
-
-    return u[i]
-
+    # Turn on control halfway through
+    if t < tf / 2:
+        return 0.0
+    return pd_controller(t, obs)
 
 hgym.integrate(
     flow,
@@ -136,19 +90,20 @@ hgym.integrate(
     stabilization=stabilization,
 )
 
-# for i in range(1, n_steps):
-#     # Turn on feedback control halfway through
-#     if i > n_steps // 2:
-#         u[i] = -Kp * y[i - 1] - Kd * dy[i - 1]
+# Load results data
+data = np.loadtxt(f"{output_dir}/pd-control.dat")
 
-#     # Advance state and collect measurements
-#     (CL, CD), _, _, _ = env.step(u[i])
+# Plot results
+t = data[:, 0]
+CL = data[:, 1]
+CD = data[:, 2]
 
-#     # Low-pass filter and estimate derivative
-#     y[i] = y[i - 1] + (dt / env.flow.TAU) * (CL - y[i - 1])
-#     dy[i] = (y[i] - y[i - 1]) / dt
-
-#     hg.print(
-#         f"Step: {i:04d},\t\t CL: {y[i]:0.4f}, \t\tCL_dot: {dy[i]:0.4f},\t\tu: {u[i]:0.4f}"
-#     )
-#     sio.savemat(f"{output_dir}/pd-control.mat", {"y": y, "u": u})
+fig, axs = plt.subplots(2, 1, figsize=(7, 4), sharex=True)
+axs[0].plot(t, CL)
+axs[0].set_ylabel(r'$C_L$')
+axs[1].grid()
+axs[1].plot(t, CD)
+axs[1].set_ylabel(r'$C_D$')
+axs[1].grid()
+axs[1].set_xlabel('Time $t$')
+plt.show()
