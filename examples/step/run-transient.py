@@ -61,5 +61,4 @@ hgym.integrate(
     callbacks=callbacks,
     method=method,
     stabilization=stabilization,
-    eta=0.0,
 )

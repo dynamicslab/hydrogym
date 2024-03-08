@@ -57,4 +57,4 @@ callbacks = [
     ),
 ]
 
-hgym.integrate(flow, t_span=(0, Tf), dt=dt, callbacks=callbacks, eta=1.0)
+hgym.integrate(flow, t_span=(0, Tf), dt=dt, callbacks=callbacks)

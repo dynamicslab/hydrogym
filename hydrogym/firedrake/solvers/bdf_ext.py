@@ -47,6 +47,7 @@ class SemiImplicitBDF(NavierStokesTransientSolver):
 
     def initialize_functions(self):
         flow = self.flow
+        self.f = flow.body_force
 
         # Trial/test functions for linear sub-problem
         W = flow.mixed_space
@@ -98,7 +99,7 @@ class SemiImplicitBDF(NavierStokesTransientSolver):
             wind=w,
             dt=self.dt,
             u_t=u_t,
-            f=self.eta * self.f,
+            f=self.f,
         )
         weak_form = stab.stabilize(weak_form)
 
@@ -144,9 +145,6 @@ class SemiImplicitBDF(NavierStokesTransientSolver):
                 self.startup_solvers.append(self._make_order_k_solver(i + 1))
 
     def step(self, iter, control=None):
-        # Update perturbations (if applicable)
-        # self.eta.assign(self.noise[self.noise_idx])
-
         # Pass input through actuator "dynamics" or filter
         # FIXME: Should be self.flow.update(t, control)
         if control is None:
@@ -167,7 +165,5 @@ class SemiImplicitBDF(NavierStokesTransientSolver):
         self.u_prev[0].assign(self.flow.q.subfunctions[0])
 
         self.t += self.dt
-        self.noise_idx += 1
-        assert self.noise_idx < len(self.noise), "Not enough noise samples generated"
 
         return self.flow

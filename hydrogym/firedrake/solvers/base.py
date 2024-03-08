@@ -79,13 +79,6 @@ class NavierStokesTransientSolver(TransientSolver):
     ):
         super().__init__(flow, dt)
         self.debug = debug
-
-        self.forcing_config = {
-            "eta": eta,
-            "n_samples": max_noise_iter,
-            "cutoff": noise_cutoff or 0.01 / flow.TAU,
-        }
-
         self.reset()
 
     def reset(self):
@@ -93,25 +86,7 @@ class NavierStokesTransientSolver(TransientSolver):
 
         self.initialize_functions()
 
-        # Set up random forcing (if applicable)
-        self.initialize_forcing(**self.forcing_config)
-
         self.initialize_operators()
-
-    def initialize_forcing(self, eta, n_samples, cutoff):
-        logging.log(logging.INFO, f"Initializing forcing with amplitude {eta}")
-        self.f = self.flow.body_force
-        self.eta = fd.Constant(0.0)  # Current forcing amplitude
-
-        if eta > 0:
-            self.noise = eta * white_noise(
-                n_samples=n_samples,
-                fs=1 / self.dt,
-                cutoff=cutoff,
-            )
-        else:
-            self.noise = np.zeros(n_samples)
-        self.noise_idx = 0
 
     def initialize_functions(self):
         pass
