@@ -13,6 +13,8 @@ flow = hgym.Step(
     Re=Re,
     mesh=mesh_resolution,
     restart=restart,
+    velocity_order=1,
+    noise_amplitude=1.0,
 )
 
 # Store base flow for computing TKE
@@ -21,7 +23,7 @@ flow.qB.assign(flow.q)
 dof = flow.mixed_space.dim()
 hgym.print(f"Total dof: {dof} --- dof/rank: {int(dof/fd.COMM_WORLD.size)}")
 
-tf = 1.0
+tf = 1000.0
 method = "BDF"
 stabilization = "gls"
 dt = 0.01
@@ -58,5 +60,5 @@ hgym.integrate(
     callbacks=callbacks,
     method=method,
     stabilization=stabilization,
-    eta=1.0,
+    eta=0.0,
 )

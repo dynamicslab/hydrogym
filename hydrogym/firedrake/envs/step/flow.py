@@ -1,16 +1,18 @@
 import os
 
 import firedrake as fd
+import numpy as np
 import ufl
+from firedrake.petsc import PETSc
 from ufl import dot, ds, exp, grad
 
 from hydrogym.firedrake import FlowConfig, ScaledDirichletBC
 
 
 class Step(FlowConfig):
-    DEFAULT_REYNOLDS = 500
+    DEFAULT_REYNOLDS = 600
     DEFAULT_MESH = "fine"
-    DEFAULT_DT = 1e-4
+    DEFAULT_DT = 1e-2
 
     FUNCTIONS = ("q", "qB")  # This flow needs a base flow to compute fluctuation KE
 
@@ -26,6 +28,16 @@ class Step(FlowConfig):
 
     MESH_DIR = os.path.abspath(f"{__file__}/..")
 
+    def __init__(self, **kwargs):
+        # The random forcing is implemented as low-pass-filtered white noise
+        # using the DampedActuator class as a filter.  The idea is to limit the
+        # dependence of the spectral characteristics of the forcing on the time
+        # step of the solver.
+        self.noise_amplitude = kwargs.pop("noise_amplitude", 1.0)
+        self.noise_tau = kwargs.pop("noise_time_constant", self.TAU)
+        self.noise_seed = kwargs.pop("noise_seed", None)
+        super().__init__(**kwargs)
+
     @property
     def nu(self):
         return fd.Constant(0.5 / ufl.real(self.Re))
@@ -34,7 +46,8 @@ class Step(FlowConfig):
     def body_force(self):
         delta = 0.1
         x0, y0 = -1.0, 0.25
-        return ufl.as_tensor(
+        w = self.noise_filter.x
+        return w * ufl.as_tensor(
             (
                 exp(-((self.x - x0) ** 2 + (self.y - y0) ** 2) / delta**2),
                 exp(-((self.x - x0) ** 2 + (self.y - y0) ** 2) / delta**2),
@@ -56,6 +69,26 @@ class Step(FlowConfig):
         u_bc = ufl.as_tensor((0.0 * self.x, -self.x * (1600 * self.x + 560) / 147))
         self.bcu_actuation = [ScaledDirichletBC(V, u_bc, self.CONTROL)]
         self.set_control(self.control_state)
+
+        # Create an "actuator" to filter the random forcing
+        self.noise_filter = self.create_actuator(tau=self.noise_tau)
+        self.rng = fd.Generator(fd.PCG64(seed=self.noise_seed))
+
+    def update_actuators(self, control, dt):
+        # Generate a noise sample
+        comm = fd.COMM_WORLD
+        w = np.zeros(1)
+        # Generate random noise sample on rank zero
+        if comm.rank == 0:
+            w[0] = self.noise_amplitude * self.rng.standard_normal()
+
+        # Send the same value to all MPI ranks
+        comm.Bcast(w, root=0)
+
+        # Update the noise filter
+        self.noise_filter.step(w, dt)
+
+        return super().update_actuators(control, dt)
 
     def linearize_bcs(self, mixed=True):
         self.reset_controls(mixed=mixed)

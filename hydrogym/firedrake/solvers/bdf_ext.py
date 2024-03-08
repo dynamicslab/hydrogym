@@ -1,5 +1,5 @@
 import firedrake as fd
-from ufl import div, dot, dx, grad, inner, lhs, nabla_grad, rhs, sym
+from ufl import div, dot, dx, inner, lhs, nabla_grad, rhs
 
 from ..flow import FlowConfig
 from .base import NavierStokesTransientSolver
@@ -87,7 +87,7 @@ class SemiImplicitBDF(NavierStokesTransientSolver):
             + dot(dot(w, nabla_grad(u)), v) * dx
             + inner(flow.sigma(u, p), flow.epsilon(v)) * dx
             + dot(div(u), s) * dx
-            - dot(self.eta * self.f, v) * dx
+            - dot(self.f, v) * dx
         )
 
         # Stabilization (SUPG, GLS, etc.)
@@ -145,12 +145,13 @@ class SemiImplicitBDF(NavierStokesTransientSolver):
 
     def step(self, iter, control=None):
         # Update perturbations (if applicable)
-        self.eta.assign(self.noise[self.noise_idx])
+        # self.eta.assign(self.noise[self.noise_idx])
 
         # Pass input through actuator "dynamics" or filter
-        if control is not None:
-            bc_scale = self.flow.update_actuators(control, self.dt)
-            self.flow.set_control(bc_scale)
+        if control is None:
+            control = self.flow.control_state
+        bc_scale = self.flow.update_actuators(control, self.dt)
+        self.flow.set_control(bc_scale)
 
         # Solve the linear problem
         if iter > self.k - 1:
