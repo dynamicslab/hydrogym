@@ -34,8 +34,10 @@ class Step(FlowConfig):
         # dependence of the spectral characteristics of the forcing on the time
         # step of the solver.
         self.noise_amplitude = kwargs.pop("noise_amplitude", 1.0)
-        self.noise_tau = kwargs.pop("noise_time_constant", self.TAU)
+        self.noise_tau = kwargs.pop("noise_time_constant", 10 * self.TAU)
         self.noise_seed = kwargs.pop("noise_seed", None)
+        self.noise_state = fd.Constant(0.0)
+        self.rng = fd.Generator(fd.PCG64(seed=self.noise_seed))
         super().__init__(**kwargs)
 
     @property
@@ -46,7 +48,7 @@ class Step(FlowConfig):
     def body_force(self):
         delta = 0.1
         x0, y0 = -1.0, 0.25
-        w = self.noise_filter.x
+        w = self.noise_state
         return w * ufl.as_tensor(
             (
                 exp(-((self.x - x0) ** 2 + (self.y - y0) ** 2) / delta**2),
@@ -70,10 +72,6 @@ class Step(FlowConfig):
         self.bcu_actuation = [ScaledDirichletBC(V, u_bc, self.CONTROL)]
         self.set_control(self.control_state)
 
-        # Create an "actuator" to filter the random forcing
-        self.noise_filter = self.create_actuator(tau=self.noise_tau)
-        self.rng = fd.Generator(fd.PCG64(seed=self.noise_seed))
-
     def update_actuators(self, control, dt):
         # Generate a noise sample
         comm = fd.COMM_WORLD
@@ -86,7 +84,8 @@ class Step(FlowConfig):
         comm.Bcast(w, root=0)
 
         # Update the noise filter
-        self.noise_filter.step(w, dt)
+        x = self.noise_state
+        x.assign(x + dt * (w[0] - x) / self.noise_tau)
 
         return super().update_actuators(control, dt)
 
