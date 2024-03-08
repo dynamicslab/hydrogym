@@ -97,11 +97,7 @@ class IPCS(NavierStokesTransientSolver):
         )
 
     def step(self, iter, control=None):
-
-        # FIXME: Should be self.flow.update(t, control)
-        if control is None:
-            control = self.flow.control_state
-        bc_scale = self.flow.update_actuators(control, self.dt)
+        bc_scale = self.flow.advance_time(self.dt, control)
         self.flow.set_control(bc_scale)
 
         # Step 1: Velocity predictor step
@@ -121,8 +117,6 @@ class IPCS(NavierStokesTransientSolver):
         # Update previous solution
         self.u_n.assign(self.u)
         self.p_n.assign(self.p)
-
-        self.t += self.dt
 
         return self.flow
 

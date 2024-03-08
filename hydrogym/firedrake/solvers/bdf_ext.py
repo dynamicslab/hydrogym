@@ -145,11 +145,9 @@ class SemiImplicitBDF(NavierStokesTransientSolver):
                 self.startup_solvers.append(self._make_order_k_solver(i + 1))
 
     def step(self, iter, control=None):
-        # Pass input through actuator "dynamics" or filter
-        # FIXME: Should be self.flow.update(t, control)
-        if control is None:
-            control = self.flow.control_state
-        bc_scale = self.flow.update_actuators(control, self.dt)
+        # Update the time of the flow
+        # TODO: Test with actuation
+        bc_scale = self.flow.advance_time(self.dt, control)
         self.flow.set_control(bc_scale)
 
         # Solve the linear problem
@@ -163,7 +161,5 @@ class SemiImplicitBDF(NavierStokesTransientSolver):
             self.u_prev[-(i + 1)].assign(self.u_prev[-(i + 2)])
 
         self.u_prev[0].assign(self.flow.q.subfunctions[0])
-
-        self.t += self.dt
 
         return self.flow

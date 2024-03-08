@@ -72,7 +72,7 @@ class Step(FlowConfig):
         self.bcu_actuation = [ScaledDirichletBC(V, u_bc, self.CONTROL)]
         self.set_control(self.control_state)
 
-    def update_actuators(self, control, dt):
+    def advance_time(self, dt, control=None):
         # Generate a noise sample
         comm = fd.COMM_WORLD
         w = np.zeros(1)
@@ -87,7 +87,7 @@ class Step(FlowConfig):
         x = self.noise_state
         x.assign(x + dt * (w[0] - x) / self.noise_tau)
 
-        return super().update_actuators(control, dt)
+        return super().advance_time(dt, control)
 
     def linearize_bcs(self, mixed=True):
         self.reset_controls(mixed=mixed)

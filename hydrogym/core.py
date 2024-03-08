@@ -92,7 +92,7 @@ class PDEBase:
         """Return a copy of the flow state"""
         raise NotImplementedError
 
-    def reset(self, q0: StateType = None):
+    def reset(self, q0: StateType = None, t: float = 0.0):
         """Reset the PDE to an initial state
 
         Args:
@@ -100,6 +100,7 @@ class PDEBase:
                 State to which the PDE fields will be assigned.
                 Defaults to None.
         """
+        self.t = t
         if q0 is not None:
             self.set_state(q0)
         self.reset_controls()
@@ -164,7 +165,9 @@ class PDEBase:
         for i, u in enumerate(self.enlist(act)):
             self.actuators[i].state = u
 
-    def update_actuators(self, act: Iterable[ActType], dt: float) -> Iterable[ActType]:
+    def advance_time(
+        self, dt: float, act: Iterable[ActType] = None
+    ) -> Iterable[ActType]:
         """Update the current controls state.
 
         May involve integrating a dynamics model rather than
@@ -179,6 +182,10 @@ class PDEBase:
         Returns:
             Iterable[ActType]: Updated actuator state
         """
+        if act is None:
+            act = self.control_state
+        self.t += dt
+
         act = self.enlist(act)
         assert len(act) == self.ACT_DIM
 
@@ -259,7 +266,6 @@ class TransientSolver:
         if dt is None:
             dt = flow.DEFAULT_DT
         self.dt = dt
-        self.t = 0.0
 
     def solve(
         self,
@@ -303,9 +309,9 @@ class TransientSolver:
         """
         raise NotImplementedError
 
-    def reset(self):
+    def reset(self, t=0.0):
         """Reset variables for the timestepper"""
-        self.t = 0.0
+        pass
 
 
 class FlowEnv(gym.Env):
@@ -372,10 +378,10 @@ class FlowEnv(gym.Env):
     def check_complete(self):
         return self.iter > self.max_steps
 
-    def reset(self) -> Union[PDEBase.ObsType, Tuple[PDEBase.ObsType, dict]]:
+    def reset(self, t=0.0) -> Union[PDEBase.ObsType, Tuple[PDEBase.ObsType, dict]]:
         self.iter = 0
-        self.flow.reset(q0=self.q0)
-        self.solver.reset()
+        self.flow.reset(q0=self.q0, t=t)
+        self.solver.reset(t=t)
 
         return self.flow.get_observations()
 
