@@ -148,6 +148,7 @@ class SemiImplicitBDF(NavierStokesTransientSolver):
         # self.eta.assign(self.noise[self.noise_idx])
 
         # Pass input through actuator "dynamics" or filter
+        # FIXME: Should be self.flow.update(t, control)
         if control is None:
             control = self.flow.control_state
         bc_scale = self.flow.update_actuators(control, self.dt)
