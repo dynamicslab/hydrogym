@@ -12,6 +12,7 @@ __all__ = ["IPCS"]
 class IPCS(NavierStokesTransientSolver):
     def initialize_functions(self):
         flow = self.flow
+        self.f = flow.body_force
 
         if flow.velocity_order < 2:
             raise ValueError("IPCS requires at least second-order velocity elements")
@@ -96,12 +97,8 @@ class IPCS(NavierStokesTransientSolver):
         )
 
     def step(self, iter, control=None):
-        # Update perturbations (if applicable)
-        self.eta.assign(self.noise[self.noise_idx])
-
-        if control is not None:
-            bc_scale = self.flow.update_actuators(control, self.dt)
-            self.flow.set_control(bc_scale)
+        bc_scale = self.flow.advance_time(self.dt, control)
+        self.flow.set_control(bc_scale)
 
         # Step 1: Velocity predictor step
         logging.log(logging.DEBUG, f"iter: {iter}, solving velocity predictor")
@@ -120,10 +117,6 @@ class IPCS(NavierStokesTransientSolver):
         # Update previous solution
         self.u_n.assign(self.u)
         self.p_n.assign(self.p)
-
-        self.t += self.dt
-        self.noise_idx += 1
-        assert self.noise_idx < len(self.noise), "Not enough noise samples generated"
 
         return self.flow
 

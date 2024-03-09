@@ -1,5 +1,5 @@
 import firedrake as fd
-from ufl import div, dot, dx, grad, inner, lhs, nabla_grad, rhs, sym
+from ufl import div, dot, dx, inner, lhs, nabla_grad, rhs
 
 from ..flow import FlowConfig
 from .base import NavierStokesTransientSolver
@@ -47,6 +47,7 @@ class SemiImplicitBDF(NavierStokesTransientSolver):
 
     def initialize_functions(self):
         flow = self.flow
+        self.f = flow.body_force
 
         # Trial/test functions for linear sub-problem
         W = flow.mixed_space
@@ -87,7 +88,7 @@ class SemiImplicitBDF(NavierStokesTransientSolver):
             + dot(dot(w, nabla_grad(u)), v) * dx
             + inner(flow.sigma(u, p), flow.epsilon(v)) * dx
             + dot(div(u), s) * dx
-            - dot(self.eta * self.f, v) * dx
+            - dot(self.f, v) * dx
         )
 
         # Stabilization (SUPG, GLS, etc.)
@@ -98,7 +99,7 @@ class SemiImplicitBDF(NavierStokesTransientSolver):
             wind=w,
             dt=self.dt,
             u_t=u_t,
-            f=self.eta * self.f,
+            f=self.f,
         )
         weak_form = stab.stabilize(weak_form)
 
@@ -144,13 +145,10 @@ class SemiImplicitBDF(NavierStokesTransientSolver):
                 self.startup_solvers.append(self._make_order_k_solver(i + 1))
 
     def step(self, iter, control=None):
-        # Update perturbations (if applicable)
-        self.eta.assign(self.noise[self.noise_idx])
-
-        # Pass input through actuator "dynamics" or filter
-        if control is not None:
-            bc_scale = self.flow.update_actuators(control, self.dt)
-            self.flow.set_control(bc_scale)
+        # Update the time of the flow
+        # TODO: Test with actuation
+        bc_scale = self.flow.advance_time(self.dt, control)
+        self.flow.set_control(bc_scale)
 
         # Solve the linear problem
         if iter > self.k - 1:
@@ -163,9 +161,5 @@ class SemiImplicitBDF(NavierStokesTransientSolver):
             self.u_prev[-(i + 1)].assign(self.u_prev[-(i + 2)])
 
         self.u_prev[0].assign(self.flow.q.subfunctions[0])
-
-        self.t += self.dt
-        self.noise_idx += 1
-        assert self.noise_idx < len(self.noise), "Not enough noise samples generated"
 
         return self.flow
