@@ -1,3 +1,5 @@
+import os
+
 import firedrake as fd
 import numpy as np
 import psutil
@@ -5,12 +7,23 @@ import psutil
 import hydrogym.firedrake as hgym
 
 Re = 600
-mesh_resolution = "coarse"
+mesh_resolution = "fine"
 output_dir = f"./{Re}_{mesh_resolution}_output"
+if not os.path.exists(output_dir):
+    os.makedirs(output_dir)
+
 pvd_out = f"{output_dir}/solution.pvd"
 checkpoint = f"{output_dir}/checkpoint.h5"
 
-flow = hgym.Step(Re=Re, mesh=mesh_resolution)
+method = "BDF"
+stabilization = "gls"
+
+flow = hgym.Step(
+    Re=Re,
+    mesh=mesh_resolution,
+    velocity_order=1,
+    noise_amplitude=1.0,
+)
 
 # *** 1: Solve steady state (for computing fluctuation KE) ***
 solver_parameters = {"snes_monitor": None}
@@ -22,12 +35,16 @@ Re_init = np.arange(100, Re + 100, 100, dtype=float)
 for i, Re in enumerate(Re_init):
     flow.Re.assign(Re)
     hgym.print(f"Steady solve at Re={Re_init[i]}")
-    solver = hgym.NewtonSolver(flow, solver_parameters=solver_parameters)
+    solver = hgym.NewtonSolver(
+        flow, solver_parameters=solver_parameters, stabilization=stabilization
+    )
     flow.qB.assign(solver.solve())
 
+flow.save_checkpoint(f"{output_dir}/{Re}_steady.h5")
+
 # *** 2: Transient solve with natural flow ***
-Tf = 500
-dt = 1e-3
+tf = 500
+dt = 1e-2
 
 
 def log_postprocess(flow):
@@ -47,7 +64,7 @@ print_fmt = (
 )
 callbacks = [
     # hgym.io.ParaviewCallback(interval=100, filename=pvd_out, postprocess=compute_vort),
-    # hgym.io.CheckpointCallback(interval=100, filename=checkpoint),
+    hgym.io.CheckpointCallback(interval=1000, filename=checkpoint),
     hgym.io.LogCallback(
         postprocess=log_postprocess,
         nvals=4,
@@ -57,4 +74,11 @@ callbacks = [
     ),
 ]
 
-hgym.integrate(flow, t_span=(0, Tf), dt=dt, callbacks=callbacks)
+hgym.integrate(
+    flow,
+    t_span=(0, tf),
+    dt=dt,
+    callbacks=callbacks,
+    method=method,
+    stabilization=stabilization,
+)
