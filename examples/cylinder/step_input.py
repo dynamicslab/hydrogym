@@ -1,4 +1,5 @@
 """Simulate step function input at Re=40"""
+
 import os
 
 import hydrogym.firedrake as hgym
@@ -20,6 +21,7 @@ steady_solver = hgym.NewtonSolver(
     stabilization=stabilization,
 )
 qB = steady_solver.solve()
+
 
 # 2. Set up step input
 def controller(t, u):
