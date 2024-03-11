@@ -25,12 +25,17 @@ def arnoldi(A, v0, m=100, restart=None):
     else:
         V, H = restart
         start_idx = V.shape[1]
+        print(f"Restarting from {start_idx}")
+        V = np.pad(V, ((0, 0), (0, m - start_idx)), mode="constant")
+        H = np.pad(H, ((0, m - start_idx), (0, m - start_idx)), mode="constant")
 
     if start_idx == m:
         print("Warning: restart array is full, no iterations performed.")
 
     f = v0
-    for j in range(start_idx, m):
+    v = v0
+    beta = linalg.norm(f)
+    for j in range(start_idx + 1, m):
         beta = linalg.norm(f)
         H[j, j - 1] = beta
         v = f / beta
@@ -66,6 +71,7 @@ def eig_ks(M, v0=None, n_evals=10, m=100, tol=1e-10, delta=0.05, maxiter=None):
 
         # Check for convergence based on Arnoldi residuals
         ritz_vals, ritz_vecs = linalg.eig(H)
+        # print(ritz_vals)
         converged = []
         for i in range(m):
             y = ritz_vecs[:, i]
@@ -88,7 +94,7 @@ def eig_ks(M, v0=None, n_evals=10, m=100, tol=1e-10, delta=0.05, maxiter=None):
             return evals, evecs
 
         # Schur decomposition
-        Q, S, p = linalg.schur(H, sort=lambda x: abs(x) > 1.0 - delta)
+        S, Q, p = linalg.schur(H, sort=lambda x: abs(x) > 1.0 - delta)
 
         # Keep the "wanted" part of the Schur form. These will be the eigenvalues
         # that are closest to the unit circle (least stable).
@@ -99,6 +105,8 @@ def eig_ks(M, v0=None, n_evals=10, m=100, tol=1e-10, delta=0.05, maxiter=None):
 
         # Restart with the wanted part of the Krylov basis
         restart = (Vp, Hp)
+
+        k += 1
 
 
 if __name__ == "__main__":
@@ -128,7 +136,7 @@ if __name__ == "__main__":
     arn_evals = np.log(arn_evals_dt) / dt
 
     # 5. Eigenvalues of the finite difference matrix (Krylov-Schur)
-    ks_evals_dt, ks_evecs = eig_ks(M, delta=0.99)
+    ks_evals_dt, ks_evecs = eig_ks(M, delta=0.99, m=10, n_evals=5)
     sort_idx = np.argsort(-abs(ks_evals_dt))
     ks_evals_dt = ks_evals_dt[sort_idx]
     ks_evecs = ks_evecs[:, sort_idx]
@@ -136,7 +144,6 @@ if __name__ == "__main__":
 
     # Print the leading eigenvalues for each method
     n_print = 5
-    print(dense_evals.shape)
     print(f"Dense eigenvalues: {dense_evals[:n_print]}")
     arn_err = abs(dense_evals[:n_print] - arn_evals[:n_print].real)
     print(f"Arnoldi eigenvalues: {arn_evals[:n_print].real}")
