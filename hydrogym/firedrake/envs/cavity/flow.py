@@ -4,7 +4,7 @@ import firedrake as fd
 import ufl
 from ufl import dot, ds, grad
 
-from hydrogym.firedrake import FlowConfig, ScaledDirichletBC
+from hydrogym.firedrake import FlowConfig, ObservationFunction, ScaledDirichletBC
 
 
 class Cavity(FlowConfig):
@@ -34,9 +34,23 @@ class Cavity(FlowConfig):
     def num_inputs(self) -> int:
         return 1  # Blowing/suction on leading edge
 
-    @property
-    def num_outputs(self) -> int:
-        return 1  # Shear stress on trailing edge
+    def configure_observations(
+        self, obs_type=None, probe_obs_types={}
+    ) -> ObservationFunction:
+        if obs_type is None:
+            obs_type = "stress_sensor"  # Shear stress at trailing edge
+
+        supported_obs_types = {
+            **probe_obs_types,
+            "stress_sensor": ObservationFunction(
+                self.wall_stress_sensor, num_outputs=1
+            ),
+        }
+
+        if obs_type not in supported_obs_types:
+            raise ValueError(f"Invalid observation type {obs_type}")
+
+        return supported_obs_types[obs_type]
 
     def init_bcs(self, mixed=False):
         V, Q = self.function_spaces(mixed=mixed)
@@ -77,7 +91,7 @@ class Cavity(FlowConfig):
         self.init_bcs(mixed=mixed)
         self.bcu_inflow.set_value(fd.Constant((0, 0)))
 
-    def get_observations(self, q=None):
+    def wall_stress_sensor(self, q=None):
         """Integral of wall-normal shear stress (see Barbagallo et al, 2009)"""
         if q is None:
             q = self.q

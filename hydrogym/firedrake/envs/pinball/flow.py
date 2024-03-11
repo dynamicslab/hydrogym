@@ -9,7 +9,7 @@ from firedrake import ds
 from firedrake.pyplot import tricontourf
 from ufl import atan2, cos, dot, sin
 
-from hydrogym.firedrake import FlowConfig, ScaledDirichletBC
+from hydrogym.firedrake import FlowConfig, ObservationFunction, ScaledDirichletBC
 
 
 class Pinball(FlowConfig):
@@ -64,9 +64,25 @@ class Pinball(FlowConfig):
     def num_inputs(self) -> int:
         return len(self.CYLINDER)
 
-    @property
-    def num_outputs(self) -> int:
-        return 2 * len(self.CYLINDER)  # [CL, CD] for each cyliner
+    def configure_observations(
+        self, obs_type=None, probe_obs_types={}
+    ) -> ObservationFunction:
+        if obs_type is None:
+            obs_type = "lift_drag"
+
+        def _lift_drag(q):
+            CL, CD = self.compute_forces(q=q)
+            return [*CL, *CD]
+
+        supported_obs_types = {
+            **probe_obs_types,
+            "lift_drag": ObservationFunction(_lift_drag, num_outputs=6),
+        }
+
+        if obs_type not in supported_obs_types:
+            raise ValueError(f"Invalid observation type {obs_type}")
+
+        return supported_obs_types[obs_type]
 
     def collect_bcu(self) -> Iterable[fd.DirichletBC]:
         return [self.bcu_inflow, self.bcu_freestream, *self.bcu_actuation]

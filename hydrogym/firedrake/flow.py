@@ -1,4 +1,5 @@
-from typing import Iterable
+from functools import partial
+from typing import Callable, Iterable, NamedTuple
 
 import firedrake as fd
 import numpy as np
@@ -25,6 +26,14 @@ class ScaledDirichletBC(fd.DirichletBC):
         self._scale.assign(c)
 
 
+class ObservationFunction(NamedTuple):
+    func: Callable
+    num_outputs: int
+
+    def __call__(self, q: fd.Function) -> np.ndarray:
+        return self.func(q)
+
+
 class FlowConfig(PDEBase):
     DEFAULT_REYNOLDS = 1
     DEFAULT_VELOCITY_ORDER = 2  # Taylor-Hood elements
@@ -39,6 +48,27 @@ class FlowConfig(PDEBase):
         if velocity_order is None:
             velocity_order = self.DEFAULT_VELOCITY_ORDER
         self.velocity_order = velocity_order
+
+        probes = config.pop("probes", None)
+        if probes is None:
+            probes = []
+
+        probe_obs_types = {
+            "velocity_probes": ObservationFunction(
+                partial(self.velocity_probe, probes), num_outputs=2 * len(probes)
+            ),
+            "pressure_probes": ObservationFunction(
+                partial(self.pressure_probe, probes), num_outputs=len(probes)
+            ),
+            "vorticity_probes": ObservationFunction(
+                partial(self.vorticity_probe, probes), num_outputs=len(probes)
+            ),
+        }
+
+        self.obs_fun = self.configure_observations(
+            obs_type=config.pop("observation_type", None),
+            probe_obs_types=probe_obs_types,
+        )
 
         super().__init__(**config)
 
@@ -79,6 +109,19 @@ class FlowConfig(PDEBase):
                     self.actuators[i].state = act_state[i]
 
         self.split_solution()  # Reset functions so self.u, self.p point to the new solution
+
+    def configure_observations(
+        self, obs_type=None, probe_obs_types={}
+    ) -> ObservationFunction:
+        raise NotImplementedError
+
+    def get_observations(self) -> np.ndarray:
+        return self.obs_fun(self.q)
+
+    @property
+    def num_outputs(self) -> int:
+        # This may be lift/drag, a stress "sensor", or a set of probe locations
+        return self.obs_fun.num_outputs
 
     def initialize_state(self):
         # Set up UFL objects referring to the mesh
@@ -257,3 +300,30 @@ class FlowConfig(PDEBase):
         u1 = q1.subfunctions[0]
         u2 = q2.subfunctions[0]
         return fd.assemble(inner(u1, u2) * dx)
+
+    def velocity_probe(self, probes, q: fd.Function = None) -> list[float]:
+        """Probe velocity in the wake.
+
+        Returns a list of velocities at the probe locations, ordered as
+        (u1, u2, ..., uN, v1, v2, ..., vN) where N is the number of probes.
+        """
+        if q is None:
+            q = self.q
+        u = q.subfunctions[0]
+        return np.stack(u.at(probes)).flatten("F")
+
+    def pressure_probe(self, probes, q: fd.Function = None) -> list[float]:
+        """Probe pressure around the cylinder"""
+        if q is None:
+            q = self.q
+        p = q.subfunctions[1]
+        return np.stack(p.at(probes))
+
+    def vorticity_probe(self, probes, q: fd.Function = None) -> list[float]:
+        """Probe vorticity in the wake."""
+        if q is None:
+            u = None
+        else:
+            u = q.subfunctions[0]
+        vort = self.vorticity(u=u)
+        return np.stack(vort.at(probes))

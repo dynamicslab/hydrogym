@@ -4,7 +4,7 @@ import firedrake as fd
 import ufl
 from ufl import dot, ds, exp, grad
 
-from hydrogym.firedrake import FlowConfig, ScaledDirichletBC
+from hydrogym.firedrake import FlowConfig, ObservationFunction, ScaledDirichletBC
 
 
 class Step(FlowConfig):
@@ -31,10 +31,6 @@ class Step(FlowConfig):
         return 1  # Blowing/suction on edge of step
 
     @property
-    def num_outputs(self) -> int:
-        return 1  # Shear stress on downstream wall
-
-    @property
     def nu(self):
         return fd.Constant(0.5 / ufl.real(self.Re))
 
@@ -48,6 +44,24 @@ class Step(FlowConfig):
                 exp(-((self.x - x0) ** 2 + (self.y - y0) ** 2) / delta**2),
             )
         )
+
+    def configure_observations(
+        self, obs_type=None, probe_obs_types={}
+    ) -> ObservationFunction:
+        if obs_type is None:
+            obs_type = "stress_sensor"  # Shear stress on downstream wall
+
+        supported_obs_types = {
+            **probe_obs_types,
+            "stress_sensor": ObservationFunction(
+                self.wall_stress_sensor, num_outputs=1
+            ),
+        }
+
+        if obs_type not in supported_obs_types:
+            raise ValueError(f"Invalid observation type {obs_type}")
+
+        return supported_obs_types[obs_type]
 
     def init_bcs(self, mixed=False):
         V, Q = self.function_spaces(mixed=mixed)
@@ -80,7 +94,7 @@ class Step(FlowConfig):
     def collect_bcp(self):
         return [self.bcp_outflow]
 
-    def get_observations(self, q=None):
+    def wall_stress_sensor(self, q=None):
         """Integral of wall-normal shear stress (see Barbagallo et al, 2009)"""
         if q is None:
             q = self.q

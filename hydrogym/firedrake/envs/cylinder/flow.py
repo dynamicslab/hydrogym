@@ -8,7 +8,7 @@ from firedrake import ds
 from firedrake.pyplot import tricontourf
 from ufl import as_vector, atan2, cos, dot, sign, sin, sqrt
 
-from hydrogym.firedrake import FlowConfig, ScaledDirichletBC
+from hydrogym.firedrake import FlowConfig, ObservationFunction, ScaledDirichletBC
 
 # Velocity probes
 xp = np.linspace(1.0, 10.0, 16)
@@ -46,39 +46,21 @@ class CylinderBase(FlowConfig):
     def num_inputs(self) -> int:
         return 1  # Rotary control
 
-    @property
-    def num_outputs(self) -> int:
-        # This may be lift/drag or a grid of velocity probes
-        return self._num_outputs
+    def configure_observations(
+        self, obs_type=None, probe_obs_types={}
+    ) -> ObservationFunction:
+        if obs_type is None:
+            obs_type = "lift_drag"
 
-    def __init__(self, **config):
-        obs_type = config.pop("observation_type", "lift_drag")
         supported_obs_types = {
-            "lift_drag": self.compute_forces,
-            "velocity_probes": self.velocity_probe,
-            "pressure_probes": self.pressure_probe,
+            **probe_obs_types,
+            "lift_drag": ObservationFunction(self.compute_forces, num_outputs=2),
         }
 
         if obs_type not in supported_obs_types:
             raise ValueError(f"Invalid observation type {obs_type}")
 
-        self.probes = config.pop("probes", None)
-        if self.probes is None:
-            self.probes = {
-                "lift_drag": [],
-                "velocity_probes": DEFAULT_VEL_PROBES,
-                "pressure_probes": DEFAULT_PRES_PROBES,
-            }[obs_type]
-
-        self._get_observations = supported_obs_types[obs_type]
-
-        self._num_outputs = {
-            "lift_drag": 2,
-            "velocity_probes": 2 * len(self.probes),
-            "pressure_probes": len(self.probes),
-        }[obs_type]
-
-        super().__init__(**config)
+        return supported_obs_types[obs_type]
 
     def init_bcs(self, mixed=False):
         V, Q = self.function_spaces(mixed=mixed)
@@ -127,24 +109,6 @@ class CylinderBase(FlowConfig):
         CL = fd.assemble(2 * force[1] * ds(self.CYLINDER))
         CD = fd.assemble(2 * force[0] * ds(self.CYLINDER))
         return CL, CD
-
-    def velocity_probe(self, q: fd.Function = None) -> list[float]:
-        """Probe velocity in the wake.
-
-        Returns a list of velocities at the probe locations, ordered as
-        (u1, u2, ..., uN, v1, v2, ..., vN) where N is the number of probes.
-        """
-        if q is None:
-            q = self.q
-        u = q.subfunctions[0]
-        return np.stack(u.at(self.probes)).flatten("F")
-
-    def pressure_probe(self, q: fd.Function = None) -> list[float]:
-        """Probe pressure around the cylinder"""
-        if q is None:
-            q = self.q
-        p = q.subfunctions[1]
-        return np.stack(p.at(self.probes))
 
     # get net shear force acting tangential to the surface of the cylinder
     def shear_force(self, q: fd.Function = None) -> float:
@@ -208,9 +172,6 @@ class CylinderBase(FlowConfig):
         self.reset_controls(mixed=mixed)
         self.bcu_inflow.set_value(fd.Constant((0, 0)))
         self.bcu_freestream.set_value(fd.Constant(0.0))
-
-    def get_observations(self) -> tuple[float]:
-        return self._get_observations()
 
     def evaluate_objective(self, q: fd.Function = None) -> float:
         """The objective function for this flow is the drag coefficient"""

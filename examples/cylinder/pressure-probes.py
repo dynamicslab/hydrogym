@@ -20,8 +20,7 @@ stabilization = "gls"
 mesh = "medium"
 method = "BDF"
 
-# Configure pressure probes
-# This is similar to the built-in default, but not spaced as closely
+# Configure pressure probes - evenly spaced around the cylinder
 n_probes = 8
 R = 0.5
 probes = [
