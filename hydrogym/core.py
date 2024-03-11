@@ -182,9 +182,7 @@ class PDEBase(metaclass=abc.ABCMeta):
         for i, u in enumerate(self.enlist(act)):
             self.actuators[i].state = u
 
-    def advance_time(
-        self, dt: float, act: Iterable[ActType] = None
-    ) -> Iterable[ActType]:
+    def advance_time(self, dt: float, act: list[float] = None) -> list[float]:
         """Update the current controls state.
 
         May involve integrating a dynamics model rather than
@@ -396,7 +394,7 @@ class FlowEnv(gym.Env):
     def check_complete(self):
         return self.iter > self.max_steps
 
-    def reset(self, t=0.0) -> Union[ArrayLike, Tuple[ArrayLike, dict]]
+    def reset(self, t=0.0) -> Union[ArrayLike, Tuple[ArrayLike, dict]]:
         self.iter = 0
         self.flow.reset(q0=self.q0, t=t)
         self.solver.reset(t=t)
