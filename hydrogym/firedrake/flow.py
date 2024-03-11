@@ -172,22 +172,17 @@ class FlowConfig(PDEBase):
             tau = self.TAU
         return DampedActuator(1 / tau)
 
-    def reset_controls(self, mixed: bool = False):
+    def reset_controls(self):
         """Reset the controls to a zero state
 
         Note that this is broken out from `reset` because
         the two are not necessarily called together (e.g.
         for linearization or deriving the control vector)
 
-        Args:
-            mixed (bool, optional):
-                determines a monolithic vs segregated formulation
-                (see `init_bcs`). Defaults to False.
-
         TODO: Allow for different kinds of actuators
         """
         self.actuators = [self.create_actuator() for _ in range(self.num_inputs)]
-        self.init_bcs(mixed=mixed)
+        self.init_bcs()
 
     @property
     def nu(self):
@@ -216,15 +211,15 @@ class FlowConfig(PDEBase):
         return vort
 
     def function_spaces(self, mixed: bool = True):
-        """_summary_
+        """Function spaces for velocity and pressure
 
         Args:
-            mixed (bool, optional): _description_. Defaults to True.
+            mixed (bool, optional):
+                If True (default), return subspaces of the mixed velocity/pressure
+                space. Otherwise return the segregated velocity and pressure spaces.
 
         Returns:
-            _type_: _description_
-
-        TODO: Is this necessary in Firedrake?
+            Tuple[fd.FunctionSpace, fd.FunctionSpace]: Velocity and pressure spaces
         """
         if mixed:
             V = self.mixed_space.sub(0)
@@ -289,22 +284,6 @@ class FlowConfig(PDEBase):
                         self.actuators[i].state, -self.MAX_CONTROL, self.MAX_CONTROL
                     )
                     self.bcu_actuation[i].set_scale(u)
-
-    def control_vec(self, mixed=False):
-        """Functions corresponding to the columns of the control matrix"""
-        V, Q = self.function_spaces(mixed=mixed)
-
-        B = []
-        for bcu in self.bcu_actuation:
-            domain = bcu.sub_domain
-            u_ctrl = bcu.unscaled_function_arg
-            bc_function = fd.assemble(interpolate(u_ctrl, V))
-            bcs = [fd.DirichletBC(V, bc_function, domain)]
-
-            # Control as Function
-            B.append(fd.project(fd.Constant((0, 0)), V, bcs=bcs))
-
-        return B
 
     def dot(self, q1: fd.Function, q2: fd.Function) -> float:
         """Energy inner product between two fields"""

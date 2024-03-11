@@ -135,7 +135,7 @@ class SemiImplicitBDF(NavierStokesTransientSolver):
         return petsc_solver
 
     def initialize_operators(self):
-        self.flow.init_bcs(mixed=True)
+        self.flow.init_bcs()
         self.petsc_solver = self._make_order_k_solver(self.k)
 
         # Start-up solvers for BDF/EXT schemes
