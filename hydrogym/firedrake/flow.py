@@ -94,9 +94,18 @@ class FlowConfig(PDEBase):
                 assert hasattr(self, "mesh")
             for f_name in self.FUNCTIONS:
                 try:
-                    getattr(self, f_name).assign(
-                        chk.load_function(self.mesh, f_name, idx=idx)
-                    )
+                    f_load = chk.load_function(self.mesh, f_name, idx=idx)
+                    f_self = getattr(self, f_name)
+
+                    # If the checkpoint saved on a different function space,
+                    # approximate the same field on the current function space
+                    # by projecting the checkpoint field onto the current space
+                    V_chk = f_load.function_space().ufl_element()
+                    V_self = f_self.function_space().ufl_element()
+                    if V_chk.ufl_element() != V_self.ufl_element():
+                        f_load = fd.project(f_load, V_self)
+
+                    f_self.assign(f_load)
                 except RuntimeError:
                     logging.log(
                         logging.WARN,
