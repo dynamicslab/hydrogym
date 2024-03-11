@@ -8,11 +8,14 @@ Re = 600
 output_dir = "output"
 mesh_resolution = "fine"
 restart = f"{output_dir}/{Re}_steady.h5"
+checkpoint = f"{output_dir}/checkpoint.h5"
 
 flow = hgym.Step(
     Re=Re,
     mesh=mesh_resolution,
     restart=restart,
+    velocity_order=1,
+    noise_amplitude=1.0,
 )
 
 # Store base flow for computing TKE
@@ -21,7 +24,7 @@ flow.qB.assign(flow.q)
 dof = flow.mixed_space.dim()
 hgym.print(f"Total dof: {dof} --- dof/rank: {int(dof/fd.COMM_WORLD.size)}")
 
-tf = 1.0
+tf = 1000.0
 method = "BDF"
 stabilization = "gls"
 dt = 0.01
@@ -38,10 +41,10 @@ def log_postprocess(flow):
 print_fmt = (
     "t: {0:0.3f}\t\tCFL: {1:0.3f}\t\t KE: {2:0.6e}\t\t TKE: {3:0.6e}\t\t Mem: {4:0.1f}"
 )
-interval = max(1, int(1e-2 / dt))
+interval = max(1, int(1e-1 / dt))
 callbacks = [
     # hgym.io.ParaviewCallback(interval=100, filename=pvd_out, postprocess=compute_vort),
-    # hgym.io.CheckpointCallback(interval=100, filename=checkpoint),
+    hgym.io.CheckpointCallback(interval=1000, filename=checkpoint),
     hgym.io.LogCallback(
         postprocess=log_postprocess,
         nvals=4,
@@ -58,5 +61,4 @@ hgym.integrate(
     callbacks=callbacks,
     method=method,
     stabilization=stabilization,
-    eta=1.0,
 )

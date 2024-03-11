@@ -157,9 +157,11 @@ class FlowConfig(PDEBase):
         """
         return self.q.copy(deepcopy=deepcopy)
 
-    def create_actuator(self) -> ActuatorBase:
+    def create_actuator(self, tau=None) -> ActuatorBase:
         """Create a single actuator for this flow"""
-        return DampedActuator(1 / self.TAU)
+        if tau is None:
+            tau = self.TAU
+        return DampedActuator(1 / tau)
 
     def reset_controls(self, mixed: bool = False):
         """Reset the controls to a zero state
