@@ -52,8 +52,8 @@ class Cavity(FlowConfig):
 
         return supported_obs_types[obs_type]
 
-    def init_bcs(self, mixed=False):
-        V, Q = self.function_spaces(mixed=mixed)
+    def init_bcs(self):
+        V, Q = self.function_spaces(mixed=True)
 
         # Define static boundary conditions
         self.U_inf = fd.Constant((1.0, 0.0))
@@ -86,9 +86,9 @@ class Cavity(FlowConfig):
     def collect_bcp(self):
         return [self.bcp_outflow]
 
-    def linearize_bcs(self, mixed=True):
-        self.reset_controls(mixed=mixed)
-        self.init_bcs(mixed=mixed)
+    def linearize_bcs(self):
+        self.reset_controls()
+        self.init_bcs()
         self.bcu_inflow.set_value(fd.Constant((0, 0)))
 
     def wall_stress_sensor(self, q=None):

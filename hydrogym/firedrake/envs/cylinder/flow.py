@@ -62,8 +62,8 @@ class CylinderBase(FlowConfig):
 
         return supported_obs_types[obs_type]
 
-    def init_bcs(self, mixed=False):
-        V, Q = self.function_spaces(mixed=mixed)
+    def init_bcs(self):
+        V, Q = self.function_spaces(mixed=True)
 
         # Define the static boundary conditions
         self.U_inf = fd.Constant((1.0, 0.0))
@@ -168,8 +168,8 @@ class CylinderBase(FlowConfig):
     #     fd.solve(A == zero, f, bcs=self.collect_bcs())
     #     return f
 
-    def linearize_bcs(self, mixed=True):
-        self.reset_controls(mixed=mixed)
+    def linearize_bcs(self):
+        self.reset_controls()
         self.bcu_inflow.set_value(fd.Constant((0, 0)))
         self.bcu_freestream.set_value(fd.Constant(0.0))
 
