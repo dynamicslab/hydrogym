@@ -44,8 +44,8 @@ if __name__ == "__main__":
     flow.load_checkpoint(base_checkpoint)
     qB = flow.q.copy(deepcopy=True)
 
-    tau = 0.1
-    dt = 0.01
+    tau = 0.05
+    dt = 0.0025
     A = FlowPropagator(flow, qB, dt, tau)
 
     rng = fd.RandomGenerator(fd.PCG64())
@@ -55,6 +55,7 @@ if __name__ == "__main__":
         v0,
         m=256,
         inner_product=inner_product,
+        debug_tau=tau,
     )
     arn_evals = np.log(rvals) / tau
 
@@ -62,9 +63,12 @@ if __name__ == "__main__":
     print(f"Arnoldi eigenvalues: {arn_evals[:n_print]}")
 
     # Save checkpoints
-    for i in range(n_print):
-        flow.q.assign(evecs_real[i])  # TODO: Save both components
-        flow.save_checkpoint(filename=evec_checkpoint, idx=i)
+    with fd.CheckpointFile(evec_checkpoint, "w") as chk:
+        for i in range(n_print):
+            evecs_real[i].rename(f"evec_{i}_re")
+            chk.save_function(evecs_real[i])
+            evecs_imag[i].rename(f"evec_{i}_im")
+            chk.save_function(evecs_imag[i])
 
     # print(f"Krylov-Schur eigenvalues: {ks_evals[:n_print].real}")
 

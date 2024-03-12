@@ -17,7 +17,7 @@ class ArnoldiBase:
     def copy(self, u):
         return np.array(u)
 
-    def __call__(self, A, v0, m=100, restart=None):
+    def __call__(self, A, v0, m=100, restart=None, debug_tau=None):
         if restart is None:
             # Initial value here doesn't matter - all data will be overwritten
             V = [self.copy(v0) for _ in range(m)]
@@ -54,11 +54,11 @@ class ArnoldiBase:
                 self.assign(f, f - V[k] * H[k, j])
 
             # DEBUG: Print the eigenvalues
-            tau = 0.1
-            ritz_vals, ritz_vecs = linalg.eig(H[: j + 1, : j + 1])
-            sort_idx = np.argsort(-abs(ritz_vals))
-            ritz_vals = ritz_vals[sort_idx]
-            print(np.log(ritz_vals[:10]) / tau)
+            if debug_tau is not None:
+                ritz_vals, _ = linalg.eig(H[: j + 1, : j + 1])
+                sort_idx = np.argsort(-abs(ritz_vals))
+                ritz_vals = ritz_vals[sort_idx]
+                print(np.log(ritz_vals[:10]) / debug_tau)
 
         return V, H, v, beta
 
@@ -84,14 +84,14 @@ class FiredrakeArnoldi(ArnoldiBase):
         return u.copy(deepcopy=True)
 
 
-def eig_arnoldi(A, v0, m=100, sort=None, inner_product=None):
+def eig_arnoldi(A, v0, m=100, sort=None, inner_product=None, debug_tau=None):
     if sort is None:
         # Decreasing magnitude
         def sort(x):
             return np.argsort(-abs(x))
 
     arnoldi = FiredrakeArnoldi(inner_product=inner_product)
-    V, H, _, _ = arnoldi(A, v0, m)
+    V, H, _, _ = arnoldi(A, v0, m, debug_tau=debug_tau)
     ritz_vals, ritz_vecs = linalg.eig(H)
 
     sort_idx = sort(ritz_vals)
