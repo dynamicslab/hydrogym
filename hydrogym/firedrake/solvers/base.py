@@ -33,7 +33,7 @@ class NewtonSolver:
         if q is None:
             q = self.flow.q
 
-        self.flow.init_bcs(mixed=True)
+        self.flow.init_bcs()
 
         F = self.steady_form(q)  # Nonlinear variational form
         J = fd.derivative(F, q)  # Jacobian with automatic differentiation

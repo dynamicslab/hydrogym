@@ -1,10 +1,8 @@
 from .bdf_ext import SemiImplicitBDF
-from .ipcs import IPCS
 
 __all__ = ["integrate"]
 
 METHODS = {
-    "IPCS": IPCS,
     "BDF": SemiImplicitBDF,
 }
 

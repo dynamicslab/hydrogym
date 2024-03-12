@@ -78,8 +78,8 @@ class Step(FlowConfig):
 
         return supported_obs_types[obs_type]
 
-    def init_bcs(self, mixed=False):
-        V, Q = self.function_spaces(mixed=mixed)
+    def init_bcs(self):
+        V, Q = self.function_spaces(mixed=True)
 
         # Define static boundary conditions
         self.U_inf = ufl.as_tensor((1.0 - ((self.y - 0.25) / 0.25) ** 2, 0.0 * self.y))
@@ -111,9 +111,9 @@ class Step(FlowConfig):
 
         return super().advance_time(dt, control)
 
-    def linearize_bcs(self, mixed=True):
-        self.reset_controls(mixed=mixed)
-        self.init_bcs(mixed=mixed)
+    def linearize_bcs(self):
+        self.reset_controls()
+        self.init_bcs()
         self.bcu_inflow.set_value(fd.Constant((0, 0)))
 
     def collect_bcu(self):

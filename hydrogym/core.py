@@ -76,13 +76,8 @@ class PDEBase(metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
-    def init_bcs(self, mixed: bool = False):
-        """Initialize any boundary conditions for the PDE.
-
-        Args:
-            mixed (bool, optional): determines a monolithic vs segregated formulation
-                (may not always be necessary). Defaults to False.
-        """
+    def init_bcs(self):
+        """Initialize any boundary conditions for the PDE."""
         pass
 
     def set_state(self, q: StateType):
@@ -118,21 +113,16 @@ class PDEBase(metaclass=abc.ABCMeta):
             self.set_state(q0)
         self.reset_controls()
 
-    def reset_controls(self, mixed: bool = False):
+    def reset_controls(self):
         """Reset the controls to a zero state
 
         Note that this is broken out from `reset` because
         the two are not necessarily called together (e.g.
         for linearization or deriving the control vector)
 
-        Args:
-            mixed (bool, optional):
-                determines a monolithic vs segregated formulation
-                (see `init_bcs`). Defaults to False.
-
         """
         self.actuators = [ActuatorBase() for _ in range(self.num_inputs)]
-        self.init_bcs(mixed=mixed)
+        self.init_bcs()
 
     def collect_bcs(self) -> Iterable[BCType]:
         """Return the set of boundary conditions"""
