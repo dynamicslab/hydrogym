@@ -100,8 +100,8 @@ class FlowConfig(PDEBase):
                     # If the checkpoint saved on a different function space,
                     # approximate the same field on the current function space
                     # by projecting the checkpoint field onto the current space
-                    V_chk = f_load.function_space().ufl_element()
-                    V_self = f_self.function_space().ufl_element()
+                    V_chk = f_load.function_space()
+                    V_self = f_self.function_space()
                     if V_chk.ufl_element() != V_self.ufl_element():
                         f_load = fd.project(f_load, V_self)
 

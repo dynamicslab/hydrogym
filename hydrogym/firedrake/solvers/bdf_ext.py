@@ -5,6 +5,12 @@ from ..flow import FlowConfig
 from .base import NavierStokesTransientSolver
 from .stabilization import ns_stabilization
 
+__all__ = [
+    "SemiImplicitBDF",
+    "LinearizedBDF",
+]
+
+
 _alpha_BDF = [1.0, 3.0 / 2.0, 11.0 / 6.0]
 _beta_BDF = [
     [1.0],
@@ -22,7 +28,7 @@ class SemiImplicitBDF(NavierStokesTransientSolver):
     def __init__(
         self,
         flow: FlowConfig,
-        dt: float = None,
+        dt: float,
         order: int = 3,
         stabilization: str = "default",
         rtol=1e-6,
@@ -163,3 +169,87 @@ class SemiImplicitBDF(NavierStokesTransientSolver):
         self.u_prev[0].assign(self.flow.q.subfunctions[0])
 
         return self.flow
+
+
+class LinearizedBDF(SemiImplicitBDF):
+    def __init__(self, *args, qB: fd.Function, **kwargs):
+        self.qB = qB
+        stabilization = kwargs.pop("stabilization", "none").split("_")
+        if stabilization[0] != "linearized":
+            stabilization = ["linearized", stabilization[0]]
+        stabilization = "_".join(stabilization)
+        super().__init__(*args, stabilization=stabilization, **kwargs)
+
+    def _make_order_k_solver(self, k):
+        # Setup functions and spaces
+        flow = self.flow
+        h = fd.Constant(self.dt)
+
+        flow.linearize_bcs()
+
+        (uB, pB) = self.qB.subfunctions
+        (u, p) = self.q_trial
+        (v, s) = self.q_test
+
+        # Combinations of functions for form construction
+        k_idx = k - 1
+        u_BDF = sum(beta * u_n for beta, u_n in zip(_beta_BDF[k_idx], self.u_prev))
+        alpha_k = _alpha_BDF[k_idx]
+        u_t = (alpha_k * u - u_BDF) / h  # BDF estimate of time derivative
+
+        # Semi-implicit weak form
+        # FIXME: Don't assume qB is a steady state: should have a base flow forcing
+        # term (add to self.f?). Or use:
+        # F = steady_solver.steady_form(qB)  # Nonlinear variational form
+        # J = fd.derivative(F, qB)  # Jacobian with automatic differentiation
+        weak_form = (
+            dot(u_t, v) * dx
+            + dot(dot(uB, nabla_grad(u)), v) * dx
+            + dot(dot(u, nabla_grad(uB)), v) * dx
+            + inner(flow.sigma(u, p), flow.epsilon(v)) * dx
+            + dot(div(u), s) * dx
+            - dot(self.f, v) * dx
+        )
+
+        # Stabilization (SUPG, GLS, etc.)
+        stab = self.StabilizationType(
+            flow,
+            self.q_trial,
+            self.q_test,
+            wind=uB,
+            dt=self.dt,
+            u_t=u_t,
+            f=self.f,
+        )
+        weak_form = stab.stabilize(weak_form)
+
+        # Construct variational problem and PETSc solver
+        q = self.flow.q
+        a = lhs(weak_form)
+        L = rhs(weak_form)
+        bcs = self.flow.collect_bcs()
+        bdf_prob = fd.LinearVariationalProblem(a, L, q, bcs=bcs)
+
+        # Schur complement preconditioner. See:
+        # https://www.firedrakeproject.org/demos/saddle_point_systems.py.html
+        solver_parameters = {
+            "ksp_type": "fgmres",
+            "ksp_rtol": self.ksp_rtol,
+            "pc_type": "fieldsplit",
+            "pc_fieldsplit_type": "schur",
+            "pc_fieldsplit_schur_fact_type": "full",
+            "pc_fieldsplit_schur_precondition": "selfp",
+            #
+            # Default preconditioner for inv(A)
+            #   (ilu in serial, bjacobi in parallel)
+            "fieldsplit_0_ksp_type": "preonly",
+            #
+            # Single multigrid cycle preconditioner for inv(S)
+            "fieldsplit_1_ksp_type": "preonly",
+            "fieldsplit_1_pc_type": "hypre",
+        }
+
+        petsc_solver = fd.LinearVariationalSolver(
+            bdf_prob, solver_parameters=solver_parameters
+        )
+        return petsc_solver

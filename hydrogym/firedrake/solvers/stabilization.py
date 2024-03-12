@@ -112,8 +112,47 @@ class GLS(UpwindNSStabilization):
         return dot(w, nabla_grad(v)) - div(sigma(v, s))
 
 
+class LinearizedNSStabilization(UpwindNSStabilization):
+    @property
+    def Lu(self):
+        (u, p) = self.q_trial
+
+        uB = self.wind
+        sigma = self.flow.sigma
+
+        Lu = dot(uB, nabla_grad(u)) + dot(u, nabla_grad(uB)) - div(sigma(u, p))
+
+        if self.u_t is not None:
+            Lu += self.u_t
+
+        if self.f is not None:
+            Lu -= self.f
+
+        return Lu
+
+
+class LinearizedSUPG(LinearizedNSStabilization):
+    @property
+    def Lv(self):
+        (v, _) = self.q_test
+        uB = self.wind
+        return dot(uB, nabla_grad(v)) + dot(v, nabla_grad(uB))
+
+
+class LinearizedGLS(LinearizedNSStabilization):
+    @property
+    def Lv(self):
+        (v, s) = self.q_test
+        uB = self.wind
+        sigma = self.flow.sigma
+        return dot(uB, nabla_grad(v)) + dot(v, nabla_grad(uB)) - div(sigma(v, s))
+
+
 ns_stabilization = {
     "none": NavierStokesStabilization,
     "supg": SUPG,
     "gls": GLS,
+    "linearized_none": NavierStokesStabilization,
+    "linearized_supg": LinearizedSUPG,
+    "linearized_gls": LinearizedGLS,
 }

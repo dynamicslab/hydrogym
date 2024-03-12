@@ -2,7 +2,7 @@ from hydrogym.core import FlowEnv
 
 from .actuator import DampedActuator
 from .flow import FlowConfig, ObservationFunction, ScaledDirichletBC
-from .solvers import NewtonSolver, SemiImplicitBDF, integrate
+from .solvers import LinearizedBDF, NewtonSolver, SemiImplicitBDF, integrate
 from .utils import io, is_rank_zero, linalg, modeling, print
 
 from .envs import Cylinder, RotaryCylinder, Pinball, Cavity, Step  # isort:skip

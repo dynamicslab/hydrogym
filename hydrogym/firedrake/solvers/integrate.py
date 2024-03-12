@@ -1,9 +1,10 @@
-from .bdf_ext import SemiImplicitBDF
+from .bdf_ext import LinearizedBDF, SemiImplicitBDF
 
 __all__ = ["integrate"]
 
 METHODS = {
     "BDF": SemiImplicitBDF,
+    "LinearizedBDF": LinearizedBDF,
 }
 
 
