@@ -48,12 +48,12 @@ if __name__ == "__main__":
     rng = fd.RandomGenerator(fd.PCG64())
     v0 = rng.standard_normal(fn_space)
     arn_rvals, arn_evecs_real, arn_evecs_imag = eig_arnoldi(A, v0, m=20)
-    arn_evals = np.log(arn_rvals) / dt
+    arn_evals = np.log(arn_rvals) / tau
 
     ks_rvals, ks_evecs_real, ks_evecs_imag = eig_ks(
         A, v0, m=20, delta=0.9, tol=1e-10, n_evals=10
     )
-    ks_evals = np.log(ks_rvals) / dt
+    ks_evals = np.log(ks_rvals) / tau
 
     n_print = 5
     print(f"Arnoldi eigenvalues: {arn_evals[:n_print].real}")

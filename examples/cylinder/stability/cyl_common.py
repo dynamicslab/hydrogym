@@ -9,6 +9,7 @@ if not os.path.exists(output_dir):
     os.makedirs(output_dir)
 
 base_checkpoint = "output/base.h5"
+evec_checkpoint = "output/evecs.h5"
 
 velocity_order = 2
 stabilization = "none"

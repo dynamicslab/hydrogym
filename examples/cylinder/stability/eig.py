@@ -38,10 +38,11 @@ class ArnoldiBase:
         self.assign(v, v / self.norm(v0))
         w = A @ v
         alpha = self.inner(v, w)
-        self.assign(f, w - alpha * v)
+        self.assign(f, w - v * alpha)
         self.assign(V[start_idx], v)
         H[start_idx, start_idx] = alpha
         for j in range(start_idx + 1, m):
+            print(f"Arnoldi iteration {j}")
             beta = self.norm(f)
             H[j, j - 1] = beta
             self.assign(v, f / beta)
@@ -50,14 +51,31 @@ class ArnoldiBase:
             self.assign(f, w)
             for k in range(j + 1):
                 H[k, j] = self.inner(V[k], w)
-                self.assign(f, f - H[k, j] * V[k])
+                self.assign(f, f - V[k] * H[k, j])
+
+            # DEBUG: Print the eigenvalues
+            tau = 0.1
+            ritz_vals, ritz_vecs = linalg.eig(H[: j + 1, : j + 1])
+            sort_idx = np.argsort(-abs(ritz_vals))
+            ritz_vals = ritz_vals[sort_idx]
+            print(np.log(ritz_vals[:10]) / tau)
 
         return V, H, v, beta
 
 
 class FiredrakeArnoldi(ArnoldiBase):
+    def __init__(self, inner_product=None):
+        if inner_product is None:
+
+            def _inner(u, v):
+                return fd.assemble(inner(u, v) * dx)
+
+        else:
+            _inner = inner_product
+        self._inner = _inner
+
     def inner(self, u, v):
-        return fd.assemble(inner(u, v) * dx)
+        return self._inner(u, v)
 
     def assign(self, u, v):
         u.assign(v)
@@ -66,13 +84,13 @@ class FiredrakeArnoldi(ArnoldiBase):
         return u.copy(deepcopy=True)
 
 
-def eig_arnoldi(A, v0, m=100, sort=None):
+def eig_arnoldi(A, v0, m=100, sort=None, inner_product=None):
     if sort is None:
         # Decreasing magnitude
         def sort(x):
             return np.argsort(-abs(x))
 
-    arnoldi = FiredrakeArnoldi()
+    arnoldi = FiredrakeArnoldi(inner_product=inner_product)
     V, H, _, _ = arnoldi(A, v0, m)
     ritz_vals, ritz_vecs = linalg.eig(H)
 
@@ -84,13 +102,15 @@ def eig_arnoldi(A, v0, m=100, sort=None):
     evecs_real = [fd.Function(fn_space) for _ in range(len(V))]
     evecs_imag = [fd.Function(fn_space) for _ in range(len(V))]
     for i in range(len(V)):
-        evecs_real[i].assign(sum(ritz_vecs[j, i].real * V[j] for j in range(len(V))))
-        evecs_imag[i].assign(sum(ritz_vecs[j, i].imag * V[j] for j in range(len(V))))
+        evecs_real[i].assign(sum(V[j] * ritz_vecs[j, i].real for j in range(len(V))))
+        evecs_imag[i].assign(sum(V[j] * ritz_vecs[j, i].imag for j in range(len(V))))
     return ritz_vals, evecs_real, evecs_imag
 
 
-def eig_ks(M, v0, n_evals=10, m=100, tol=1e-10, delta=0.05, maxiter=None):
-    arnoldi = FiredrakeArnoldi()
+def eig_ks(
+    A, v0, n_evals=10, m=100, tol=1e-10, delta=0.05, maxiter=None, inner_product=None
+):
+    arnoldi = FiredrakeArnoldi(inner_product=inner_product)
     fn_space = v0.function_space()
 
     restart = None
@@ -98,7 +118,7 @@ def eig_ks(M, v0, n_evals=10, m=100, tol=1e-10, delta=0.05, maxiter=None):
 
     converged = []
     while len(converged) < n_evals:
-        V, H, v0, beta = arnoldi(M, v0, m, restart=restart)
+        V, H, v0, beta = arnoldi(A, v0, m, restart=restart)
 
         # Check for convergence based on Arnoldi residuals
         ritz_vals, ritz_vecs = linalg.eig(H)

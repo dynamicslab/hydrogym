@@ -14,4 +14,5 @@ qB = steady_solver.solve()
 hgym.print(flow.compute_forces(qB))
 
 # Save checkpoint
-flow.save_checkpoint(qB, base_checkpoint)
+flow.q.assign(qB)
+flow.save_checkpoint(base_checkpoint)
