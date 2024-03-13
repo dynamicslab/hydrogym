@@ -4,7 +4,7 @@ import firedrake as fd
 import ufl
 from ufl import dot, ds, grad
 
-from hydrogym.firedrake import FlowConfig, ScaledDirichletBC
+from hydrogym.firedrake import FlowConfig, ObservationFunction, ScaledDirichletBC
 
 
 class Cavity(FlowConfig):
@@ -30,8 +30,30 @@ class Cavity(FlowConfig):
 
     MESH_DIR = os.path.abspath(f"{__file__}/..")
 
-    def init_bcs(self, mixed=False):
-        V, Q = self.function_spaces(mixed=mixed)
+    @property
+    def num_inputs(self) -> int:
+        return 1  # Blowing/suction on leading edge
+
+    def configure_observations(
+        self, obs_type=None, probe_obs_types={}
+    ) -> ObservationFunction:
+        if obs_type is None:
+            obs_type = "stress_sensor"  # Shear stress at trailing edge
+
+        supported_obs_types = {
+            **probe_obs_types,
+            "stress_sensor": ObservationFunction(
+                self.wall_stress_sensor, num_outputs=1
+            ),
+        }
+
+        if obs_type not in supported_obs_types:
+            raise ValueError(f"Invalid observation type {obs_type}")
+
+        return supported_obs_types[obs_type]
+
+    def init_bcs(self):
+        V, Q = self.function_spaces(mixed=True)
 
         # Define static boundary conditions
         self.U_inf = fd.Constant((1.0, 0.0))
@@ -64,12 +86,12 @@ class Cavity(FlowConfig):
     def collect_bcp(self):
         return [self.bcp_outflow]
 
-    def linearize_bcs(self, mixed=True):
-        self.reset_controls(mixed=mixed)
-        self.init_bcs(mixed=mixed)
+    def linearize_bcs(self):
+        self.reset_controls()
+        self.init_bcs()
         self.bcu_inflow.set_value(fd.Constant((0, 0)))
 
-    def get_observations(self, q=None):
+    def wall_stress_sensor(self, q=None):
         """Integral of wall-normal shear stress (see Barbagallo et al, 2009)"""
         if q is None:
             q = self.q

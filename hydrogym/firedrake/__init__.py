@@ -1,8 +1,8 @@
 from hydrogym.core import FlowEnv
 
 from .actuator import DampedActuator
-from .flow import FlowConfig, ScaledDirichletBC
-from .solvers import IPCS, NewtonSolver, SemiImplicitBDF, integrate
+from .flow import FlowConfig, ObservationFunction, ScaledDirichletBC
+from .solvers import NewtonSolver, SemiImplicitBDF, integrate
 from .utils import io, is_rank_zero, linalg, modeling, print
 
 from .envs import Cylinder, RotaryCylinder, Pinball, Cavity, Step  # isort:skip
@@ -12,7 +12,7 @@ __all__ = [
     "FlowConfig",
     "DampedActuator",
     "ScaledDirichletBC",
-    "IPCS",
+    "ObservationFunction",
     "NewtonSolver",
     "SemiImplicitBDF",
     "integrate",

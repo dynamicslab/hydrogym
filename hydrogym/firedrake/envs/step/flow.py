@@ -6,7 +6,7 @@ import ufl
 from firedrake.petsc import PETSc
 from ufl import dot, ds, exp, grad
 
-from hydrogym.firedrake import FlowConfig, ScaledDirichletBC
+from hydrogym.firedrake import FlowConfig, ObservationFunction, ScaledDirichletBC
 
 
 class Step(FlowConfig):
@@ -41,6 +41,10 @@ class Step(FlowConfig):
         super().__init__(**kwargs)
 
     @property
+    def num_inputs(self) -> int:
+        return 1  # Blowing/suction on edge of step
+
+    @property
     def nu(self):
         return fd.Constant(0.5 / ufl.real(self.Re))
 
@@ -56,8 +60,26 @@ class Step(FlowConfig):
             )
         )
 
-    def init_bcs(self, mixed=False):
-        V, Q = self.function_spaces(mixed=mixed)
+    def configure_observations(
+        self, obs_type=None, probe_obs_types={}
+    ) -> ObservationFunction:
+        if obs_type is None:
+            obs_type = "stress_sensor"  # Shear stress on downstream wall
+
+        supported_obs_types = {
+            **probe_obs_types,
+            "stress_sensor": ObservationFunction(
+                self.wall_stress_sensor, num_outputs=1
+            ),
+        }
+
+        if obs_type not in supported_obs_types:
+            raise ValueError(f"Invalid observation type {obs_type}")
+
+        return supported_obs_types[obs_type]
+
+    def init_bcs(self):
+        V, Q = self.function_spaces(mixed=True)
 
         # Define static boundary conditions
         self.U_inf = ufl.as_tensor((1.0 - ((self.y - 0.25) / 0.25) ** 2, 0.0 * self.y))
@@ -89,9 +111,9 @@ class Step(FlowConfig):
 
         return super().advance_time(dt, control)
 
-    def linearize_bcs(self, mixed=True):
-        self.reset_controls(mixed=mixed)
-        self.init_bcs(mixed=mixed)
+    def linearize_bcs(self):
+        self.reset_controls()
+        self.init_bcs()
         self.bcu_inflow.set_value(fd.Constant((0, 0)))
 
     def collect_bcu(self):
@@ -104,7 +126,7 @@ class Step(FlowConfig):
     def collect_bcp(self):
         return [self.bcp_outflow]
 
-    def get_observations(self, q=None):
+    def wall_stress_sensor(self, q=None):
         """Integral of wall-normal shear stress (see Barbagallo et al, 2009)"""
         if q is None:
             q = self.q

@@ -1,5 +1,4 @@
 import os
-from typing import Iterable
 
 import firedrake as fd
 import matplotlib.pyplot as plt
@@ -9,9 +8,20 @@ from firedrake import ds
 from firedrake.pyplot import tricontourf
 from ufl import as_vector, atan2, cos, dot, sign, sin, sqrt
 
-from hydrogym.firedrake import FlowConfig, ScaledDirichletBC
+from hydrogym.firedrake import FlowConfig, ObservationFunction, ScaledDirichletBC
 
-__all__ = ["Cylinder", "RotaryCylinder"]
+# Velocity probes
+xp = np.linspace(1.0, 10.0, 16)
+yp = np.linspace(-2.0, 2.0, 4)
+X, Y = np.meshgrid(xp, yp)
+DEFAULT_VEL_PROBES = [(x, y) for x, y in zip(X.ravel(), Y.ravel())]
+
+# Pressure probes (spaced equally around the cylinder)
+RADIUS = 0.5
+DEFAULT_PRES_PROBES = [
+    (RADIUS * np.cos(theta), RADIUS * np.sin(theta))
+    for theta in np.linspace(0, 2 * np.pi, 20, endpoint=False)
+]
 
 
 class CylinderBase(FlowConfig):
@@ -19,7 +29,7 @@ class CylinderBase(FlowConfig):
     DEFAULT_MESH = "medium"
     DEFAULT_DT = 1e-2
 
-    OBS_DIM = 2
+    MAX_CONTROL = 0.5 * np.pi
     # TAU = 0.556  # Time constant for controller damping (0.1*vortex shedding period)
     TAU = 0.0556  # Time constant for controller damping (0.01*vortex shedding period)
 
@@ -32,8 +42,28 @@ class CylinderBase(FlowConfig):
 
     MESH_DIR = os.path.abspath(f"{__file__}/..")
 
-    def init_bcs(self, mixed=False):
-        V, Q = self.function_spaces(mixed=mixed)
+    @property
+    def num_inputs(self) -> int:
+        return 1  # Rotary control
+
+    def configure_observations(
+        self, obs_type=None, probe_obs_types={}
+    ) -> ObservationFunction:
+        if obs_type is None:
+            obs_type = "lift_drag"
+
+        supported_obs_types = {
+            **probe_obs_types,
+            "lift_drag": ObservationFunction(self.compute_forces, num_outputs=2),
+        }
+
+        if obs_type not in supported_obs_types:
+            raise ValueError(f"Invalid observation type {obs_type}")
+
+        return supported_obs_types[obs_type]
+
+    def init_bcs(self):
+        V, Q = self.function_spaces(mixed=True)
 
         # Define the static boundary conditions
         self.U_inf = fd.Constant((1.0, 0.0))
@@ -55,13 +85,13 @@ class CylinderBase(FlowConfig):
         """Velocity vector for boundary condition"""
         raise NotImplementedError
 
-    def collect_bcu(self) -> Iterable[fd.DirichletBC]:
+    def collect_bcu(self) -> list[fd.DirichletBC]:
         return [self.bcu_inflow, self.bcu_freestream, *self.bcu_actuation]
 
-    def collect_bcp(self) -> Iterable[fd.DirichletBC]:
+    def collect_bcp(self) -> list[fd.DirichletBC]:
         return [self.bcp_outflow]
 
-    def compute_forces(self, q: fd.Function = None) -> Iterable[float]:
+    def compute_forces(self, q: fd.Function = None) -> tuple[float]:
         """Compute dimensionless lift/drag coefficients on cylinder
 
         Args:
@@ -138,13 +168,10 @@ class CylinderBase(FlowConfig):
     #     fd.solve(A == zero, f, bcs=self.collect_bcs())
     #     return f
 
-    def linearize_bcs(self, mixed=True):
-        self.reset_controls(mixed=mixed)
+    def linearize_bcs(self):
+        self.reset_controls()
         self.bcu_inflow.set_value(fd.Constant((0, 0)))
         self.bcu_freestream.set_value(fd.Constant(0.0))
-
-    def get_observations(self) -> Iterable[FlowConfig.ObsType]:
-        return self.compute_forces()
 
     def evaluate_objective(self, q: fd.Function = None) -> float:
         """The objective function for this flow is the drag coefficient"""
@@ -179,7 +206,7 @@ class RotaryCylinder(CylinderBase):
     def cyl_velocity_field(self):
         # Set up tangential boundaries to cylinder
         theta = atan2(ufl.real(self.y), ufl.real(self.x))  # Angle from origin
-        self.rad = fd.Constant(0.5)
+        self.rad = fd.Constant(RADIUS)
         # Tangential velocity
         return ufl.as_tensor((self.rad * sin(theta), self.rad * cos(theta)))
 
@@ -199,7 +226,7 @@ class Cylinder(CylinderBase):
         # Set up tangential boundaries to cylinder
         theta = atan2(ufl.real(self.y), ufl.real(self.x))  # Angle from origin
         pi = ufl.pi
-        self.rad = fd.Constant(0.5)
+        self.rad = fd.Constant(RADIUS)
 
         omega = pi / 18  # 10 degree jet width
 

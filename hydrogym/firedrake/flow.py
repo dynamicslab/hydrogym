@@ -1,4 +1,5 @@
-from typing import Iterable
+from functools import partial
+from typing import Callable, Iterable, NamedTuple
 
 import firedrake as fd
 import numpy as np
@@ -7,6 +8,7 @@ import ufl
 from firedrake import dx, logging
 from firedrake.__future__ import interpolate
 from mpi4py import MPI
+from numpy.typing import ArrayLike
 from ufl import curl, dot, inner, nabla_grad, sqrt, sym
 
 from ..core import ActuatorBase, PDEBase
@@ -24,6 +26,14 @@ class ScaledDirichletBC(fd.DirichletBC):
         self._scale.assign(c)
 
 
+class ObservationFunction(NamedTuple):
+    func: Callable
+    num_outputs: int
+
+    def __call__(self, q: fd.Function) -> np.ndarray:
+        return self.func(q)
+
+
 class FlowConfig(PDEBase):
     DEFAULT_REYNOLDS = 1
     DEFAULT_VELOCITY_ORDER = 2  # Taylor-Hood elements
@@ -32,16 +42,33 @@ class FlowConfig(PDEBase):
 
     FUNCTIONS = ("q",)  # tuple of functions necessary for the flow
 
-    ScalarType = fd.utils.ScalarType
-    ActType = fd.Constant
-    ObsType = float
-
     def __init__(self, velocity_order=None, **config):
         self.Re = fd.Constant(ufl.real(config.get("Re", self.DEFAULT_REYNOLDS)))
 
         if velocity_order is None:
             velocity_order = self.DEFAULT_VELOCITY_ORDER
         self.velocity_order = velocity_order
+
+        probes = config.pop("probes", None)
+        if probes is None:
+            probes = []
+
+        probe_obs_types = {
+            "velocity_probes": ObservationFunction(
+                partial(self.velocity_probe, probes), num_outputs=2 * len(probes)
+            ),
+            "pressure_probes": ObservationFunction(
+                partial(self.pressure_probe, probes), num_outputs=len(probes)
+            ),
+            "vorticity_probes": ObservationFunction(
+                partial(self.vorticity_probe, probes), num_outputs=len(probes)
+            ),
+        }
+
+        self.obs_fun = self.configure_observations(
+            obs_type=config.pop("observation_type", None),
+            probe_obs_types=probe_obs_types,
+        )
 
         super().__init__(**config)
 
@@ -67,9 +94,18 @@ class FlowConfig(PDEBase):
                 assert hasattr(self, "mesh")
             for f_name in self.FUNCTIONS:
                 try:
-                    getattr(self, f_name).assign(
-                        chk.load_function(self.mesh, f_name, idx=idx)
-                    )
+                    f_load = chk.load_function(self.mesh, f_name, idx=idx)
+                    f_self = getattr(self, f_name)
+
+                    # If the checkpoint saved on a different function space,
+                    # approximate the same field on the current function space
+                    # by projecting the checkpoint field onto the current space
+                    V_chk = f_load.function_space().ufl_element()
+                    V_self = f_self.function_space().ufl_element()
+                    if V_chk.ufl_element() != V_self.ufl_element():
+                        f_load = fd.project(f_load, V_self)
+
+                    f_self.assign(f_load)
                 except RuntimeError:
                     logging.log(
                         logging.WARN,
@@ -78,10 +114,23 @@ class FlowConfig(PDEBase):
 
             if chk.has_attr("/", "act_state"):
                 act_state = chk.get_attr("/", "act_state")
-                for i in range(self.ACT_DIM):
+                for i in range(self.num_inputs):
                     self.actuators[i].state = act_state[i]
 
         self.split_solution()  # Reset functions so self.u, self.p point to the new solution
+
+    def configure_observations(
+        self, obs_type=None, probe_obs_types={}
+    ) -> ObservationFunction:
+        raise NotImplementedError
+
+    def get_observations(self) -> np.ndarray:
+        return self.obs_fun(self.q)
+
+    @property
+    def num_outputs(self) -> int:
+        # This may be lift/drag, a stress "sensor", or a set of probe locations
+        return self.obs_fun.num_outputs
 
     def initialize_state(self):
         # Set up UFL objects referring to the mesh
@@ -123,22 +172,17 @@ class FlowConfig(PDEBase):
             tau = self.TAU
         return DampedActuator(1 / tau)
 
-    def reset_controls(self, mixed: bool = False):
+    def reset_controls(self):
         """Reset the controls to a zero state
 
         Note that this is broken out from `reset` because
         the two are not necessarily called together (e.g.
         for linearization or deriving the control vector)
 
-        Args:
-            mixed (bool, optional):
-                determines a monolithic vs segregated formulation
-                (see `init_bcs`). Defaults to False.
-
         TODO: Allow for different kinds of actuators
         """
-        self.actuators = [self.create_actuator() for _ in range(self.ACT_DIM)]
-        self.init_bcs(mixed=mixed)
+        self.actuators = [self.create_actuator() for _ in range(self.num_inputs)]
+        self.init_bcs()
 
     @property
     def nu(self):
@@ -167,15 +211,15 @@ class FlowConfig(PDEBase):
         return vort
 
     def function_spaces(self, mixed: bool = True):
-        """_summary_
+        """Function spaces for velocity and pressure
 
         Args:
-            mixed (bool, optional): _description_. Defaults to True.
+            mixed (bool, optional):
+                If True (default), return subspaces of the mixed velocity/pressure
+                space. Otherwise return the segregated velocity and pressure spaces.
 
         Returns:
-            _type_: _description_
-
-        TODO: Is this necessary in Firedrake?
+            Tuple[fd.FunctionSpace, fd.FunctionSpace]: Velocity and pressure spaces
         """
         if mixed:
             V = self.mixed_space.sub(0)
@@ -222,7 +266,7 @@ class FlowConfig(PDEBase):
         """Sets the boundary conditions appropriately for linearized flow"""
         raise NotImplementedError
 
-    def set_control(self, act: ActType = None):
+    def set_control(self, act: ArrayLike = None):
         """
         Directly sets the control state
 
@@ -235,30 +279,41 @@ class FlowConfig(PDEBase):
             super().set_control(act)
 
             if hasattr(self, "bcu_actuation"):
-                for i in range(self.ACT_DIM):
+                for i in range(self.num_inputs):
                     u = np.clip(
                         self.actuators[i].state, -self.MAX_CONTROL, self.MAX_CONTROL
                     )
                     self.bcu_actuation[i].set_scale(u)
-
-    def control_vec(self, mixed=False):
-        """Functions corresponding to the columns of the control matrix"""
-        V, Q = self.function_spaces(mixed=mixed)
-
-        B = []
-        for bcu in self.bcu_actuation:
-            domain = bcu.sub_domain
-            u_ctrl = bcu.unscaled_function_arg
-            bc_function = fd.assemble(interpolate(u_ctrl, V))
-            bcs = [fd.DirichletBC(V, bc_function, domain)]
-
-            # Control as Function
-            B.append(fd.project(fd.Constant((0, 0)), V, bcs=bcs))
-
-        return B
 
     def dot(self, q1: fd.Function, q2: fd.Function) -> float:
         """Energy inner product between two fields"""
         u1 = q1.subfunctions[0]
         u2 = q2.subfunctions[0]
         return fd.assemble(inner(u1, u2) * dx)
+
+    def velocity_probe(self, probes, q: fd.Function = None) -> list[float]:
+        """Probe velocity in the wake.
+
+        Returns a list of velocities at the probe locations, ordered as
+        (u1, u2, ..., uN, v1, v2, ..., vN) where N is the number of probes.
+        """
+        if q is None:
+            q = self.q
+        u = q.subfunctions[0]
+        return np.stack(u.at(probes)).flatten("F")
+
+    def pressure_probe(self, probes, q: fd.Function = None) -> list[float]:
+        """Probe pressure around the cylinder"""
+        if q is None:
+            q = self.q
+        p = q.subfunctions[1]
+        return np.stack(p.at(probes))
+
+    def vorticity_probe(self, probes, q: fd.Function = None) -> list[float]:
+        """Probe vorticity in the wake."""
+        if q is None:
+            u = None
+        else:
+            u = q.subfunctions[0]
+        vort = self.vorticity(u=u)
+        return np.stack(vort.at(probes))

@@ -9,7 +9,7 @@ from firedrake import ds
 from firedrake.pyplot import tricontourf
 from ufl import atan2, cos, dot, sin
 
-from hydrogym.firedrake import FlowConfig, ScaledDirichletBC
+from hydrogym.firedrake import FlowConfig, ObservationFunction, ScaledDirichletBC
 
 
 class Pinball(FlowConfig):
@@ -27,15 +27,13 @@ class Pinball(FlowConfig):
     x0 = [0.0, rad * 1.5 * 1.866, rad * 1.5 * 1.866]
     y0 = [0.0, 1.5 * rad, -1.5 * rad]
 
-    ACT_DIM = len(CYLINDER)
-    OBS_DIM = 2 * len(CYLINDER)  # [CL, CD] for each cyliner
     MAX_CONTROL = 0.5 * np.pi
     TAU = 1.0  # TODO: Tune this based on vortex shedding period
 
     MESH_DIR = os.path.abspath(f"{__file__}/..")
 
-    def init_bcs(self, mixed=False):
-        V, Q = self.function_spaces(mixed=mixed)
+    def init_bcs(self):
+        V, Q = self.function_spaces(mixed=True)
 
         # Define the static boundary conditions
         self.U_inf = fd.Constant((1.0, 0.0))
@@ -62,6 +60,30 @@ class Pinball(FlowConfig):
 
         self.set_control(self.control_state)
 
+    @property
+    def num_inputs(self) -> int:
+        return len(self.CYLINDER)
+
+    def configure_observations(
+        self, obs_type=None, probe_obs_types={}
+    ) -> ObservationFunction:
+        if obs_type is None:
+            obs_type = "lift_drag"
+
+        def _lift_drag(q):
+            CL, CD = self.compute_forces(q=q)
+            return [*CL, *CD]
+
+        supported_obs_types = {
+            **probe_obs_types,
+            "lift_drag": ObservationFunction(_lift_drag, num_outputs=6),
+        }
+
+        if obs_type not in supported_obs_types:
+            raise ValueError(f"Invalid observation type {obs_type}")
+
+        return supported_obs_types[obs_type]
+
     def collect_bcu(self) -> Iterable[fd.DirichletBC]:
         return [self.bcu_inflow, self.bcu_freestream, *self.bcu_actuation]
 
@@ -78,8 +100,8 @@ class Pinball(FlowConfig):
         CD = [fd.assemble(2 * force[0] * ds(cyl)) for cyl in self.CYLINDER]
         return CL, CD
 
-    def linearize_bcs(self, mixed=True):
-        self.reset_controls(mixed=mixed)
+    def linearize_bcs(self):
+        self.reset_controls()
         self.bcu_inflow.set_value(fd.Constant((0, 0)))
         self.bcu_freestream.set_value(fd.Constant(0.0))
 
