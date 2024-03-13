@@ -1,27 +1,37 @@
 import os
-from typing import Iterable
 
 import firedrake as fd
 import matplotlib.pyplot as plt
 import numpy as np
 import ufl
 from firedrake import ds
+from firedrake.pyplot import tricontourf
 from ufl import as_vector, atan2, cos, dot, sign, sin, sqrt
 
-from hydrogym.firedrake import DampedActuator, FlowConfig
+from hydrogym.firedrake import FlowConfig, ObservationFunction, ScaledDirichletBC
+
+# Velocity probes
+xp = np.linspace(1.0, 10.0, 16)
+yp = np.linspace(-2.0, 2.0, 4)
+X, Y = np.meshgrid(xp, yp)
+DEFAULT_VEL_PROBES = [(x, y) for x, y in zip(X.ravel(), Y.ravel())]
+
+# Pressure probes (spaced equally around the cylinder)
+RADIUS = 0.5
+DEFAULT_PRES_PROBES = [
+    (RADIUS * np.cos(theta), RADIUS * np.sin(theta))
+    for theta in np.linspace(0, 2 * np.pi, 20, endpoint=False)
+]
 
 
-class Cylinder(FlowConfig):
+class CylinderBase(FlowConfig):
     DEFAULT_REYNOLDS = 100
     DEFAULT_MESH = "medium"
     DEFAULT_DT = 1e-2
 
-    OBS_DIM = 2
     MAX_CONTROL = 0.5 * np.pi
-    TAU = 0.556  # Time constant for controller damping (0.1*vortex shedding period)
-    # TAU = 0.0556  # Time constant for controller damping (0.01*vortex shedding period)
-    I_CM = 0.0115846  # Moment of inertia
-    # I_CM = 1.0  # Moment of inertia
+    # TAU = 0.556  # Time constant for controller damping (0.1*vortex shedding period)
+    TAU = 0.0556  # Time constant for controller damping (0.01*vortex shedding period)
 
     # Domain labels
     FLUID = 1
@@ -32,48 +42,56 @@ class Cylinder(FlowConfig):
 
     MESH_DIR = os.path.abspath(f"{__file__}/..")
 
-    def initialize_state(self):
-        super().initialize_state()
+    @property
+    def num_inputs(self) -> int:
+        return 1  # Rotary control
+
+    def configure_observations(
+        self, obs_type=None, probe_obs_types={}
+    ) -> ObservationFunction:
+        if obs_type is None:
+            obs_type = "lift_drag"
+
+        supported_obs_types = {
+            **probe_obs_types,
+            "lift_drag": ObservationFunction(self.compute_forces, num_outputs=2),
+        }
+
+        if obs_type not in supported_obs_types:
+            raise ValueError(f"Invalid observation type {obs_type}")
+
+        return supported_obs_types[obs_type]
+
+    def init_bcs(self):
+        V, Q = self.function_spaces(mixed=True)
+
+        # Define the static boundary conditions
         self.U_inf = fd.Constant((1.0, 0.0))
-
-        # Set up tangential boundaries to cylinder
-        theta = atan2(ufl.real(self.y), ufl.real(self.x))  # Angle from origin
-        self.rad = fd.Constant(0.5)
-        self.u_ctrl = [
-            ufl.as_tensor((self.rad * sin(theta), self.rad * cos(theta)))
-        ]  # Tangential velocity
-
-    def init_bcs(self, mixed=False):
-        V, Q = self.function_spaces(mixed=mixed)
-
-        # Define actual boundary conditions
         self.bcu_inflow = fd.DirichletBC(V, self.U_inf, self.INLET)
-        # self.bcu_freestream = fd.DirichletBC(V, self.U_inf, self.FREESTREAM)
         self.bcu_freestream = fd.DirichletBC(
             V.sub(1), fd.Constant(0.0), self.FREESTREAM
         )  # Symmetry BCs
-        self.bcu_actuation = [
-            fd.DirichletBC(V, fd.interpolate(fd.Constant((0, 0)), V), self.CYLINDER)
-        ]
         self.bcp_outflow = fd.DirichletBC(Q, fd.Constant(0), self.OUTLET)
+
+        # Define time-varying boundary conditions for the actuation
+        u_bc = self.cyl_velocity_field
+        self.bcu_actuation = [ScaledDirichletBC(V, u_bc, self.CYLINDER)]
 
         # Reset the control with the current mixed (or not) function spaces
         self.set_control(self.control_state)
 
-    def create_actuator(self) -> DampedActuator:
-        return DampedActuator(
-            damping=1 / self.TAU,
-            inertia=self.I_CM,
-            integration=self.actuator_integration,
-        )
+    @property
+    def cyl_velocity_field(self):
+        """Velocity vector for boundary condition"""
+        raise NotImplementedError
 
-    def collect_bcu(self) -> Iterable[fd.DirichletBC]:
+    def collect_bcu(self) -> list[fd.DirichletBC]:
         return [self.bcu_inflow, self.bcu_freestream, *self.bcu_actuation]
 
-    def collect_bcp(self) -> Iterable[fd.DirichletBC]:
+    def collect_bcp(self) -> list[fd.DirichletBC]:
         return [self.bcp_outflow]
 
-    def compute_forces(self, q: fd.Function = None) -> Iterable[float]:
+    def compute_forces(self, q: fd.Function = None) -> tuple[float]:
         """Compute dimensionless lift/drag coefficients on cylinder
 
         Args:
@@ -150,13 +168,10 @@ class Cylinder(FlowConfig):
     #     fd.solve(A == zero, f, bcs=self.collect_bcs())
     #     return f
 
-    def linearize_bcs(self, mixed=True):
-        self.reset_controls(mixed=mixed)
+    def linearize_bcs(self):
+        self.reset_controls()
         self.bcu_inflow.set_value(fd.Constant((0, 0)))
         self.bcu_freestream.set_value(fd.Constant(0.0))
-
-    def get_observations(self) -> Iterable[FlowConfig.ObsType]:
-        return self.compute_forces()
 
     def evaluate_objective(self, q: fd.Function = None) -> float:
         """The objective function for this flow is the drag coefficient"""
@@ -169,7 +184,7 @@ class Cylinder(FlowConfig):
         if levels is None:
             levels = np.linspace(*clim, 10)
         vort = fd.project(fd.curl(self.u), self.pressure_space)
-        im = fd.tricontourf(
+        im = tricontourf(
             vort,
             cmap=cmap,
             levels=levels,
@@ -181,3 +196,57 @@ class Cylinder(FlowConfig):
 
         cyl = plt.Circle((0, 0), 0.5, edgecolor="k", facecolor="gray")
         im.axes.add_artist(cyl)
+
+
+class RotaryCylinder(CylinderBase):
+    MAX_CONTROL = 0.5 * np.pi
+    DEFAULT_DT = 1e-2
+
+    @property
+    def cyl_velocity_field(self):
+        # Set up tangential boundaries to cylinder
+        theta = atan2(ufl.real(self.y), ufl.real(self.x))  # Angle from origin
+        self.rad = fd.Constant(RADIUS)
+        # Tangential velocity
+        return ufl.as_tensor((self.rad * sin(theta), self.rad * cos(theta)))
+
+
+class Cylinder(CylinderBase):
+    MAX_CONTROL = 0.1
+    DEFAULT_DT = 1e-2
+
+    @property
+    def cyl_velocity_field(self):
+        """Velocity vector for boundary condition
+
+        Blowing/suction actuation on the cylinder wall, following Rabault, et al (2018)
+        https://arxiv.org/abs/1808.07664
+        """
+
+        # Set up tangential boundaries to cylinder
+        theta = atan2(ufl.real(self.y), ufl.real(self.x))  # Angle from origin
+        pi = ufl.pi
+        self.rad = fd.Constant(RADIUS)
+
+        omega = pi / 18  # 10 degree jet width
+
+        theta_up = 0.5 * pi
+        A_up = ufl.conditional(
+            abs(theta - theta_up) < omega / 2,
+            pi
+            / (2 * omega * self.rad**2)
+            * ufl.cos((pi / omega) * (theta - theta_up)),
+            0.0,
+        )
+
+        theta_lo = -0.5 * pi
+        A_lo = ufl.conditional(
+            abs(theta - theta_lo) < omega / 2,
+            pi
+            / (2 * omega * self.rad**2)
+            * ufl.cos((pi / omega) * (theta - theta_lo)),
+            0.0,
+        )
+
+        # Normal velocity (blowing/suction) at the cylinder wall
+        return ufl.as_tensor((self.x, self.y)) * (A_up + A_lo)

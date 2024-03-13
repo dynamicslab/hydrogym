@@ -42,6 +42,7 @@ sphinx==5.0.2
     #   sphinx-rtd-theme
 sphinx-rtd-theme==1.0.0
     # via -r docs/requirements.in
+sphinx-book-theme
 sphinxcontrib-applehelp==1.0.2
     # via sphinx
 sphinxcontrib-devhelp==1.0.2

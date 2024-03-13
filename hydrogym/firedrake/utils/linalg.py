@@ -163,7 +163,7 @@ def pod(
     if pvd_dest is not None:
         pvd = fd.File(f"{output_dir}/{pvd_dest}", "w")
         for i, mode in enumerate(mode_handles):
-            u, p = mode.get().as_function().split()
+            u, p = mode.get().as_function().subfunctions
             pvd.write(u, p, flow.vorticity(u))
 
     # Compute temporal coefficients

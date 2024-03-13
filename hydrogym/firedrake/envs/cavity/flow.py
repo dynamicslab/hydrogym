@@ -4,13 +4,14 @@ import firedrake as fd
 import ufl
 from ufl import dot, ds, grad
 
-from hydrogym.firedrake import FlowConfig
+from hydrogym.firedrake import FlowConfig, ObservationFunction, ScaledDirichletBC
 
 
 class Cavity(FlowConfig):
     DEFAULT_REYNOLDS = 7500
     DEFAULT_MESH = "fine"
     DEFAULT_DT = 1e-4
+    DEFAULT_STABILIZATION = "gls"
 
     FUNCTIONS = ("q", "qB")  # This flow needs a base flow to compute fluctuation KE
 
@@ -29,35 +30,47 @@ class Cavity(FlowConfig):
 
     MESH_DIR = os.path.abspath(f"{__file__}/..")
 
-    def initialize_state(self):
-        super().initialize_state()
+    @property
+    def num_inputs(self) -> int:
+        return 1  # Blowing/suction on leading edge
 
+    def configure_observations(
+        self, obs_type=None, probe_obs_types={}
+    ) -> ObservationFunction:
+        if obs_type is None:
+            obs_type = "stress_sensor"  # Shear stress at trailing edge
+
+        supported_obs_types = {
+            **probe_obs_types,
+            "stress_sensor": ObservationFunction(
+                self.wall_stress_sensor, num_outputs=1
+            ),
+        }
+
+        if obs_type not in supported_obs_types:
+            raise ValueError(f"Invalid observation type {obs_type}")
+
+        return supported_obs_types[obs_type]
+
+    def init_bcs(self):
+        V, Q = self.function_spaces(mixed=True)
+
+        # Define static boundary conditions
         self.U_inf = fd.Constant((1.0, 0.0))
-        self.u_ctrl = [
-            ufl.as_tensor((0.0 * self.x, -self.x * (1600 * self.x + 560) / 147))
-        ]  # Blowing/suction
-
-    def init_bcs(self, mixed=False):
-        V, Q = self.function_spaces(mixed=mixed)
-
-        # Define actual boundary conditions
         self.bcu_inflow = fd.DirichletBC(V, self.U_inf, self.INLET)
         self.bcu_freestream = fd.DirichletBC(
             V.sub(1), fd.Constant(0.0), self.FREESTREAM
         )
-        self.bcu_noslip = fd.DirichletBC(
-            # V, fd.interpolate(fd.Constant((0, 0)), V), (self.WALL, self.SENSOR)
-            V,
-            fd.interpolate(fd.Constant((0, 0)), V),
-            self.WALL,
-        )
-        self.bcu_slip = fd.DirichletBC(
-            V.sub(1), fd.Constant(0.0), self.SLIP
-        )  # Free-slip
+        self.bcu_noslip = fd.DirichletBC(V, fd.Constant((0, 0)), self.WALL)
+        # Free-slip on top boundary
+        self.bcu_slip = fd.DirichletBC(V.sub(1), fd.Constant(0.0), self.SLIP)
         self.bcp_outflow = fd.DirichletBC(Q, fd.Constant(0), self.OUTLET)
-        self.bcu_actuation = [
-            fd.DirichletBC(V, fd.interpolate(fd.Constant((0, 0)), V), self.CONTROL)
-        ]
+
+        # Define time-varying boundary conditions for actuation
+        # This matches Barbagallo et al (2009), "Closed-loop control of an open cavity
+        # flow using reduced-order models" https://doi.org/10.1017/S0022112009991418
+        u_bc = ufl.as_tensor((0.0 * self.x, -self.x * (1600 * self.x + 560) / 147))
+        self.bcu_actuation = [ScaledDirichletBC(V, u_bc, self.CONTROL)]
 
         self.set_control(self.control_state)
 
@@ -73,16 +86,16 @@ class Cavity(FlowConfig):
     def collect_bcp(self):
         return [self.bcp_outflow]
 
-    def linearize_bcs(self, mixed=True):
-        self.reset_controls(mixed=mixed)
-        self.init_bcs(mixed=mixed)
+    def linearize_bcs(self):
+        self.reset_controls()
+        self.init_bcs()
         self.bcu_inflow.set_value(fd.Constant((0, 0)))
 
-    def get_observations(self, q=None):
+    def wall_stress_sensor(self, q=None):
         """Integral of wall-normal shear stress (see Barbagallo et al, 2009)"""
         if q is None:
             q = self.q
-        (u, p) = q.split()
+        u = q.subfunctions[0]
         m = fd.assemble(-dot(grad(u[0]), self.n) * ds(self.SENSOR))
         return (m,)
 
@@ -91,7 +104,7 @@ class Cavity(FlowConfig):
             q = self.q
         if qB is None:
             qB = self.qB
-        (u, p) = q.split()
-        (uB, pB) = qB.split()
+        u = q.subfunctions[0]
+        uB = qB.subfunctions[0]
         KE = 0.5 * fd.assemble(fd.inner(u - uB, u - uB) * fd.dx)
         return KE

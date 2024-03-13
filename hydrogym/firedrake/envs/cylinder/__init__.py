@@ -1,1 +1,1 @@
-from .flow import Cylinder
+from .flow import Cylinder, RotaryCylinder

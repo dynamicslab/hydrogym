@@ -1,10 +1,26 @@
+import os
+
+import matplotlib.pyplot as plt
 import numpy as np
-import psutil
+import psutil  # For memory tracking
 import scipy.io as sio
+from pd import PDController
 
 import hydrogym.firedrake as hgym
 
 output_dir = "output"
+if not os.path.exists(output_dir):
+    os.makedirs(output_dir)
+
+mesh_resolution = "medium"
+
+element_type = "p1p1"
+velocity_order = 1
+stabilization = "gls"
+
+# Make sure to run the transient simulation first to generate the restart file
+restart = f"{output_dir}/checkpoint_{mesh_resolution}_{element_type}.h5"
+checkpoint = f"{output_dir}/pd_{mesh_resolution}_{element_type}.h5"
 
 
 def compute_vort(flow):
@@ -22,71 +38,74 @@ callbacks = [
     # hgym.io.ParaviewCallback(
     #     interval=10, filename=f"{output_dir}/pd-control.pvd", postprocess=compute_vort
     # ),
+    # hgym.utils.io.CheckpointCallback(interval=100, filename=checkpoint),
     hgym.io.LogCallback(
         postprocess=log_postprocess,
         nvals=3,
-        interval=10,
+        interval=1,
         print_fmt="t: {0:0.2f},\t\t CL: {1:0.3f},\t\t CD: {2:0.03f},\t\t RAM: {3:0.1f}%",
-        filename=None,
+        filename=f"{output_dir}/pd-control.dat",
     ),
 ]
 
 
-flow = hgym.Cylinder(
+flow = hgym.RotaryCylinder(
     Re=100,
-    mesh="coarse",
-    restart="../demo/checkpoint-coarse.h5",
+    mesh=mesh_resolution,
+    restart=restart,
     callbacks=callbacks,
+    velocity_order=velocity_order,
 )
-Tf = 1000
-dt = 1e-2
-n_steps = int(Tf // dt)
 
-u = np.zeros(n_steps)  # Actuation history
-y = np.zeros(n_steps)  # Lift coefficient
-dy = np.zeros(n_steps)  # Derivative of lift coefficient
+k = 2.0  # Base gain
+theta = 4.0  # Phase angle
+kp = k * np.cos(theta)
+kd = k * np.sin(theta)
 
-Kp = -4.0  # Proportional gain
-Kd = 0.0  # Derivative gain
+tf = 100.0
+dt = 0.01
+n_steps = int(tf // dt) + 2
+
+pd_controller = PDController(
+    kp,
+    kd,
+    dt,
+    n_steps,
+    filter_type="bilinear",
+    N=20,
+)
 
 
 def controller(t, obs):
-    # return np.sin(t)
-
-    i = int(t // dt)
-
-    # Turn on feedback control halfway through
-    # if i > n_steps // 2:
-    #     u[i] = -Kp * y[i - 1] - Kd * dy[i - 1]
-
-    u[i] = -Kp * y[i - 1] - Kd * dy[i - 1]
-
-    CL, CD = obs
-
-    # Low-pass filter and estimate derivative
-    y[i] = y[i - 1] + (dt / flow.TAU) * (CL - y[i - 1])
-    dy[i] = (y[i] - y[i - 1]) / dt
-
-    sio.savemat(f"{output_dir}/pd-control.mat", {"y": y, "u": u})
-
-    return u[i]
+    # Turn on control halfway through
+    if t < tf / 2:
+        return 0.0
+    return pd_controller(t, obs)
 
 
-hgym.integrate(flow, t_span=(0, Tf), dt=dt, callbacks=callbacks, controller=controller)
+hgym.integrate(
+    flow,
+    t_span=(0, tf),
+    dt=dt,
+    callbacks=callbacks,
+    controller=controller,
+    stabilization=stabilization,
+)
 
-# for i in range(1, n_steps):
-#     # Turn on feedback control halfway through
-#     if i > n_steps // 2:
-#         u[i] = -Kp * y[i - 1] - Kd * dy[i - 1]
+# Load results data
+data = np.loadtxt(f"{output_dir}/pd-control.dat")
 
-#     # Advance state and collect measurements
-#     (CL, CD), _, _, _ = env.step(u[i])
+# Plot results
+t = data[:, 0]
+CL = data[:, 1]
+CD = data[:, 2]
 
-#     # Low-pass filter and estimate derivative
-#     y[i] = y[i - 1] + (dt / env.flow.TAU) * (CL - y[i - 1])
-#     dy[i] = (y[i] - y[i - 1]) / dt
-
-#     hg.print(
-#         f"Step: {i:04d},\t\t CL: {y[i]:0.4f}, \t\tCL_dot: {dy[i]:0.4f},\t\tu: {u[i]:0.4f}"
-#     )
-#     sio.savemat(f"{output_dir}/pd-control.mat", {"y": y, "u": u})
+fig, axs = plt.subplots(2, 1, figsize=(7, 4), sharex=True)
+axs[0].plot(t, CL)
+axs[0].set_ylabel(r"$C_L$")
+axs[1].grid()
+axs[1].plot(t, CD)
+axs[1].set_ylabel(r"$C_D$")
+axs[1].grid()
+axs[1].set_xlabel("Time $t$")
+plt.show()

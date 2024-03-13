@@ -6,9 +6,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import ufl
 from firedrake import ds
+from firedrake.pyplot import tricontourf
 from ufl import atan2, cos, dot, sin
 
-from hydrogym.firedrake import DampedActuator, FlowConfig
+from hydrogym.firedrake import FlowConfig, ObservationFunction, ScaledDirichletBC
 
 
 class Pinball(FlowConfig):
@@ -24,56 +25,64 @@ class Pinball(FlowConfig):
 
     rad = 0.5
     x0 = [0.0, rad * 1.5 * 1.866, rad * 1.5 * 1.866]
-    y0 = [0.0, 0.5 * rad, -0.5 * rad]
+    y0 = [0.0, 1.5 * rad, -1.5 * rad]
 
-    ACT_DIM = len(CYLINDER)
-    OBS_DIM = 2 * len(CYLINDER)  # [CL, CD] for each cyliner
     MAX_CONTROL = 0.5 * np.pi
     TAU = 1.0  # TODO: Tune this based on vortex shedding period
-    I_CM = 1.0  # Moment of inertia
 
     MESH_DIR = os.path.abspath(f"{__file__}/..")
 
-    def initialize_state(self):
-        super().initialize_state()
-        self.U_inf = fd.Constant((1.0, 0.0))
+    def init_bcs(self):
+        V, Q = self.function_spaces(mixed=True)
 
+        # Define the static boundary conditions
+        self.U_inf = fd.Constant((1.0, 0.0))
+        self.bcu_inflow = fd.DirichletBC(V, self.U_inf, self.INLET)
+        self.bcu_freestream = fd.DirichletBC(
+            V.sub(1), fd.Constant(0.0), self.FREESTREAM
+        )  # Symmetry BCs
+
+        self.bcp_outflow = fd.DirichletBC(Q, fd.Constant(0), self.OUTLET)
+
+        # Define time-varying boundary conditions for the actuation
         # Set up tangential boundaries for each cylinder
         self.rad = fd.Constant(self.rad)
-        self.u_ctrl = []
+        self.bcu_actuation = []
         for cyl_idx in range(len(self.CYLINDER)):
             theta = atan2(
                 ufl.real(self.y - self.y0[cyl_idx]), ufl.real(self.x - self.x0[cyl_idx])
             )  # Angle from center of cylinder
 
-            self.u_ctrl.append(
-                ufl.as_tensor((self.rad * sin(theta), self.rad * cos(theta)))
-            )  # Tangential velocity
-
-    def init_bcs(self, mixed=False):
-        V, Q = self.function_spaces(mixed=mixed)
-
-        # Define actual boundary conditions
-        self.bcu_inflow = fd.DirichletBC(V, self.U_inf, self.INLET)
-        # self.bcu_freestream = fd.DirichletBC(V, self.U_inf, self.FREESTREAM)
-        self.bcu_freestream = fd.DirichletBC(
-            V.sub(1), fd.Constant(0.0), self.FREESTREAM
-        )  # Symmetry BCs
-        self.bcu_actuation = [
-            fd.DirichletBC(V, fd.interpolate(fd.Constant((0, 0)), V), cyl)
-            for cyl in self.CYLINDER
-        ]
-        self.bcp_outflow = fd.DirichletBC(Q, fd.Constant(0), self.OUTLET)
+            # Tangential velocity
+            u_bc = ufl.as_tensor((self.rad * sin(theta), self.rad * cos(theta)))
+            sub_domain = self.CYLINDER[cyl_idx]
+            self.bcu_actuation.append(ScaledDirichletBC(V, u_bc, sub_domain))
 
         self.set_control(self.control_state)
 
-    def create_actuator(self) -> Iterable[DampedActuator]:
-        """Create a single actuator for this flow"""
-        return DampedActuator(
-            damping=1 / self.TAU,
-            inertia=self.I_CM,
-            integration=self.actuator_integration,
-        )
+    @property
+    def num_inputs(self) -> int:
+        return len(self.CYLINDER)
+
+    def configure_observations(
+        self, obs_type=None, probe_obs_types={}
+    ) -> ObservationFunction:
+        if obs_type is None:
+            obs_type = "lift_drag"
+
+        def _lift_drag(q):
+            CL, CD = self.compute_forces(q=q)
+            return [*CL, *CD]
+
+        supported_obs_types = {
+            **probe_obs_types,
+            "lift_drag": ObservationFunction(_lift_drag, num_outputs=6),
+        }
+
+        if obs_type not in supported_obs_types:
+            raise ValueError(f"Invalid observation type {obs_type}")
+
+        return supported_obs_types[obs_type]
 
     def collect_bcu(self) -> Iterable[fd.DirichletBC]:
         return [self.bcu_inflow, self.bcu_freestream, *self.bcu_actuation]
@@ -91,8 +100,8 @@ class Pinball(FlowConfig):
         CD = [fd.assemble(2 * force[0] * ds(cyl)) for cyl in self.CYLINDER]
         return CL, CD
 
-    def linearize_bcs(self, mixed=True):
-        self.reset_controls(mixed=mixed)
+    def linearize_bcs(self):
+        self.reset_controls()
         self.bcu_inflow.set_value(fd.Constant((0, 0)))
         self.bcu_freestream.set_value(fd.Constant(0.0))
 
@@ -110,7 +119,7 @@ class Pinball(FlowConfig):
         if levels is None:
             levels = np.linspace(*clim, 10)
         vort = fd.project(fd.curl(self.flow.u), self.flow.pressure_space)
-        im = fd.tricontourf(
+        im = tricontourf(
             vort,
             cmap=cmap,
             levels=levels,
