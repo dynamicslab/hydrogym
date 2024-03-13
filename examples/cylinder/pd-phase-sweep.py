@@ -75,7 +75,6 @@ pd_controller = PDController(
 
 
 def controller(t, obs):
-
     # Loop over phase angles for phasor control
     # First interval is zero actuation
     pd_controller.kp = 0.0
