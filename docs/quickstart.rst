@@ -1,5 +1,5 @@
-Hydrogym Quickstart
-===================
+Quickstart
+==========
 
 Before getting started, follow the :ref:`installation` guide to get everything set up.
 

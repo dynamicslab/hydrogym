@@ -3,8 +3,8 @@
 # -- Project information
 
 project = "Hydrogym"
-copyright = "2023, Hydrogym Developers"
-author = "Ludger Paehler"
+copyright = "2024, Hydrogym Developers"
+author = "The HydroGym Developers"
 
 release = "0.1"
 version = "0.1.0"
@@ -16,7 +16,11 @@ extensions = [
     "sphinx.ext.doctest",
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
+    "sphinx.ext.autosectionlabel",
     "sphinx.ext.intersphinx",
+    "sphinx.ext.viewcode",
+    "sphinx.ext.napoleon",
+    "sphinx.ext.mathjax",
 ]
 
 intersphinx_mapping = {
@@ -30,10 +34,23 @@ templates_path = ["_templates"]
 
 # -- Options for HTML output
 
-html_theme = "alabaster"
+html_theme = "sphinx_book_theme"
+
+# Name of the image file
+html_logo = "_static/imgs/logo.svg"
+html_favicon = "_static/imgs/logo.svg"
 
 # Custom paths for static files
 html_static_path = ["_static"]
+
+html_theme_options = {
+    "repository_url": "https://github.com/dynamicslab/hydrogym",
+    "use_repository_button": True,  # add a 'link to repository' button
+    "use_issues_button": True,  # add an 'Open an Issue' button
+    "path_to_docs": ("docs"),  # used to compute the path to launch notebooks in colab
+    "prev_next_buttons_location": None,
+    "show_navbar_depth": 1,
+}
 
 # -- Options for EPUB output
 epub_show_urls = "footnote"

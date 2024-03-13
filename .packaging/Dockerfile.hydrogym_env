@@ -32,6 +32,5 @@ RUN bash -c "source firedrake/bin/activate; \
         --install femlium \
         --install fascd \
         --install gusto \
-        --install icepack \
         --install irksome \
         --install thetis"

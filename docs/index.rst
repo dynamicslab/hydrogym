@@ -25,33 +25,14 @@ Core Features
 
 
 .. toctree::
-   :maxdepth: 1
-   :caption: Getting Started
+   :hidden:
+   :maxdepth: 2
 
    installation
    quickstart
-
-
-.. toctree::
-   :maxdepth: 1
-   :caption: User Documentation
-
-   ray
-   parallel_scaling
-
-.. toctree::
-   :maxdepth: 1
-   :caption: API Reference
-
-   api
-   torch_rl
-   rllib
-
-
-.. toctree::
-   :maxdepth: 1
-   :caption: Developer Notes
-
-   docker_development
-   distributed_backend
-   further_backend
+   basics
+   user_docs/index
+   integrations/index
+   glossary
+   dev_notes/index
+   api_reference/index

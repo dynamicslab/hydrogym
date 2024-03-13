@@ -75,7 +75,7 @@ def snapshots_to_numpy(flow, filename, save_prefix, m):
         for idx in range(m):
             logging.log(logging.DEBUG, f"Converting snapshot {idx+1}/{m}")
             q = file.load_function(mesh, "q", idx=idx)  # Load on different mesh
-            u, p = q.split()
+            u, p = q.subfunctions
 
             # Project to new mesh
             flow.u.assign(fd.project(u, flow.velocity_space))
