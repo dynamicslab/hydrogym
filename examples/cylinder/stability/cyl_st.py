@@ -45,22 +45,18 @@ def arnoldi(solve, v0, inner_product, m=100):
         V[j].assign(f / beta)
 
         # DEBUG: Print the eigenvalues
-        # TODO: Make this optional. Also use `sorted_eig` and better formatting
+        # TODO: Make this optional. Also use better formatting
         if True:
             hgym.print(f"*** Arnoldi iteration {j} ***")
-            ritz_vals, ritz_vecs = linalg.eig(H[:j, :j])
-            evals = 1 / ritz_vals
-            sort_idx = np.argsort(-evals.real)
-            evals = evals[sort_idx]
-            ritz_vecs = ritz_vecs[:, sort_idx]
-            hgym.print(f"Eigvals: {evals[:20]}")
+            ritz_vals, ritz_vecs = sorted_eig(H[:j, :j])
+            hgym.print(f"Eigvals: {ritz_vals[:20]}")
             res = abs(beta * ritz_vecs[-1, :20])
             hgym.print(f"Residuals: {res}")
 
     return V, H, beta
 
 
-def sorted_eig(H, sort="None", inverse=True):
+def sorted_eig(H, sort=None, inverse=True):
     if sort is None:
         # Decreasing magnitude
         def sort(x):
@@ -116,6 +112,10 @@ if __name__ == "__main__":
     # The Jacobian of F is the bilinear form J(qB, q_test) = dF/dq(qB) @ q_test
     J = -fd.derivative(F, qB, q_trial)
 
+    # To solve the adjoint problem (this is in utils.linalg)
+    # args = J.arguments()
+    # J_adj = ufl.adjoint(J, reordered_arguments=(args[0], args[1]))
+
     def M(q):
         u = q.subfunctions[0]
         return inner(u, v) * dx
@@ -139,15 +139,8 @@ if __name__ == "__main__":
     alpha = np.sqrt(inner_product(v0, v0))
     v0.assign(v0 / alpha)
 
-    rvals, evecs_real, evecs_imag = eig_arnoldi(solve, v0, inner_product, m=100)
-    # Undo spectral shift
-    evals = sigma + rvals
-
-    # Sort by decreasing real part
-    sort_idx = np.argsort(-evals.real)
-    evals = evals[sort_idx]
-    evecs_real = [evecs_real[i] for i in sort_idx]
-    evecs_imag = [evecs_imag[i] for i in sort_idx]
+    evals, evecs_real, evecs_imag = eig_arnoldi(solve, v0, inner_product, m=100)
+    evals += sigma  # Undo spectral shift
 
     n_save = 32
     print(f"Arnoldi eigenvalues: {evals[:n_save]}")
