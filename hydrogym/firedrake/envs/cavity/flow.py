@@ -1,6 +1,8 @@
 import os
 
 import firedrake as fd
+import matplotlib.pyplot as plt
+import numpy as np
 import ufl
 from ufl import dot, ds, grad
 
@@ -108,3 +110,23 @@ class Cavity(FlowConfig):
         uB = qB.subfunctions[0]
         KE = 0.5 * fd.assemble(fd.inner(u - uB, u - uB) * fd.dx)
         return KE
+
+    def render(self, mode="human", clim=None, levels=None, cmap="RdBu", **kwargs):
+        _fig, ax = plt.subplots(1, 1, figsize=(6, 3))
+        if clim is None:
+            clim = (-10, 10)
+        if levels is None:
+            levels = np.linspace(*clim, 20)
+        fd.tricontourf(
+            self.vorticity(),
+            levels=levels,
+            axes=ax,
+            vmin=clim[0],
+            vmax=clim[1],
+            extend="both",
+            cmap=cmap,
+            **kwargs,
+        )
+        ax.set_xlim([-0.5, 2.5])
+        ax.set_ylim([-1, 0.5])
+        ax.set_facecolor("grey")

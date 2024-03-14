@@ -1,6 +1,6 @@
 import firedrake as fd
 import numpy as np
-from cyl_common import base_checkpoint, evec_checkpoint, flow, inner_product
+from cav_common import base_checkpoint, evec_checkpoint, flow, inner_product
 from ufl import dx, inner
 
 import hydrogym.firedrake as hgym
@@ -40,50 +40,14 @@ if __name__ == "__main__":
         u = q.subfunctions[0]
         return inner(u, v) * dx
 
-    # TODO: May need both real and imaginary solves for complex sigma
-    # The shifted bilinear form should be `A = (J - sigma * M)`
-    # For sigma = (sr, si), the real and imaginary parts of A are
-    # Ar = J - sr * M
-    # Ai = -si * M
-    # The system solve is A @ v1 = M @ v0 - for complex vectors v = (vr, vi)
-    # (Ar + 1j * Ai) @ (v1r + 1j * v1i) = M @ (v0r + 1j * v0i)
-    # This is a block system:
-    #  [[Ar, -Ai]  [[v1r]  = [[M 0]  [[v0r]
-    #   [Ai,  Ar]]  [v1i]]    [0 M]]  [v0i]]
-    #
-    # Can use a block LDU factorization to get close, but the solve
-    # with the Schur complement is tricky...
-    sigma = 0.0
-    A = J
-
     def solve_inverse(v1, v0):
-        """Solve the matrix pencil A @ v1 = M @ v0 for v1.
+        """Solve the matrix pencil J @ v1 = M @ v0 for v1.
 
-        This is equivalent to the "inverse iteration" v1 = (A^{-1} @ M) @ v0
+        This is equivalent to the "inverse iteration" v1 = (J^{-1} @ M) @ v0
 
         Stores the result in `v1`
         """
-        fd.solve(A == M(v0), v1, bcs=bcs, solver_parameters=solver_parameters)
-
-    # def solve_shift_inverse(v1, v0):
-    #     """Solve (A - s*I) @ v1 = M @ v0 for v1.
-
-    #     The shifted bilinear form should be `A = (J - sigma * M)`
-    #     For sigma = (sr, si), the real and imaginary parts of A are
-    #     Ar = J - sr * M
-    #     Ai = -si * M
-    #     The system solve is A @ v1 = M @ v0 - for complex vectors v = (vr, vi)
-    #     (Ar + 1j * Ai) @ (v1r + 1j * v1i) = M @ (v0r + 1j * v0i)
-    #     This is a block system:
-    #      [[Ar, -Ai]  [[v1r]  = [[M 0]  [[v0r]
-    #       [Ai,  Ar]]  [v1i]]    [0 M]]  [v0i]]
-    #     """
-    #     # Double the function space
-    #     W = fn_space * fn_space
-    #     (v1r, v1i) = v1
-    #     (v0r, v0i) = v0
-
-    # Need to construct
+        fd.solve(J == M(v0), v1, bcs=bcs, solver_parameters=solver_parameters)
 
     rng = fd.RandomGenerator(fd.PCG64())
     v0 = rng.standard_normal(fn_space)
@@ -93,15 +57,21 @@ if __name__ == "__main__":
     evals, evecs_real, evecs_imag = hgym.utils.eig_arnoldi(
         solve_inverse, v0, inner_product, m=100
     )
-    evals += sigma  # Undo spectral shift
+
+    # See Table 1 in Barbagallo et al (2009)
+    # Unstable eigenvalue pairs are:
+    # 0.890 +/- 10.9i
+    # 0.729 +/- 13.8i
+    # 0.466 +/- 7.88i
+    # 0.032 +/- 16.73i
 
     n_save = 32
     print(f"Arnoldi eigenvalues: {evals[:n_save]}")
 
     # Save checkpoints
     chk_dir, chk_file = evec_checkpoint.split("/")
-    chk_path = "/".join([chk_dir, f"st_{chk_file}"])
-    np.save("/".join([chk_dir, "st_evals"]), evals[:n_save])
+    chk_path = "/".join([chk_dir, f"{chk_file}"])
+    np.save("/".join([chk_dir, "evals"]), evals[:n_save])
 
     with fd.CheckpointFile(chk_path, "w") as chk:
         for i in range(n_save):
