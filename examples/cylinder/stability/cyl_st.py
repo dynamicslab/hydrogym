@@ -41,11 +41,11 @@ def arnoldi(solve, v0, inner_product, m=100):
         if j < m:
             H[j, j - 1] = beta
 
-        # Normalize the orthogonal residual for use as a new
-        # Krylov basis vector
+        # Normalize the orthogonal residual for use as a new Krylov vector
         V[j].assign(f / beta)
 
         # DEBUG: Print the eigenvalues
+        # TODO: Make this optional. Also use `sorted_eig` and better formatting
         if True:
             hgym.print(f"*** Arnoldi iteration {j} ***")
             ritz_vals, ritz_vecs = linalg.eig(H[:j, :j])
@@ -60,20 +60,24 @@ def arnoldi(solve, v0, inner_product, m=100):
     return V, H, beta
 
 
-def eig_arnoldi(solve, v0, inner_product, m=100, sort=None):
+def sorted_eig(H, sort="None", inverse=True):
     if sort is None:
         # Decreasing magnitude
         def sort(x):
-            return np.argsort(-abs(x))
+            return np.argsort(-x.real)
 
+    evals, evecs = linalg.eig(H)
+    if inverse:
+        evals = 1 / evals  # Undo spectral shift
+    sort_idx = sort(evals)
+    evals = evals[sort_idx]
+    evecs = evecs[:, sort_idx]
+    return evals, evecs
+
+
+def eig_arnoldi(solve, v0, inner_product, m=100, sort=None):
     V, H, _ = arnoldi(solve, v0, inner_product, m)
-    ritz_vals, ritz_vecs = linalg.eig(H)
-
-    sort_idx = sort(ritz_vals)
-    ritz_vals = ritz_vals[sort_idx]
-    ritz_vecs = ritz_vecs[:, sort_idx]
-
-    ritz_vals = 1 / (ritz_vals)  # Undo spectral shift
+    evals, ritz_vecs = sorted_eig(H, sort=sort, inverse=True)
 
     fn_space = v0.function_space()
     evecs_real = [fd.Function(fn_space) for _ in range(m)]
@@ -81,7 +85,7 @@ def eig_arnoldi(solve, v0, inner_product, m=100, sort=None):
     for i in range(m):
         evecs_real[i].assign(sum(V[j] * ritz_vecs[j, i].real for j in range(m)))
         evecs_imag[i].assign(sum(V[j] * ritz_vecs[j, i].imag for j in range(m)))
-    return ritz_vals, evecs_real, evecs_imag
+    return evals, evecs_real, evecs_imag
 
 
 if __name__ == "__main__":
@@ -100,14 +104,14 @@ if __name__ == "__main__":
     }
 
     (uB, pB) = qB.subfunctions
-    (u, p) = fd.TrialFunctions(fn_space)
-    (v, s) = fd.TestFunctions(fn_space)
     q_trial = fd.TrialFunction(fn_space)
     q_test = fd.TestFunction(fn_space)
+    (v, s) = fd.split(q_test)
 
-    newton_solver = hgym.NewtonSolver(flow)
     # Linear form expressing the _LHS_ of the Navier-Stokes without time derivative
     # For a steady solution this is F(qB) = 0.
+    # TODO: Make this a standalone function - could be used in NewtonSolver and transient
+    newton_solver = hgym.NewtonSolver(flow)
     F = newton_solver.steady_form(qB, q_test=q_test)
     # The Jacobian of F is the bilinear form J(qB, q_test) = dF/dq(qB) @ q_test
     J = -fd.derivative(F, qB, q_trial)
@@ -135,7 +139,7 @@ if __name__ == "__main__":
     alpha = np.sqrt(inner_product(v0, v0))
     v0.assign(v0 / alpha)
 
-    rvals, evecs_real, evecs_imag = eig_arnoldi(solve, v0, inner_product, m=32)
+    rvals, evecs_real, evecs_imag = eig_arnoldi(solve, v0, inner_product, m=100)
     # Undo spectral shift
     evals = sigma + rvals
 
@@ -151,21 +155,11 @@ if __name__ == "__main__":
     # Save checkpoints
     chk_dir, chk_file = evec_checkpoint.split("/")
     chk_path = "/".join([chk_dir, f"st_{chk_file}"])
+    np.save("/".join([chk_dir, "st_evals"]), evals[:n_save])
+
     with fd.CheckpointFile(chk_path, "w") as chk:
         for i in range(n_save):
             evecs_real[i].rename(f"evec_{i}_re")
             chk.save_function(evecs_real[i])
             evecs_imag[i].rename(f"evec_{i}_im")
             chk.save_function(evecs_imag[i])
-
-    np.save("/".join([chk_dir, "st_evals"]), evals[:n_save])
-
-    # # print(f"Krylov-Schur eigenvalues: {ks_evals[:n_print].real}")
-
-    # # # Plot the eigenmodes
-    # # n_evals_plt = 5
-    # # fig, axs = plt.subplots(1, n_evals_plt, figsize=(12, 2), sharex=True, sharey=True)
-
-    # # for i in range(n_evals_plt):
-    # #     tripcolor(ks_evecs_real[i], axes=axs[i], cmap="RdBu")
-    # # plt.show()

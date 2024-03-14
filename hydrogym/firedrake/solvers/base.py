@@ -47,9 +47,12 @@ class NewtonSolver:
 
         return q.copy(deepcopy=True)
 
-    def steady_form(self, q: fd.Function):
+    def steady_form(self, q: fd.Function, q_test=None):
         (u, p) = fd.split(q)
-        (v, s) = fd.TestFunctions(self.flow.mixed_space)
+        if q_test is None:
+            (v, s) = fd.TestFunctions(self.flow.mixed_space)
+        else:
+            (v, s) = fd.split(q_test)
 
         F = (
             inner(dot(u, nabla_grad(u)), v) * dx
