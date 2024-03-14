@@ -5,7 +5,7 @@ import hydrogym.firedrake as hgym
 output_dir = "."
 pvd_out = None
 restart = None
-checkpoint = "checkpoint.h5"
+checkpoint = "checkpoint.h5"  # Call to HF API to load the checkpoint
 
 flow = hgym.Cylinder(
     Re=100,
