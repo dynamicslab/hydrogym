@@ -46,14 +46,14 @@ def arnoldi(solve, v0, inner_product, m=100):
         V[j].assign(f / beta)
 
         # DEBUG: Print the eigenvalues
-        # if debug_tau is not None:
         if True:
             hgym.print(f"*** Arnoldi iteration {j} ***")
             ritz_vals, ritz_vecs = linalg.eig(H[:j, :j])
-            sort_idx = np.argsort(-abs(ritz_vals))
-            ritz_vals = ritz_vals[sort_idx]
+            evals = 1 / ritz_vals
+            sort_idx = np.argsort(-evals.real)
+            evals = evals[sort_idx]
             ritz_vecs = ritz_vecs[:, sort_idx]
-            hgym.print(f"Eigvals: {1 / ritz_vals[:20]}")
+            hgym.print(f"Eigvals: {evals[:20]}")
             res = abs(beta * ritz_vecs[-1, :20])
             hgym.print(f"Residuals: {res}")
 
@@ -106,30 +106,19 @@ if __name__ == "__main__":
     q_test = fd.TestFunction(fn_space)
 
     newton_solver = hgym.NewtonSolver(flow)
-    F = newton_solver.steady_form(qB, q_test=q_test)  # This is a linear form
-    print(F, type(F))
+    # Linear form expressing the _LHS_ of the Navier-Stokes without time derivative
+    # For a steady solution this is F(qB) = 0.
+    F = newton_solver.steady_form(qB, q_test=q_test)
+    # The Jacobian of F is the bilinear form J(qB, q_test) = dF/dq(qB) @ q_test
     J = -fd.derivative(F, qB, q_trial)
-
-    # from ufl import nabla_grad, div, inner, dot
-    # sigma, epsilon = flow.sigma, flow.epsilon
-    # J = -(
-    #     inner(dot(uB, nabla_grad(u)), v) * dx
-    #     + inner(dot(u, nabla_grad(uB)), v) * dx
-    #     + inner(sigma(u, p), epsilon(v)) * dx
-    #     + inner(div(u), s) * dx
-    #     # NOTE: Base flow forcing terms here
-    # )
 
     def M(q):
         u = q.subfunctions[0]
         return inner(u, v) * dx
 
     # TODO: May need both real and imaginary solves for complex sigma
+    # The shifted bilinear form should be `A = (J - sigma * M)`
     sigma = 0.0
-    # A = (
-    #     -k * inner(grad(u), grad(v))
-    #     - sigma * inner(u, v)
-    # ) * dx
     A = J
 
     def solve(v1, v0):
