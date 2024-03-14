@@ -213,9 +213,9 @@ class LinearizedBDF(SemiImplicitBDF):
             + inner(sigma(u, p), epsilon(v)) * dx
             + dot(div(u), s) * dx
             - dot(self.f, v) * dx
-            # Base flow forcing (will be zero if base flow is steady solution)
-            + inner(dot(uB, nabla_grad(uB)), v) * dx
-            + inner(sigma(uB, pB), epsilon(v)) * dx
+            # # Base flow forcing (will be zero if base flow is steady solution)
+            # + inner(dot(uB, nabla_grad(uB)), v) * dx
+            # + inner(sigma(uB, pB), epsilon(v)) * dx
         )
 
         # RHS forcing term for stabilization (also zero if d(qB)/dt = 0)

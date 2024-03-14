@@ -16,13 +16,13 @@ if __name__ == "__main__":
     qB = flow.q.copy(deepcopy=True)
 
     tau = 0.05
-    dt = 0.01
+    dt = 0.0025
     A = FlowPropagator(flow, qB, dt, tau)
 
     rng = fd.RandomGenerator(fd.PCG64())
     v0 = rng.standard_normal(flow.mixed_space)
     v0.assign(v0 / inner_product(v0, v0) ** 0.5)
-    n_evals = 6
+    n_evals = 12
     n_save = min(n_evals, 20)
     rvals, evecs_real, evecs_imag = eig_ks(
         A,

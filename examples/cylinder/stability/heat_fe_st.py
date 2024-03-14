@@ -21,8 +21,7 @@ def solve_matrix_pencil(A, M, u0, sigma=0.0):
     # Here `v` is a Firedrake function and `M` and `A` are functions that should
     # produce
     fn_space = v0.function_space()
-    u, v = A.arguments()
-    a = A - sigma * M(u)
+    a = A
     L = M(u0)
     bcs = [fd.DirichletBC(fn_space, 0, "on_boundary")]
     solver_parameters = {
@@ -35,16 +34,18 @@ def solve_matrix_pencil(A, M, u0, sigma=0.0):
     return u_sol
 
 
-def arnoldi(A, M, v0, inner_product, m=100, sigma=0.0):
-
+def arnoldi(A, M, v0, inner_product, m=100):
+    """Solve Arnoldi iteration for the inverse iteration of a matrix pencil."""
     V = [v0.copy(deepcopy=True).assign(0.0) for _ in range(m + 1)]
     H = np.zeros((m, m))
     start_idx = 1
     V[0].assign(v0)
 
     for j in range(start_idx, m + 1):
-        # Apply iteration M @ f = A @ v by solving the linear system
-        f = solve_matrix_pencil(A, M, V[j - 1], sigma=sigma)
+        # Apply iteration A @ f = M @ v
+        # This is the iteration f = (A^{-1} @ M) @ v
+        # which is inverse to M @ f = A @ v
+        f = solve_matrix_pencil(A, M, V[j - 1])
 
         # Gram-Schmidt
         h = np.zeros(j)
@@ -68,20 +69,20 @@ def arnoldi(A, M, v0, inner_product, m=100, sigma=0.0):
     return V, H, beta
 
 
-def eig_arnoldi(A, M, v0, inner_product, m=100, sigma=0.0, sort=None):
+def eig_arnoldi(A, M, v0, inner_product, m=100, sort=None):
     if sort is None:
         # Decreasing magnitude
         def sort(x):
             return np.argsort(-abs(x))
 
-    V, H, _ = arnoldi(A, M, v0, inner_product, m, sigma)
+    V, H, _ = arnoldi(A, M, v0, inner_product, m)
     ritz_vals, ritz_vecs = linalg.eig(H)
 
     sort_idx = sort(ritz_vals)
     ritz_vals = ritz_vals[sort_idx]
     ritz_vecs = ritz_vecs[:, sort_idx]
 
-    evals = 1 / (ritz_vals + sigma)  # Undo spectral shift
+    ritz_vals = 1 / (ritz_vals)  # Undo spectral shift
 
     fn_space = v0.function_space()
     evecs_real = [fd.Function(fn_space) for _ in range(m)]
@@ -89,7 +90,7 @@ def eig_arnoldi(A, M, v0, inner_product, m=100, sigma=0.0, sort=None):
     for i in range(m):
         evecs_real[i].assign(sum(V[j] * ritz_vecs[j, i].real for j in range(m)))
         evecs_imag[i].assign(sum(V[j] * ritz_vecs[j, i].imag for j in range(m)))
-    return evals, evecs_real, evecs_imag
+    return ritz_vals, evecs_real, evecs_imag
 
 
 if __name__ == "__main__":
@@ -108,16 +109,19 @@ if __name__ == "__main__":
     def M(u):
         return inner(u, v) * dx
 
-    A = -k * inner(grad(u), grad(v)) * dx
+    sigma = -2.0
+    A = (-k * inner(grad(u), grad(v)) - sigma * inner(u, v)) * dx
 
     rng = fd.RandomGenerator(fd.PCG64())
     v0 = rng.standard_normal(fn_space)
     alpha = np.sqrt(inner_product(v0, v0))
     v0.assign(v0 / alpha)
 
-    arn_evals, arn_evecs_real, arn_evecs_imag = eig_arnoldi(
-        A, M, v0, inner_product, m=20, sigma=0.0
+    arn_rvals, arn_evecs_real, arn_evecs_imag = eig_arnoldi(
+        A, M, v0, inner_product, m=20
     )
+    # Undo spectral shift
+    arn_evals = sigma + arn_rvals
 
     n_print = 5
     print(f"Arnoldi eigenvalues: {arn_evals[:n_print].real}")
