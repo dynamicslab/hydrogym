@@ -47,22 +47,25 @@ if __name__ == "__main__":
 
     rng = fd.RandomGenerator(fd.PCG64())
     v0 = rng.standard_normal(fn_space)
+    alpha = np.sqrt(fd.assemble(inner(v0, v0) * dx))
+    v0.assign(v0 / alpha)
+
     arn_rvals, arn_evecs_real, arn_evecs_imag = eig_arnoldi(A, v0, m=20)
     arn_evals = np.log(arn_rvals) / tau
 
     ks_rvals, ks_evecs_real, ks_evecs_imag = eig_ks(
         A, v0, m=20, delta=0.9, tol=1e-10, n_evals=10
     )
-    ks_evals = np.log(ks_rvals) / tau
+    # ks_evals = np.log(ks_rvals) / tau
 
     n_print = 5
     print(f"Arnoldi eigenvalues: {arn_evals[:n_print].real}")
-    print(f"Krylov-Schur eigenvalues: {ks_evals[:n_print].real}")
+    # print(f"Krylov-Schur eigenvalues: {ks_evals[:n_print].real}")
 
-    # Plot the eigenmodes
-    n_evals_plt = 5
-    fig, axs = plt.subplots(1, n_evals_plt, figsize=(12, 2), sharex=True, sharey=True)
+    # # Plot the eigenmodes
+    # n_evals_plt = 5
+    # fig, axs = plt.subplots(1, n_evals_plt, figsize=(12, 2), sharex=True, sharey=True)
 
-    for i in range(n_evals_plt):
-        tripcolor(ks_evecs_real[i], axes=axs[i], cmap="RdBu")
-    plt.show()
+    # for i in range(n_evals_plt):
+    #     tripcolor(ks_evecs_real[i], axes=axs[i], cmap="RdBu")
+    # plt.show()

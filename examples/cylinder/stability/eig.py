@@ -3,6 +3,8 @@ import numpy as np
 from firedrake import dx, inner
 from scipy import linalg
 
+from hydrogym.firedrake import print as parprint
+
 
 class ArnoldiBase:
     def inner(self, u, v):
@@ -20,47 +22,51 @@ class ArnoldiBase:
     def __call__(self, A, v0, m=100, restart=None, debug_tau=None):
         if restart is None:
             # Initial value here doesn't matter - all data will be overwritten
-            V = [self.copy(v0) for _ in range(m)]
+            V = [self.copy(v0).assign(0.0) for _ in range(m + 1)]
+            self.assign(V[0], v0)
             H = np.zeros((m, m))
-            start_idx = 0
+            start_idx = 1
         else:
-            V, H = restart
-            start_idx = len(V)
-            V.extend([self.copy(v0) for _ in range(m - start_idx)])
-            H = np.pad(H, ((0, m - start_idx), (0, m - start_idx)), mode="constant")
+            V, H, start_idx = restart
             print(f"Restarting from previous iteration with p={start_idx}")
 
         if start_idx == m:
             print("Warning: restart array is full, no iterations performed.")
 
-        v = self.copy(v0)
-        f = self.copy(v0)
-        self.assign(v, v / self.norm(v0))
-        w = A @ v
-        alpha = self.inner(v, w)
-        self.assign(f, w - v * alpha)
-        self.assign(V[start_idx], v)
-        H[start_idx, start_idx] = alpha
-        for j in range(start_idx + 1, m):
-            print(f"Arnoldi iteration {j}")
+        for j in range(start_idx, m + 1):
+            f = A @ V[j - 1]
+
+            # Gram-Schmidt
+            h = np.zeros(j)
+            for i in range(j):
+                h[i] = self.inner(V[i], f)
+                self.assign(f, f - V[i] * h[i])
+
+            # Fill in the upper Hessenberg matrix
+            H[:j, j - 1] = h
+
+            # Norm of the orthogonal residual
             beta = self.norm(f)
-            H[j, j - 1] = beta
-            self.assign(v, f / beta)
-            self.assign(V[j], v)
-            w = A @ v
-            self.assign(f, w)
-            for k in range(j + 1):
-                H[k, j] = self.inner(V[k], w)
-                self.assign(f, f - V[k] * H[k, j])
+
+            if j < m:
+                H[j, j - 1] = beta
+
+            # Normalize the orthogonal residual for use as a new
+            # Krylov basis vector
+            self.assign(V[j], f / beta)
 
             # DEBUG: Print the eigenvalues
             if debug_tau is not None:
-                ritz_vals, _ = linalg.eig(H[: j + 1, : j + 1])
+                parprint(f"*** Arnoldi iteration {j} ***")
+                ritz_vals, ritz_vecs = linalg.eig(H[:j, :j])
                 sort_idx = np.argsort(-abs(ritz_vals))
                 ritz_vals = ritz_vals[sort_idx]
-                print(np.log(ritz_vals[:10]) / debug_tau)
+                ritz_vecs = ritz_vecs[:, sort_idx]
+                parprint(f"Eigvals: {np.log(ritz_vals[:20]) / debug_tau}")
+                res = abs(beta * ritz_vecs[-1, :20])
+                parprint(f"Residuals: {res}")
 
-        return V, H, v, beta
+        return V, H, beta
 
 
 class FiredrakeArnoldi(ArnoldiBase):
@@ -91,7 +97,7 @@ def eig_arnoldi(A, v0, m=100, sort=None, inner_product=None, debug_tau=None):
             return np.argsort(-abs(x))
 
     arnoldi = FiredrakeArnoldi(inner_product=inner_product)
-    V, H, _, _ = arnoldi(A, v0, m, debug_tau=debug_tau)
+    V, H, _beta = arnoldi(A, v0, m, debug_tau=debug_tau)
     ritz_vals, ritz_vecs = linalg.eig(H)
 
     sort_idx = sort(ritz_vals)
@@ -99,32 +105,47 @@ def eig_arnoldi(A, v0, m=100, sort=None, inner_product=None, debug_tau=None):
     ritz_vecs = ritz_vecs[:, sort_idx]
 
     fn_space = v0.function_space()
-    evecs_real = [fd.Function(fn_space) for _ in range(len(V))]
-    evecs_imag = [fd.Function(fn_space) for _ in range(len(V))]
-    for i in range(len(V)):
-        evecs_real[i].assign(sum(V[j] * ritz_vecs[j, i].real for j in range(len(V))))
-        evecs_imag[i].assign(sum(V[j] * ritz_vecs[j, i].imag for j in range(len(V))))
+    evecs_real = [fd.Function(fn_space) for _ in range(m)]
+    evecs_imag = [fd.Function(fn_space) for _ in range(m)]
+    for i in range(m):
+        evecs_real[i].assign(sum(V[j] * ritz_vecs[j, i].real for j in range(m)))
+        evecs_imag[i].assign(sum(V[j] * ritz_vecs[j, i].imag for j in range(m)))
     return ritz_vals, evecs_real, evecs_imag
 
 
 def eig_ks(
-    A, v0, n_evals=10, m=100, tol=1e-10, delta=0.05, maxiter=None, inner_product=None
+    A,
+    v0,
+    n_evals=10,
+    m=100,
+    sort=None,
+    tol=1e-10,
+    delta=0.1,
+    maxiter=None,
+    inner_product=None,
+    debug_tau=None,
 ):
+    if sort is None:
+        # Decreasing magnitude
+        def sort(x):
+            return abs(x) > 1.0 - delta
+
     arnoldi = FiredrakeArnoldi(inner_product=inner_product)
     fn_space = v0.function_space()
 
     restart = None
+    is_converged = False
     k = 0  # Iteration count (for logging)
-
-    converged = []
-    while len(converged) < n_evals:
-        V, H, v0, beta = arnoldi(A, v0, m, restart=restart)
+    while not is_converged:
+        V, H, beta = arnoldi(A, v0, m, restart=restart, debug_tau=debug_tau)
 
         # Check for convergence based on Arnoldi residuals
         ritz_vals, ritz_vecs = linalg.eig(H)
+
         converged = []
         for i in range(m):
             y = ritz_vecs[:, i]
+            # print(f"   Ritz vector {i}: {y}")
             mu = ritz_vals[i]
             res = abs(beta * y[-1])
             if res < tol:
@@ -134,31 +155,44 @@ def eig_ks(
 
         # If enough eigenvalues have converged, return them and exit
         if len(converged) >= n_evals or (maxiter is not None and k >= maxiter):
-            # if True:
-            if maxiter is not None and k >= maxiter:
-                print(f"Maximum number of iterations reached ({maxiter}). Exiting.")
+            is_converged = True
+            print(f"Converged: {len(converged)} eigenvalues")
+
             p = len(converged)
             evals = np.zeros(p, dtype=np.complex128)
             evecs_real = [fd.Function(fn_space) for _ in range(p)]
             evecs_imag = [fd.Function(fn_space) for _ in range(p)]
             for i, (mu, y) in enumerate(converged):
                 evals[i] = mu
-                evecs_real[i].assign(sum(y[j].real * V[j] for j in range(m)))
-                evecs_imag[i].assign(sum(y[j].imag * V[j] for j in range(m)))
+                evecs_real[i].assign(sum(V[j] * y[j].real for j in range(m)))
+                evecs_imag[i].assign(sum(V[j] * y[j].imag for j in range(m)))
             return evals, evecs_real, evecs_imag
 
         # Schur decomposition
-        S, Q, p = linalg.schur(H, sort=lambda x: abs(x) > 1.0 - delta)
+        S, Q, p = linalg.schur(H, sort=sort)
+        print(f"   Schur form: {p} retained eigenvalues")
 
         # Keep the "wanted" part of the Schur form. These will be the eigenvalues
         # that are closest to the unit circle (least stable).
-        Hp = S[:p, :p]
+        S[p:, :p] = 0
+        S[:p, p:] = 0
+        S[p:, p:] = 0
 
         # Re-order the Krylov basis.  Since Q is real, these fields are also real.
-        Vp = [fd.Function(fn_space) for _ in range(p)]
+        Vp = [fd.Function(fn_space) for _ in range(m + 1)]
+        v0.assign(sum(V[j] * Q[j, p] for j in range(m)))
         for i in range(p):
-            Vp[i].assign(sum(Q[j, i] * V[j] for j in range(m)))
+            Vp[i].assign(sum(V[j] * Q[j, i] for j in range(m)))
+
+        # Update the matrix with the "b" vector for residuals
+        b = np.zeros(m)
+        b[-1] = beta
+        b = Q.T @ b
+        S[p, :p] = b[:p]
+        Vp[p].assign(V[-1])  # Restart from the last Krylov basis vector
+
+        # p += 1 ??
 
         # Restart with the wanted part of the Krylov basis
-        restart = (Vp, Hp)
+        restart = (Vp, S, p)
         k += 1

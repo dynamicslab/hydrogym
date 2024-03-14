@@ -2,54 +2,26 @@
 
 import firedrake as fd
 import numpy as np
-from cyl_common import base_checkpoint, evec_checkpoint, flow, stabilization
+from cyl_common import (
+    FlowPropagator,
+    base_checkpoint,
+    evec_checkpoint,
+    flow,
+    inner_product,
+)
 from eig import eig_arnoldi
-
-# from scipy import linalg
-from ufl import dx, inner
-
-import hydrogym.firedrake as hgym
-
-
-class FlowPropagator:
-    def __init__(self, flow, qB, dt, tau):
-        self.flow = flow
-        self.tau = tau
-        self.solver = hgym.LinearizedBDF(
-            flow,
-            dt,
-            qB=qB,
-            stabilization=stabilization,
-        )
-
-    def __matmul__(self, q):
-        self.flow.q.assign(q)
-
-        # Assign the current solution to all `u_prev`
-        # TODO: Move to solver reset function?
-        for u in self.solver.u_prev:
-            u.assign(q.subfunctions[0])
-
-        self.solver.solve((0.0, self.tau))
-        return self.flow.q.copy(deepcopy=True)  # TODO: do we need deepcopy?
-
-
-def inner_product(q1, q2):
-    u1 = q1.subfunctions[0]
-    u2 = q2.subfunctions[0]
-    return fd.assemble(inner(u1, u2) * dx)
-
 
 if __name__ == "__main__":
     flow.load_checkpoint(base_checkpoint)
     qB = flow.q.copy(deepcopy=True)
 
-    tau = 0.05
-    dt = 0.0025
+    tau = 0.5
+    dt = 0.01
     A = FlowPropagator(flow, qB, dt, tau)
 
     rng = fd.RandomGenerator(fd.PCG64())
     v0 = rng.standard_normal(flow.mixed_space)
+    v0.assign(v0 / inner_product(v0, v0) ** 0.5)
     rvals, evecs_real, evecs_imag = eig_arnoldi(
         A,
         v0,
@@ -59,7 +31,7 @@ if __name__ == "__main__":
     )
     arn_evals = np.log(rvals) / tau
 
-    n_print = 10
+    n_print = 64
     print(f"Arnoldi eigenvalues: {arn_evals[:n_print]}")
 
     # Save checkpoints
