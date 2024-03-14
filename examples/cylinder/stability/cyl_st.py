@@ -1,0 +1,182 @@
+from functools import partial
+
+import firedrake as fd
+import matplotlib.pyplot as plt
+import numpy as np
+from cyl_common import base_checkpoint, evec_checkpoint, flow, inner_product
+from firedrake.pyplot import tripcolor, triplot
+from scipy import linalg
+from ufl import dx, grad, inner
+
+import hydrogym.firedrake as hgym
+
+
+def arnoldi(solve, v0, inner_product, m=100):
+    """Solve Arnoldi iteration for the inverse iteration of a matrix pencil."""
+    V = [v0.copy(deepcopy=True).assign(0.0) for _ in range(m + 1)]
+    H = np.zeros((m, m))
+    start_idx = 1
+    V[0].assign(v0)
+
+    f = v0.copy(deepcopy=True)
+    for j in range(start_idx, m + 1):
+        # Apply iteration A @ f = M @ v
+        # This is the iteration f = (A^{-1} @ M) @ v
+        # which is inverse to M @ f = A @ v
+        # Stores the result in `f`
+        solve(f, V[j - 1])
+
+        # Gram-Schmidt
+        h = np.zeros(j)
+        for i in range(j):
+            h[i] = inner_product(V[i], f)
+            f.assign(f - V[i] * h[i])
+
+        # Fill in the upper Hessenberg matrix
+        H[:j, j - 1] = h
+
+        # Norm of the orthogonal residual
+        beta = np.sqrt(inner_product(f, f))
+
+        if j < m:
+            H[j, j - 1] = beta
+
+        # Normalize the orthogonal residual for use as a new
+        # Krylov basis vector
+        V[j].assign(f / beta)
+
+        # DEBUG: Print the eigenvalues
+        # if debug_tau is not None:
+        if True:
+            hgym.print(f"*** Arnoldi iteration {j} ***")
+            ritz_vals, ritz_vecs = linalg.eig(H[:j, :j])
+            sort_idx = np.argsort(-abs(ritz_vals))
+            ritz_vals = ritz_vals[sort_idx]
+            ritz_vecs = ritz_vecs[:, sort_idx]
+            hgym.print(f"Eigvals: {1 / ritz_vals[:20]}")
+            res = abs(beta * ritz_vecs[-1, :20])
+            hgym.print(f"Residuals: {res}")
+
+    return V, H, beta
+
+
+def eig_arnoldi(solve, v0, inner_product, m=100, sort=None):
+    if sort is None:
+        # Decreasing magnitude
+        def sort(x):
+            return np.argsort(-abs(x))
+
+    V, H, _ = arnoldi(solve, v0, inner_product, m)
+    ritz_vals, ritz_vecs = linalg.eig(H)
+
+    sort_idx = sort(ritz_vals)
+    ritz_vals = ritz_vals[sort_idx]
+    ritz_vecs = ritz_vecs[:, sort_idx]
+
+    ritz_vals = 1 / (ritz_vals)  # Undo spectral shift
+
+    fn_space = v0.function_space()
+    evecs_real = [fd.Function(fn_space) for _ in range(m)]
+    evecs_imag = [fd.Function(fn_space) for _ in range(m)]
+    for i in range(m):
+        evecs_real[i].assign(sum(V[j] * ritz_vecs[j, i].real for j in range(m)))
+        evecs_imag[i].assign(sum(V[j] * ritz_vecs[j, i].imag for j in range(m)))
+    return ritz_vals, evecs_real, evecs_imag
+
+
+if __name__ == "__main__":
+    flow.load_checkpoint(base_checkpoint)
+    qB = flow.q.copy(deepcopy=True)
+    fn_space = flow.mixed_space
+    flow.linearize_bcs()
+    bcs = flow.collect_bcs()
+
+    # MUMPS sparse direct LU solver
+    solver_parameters = {
+        "mat_type": "aij",
+        "ksp_type": "preonly",
+        "pc_type": "lu",
+        "pc_factor_mat_solver_type": "mumps",
+    }
+
+    (uB, pB) = qB.subfunctions
+    (u, p) = fd.TrialFunctions(fn_space)
+    (v, s) = fd.TestFunctions(fn_space)
+    q_trial = fd.TrialFunction(fn_space)
+    q_test = fd.TestFunction(fn_space)
+
+    newton_solver = hgym.NewtonSolver(flow)
+    F = newton_solver.steady_form(qB, q_test=q_test)  # This is a linear form
+    print(F, type(F))
+    J = -fd.derivative(F, qB, q_trial)
+
+    # from ufl import nabla_grad, div, inner, dot
+    # sigma, epsilon = flow.sigma, flow.epsilon
+    # J = -(
+    #     inner(dot(uB, nabla_grad(u)), v) * dx
+    #     + inner(dot(u, nabla_grad(uB)), v) * dx
+    #     + inner(sigma(u, p), epsilon(v)) * dx
+    #     + inner(div(u), s) * dx
+    #     # NOTE: Base flow forcing terms here
+    # )
+
+    def M(q):
+        u = q.subfunctions[0]
+        return inner(u, v) * dx
+
+    # TODO: May need both real and imaginary solves for complex sigma
+    sigma = 0.0
+    # A = (
+    #     -k * inner(grad(u), grad(v))
+    #     - sigma * inner(u, v)
+    # ) * dx
+    A = J
+
+    def solve(v1, v0):
+        """Solve the matrix pencil A @ v1 = M @ v0 for v1.
+
+        This is equivalent to the "inverse iteration" v1 = (A^{-1} @ M) @ v0
+
+        Stores the result in `v1`
+        """
+        fd.solve(A == M(v0), v1, bcs=bcs, solver_parameters=solver_parameters)
+
+    rng = fd.RandomGenerator(fd.PCG64())
+    v0 = rng.standard_normal(fn_space)
+    alpha = np.sqrt(inner_product(v0, v0))
+    v0.assign(v0 / alpha)
+
+    rvals, evecs_real, evecs_imag = eig_arnoldi(solve, v0, inner_product, m=32)
+    # Undo spectral shift
+    evals = sigma + rvals
+
+    # Sort by decreasing real part
+    sort_idx = np.argsort(-evals.real)
+    evals = evals[sort_idx]
+    evecs_real = [evecs_real[i] for i in sort_idx]
+    evecs_imag = [evecs_imag[i] for i in sort_idx]
+
+    n_save = 32
+    print(f"Arnoldi eigenvalues: {evals[:n_save]}")
+
+    # Save checkpoints
+    chk_dir, chk_file = evec_checkpoint.split("/")
+    chk_path = "/".join([chk_dir, f"st_{chk_file}"])
+    with fd.CheckpointFile(chk_path, "w") as chk:
+        for i in range(n_save):
+            evecs_real[i].rename(f"evec_{i}_re")
+            chk.save_function(evecs_real[i])
+            evecs_imag[i].rename(f"evec_{i}_im")
+            chk.save_function(evecs_imag[i])
+
+    np.save("/".join([chk_dir, "st_evals"]), evals[:n_save])
+
+    # # print(f"Krylov-Schur eigenvalues: {ks_evals[:n_print].real}")
+
+    # # # Plot the eigenmodes
+    # # n_evals_plt = 5
+    # # fig, axs = plt.subplots(1, n_evals_plt, figsize=(12, 2), sharex=True, sharey=True)
+
+    # # for i in range(n_evals_plt):
+    # #     tripcolor(ks_evecs_real[i], axes=axs[i], cmap="RdBu")
+    # # plt.show()
