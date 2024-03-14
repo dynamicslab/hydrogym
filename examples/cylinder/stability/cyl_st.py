@@ -47,11 +47,17 @@ def arnoldi(solve, v0, inner_product, m=100):
         # DEBUG: Print the eigenvalues
         # TODO: Make this optional. Also use better formatting
         if True:
-            hgym.print(f"*** Arnoldi iteration {j} ***")
             ritz_vals, ritz_vecs = sorted_eig(H[:j, :j])
-            hgym.print(f"Eigvals: {ritz_vals[:20]}")
-            res = abs(beta * ritz_vecs[-1, :20])
-            hgym.print(f"Residuals: {res}")
+            res = abs(beta * ritz_vecs[-1])
+            hgym.print("\n*************************************")
+            hgym.print(f"****** Arnoldi iteration {j} ********")
+            hgym.print("*************************************")
+            hgym.print("|        evals        |  residuals  |")
+            hgym.print("|---------------------|-------------|")
+            for i in range(min(10, j)):
+                hgym.print(f"| {ritz_vals[i]:.2e} |  {res[i]:.2e}  |")
+            # hgym.print(f"Eigvals: {ritz_vals[:20]}")
+            # hgym.print(f"Residuals: {res}")
 
     return V, H, beta
 
@@ -112,9 +118,8 @@ if __name__ == "__main__":
     # The Jacobian of F is the bilinear form J(qB, q_test) = dF/dq(qB) @ q_test
     J = -fd.derivative(F, qB, q_trial)
 
-    # To solve the adjoint problem (this is in utils.linalg)
-    # args = J.arguments()
-    # J_adj = ufl.adjoint(J, reordered_arguments=(args[0], args[1]))
+    # Uncomment to solve the adjoint problem (this is in utils.linalg)
+    # J = hgym.utils.linalg.adjoint(J)
 
     def M(q):
         u = q.subfunctions[0]
