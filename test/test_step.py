@@ -58,7 +58,7 @@ def test_control():
     num_steps = 10
     for iter in range(num_steps):
         flow.get_observations()
-        flow = solver.step(iter, control=0.1 * sin(solver.t))
+        flow = solver.step(iter, control=0.1 * sin(iter * solver.dt))
 
 
 def test_env():
@@ -72,5 +72,5 @@ def test_env():
     }
     env = hgym.FlowEnv(env_config)
 
-    for _ in range(10):
-        y, reward, done, info = env.step(0.1 * sin(env.solver.t))
+    for i in range(10):
+        y, reward, done, info = env.step(0.1 * sin(i * env.solver.dt))
