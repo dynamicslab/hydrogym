@@ -1,7 +1,10 @@
 import os
 
 import firedrake as fd
+import matplotlib.pyplot as plt
+import numpy as np
 import ufl
+from firedrake.pyplot import tricontourf
 from ufl import dot, ds, grad
 
 from hydrogym.firedrake import FlowConfig, ObservationFunction, ScaledDirichletBC
