@@ -113,6 +113,7 @@ class Pinball(FlowConfig):
         CL, CD = self.compute_forces(q=q)
         return sum(CD)
 
+    # TODO: Needs to be revisited as the self calls here look hella suss
     def render(self, mode="human", clim=None, levels=None, cmap="RdBu", **kwargs):
         if clim is None:
             clim = (-2, 2)
