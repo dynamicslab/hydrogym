@@ -6,5 +6,6 @@ Developer Notes
 
     docker_development
     testing
+    hf_data
     distributed_backend
     further_backend

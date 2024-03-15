@@ -33,6 +33,7 @@ Core Features
    basics
    user_docs/index
    integrations/index
+   parallel_setup/index
    glossary
    dev_notes/index
    api_reference/index
