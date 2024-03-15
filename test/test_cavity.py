@@ -5,8 +5,9 @@ import hydrogym.firedrake as hgym
 
 Re_init = [500, 1000, 2000, 4000, 7500]
 
+
 def test_import_medium():
-    hgym.Cavity(Re=500, mesh="medium", velocity_order=1)
+    hgym.Cavity(Re=500, mesh="medium")
 
 
 def test_import_fine():
