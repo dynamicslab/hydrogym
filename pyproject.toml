@@ -48,6 +48,7 @@ gym = "^0.26.2"
 modred = "^2.1.0"
 python = "^3.10"
 torch = "^2.0"
+datasets = "^2.18.0"
 
 [tool.poetry.group.dev.dependencies]
 jupyterlab = "^3.5.2"
