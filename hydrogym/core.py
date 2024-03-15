@@ -33,6 +33,7 @@ class PDEBase(metaclass=abc.ABCMeta):
     """
 
     MAX_CONTROL = np.inf
+    ENV_NAME = ""
     DEFAULT_MESH = ""
     DEFAULT_DT = np.inf
 
