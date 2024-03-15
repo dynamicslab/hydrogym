@@ -33,7 +33,7 @@ def test_integrate():
         flow,
         t_span=(0, 2 * dt),
         dt=dt,
-        stabilization="gls"
+        #stabilization="gls"
     )
 
 
