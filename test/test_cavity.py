@@ -28,14 +28,23 @@ def test_steady_actuation():
 def test_integrate():
     flow = hgym.Cavity(Re=50, mesh="medium")
     dt = 1e-4
-    hgym.integrate(flow, t_span=(0, 2 * dt), dt=dt)
+
+    hgym.integrate(
+        flow,
+        t_span=(0, 2 * dt),
+        dt=dt,
+        stabilization="gls"
+    )
 
 
 def test_control():
     flow = hgym.Cavity(Re=50, mesh="medium")
     dt = 1e-4
 
-    solver = hgym.SemiImplicitBDF(flow, dt=dt)
+    solver = hgym.SemiImplicitBDF(
+        flow,
+        dt=dt
+    )
 
     num_steps = 10
     for iter in range(num_steps):
