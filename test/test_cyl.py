@@ -30,12 +30,8 @@ def test_steady_rotation(tol=1e-3):
     flow = hgym.RotaryCylinder(Re=100, mesh="medium")
     flow.set_control(0.1)
 
-    solver = hgym.integrate(
-        flow,
-        t_span=(0, Tf),
-        dt=dt
-    )
-    #solver.solve()
+    solver = hgym.integrate(flow, t_span=(0, Tf), dt=dt)
+    solver.solve()
 
     # Lift/drag on cylinder
     CL, CD = flow.compute_forces()
@@ -58,16 +54,14 @@ def feedback_ctrl(y, K=0.1):
 def test_control():
     k = 2.0
     theta = 4.0
+    tf = 10.0
+    dt = 1e-2
 
     # Initialize the flow
-    flow = hgym.RotaryCylinder(
-        Re=100,
-        mesh="medium",
-        velocity_order=1
-    )
+    flow = hgym.RotaryCylinder(Re=100, mesh="medium", velocity_order=1)
 
     # Construct the PDController
-    controller = PDController(
+    pd_controller = PDController(
         k * np.cos(theta),
         k * np.sin(theta),
         1e-2,
@@ -75,6 +69,13 @@ def test_control():
         filter_type="bilinear",
         N=2,
     )
+
+    def controller(t, obs):
+        if t < tf / 2:
+            return 0.0
+        return pd_controller(t, obs)
+
+    hgym.integrate(flow, t_span=(0, tf), dt=dt, controller=controller)
 
 
 def test_env():
@@ -105,7 +106,7 @@ def test_linearize():
 
 def test_act_implicit_no_damp():
     flow = hgym.Cylinder(mesh="medium", actuator_integration="implicit")
-    #dt = 1e-2
+    # dt = 1e-2
     solver = hgym.NewtonSolver(flow)
 
     # Since this feature is still experimental, modify actuator attributes *after*=
@@ -117,16 +118,10 @@ def test_act_implicit_fixed_torque():
     dt = 1e-4
 
     # Define the flow
-    flow = hgym.Cylinder(
-        mesh="medium",
-        actuator_integration="implicit"
-    )
-    
+    flow = hgym.Cylinder(mesh="medium", actuator_integration="implicit")
+
     # Set up the solver
-    solver = hgym.SemiImplicitBDF(
-        flow,
-        dt=dt
-    )
+    solver = hgym.SemiImplicitBDF(flow, dt=dt)
 
     # Obtain a torque value for which the system converges to a steady state angular velocity
     tf = 0.1 * flow.TAU
