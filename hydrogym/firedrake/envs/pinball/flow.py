@@ -1,4 +1,3 @@
-import os
 from typing import Iterable
 
 import firedrake as fd
@@ -29,8 +28,6 @@ class Pinball(FlowConfig):
 
     MAX_CONTROL = 0.5 * np.pi
     TAU = 1.0  # TODO: Tune this based on vortex shedding period
-
-    MESH_DIR = os.path.abspath(f"{__file__}/..")
 
     def init_bcs(self):
         V, Q = self.function_spaces(mixed=True)

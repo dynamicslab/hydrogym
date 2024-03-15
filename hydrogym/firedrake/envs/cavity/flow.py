@@ -1,5 +1,3 @@
-import os
-
 import firedrake as fd
 import ufl
 from ufl import dot, ds, grad
@@ -27,8 +25,6 @@ class Cavity(FlowConfig):
     WALL = (6, 8)
     CONTROL = 7
     SENSOR = 8
-
-    MESH_DIR = os.path.abspath(f"{__file__}/..")
 
     @property
     def num_inputs(self) -> int:

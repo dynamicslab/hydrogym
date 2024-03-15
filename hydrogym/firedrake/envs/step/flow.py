@@ -1,5 +1,3 @@
-import os
-
 import firedrake as fd
 import numpy as np
 import ufl
@@ -25,8 +23,6 @@ class Step(FlowConfig):
     WALL = 4
     CONTROL = 5
     SENSOR = 6
-
-    MESH_DIR = os.path.abspath(f"{__file__}/..")
 
     def __init__(self, **kwargs):
         # The random forcing is implemented as low-pass-filtered white noise

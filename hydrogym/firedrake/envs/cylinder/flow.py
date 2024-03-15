@@ -1,5 +1,3 @@
-import os
-
 import firedrake as fd
 import matplotlib.pyplot as plt
 import numpy as np
@@ -39,8 +37,6 @@ class CylinderBase(FlowConfig):
     FREESTREAM = 3
     OUTLET = 4
     CYLINDER = 5
-
-    MESH_DIR = os.path.abspath(f"{__file__}/..")
 
     @property
     def num_inputs(self) -> int:
