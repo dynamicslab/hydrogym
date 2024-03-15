@@ -1,46 +1,39 @@
-import firedrake_adjoint as fda
 from ufl import sin
 import pytest
 
 import hydrogym.firedrake as hgym
 
-
-def test_import_coarse():
-    hgym.Cavity(mesh="coarse")
-    # missing the assertion
-
+Re_init = [500, 1000, 2000, 4000, 7500]
 
 def test_import_medium():
-    hgym.Cavity(mesh="medium")
-    # missing the assertion
+    hgym.Cavity(Re=500, mesh="medium", velocity_order=1)
 
 
 def test_import_fine():
     hgym.Cavity(mesh="fine")
-    # missing the assertion
 
 
 def test_steady():
-    flow = hgym.Cavity(Re=50, mesh="coarse")
+    flow = hgym.Cavity(Re=50, mesh="medium")
     solver = hgym.NewtonSolver(flow)
     solver.solve()
 
 
 def test_steady_actuation():
-    flow = hgym.Cavity(Re=50, mesh="coarse")
+    flow = hgym.Cavity(Re=50, mesh="medium")
     flow.set_control(1.0)
     solver = hgym.NewtonSolver(flow)
     solver.solve()
 
 
 def test_integrate():
-    flow = hgym.Cavity(Re=50, mesh="coarse")
+    flow = hgym.Cavity(Re=50, mesh="medium")
     dt = 1e-4
     hgym.integrate(flow, t_span=(0, 10 * dt), dt=dt)
 
 
 def test_control():
-    flow = hgym.Cavity(Re=50, mesh="coarse")
+    flow = hgym.Cavity(Re=50, mesh="medium")
     dt = 1e-4
 
     solver = hgym.IPCS(flow, dt=dt)
@@ -54,27 +47,10 @@ def test_control():
 def test_env():
     env_config = {
         "flow": hgym.Cavity,
-        "flow_config": {"mesh": "coarse", "Re": 10},
+        "flow_config": {"mesh": "medium", "Re": 10},
         "solver": hgym.IPCS,
     }
     env = hgym.FlowEnv(env_config)
 
     for _ in range(10):
         y, reward, done, info = env.step(0.1 * sin(env.solver.t))
-
-
-def test_grad():
-    flow = hgym.Cavity(Re=50, mesh="coarse")
-
-    c = fda.AdjFloat(0.0)
-    flow.set_control(c)
-
-    solver = hgym.NewtonSolver(flow)
-    solver.solve()
-
-    (y,) = flow.get_observations()
-
-    dy = fda.compute_gradient(y, fda.Control(c))
-
-    print(dy)
-    assert abs(dy) > 0

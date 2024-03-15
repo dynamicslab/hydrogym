@@ -1,9 +1,8 @@
 import os
-
 import numpy as np
 import psutil
-from pd import PDController
 
+from hydrogym.firedrake.utils.pd import PDController
 import hydrogym.firedrake as hgym
 
 output_dir = "output"
