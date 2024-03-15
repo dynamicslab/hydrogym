@@ -10,6 +10,7 @@ from firedrake.__future__ import interpolate
 from mpi4py import MPI
 from numpy.typing import ArrayLike
 from ufl import curl, dot, inner, nabla_grad, sqrt, sym
+from datasets import load_dataset
 
 from ..core import ActuatorBase, PDEBase
 from .actuator import DampedActuator
@@ -37,7 +38,6 @@ class FlowConfig(PDEBase):
     DEFAULT_REYNOLDS = 1
     DEFAULT_VELOCITY_ORDER = 2  # Taylor-Hood elements
     DEFAULT_STABILIZATION = "none"
-    MESH_DIR = ""
 
     FUNCTIONS = ("q",)  # tuple of functions necessary for the flow
 
@@ -72,7 +72,14 @@ class FlowConfig(PDEBase):
         super().__init__(**config)
 
     def load_mesh(self, name: str) -> ufl.Mesh:
-        return fd.Mesh(f"{self.MESH_DIR}/{name}.msh", name="mesh")
+        # Load mesh from HuggingFace dataset
+        mesh = load_dataset(
+            "dynamicslab/hydrogym-meshes",
+            data_dir="data/{env_name}/meshes",
+            data_files="{name}.msh",
+            trust_remote_code=True
+        )
+        return fd.Mesh(mesh)
 
     def save_checkpoint(self, filename: str, write_mesh=True, idx=None):
         with fd.CheckpointFile(filename, "w") as chk:
