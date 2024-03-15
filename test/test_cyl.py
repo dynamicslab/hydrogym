@@ -30,8 +30,10 @@ def test_steady_rotation(tol=1e-3):
     flow = hgym.RotaryCylinder(Re=100, mesh="medium")
     flow.set_control(0.1)
 
-    solver = hgym.integrate(flow, t_span=(0, Tf), dt=dt)
-    solver.solve()
+    solver = hgym.SemiImplicitBDF(flow, dt=dt)
+
+    for iter in range(int(Tf / dt)):
+        solver.step(iter)
 
     # Lift/drag on cylinder
     CL, CD = flow.compute_forces()
