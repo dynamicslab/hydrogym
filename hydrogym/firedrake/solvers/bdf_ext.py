@@ -119,11 +119,9 @@ class SemiImplicitBDF(NavierStokesTransientSolver):
             "pc_fieldsplit_type": "schur",
             "pc_fieldsplit_schur_fact_type": "full",
             "pc_fieldsplit_schur_precondition": "selfp",
-            #
             # Default preconditioner for inv(A)
             #   (ilu in serial, bjacobi in parallel)
             "fieldsplit_0_ksp_type": "preonly",
-            #
             # Single multigrid cycle preconditioner for inv(S)
             "fieldsplit_1_ksp_type": "preonly",
             "fieldsplit_1_pc_type": "hypre",

@@ -4,8 +4,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import psutil  # For memory tracking
 import scipy.io as sio
-from pd import PDController
 
+from hydrogym.firedrake.utils.pd import PDController
 import hydrogym.firedrake as hgym
 
 output_dir = "output"

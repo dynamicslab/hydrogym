@@ -39,6 +39,9 @@ This means that the latest release of Hydrogym can be simply installed via [PyPI
 pip install hydrogym
 ```
 
+> BEWARE: The pip-package is currently behind the main repository, and we strongly urge users to build HydroGym
+>         directly from the source code. Once we've stabilized the package, we will update the pip package in turn.
+
 However, the package assumes that the solver backend is available, so in order to run simulations locally you will
 need to _separately_ ensure the solver backend is installed (again, currently all the environments are implemented with Firedrake).
 Alternatively (and this is important for large-scale RL training), the core Hydrogym package can (or will soon be able to) launch reinforcement learning training on a Ray-cluster without an underlying Firedrake install.

@@ -71,8 +71,8 @@ black = "^23.11.0"
 
 [tool.ruff]
 line-length = 120
-select = ["E", "F"]
-ignore = ["F401"]
+lint.select = ["E", "F"]
+lint.ignore = ["F401"]
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

@@ -1,7 +1,5 @@
 import os
-
 import psutil
-
 import hydrogym.firedrake as hgym
 
 output_dir = "output"
