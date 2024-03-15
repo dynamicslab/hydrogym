@@ -33,7 +33,7 @@ def test_integrate():
         flow,
         t_span=(0, 2 * dt),
         dt=dt,
-        #stabilization="gls"
+        # stabilization="gls"
     )
 
 
@@ -41,10 +41,7 @@ def test_control():
     flow = hgym.Cavity(Re=50, mesh="medium")
     dt = 1e-4
 
-    solver = hgym.SemiImplicitBDF(
-        flow,
-        dt=dt
-    )
+    solver = hgym.SemiImplicitBDF(flow, dt=dt)
 
     num_steps = 10
     for iter in range(num_steps):

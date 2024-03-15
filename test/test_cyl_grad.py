@@ -1,6 +1,3 @@
-
-
-
 def isordered(arr):
     if len(arr) < 2:
         return True

@@ -41,12 +41,7 @@ def test_integrate_noise():
     flow = hgym.Step(Re=100, mesh="medium")
     dt = 1e-3
 
-    hgym.integrate(
-        flow,
-        t_span=(0, 10 * dt),
-        dt=dt,
-        eta=1.0
-    )
+    hgym.integrate(flow, t_span=(0, 10 * dt), dt=dt, eta=1.0)
 
 
 def test_control():
@@ -64,10 +59,7 @@ def test_control():
 def test_env():
     env_config = {
         "flow": hgym.Step,
-        "flow_config": {
-            "mesh": "medium",
-            "Re": 100
-        },
+        "flow_config": {"mesh": "medium", "Re": 100},
         "solver": hgym.SemiImplicitBDF,
     }
     env = hgym.FlowEnv(env_config)
