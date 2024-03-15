@@ -1,9 +1,11 @@
 import os
 
 import firedrake as fd
+import matplotlib.pyplot as plt
 import numpy as np
 import ufl
 from firedrake.petsc import PETSc
+from firedrake.pyplot import tricontourf
 from ufl import dot, ds, exp, grad
 
 from hydrogym.firedrake import FlowConfig, ObservationFunction, ScaledDirichletBC
@@ -143,3 +145,23 @@ class Step(FlowConfig):
         uB = qB.subfunctions[0]
         KE = 0.5 * fd.assemble(fd.inner(u - uB, u - uB) * fd.dx)
         return KE
+
+    # TODO: Rendering function needs to be revisited as this is only a hot-fix
+    def render(self, mode="human", clim=None, levels=None, cmap="RdBu", **kwargs):
+        if clim is None:
+            clim = (-2, 2)
+        if levels is None:
+            levels = np.linspace(*clim, 10)
+        vort = fd.project(fd.curl(self.u), self.pressure_space)
+        im = tricontourf(
+            vort,
+            cmap=cmap,
+            levels=levels,
+            vmin=clim[0],
+            vmax=clim[1],
+            extend="both",
+            **kwargs,
+        )
+
+        cyl = plt.Circle((0, 0), 0.5, edgecolor="k", facecolor="gray")
+        im.axes.add_artist(cyl)
