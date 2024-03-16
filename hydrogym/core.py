@@ -85,7 +85,7 @@ class PDEBase(metaclass=abc.ABCMeta):
     """Set the current state fields
 
         Should be overridden if a different assignment
-        mechansim is used (e.g. `Function.assign`)
+        mechanism is used (e.g. `Function.assign`)
 
         Args:
             q (StateType): State to be assigned

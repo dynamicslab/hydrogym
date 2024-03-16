@@ -26,7 +26,7 @@ Currently these "environments" are all implemented using the [Firedrake](https:/
     - High-level: `hydrogym.env.FlowEnv` classes implement the OpenAI `gym.Env` interface
     - Intermediate: Typical CFD interface with `hydrogym.FlowConfig` and `hydrogym.TransientSolver` classes
     - Low-level: Access to linearized operators and sparse scipy or PETSc CSR matrices
-* __Modeling and anlysis tools:__ Global stability analysis (via SLEPc) and modal decompositions (via modred)
+* __Modeling and analysis tools:__ Global stability analysis (via SLEPc) and modal decompositions (via modred)
 * __Scalable:__ Individual environments parallelized with MPI with a **highly scalable [Ray](https://github.com/ray-project/ray) backend reinforcement learning training**.
 
 # Installation
@@ -82,7 +82,7 @@ For more detail, check out:
 
 There are currently a number of main flow configurations, the most prominent of which are:
 
-- Periodic cyclinder wake at Re=100
+- Periodic cylinder wake at Re=100
 - Chaotic pinball at Re=130
 - Open cavity at Re=7500
 - Backwards-facing step at Re=600
