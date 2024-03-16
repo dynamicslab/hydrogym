@@ -26,6 +26,7 @@ Core Features
 
 .. toctree::
    :hidden:
+   :maxdepth: 3
 
    installation
    quickstart
