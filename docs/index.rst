@@ -35,4 +35,4 @@ Core Features
    integrations/index
    glossary
    dev_notes/index
-   api_reference/index
+   api
