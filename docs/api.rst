@@ -2,6 +2,7 @@ API
 ===
 
 .. autosummary::
-   :toctree: generated
+   :toctree: _autosummary
+   :recursive:
 
    hydrogym
