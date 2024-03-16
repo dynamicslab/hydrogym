@@ -45,7 +45,6 @@ control = "^0.9.2"
 dmsuite = "^0.1.1"
 gmsh = "^4.11.1"
 gym = "^0.26.2"
-modred = "^2.1.0"
 python = "^3.10"
 torch = "^2.0"
 
