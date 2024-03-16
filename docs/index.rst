@@ -34,4 +34,4 @@ Core Features
    integrations/index
    glossary
    dev_notes/index
-   API reference <_autosummary/hydrogym>
+   API Reference <_autosummary/hydrogym>
