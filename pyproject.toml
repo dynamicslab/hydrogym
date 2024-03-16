@@ -78,11 +78,7 @@ select = ["E", "F"]
 ignore = ["F401", "E731"]
 
 [tool.codespell]
-ignore-words-list = [
-  "SHs", "Ue", "AcI", "te", "SIZ", "wit", "Ue", "AcI", "4RD", "OT", "ue", "BU", "Iif", "oT",
-  "Wth", "whe", "Tre", "SxL", "nD", "ot", "Ot", "ANE", "fo", "tE", "uE", "PARd", "WeW", "UeStS"
-]
-skip = '*.svg'
+skip = '*.svg, *.ipynb'
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
