@@ -9,8 +9,6 @@ from scipy import sparse
 # Type suggestions
 from hydrogym.firedrake import FlowConfig
 
-from .modred_interface import Snapshot, vec_handle_mean
-
 
 def adjoint(L):
     args = L.arguments()
