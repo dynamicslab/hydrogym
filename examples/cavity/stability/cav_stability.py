@@ -1,77 +1,84 @@
 import firedrake as fd
 import numpy as np
-from cav_common import base_checkpoint, evec_checkpoint, flow, inner_product
-from ufl import dx, inner
+from cav_common import base_checkpoint, evec_checkpoint, flow
 
 import hydrogym.firedrake as hgym
 
+chk_dir, chk_file = evec_checkpoint.split("/")
+
+
+def _filter_evals(evals, sigma, residuals, tol):
+    # The shifted eigenvalues have imaginary parts +/- (wi - si), but there
+    # are duplicates at +/- (wi + si). We want to discard these duplicates.
+    # We can check by doing a positive and negative shift by si and checking
+    # for duplicates.
+    keep = np.ones_like(evals, dtype=bool)
+    for i in range(len(evals)):
+        if not keep[i]:
+            continue
+        if residuals[i] > tol:
+            hgym.print(f"Not converged: {evals[i]}: {residuals[i]}")
+            keep[i] = False
+            continue
+        near_zero = (
+            abs(evals[i].imag - sigma.imag) < tol
+            or abs(evals[i].imag + sigma.imag) < tol
+        )
+        if near_zero:
+            hgym.print(f"Found near zero: {evals[i]}")
+            keep[i] = False
+            continue
+        for j in range(i + 1, len(evals)):
+            real_close = abs(evals[i].real - evals[j].real) < tol
+            shift_imag_close = (
+                abs(evals[i].imag - evals[j].imag - 2 * sigma.imag) < tol
+                or abs(evals[i].imag - evals[j].imag + 2 * sigma.imag) < tol
+            )
+            if real_close and shift_imag_close:
+                hgym.print(f"Found duplicate: {evals[i]} and {evals[j]}")
+                # Keep whichever has the smaller residual
+                if residuals[i] < residuals[j]:
+                    keep[j] = False
+                else:
+                    keep[i] = False
+    return keep
+
+
 if __name__ == "__main__":
+    Re = 7500
     flow.load_checkpoint(base_checkpoint)
-    qB = flow.q.copy(deepcopy=True)
-    fn_space = flow.mixed_space
-    flow.linearize_bcs()
-    bcs = flow.collect_bcs()
+    flow.Re.assign(Re)
 
-    # MUMPS sparse direct LU solver
-    solver_parameters = {
-        "mat_type": "aij",
-        "ksp_type": "preonly",
-        "pc_type": "lu",
-        "pc_factor_mat_solver_type": "mumps",
-    }
+    sigma = 11.0j  # Near leading eigenvalue at 0.890 + 10.9i
+    # sigma = 0.0  # No shift
 
-    (uB, pB) = qB.subfunctions
-    q_trial = fd.TrialFunction(fn_space)
-    q_test = fd.TestFunction(fn_space)
-    (v, s) = fd.split(q_test)
+    arnoldi = hgym.utils.make_st_iterator(flow, sigma=sigma, adjoint=False)
 
-    # Linear form expressing the _LHS_ of the Navier-Stokes without time derivative
-    # For a steady solution this is F(qB) = 0.
-    # TODO: Make this a standalone function - could be used in NewtonSolver and transient
-    newton_solver = hgym.NewtonSolver(flow)
-    F = newton_solver.steady_form(qB, q_test=q_test)
-    # The Jacobian of F is the bilinear form J(qB, q_test) = dF/dq(qB) @ q_test
-    J = -fd.derivative(F, qB, q_trial)
+    evals, evecs_real, evecs_imag, residuals = hgym.utils.eig_arnoldi(arnoldi, m=100)
 
-    # Uncomment to solve the adjoint problem (this is in utils.linalg)
-    # J = hgym.utils.linalg.adjoint(J)
+    np.save("/".join([chk_dir, "st_shift_evals_unfilt"]), evals)
 
-    def M(q):
-        u = q.subfunctions[0]
-        return inner(u, v) * dx
+    # Remove duplicate eigenvalues
+    tol = 1e-2
+    keep = _filter_evals(evals, sigma, residuals, tol)
 
-    def solve_inverse(v1, v0):
-        """Solve the matrix pencil J @ v1 = M @ v0 for v1.
+    evals = evals[keep]
+    evals = np.where(evals.imag > 0, evals + sigma, evals + sigma.conjugate())
 
-        This is equivalent to the "inverse iteration" v1 = (J^{-1} @ M) @ v0
+    residuals = residuals[keep]
+    evecs_real = [evecs_real[i] for i in range(len(keep)) if keep[i]]
+    evecs_imag = [evecs_imag[i] for i in range(len(keep)) if keep[i]]
 
-        Stores the result in `v1`
-        """
-        fd.solve(J == M(v0), v1, bcs=bcs, solver_parameters=solver_parameters)
-
-    rng = fd.RandomGenerator(fd.PCG64())
-    v0 = rng.standard_normal(fn_space)
-    alpha = np.sqrt(inner_product(v0, v0))
-    v0.assign(v0 / alpha)
-
-    evals, evecs_real, evecs_imag = hgym.utils.eig_arnoldi(
-        solve_inverse, v0, inner_product, m=200
-    )
-
-    # See Table 1 in Barbagallo et al (2009)
-    # Unstable eigenvalue pairs are:
-    # 0.890 +/- 10.9i
-    # 0.729 +/- 13.8i
-    # 0.466 +/- 7.88i
-    # 0.032 +/- 16.73i
-
-    n_save = 32
-    print(f"Arnoldi eigenvalues: {evals[:n_save]}")
+    n_save = min(len(evals), 32)
+    hgym.print(f"Arnoldi eigenvalues: {evals[:n_save]}")
 
     # Save checkpoints
-    chk_dir, chk_file = evec_checkpoint.split("/")
-    chk_path = "/".join([chk_dir, f"{chk_file}"])
-    np.save("/".join([chk_dir, "evals"]), evals[:n_save])
+    chk_path = "/".join([chk_dir, f"st_shift_{chk_file}"])
+    eval_data = np.zeros((n_save, 3), dtype=np.float64)
+    eval_data[:, 0] = evals[:n_save].real
+    eval_data[:, 1] = evals[:n_save].imag
+    eval_data[:, 2] = residuals[:n_save]
+    np.save("/".join([chk_dir, "st_shift_evals"]), eval_data)
 
     with fd.CheckpointFile(chk_path, "w") as chk:
         for i in range(n_save):

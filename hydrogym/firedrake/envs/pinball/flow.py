@@ -32,8 +32,11 @@ class Pinball(FlowConfig):
 
     MESH_DIR = os.path.abspath(f"{__file__}/..")
 
-    def init_bcs(self):
-        V, Q = self.function_spaces(mixed=True)
+    def init_bcs(self, function_spaces=None):
+        if function_spaces is None:
+            V, Q = self.function_spaces(mixed=True)
+        else:
+            V, Q = function_spaces
 
         # Define the static boundary conditions
         self.U_inf = fd.Constant((1.0, 0.0))
@@ -100,8 +103,9 @@ class Pinball(FlowConfig):
         CD = [fd.assemble(2 * force[0] * ds(cyl)) for cyl in self.CYLINDER]
         return CL, CD
 
-    def linearize_bcs(self):
+    def linearize_bcs(self, function_spaces=None):
         self.reset_controls()
+        self.init_bcs(function_spaces=function_spaces)
         self.bcu_inflow.set_value(fd.Constant((0, 0)))
         self.bcu_freestream.set_value(fd.Constant(0.0))
 

@@ -43,6 +43,7 @@ if show_plots:
 tf = 100.0
 dt = 1e-2
 
+
 # Set up the callbacks for logging and checkpointing
 def log_postprocess(flow):
     CL, CD = flow.get_observations()

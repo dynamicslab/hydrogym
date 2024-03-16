@@ -17,7 +17,7 @@ stabilization = "none"
 
 Re = 7500
 flow = hgym.Cavity(
-    Re=100,
+    Re=Re,
     mesh="fine",
     velocity_order=velocity_order,
 )

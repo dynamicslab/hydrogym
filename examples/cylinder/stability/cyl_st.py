@@ -27,7 +27,6 @@ if __name__ == "__main__":
 
     # Linear form expressing the RHS of the Navier-Stokes without time derivative
     # For a steady solution this is F(qB) = 0.
-    # TODO: Make this a standalone function - could be used in NewtonSolver and transient
     F = flow.residual((uB, pB), q_test=(v, s))
     # The Jacobian of F is the bilinear form J(qB, q_test) = dF/dq(qB) @ q_test
     J = fd.derivative(F, qB, q_trial)

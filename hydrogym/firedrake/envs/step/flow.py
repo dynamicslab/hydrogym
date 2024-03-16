@@ -10,6 +10,19 @@ from hydrogym.firedrake import FlowConfig, ObservationFunction, ScaledDirichletB
 
 
 class Step(FlowConfig):
+    """Backwards-facing step
+
+    Notes on meshes:
+    - "medium" - outlet at L=25 (110k elements)
+    - "fine" - outlet at L=25 (223k elements)
+    - "m1" - "medium" resolution with outlet at L=10 (66k elements)
+    - "m2" - "medium" resolution with outlet at L=15 (81k elements)
+    - "m3" - "medium" resolution with outlet at L=20 (95k elements)
+    - "m4" - "fine" resolution with outlet at L=10 (130k elements)
+    - "m5" - "fine" resolution with outlet at L=15 (162k elements)
+    - "m6" - "fine" resolution with outlet at L=20 (193k elements)
+    """
+
     DEFAULT_REYNOLDS = 600
     DEFAULT_MESH = "fine"
     DEFAULT_DT = 1e-2
@@ -78,8 +91,11 @@ class Step(FlowConfig):
 
         return supported_obs_types[obs_type]
 
-    def init_bcs(self):
-        V, Q = self.function_spaces(mixed=True)
+    def init_bcs(self, function_spaces=None):
+        if function_spaces is None:
+            V, Q = self.function_spaces(mixed=True)
+        else:
+            V, Q = function_spaces
 
         # Define static boundary conditions
         self.U_inf = ufl.as_tensor((1.0 - ((self.y - 0.25) / 0.25) ** 2, 0.0 * self.y))
@@ -143,3 +159,6 @@ class Step(FlowConfig):
         uB = qB.subfunctions[0]
         KE = 0.5 * fd.assemble(fd.inner(u - uB, u - uB) * fd.dx)
         return KE
+
+    def render(self):
+        raise NotImplementedError("TODO: Implement render for Step environment")
