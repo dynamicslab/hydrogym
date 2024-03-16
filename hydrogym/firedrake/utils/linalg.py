@@ -88,8 +88,8 @@ def define_inner_product(mass_matrix):
     return inner_product
 
 
-def project(basis_handles, data_handles, mass_matrix):
-    inner_product = define_inner_product(mass_matrix)
-    vec_space = VectorSpaceHandles(inner_product)
-    coeffs = vec_space.compute_inner_product_array(basis_handles, data_handles).T
-    return coeffs
+# def project(basis_handles, data_handles, mass_matrix):
+#   inner_product = define_inner_product(mass_matrix)
+#    vec_space = VectorSpaceHandles(inner_product)
+#    coeffs = vec_space.compute_inner_product_array(basis_handles, data_handles).T
+#    return coeffs
