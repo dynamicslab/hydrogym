@@ -29,9 +29,9 @@ solver = hgym.NewtonSolver(
 )
 
 for i, Re in enumerate(Re_init):
-    flow.Re.assign(Re)
-    hgym.print(f"Steady solve at Re={Re_init[i]}")
-    qB = solver.solve()
+  flow.Re.assign(Re)
+  hgym.print(f"Steady solve at Re={Re_init[i]}")
+  qB = solver.solve()
 
 flow.save_checkpoint(f"{checkpoint_prefix}.h5")
 vort = flow.vorticity()

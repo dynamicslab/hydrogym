@@ -15,30 +15,31 @@ Tf = 20.0
 
 
 def compute_vort(flow):
-    u, p = flow.u, flow.p
-    return (u, p, flow.vorticity())
+  u, p = flow.u, flow.p
+  return (u, p, flow.vorticity())
 
 
 def log_postprocess(flow):
-    KE = 0.5 * fd.assemble(fd.inner(flow.u, flow.u) * fd.dx)
-    TKE = flow.evaluate_objective()
-    CFL = flow.max_cfl(dt)
-    return [CFL, KE, TKE]
+  KE = 0.5 * fd.assemble(fd.inner(flow.u, flow.u) * fd.dx)
+  TKE = flow.evaluate_objective()
+  CFL = flow.max_cfl(dt)
+  return [CFL, KE, TKE]
 
 
 env_config = {
-    "flow": hgym.Cavity,
+    "flow":
+        hgym.Cavity,
     "flow_config": {
         "restart": restart,
     },
-    "solver": hgym.IPCS,
+    "solver":
+        hgym.IPCS,
     "solver_config": {
         "dt": dt,
     },
     "callbacks": [
         hgym.io.ParaviewCallback(
-            interval=1000, filename=pvd_out, postprocess=compute_vort
-        ),
+            interval=1000, filename=pvd_out, postprocess=compute_vort),
         hgym.io.LogCallback(
             postprocess=log_postprocess,
             nvals=3,
@@ -51,5 +52,5 @@ env_config = {
 env = hgym.FlowEnv(env_config)
 num_steps = int(Tf // dt)
 for i in range(num_steps):
-    t = dt * i
-    env.step(np.sin(t))
+  t = dt * i
+  env.step(np.sin(t))

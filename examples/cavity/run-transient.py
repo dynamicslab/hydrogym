@@ -20,11 +20,11 @@ flow.q += rng.normal(flow.mixed_space, 0.0, 1e-2)
 
 
 def log_postprocess(flow):
-    KE = 0.5 * fd.assemble(fd.inner(flow.u, flow.u) * fd.dx)
-    TKE = flow.evaluate_objective()
-    CFL = flow.max_cfl(dt)
-    mem_usage = psutil.virtual_memory().percent
-    return [CFL, KE, TKE, mem_usage]
+  KE = 0.5 * fd.assemble(fd.inner(flow.u, flow.u) * fd.dx)
+  TKE = flow.evaluate_objective()
+  CFL = flow.max_cfl(dt)
+  mem_usage = psutil.virtual_memory().percent
+  return [CFL, KE, TKE, mem_usage]
 
 
 print_fmt = (
@@ -42,13 +42,11 @@ callbacks = [
     ),
 ]
 
-
 # End time of the simulation
 Tf = 1.0
 method = "BDF"  # Time-stepping method
 stabilization = "gls"  # Stabilization method
 dt = 1e-2
-
 
 hgym.print("Beginning integration")
 hgym.integrate(

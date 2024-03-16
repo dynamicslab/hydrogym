@@ -4,7 +4,7 @@ import hydrogym.firedrake as hgym
 
 output_dir = "output"
 if not os.path.exists(output_dir):
-    os.makedirs(output_dir)
+  os.makedirs(output_dir)
 
 pvd_out = None
 restart = None
@@ -29,9 +29,9 @@ dt = 0.01
 
 
 def log_postprocess(flow):
-    mem_usage = psutil.virtual_memory().percent
-    CL, CD = flow.get_observations()
-    return CL, CD, mem_usage
+  mem_usage = psutil.virtual_memory().percent
+  CL, CD = flow.get_observations()
+  return CL, CD, mem_usage
 
 
 # Set up the callback
@@ -49,7 +49,6 @@ callbacks = [
     log,
     hgym.utils.io.CheckpointCallback(interval=interval, filename=checkpoint),
 ]
-
 
 hgym.print("Beginning integration")
 hgym.integrate(
