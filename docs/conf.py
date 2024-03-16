@@ -36,6 +36,7 @@ autodoc_mock_imports = [
     "firedrake",
     "pyadjoint",
     "ufl",
+    "mpi4py",
 ]
 
 # -- Options for HTML output
