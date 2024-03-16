@@ -20,7 +20,7 @@ if __name__ == "__main__":
         "pc_factor_mat_solver_type": "mumps",
     }
 
-    (uB, pB) = qB.subfunctions
+    (uB, pB) = fd.split(qB)
     q_trial = fd.TrialFunction(fn_space)
     q_test = fd.TestFunction(fn_space)
     (v, s) = fd.split(q_test)
@@ -29,7 +29,7 @@ if __name__ == "__main__":
     # For a steady solution this is F(qB) = 0.
     # TODO: Make this a standalone function - could be used in NewtonSolver and transient
     newton_solver = hgym.NewtonSolver(flow)
-    F = newton_solver.steady_form(qB, q_test=q_test)
+    F = newton_solver.steady_form((uB, pB), q_test=(v, s))
     # The Jacobian of F is the bilinear form J(qB, q_test) = dF/dq(qB) @ q_test
     J = -fd.derivative(F, qB, q_trial)
 
@@ -40,22 +40,6 @@ if __name__ == "__main__":
         u = q.subfunctions[0]
         return inner(u, v) * dx
 
-    # TODO: May need both real and imaginary solves for complex sigma
-    # The shifted bilinear form should be `A = (J - sigma * M)`
-    # For sigma = (sr, si), the real and imaginary parts of A are
-    # Ar = J - sr * M
-    # Ai = -si * M
-    # The system solve is A @ v1 = M @ v0 - for complex vectors v = (vr, vi)
-    # (Ar + 1j * Ai) @ (v1r + 1j * v1i) = M @ (v0r + 1j * v0i)
-    # This is a block system:
-    #  [[Ar, -Ai]  [[v1r]  = [[M 0]  [[v0r]
-    #   [Ai,  Ar]]  [v1i]]    [0 M]]  [v0i]]
-    #
-    # Can use a block LDU factorization to get close, but the solve
-    # with the Schur complement is tricky...
-    sigma = 0.0
-    A = J
-
     def solve_inverse(v1, v0):
         """Solve the matrix pencil A @ v1 = M @ v0 for v1.
 
@@ -63,28 +47,9 @@ if __name__ == "__main__":
 
         Stores the result in `v1`
         """
-        fd.solve(A == M(v0), v1, bcs=bcs, solver_parameters=solver_parameters)
-
-    # def solve_shift_inverse(v1, v0):
-    #     """Solve (A - s*I) @ v1 = M @ v0 for v1.
-
-    #     The shifted bilinear form should be `A = (J - sigma * M)`
-    #     For sigma = (sr, si), the real and imaginary parts of A are
-    #     Ar = J - sr * M
-    #     Ai = -si * M
-    #     The system solve is A @ v1 = M @ v0 - for complex vectors v = (vr, vi)
-    #     (Ar + 1j * Ai) @ (v1r + 1j * v1i) = M @ (v0r + 1j * v0i)
-    #     This is a block system:
-    #      [[Ar, -Ai]  [[v1r]  = [[M 0]  [[v0r]
-    #       [Ai,  Ar]]  [v1i]]    [0 M]]  [v0i]]
-    #     """
-    #     # Double the function space
-    #     W = fn_space * fn_space
-    #     (v1r, v1i) = v1
-    #     (v0r, v0i) = v0
+        fd.solve(J == M(v0), v1, bcs=bcs, solver_parameters=solver_parameters)
 
     # Need to construct
-
     rng = fd.RandomGenerator(fd.PCG64())
     v0 = rng.standard_normal(fn_space)
     alpha = np.sqrt(inner_product(v0, v0))
@@ -93,7 +58,6 @@ if __name__ == "__main__":
     evals, evecs_real, evecs_imag = hgym.utils.eig_arnoldi(
         solve_inverse, v0, inner_product, m=100
     )
-    evals += sigma  # Undo spectral shift
 
     n_save = 32
     print(f"Arnoldi eigenvalues: {evals[:n_save]}")
