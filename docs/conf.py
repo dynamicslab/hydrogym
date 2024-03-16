@@ -22,11 +22,15 @@ extensions = [
     "sphinx.ext.autosummary",
     "sphinx.ext.autosectionlabel",
     "sphinx.ext.intersphinx",
+    "sphinx.ext.autodoc.typehints",
     "sphinx.ext.viewcode",
     "sphinx.ext.napoleon",
     "sphinx.ext.mathjax",
 ]
 autosummary_generate = True
+autoclass_content = "both"
+html_show_sourcelink = False
+autodoc_inherit_docstrings = True
 
 intersphinx_mapping = {
     "rtd": ("https://docs.readthedocs.io/en/stable/", None),
