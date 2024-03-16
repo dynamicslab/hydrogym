@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "hydrogym"
-version = "0.1.2.2"
+version = "0.1.2.3"
 authors = [
-    "Jared Callaham et al."
+    "HydroGym Team"
 ]
 maintainers = [
     "Jared Callaham <jared.callaham@gmail.com>",
-    "Ludger Paehler <ludger.paehler@tum.de>",
+    "Ludger Paehler <paehlerludger@gmail.com>",
     "Sam Ahnert <sammahnert@gmail.com",
 ]
 description = "A Reinforcement Learning Benchmarking Environment for Fluid Dynamics"
@@ -49,6 +49,14 @@ python = "^3.10"
 torch = "^2.0"
 
 [tool.poetry.group.dev.dependencies]
+ruff = "^0.1.6"
+yapf = "^0.40.2"
+toml = "^0.10.2"
+tomli = "^2.0.1"
+codespell = "^2.2.6"
+pytest = "^8.1.1"
+
+[tool.poetry.group.interactive.dependencies]
 jupyterlab = "^3.5.2"
 ipykernel = "^6.19.4"
 notebook = "^6.5.2"
@@ -58,20 +66,13 @@ nbformat = "^5.7.1"
 nbconvert = "^7.2.7"
 memory-profiler = "^0.61.0"
 seaborn = "^0.12.1"
-tensorboard = "^2.11.0"
-ruff = "^0.1.6"
-black = "^23.11.0"
-
-# In case one seeks to add a further backend, their further dependencies need to be added to the 
-# poetry dependencies above, as well as be specified here s.t. these additional dependencies
-# can then later be installed with ```pip install hydrogym[sim_backend]```
-[tool.poetry.extras]
-#sim_backend = ["sim_framework"]
 
 [tool.ruff]
 line-length = 120
-lint.select = ["E", "F"]
-lint.ignore = ["F401"]
+
+[tool.ruff.lint]
+select = ["E", "F", "B", "SIM"]
+ignore = ["F401", "E731", "B007"]
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
