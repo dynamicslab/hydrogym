@@ -55,7 +55,7 @@ if __name__ == "__main__":
     v0.assign(v0 / alpha)
 
     evals, evecs_real, evecs_imag = hgym.utils.eig_arnoldi(
-        solve_inverse, v0, inner_product, m=100
+        solve_inverse, v0, inner_product, m=200
     )
 
     # See Table 1 in Barbagallo et al (2009)

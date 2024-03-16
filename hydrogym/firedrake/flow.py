@@ -9,7 +9,7 @@ from firedrake import dx, logging
 from firedrake.__future__ import interpolate
 from mpi4py import MPI
 from numpy.typing import ArrayLike
-from ufl import curl, dot, inner, nabla_grad, sqrt, sym
+from ufl import curl, div, dot, inner, nabla_grad, sqrt, sym
 
 from ..core import ActuatorBase, PDEBase
 from .actuator import DampedActuator
@@ -172,7 +172,7 @@ class FlowConfig(PDEBase):
             tau = self.TAU
         return DampedActuator(1 / tau)
 
-    def reset_controls(self):
+    def reset_controls(self, function_spaces=None):
         """Reset the controls to a zero state
 
         Note that this is broken out from `reset` because
@@ -182,7 +182,7 @@ class FlowConfig(PDEBase):
         TODO: Allow for different kinds of actuators
         """
         self.actuators = [self.create_actuator() for _ in range(self.num_inputs)]
-        self.init_bcs()
+        self.init_bcs(function_spaces=function_spaces)
 
     @property
     def nu(self):
@@ -248,6 +248,33 @@ class FlowConfig(PDEBase):
     def sigma(self, u, p) -> ufl.Form:
         """Newtonian stress tensor"""
         return 2 * self.nu * self.epsilon(u) - p * fd.Identity(len(u))
+
+    def residual(self, q, q_test=None):
+        """Nonlinear residual for the incompressible Navier-Stokes equations.
+
+        Returns a UFL form F(u, p, v, s) = 0, where (u, p) is the trial function
+        and (v, s) is the test function.  This residual is also the right-hand side
+        of the unsteady equations.
+
+        A linearized form can be constructed by calling:
+        ```
+        F = flow.residual((uB, pB), (v, s))
+        J = fd.derivative(F, qB, q_trial)
+        ```
+        """
+        (u, p) = q
+        if q_test is None:
+            (v, s) = fd.TestFunctions(self.mixed_space)
+        else:
+            (v, s) = q_test
+
+        sigma, epsilon = self.sigma, self.epsilon
+        F = (
+            -inner(dot(u, nabla_grad(u)), v) * dx
+            - inner(sigma(u, p), epsilon(v)) * dx
+            + inner(div(u), s) * dx
+        )
+        return F
 
     @pyadjoint.no_annotations
     def max_cfl(self, dt) -> float:

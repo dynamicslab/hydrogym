@@ -35,7 +35,7 @@ class NewtonSolver:
 
         self.flow.init_bcs()
 
-        F = self.steady_form(q)  # Nonlinear variational form
+        F = self.steady_form(fd.split(q))  # Nonlinear variational form
         J = fd.derivative(F, q)  # Jacobian with automatic differentiation
 
         bcs = self.flow.collect_bcs()
@@ -48,17 +48,13 @@ class NewtonSolver:
         return q.copy(deepcopy=True)
 
     def steady_form(self, q: fd.Function, q_test=None):
-        (u, p) = fd.split(q)
+        (u, p) = q
         if q_test is None:
             (v, s) = fd.TestFunctions(self.flow.mixed_space)
         else:
-            (v, s) = fd.split(q_test)
+            (v, s) = q_test
 
-        F = (
-            inner(dot(u, nabla_grad(u)), v) * dx
-            + inner(self.flow.sigma(u, p), self.flow.epsilon(v)) * dx
-            + inner(div(u), s) * dx
-        )
+        F = self.flow.residual((u, p), q_test=(v, s))
         stab = self.stabilization_type(
             self.flow,
             q_trial=(u, p),
