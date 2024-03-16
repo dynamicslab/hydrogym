@@ -25,13 +25,12 @@ if __name__ == "__main__":
     q_test = fd.TestFunction(fn_space)
     (v, s) = fd.split(q_test)
 
-    # Linear form expressing the _LHS_ of the Navier-Stokes without time derivative
+    # Linear form expressing the RHS of the Navier-Stokes without time derivative
     # For a steady solution this is F(qB) = 0.
     # TODO: Make this a standalone function - could be used in NewtonSolver and transient
-    newton_solver = hgym.NewtonSolver(flow)
-    F = newton_solver.steady_form((uB, pB), q_test=(v, s))
+    F = flow.residual((uB, pB), q_test=(v, s))
     # The Jacobian of F is the bilinear form J(qB, q_test) = dF/dq(qB) @ q_test
-    J = -fd.derivative(F, qB, q_trial)
+    J = fd.derivative(F, qB, q_trial)
 
     # Uncomment to solve the adjoint problem (this is in utils.linalg)
     # J = hgym.utils.linalg.adjoint(J)
