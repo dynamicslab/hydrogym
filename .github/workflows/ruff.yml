@@ -26,7 +26,7 @@ jobs:
           pip install ruff codespell tomli
       - name: Run Ruff
         run: |
-          ruff .
+          ruff check .
       - name: Spelling check with codespell
         run: |
           codespell --toml pyproject.toml

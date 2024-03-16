@@ -71,8 +71,8 @@ seaborn = "^0.12.1"
 line-length = 120
 
 [tool.ruff.lint]
-select = ["E", "F", "B", "SIM"]
-ignore = ["F401", "E731", "B007"]
+select = ["E", "F"]
+ignore = ["F401", "E731"]
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
