@@ -35,6 +35,7 @@ templates_path = ["_templates"]
 autodoc_mock_imports = [
     "firedrake",
     "pyadjoint",
+    "ufl",
 ]
 
 # -- Options for HTML output
