@@ -32,6 +32,7 @@ intersphinx_mapping = {
 intersphinx_disabled_domains = ["std"]
 
 templates_path = ["_templates"]
+autodoc_mock_imports = ["firedrake"]
 
 # -- Options for HTML output
 
