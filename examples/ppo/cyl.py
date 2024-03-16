@@ -9,14 +9,15 @@ import hydrogym
 
 
 class CylEnv(hydrogym.FlowEnv):
-    def __init__(self, env_config):
-        config = {
-            "flow": hydrogym.firedrake.Cylinder,
-            "flow_config": env_config["flow"],
-            "solver": hydrogym.firedrake.IPCS,
-            "solver_config": env_config["solver"],
-        }
-        super().__init__(config)
+
+  def __init__(self, env_config):
+    config = {
+        "flow": hydrogym.firedrake.Cylinder,
+        "flow_config": env_config["flow"],
+        "solver": hydrogym.firedrake.IPCS,
+        "solver_config": env_config["solver"],
+    }
+    super().__init__(config)
 
 
 gym.register(id="Cylinder-v0", entry_point=CylEnv)

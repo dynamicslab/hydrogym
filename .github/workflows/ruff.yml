@@ -1,12 +1,6 @@
 name: Linting with Ruff
 
-on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
+on: [push, pull_request]
 
 jobs:
   ruff:
@@ -26,7 +20,7 @@ jobs:
           pip install ruff codespell tomli
       - name: Run Ruff
         run: |
-          ruff .
+          ruff check .
       - name: Spelling check with codespell
         run: |
           codespell --toml pyproject.toml

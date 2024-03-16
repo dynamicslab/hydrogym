@@ -1,10 +1,10 @@
 def isordered(arr):
-    if len(arr) < 2:
-        return True
-    for i in range(len(arr) - 1):
-        if arr[i] < arr[i + 1]:
-            return False
-        return True
+  if len(arr) < 2:
+    return True
+  for i in range(len(arr) - 1):
+    if arr[i] < arr[i + 1]:
+      return False
+    return True
 
 
 """
@@ -24,7 +24,6 @@ def test_steady_grad():
 
     assert abs(dJ) > 0
 """
-
 
 # sin function feeding into the controller
 # TODO: This is too big for a unit test - should go in examples or somewhere like that
@@ -79,7 +78,6 @@ def test_steady_grad():
 
 #     assert np.isclose(shear_force, 0.0, rtol=1e-3, atol=1e-3)
 
-
 # def test_shearForcePos():
 #     flow = gym.flow.Cylinder(Re=100, mesh="coarse")
 #     flow.set_control(fd.Constant(0.1))
@@ -87,7 +85,6 @@ def test_steady_grad():
 #     shear_force = flow.shear_force()
 
 #     assert shear_force < 0
-
 
 # def test_shearForceNeg():
 #     flow = gym.flow.Cylinder(Re=100, mesh="coarse")

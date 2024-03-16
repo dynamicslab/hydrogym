@@ -31,11 +31,11 @@ dt = 0.01
 
 
 def log_postprocess(flow):
-    KE = 0.5 * fd.assemble(fd.inner(flow.u, flow.u) * fd.dx)
-    TKE = flow.evaluate_objective()
-    CFL = flow.max_cfl(dt)
-    mem_usage = psutil.virtual_memory().percent
-    return [CFL, KE, TKE, mem_usage]
+  KE = 0.5 * fd.assemble(fd.inner(flow.u, flow.u) * fd.dx)
+  TKE = flow.evaluate_objective()
+  CFL = flow.max_cfl(dt)
+  mem_usage = psutil.virtual_memory().percent
+  return [CFL, KE, TKE, mem_usage]
 
 
 print_fmt = (
