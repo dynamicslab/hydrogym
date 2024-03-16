@@ -22,6 +22,7 @@ extensions = [
     "sphinx.ext.napoleon",
     "sphinx.ext.mathjax",
 ]
+autosummary_generate = True
 
 intersphinx_mapping = {
     "rtd": ("https://docs.readthedocs.io/en/stable/", None),
