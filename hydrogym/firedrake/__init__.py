@@ -7,7 +7,6 @@ from .utils import io, is_rank_zero, linalg, modeling, print
 
 from .envs import Cylinder, RotaryCylinder, Pinball, Cavity, Step  # isort:skip
 
-
 __all__ = [
     "FlowConfig",
     "DampedActuator",
