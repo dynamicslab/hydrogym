@@ -4,7 +4,7 @@ Quickstart
 Before getting started, follow the :ref:`installation` guide to get everything set up.
 
 Running an environment
-------------
+----------------------
 
 The `overview notebook <https://github.com/dynamicslab/hydrogym/blob/main/notebooks/overview.ipynb>`_ 
 has a quick tour of some of the basic ideas of how to get Hydrogym to work in code - this is an
@@ -19,6 +19,7 @@ reinforcement learning.
 But for now we'll just use the built-in flow environments, so we need to import `hydrogym.firedrake`:
 
 .. code-block:: python
+
     import hydrogym.firedrake as hgym
 
 The next step is to set up the "environment" (in RL terminology), which defines the geometry, boundary
@@ -26,6 +27,7 @@ conditions, actuation, transient solver, etc. of the flow configuration.  We do 
 `FlowEnv` configuration options:
 
 .. code-block:: python
+
     env_config = {
         "flow": hgym.Cylinder,
         "flow_config": {
@@ -47,12 +49,13 @@ typically expect better behavior in the first few timesteps when starting from a
 The `FlowEnv` provides an OpenAI Gym-compliant API for flow control, so integrating the flow is as simple as:
 
 .. code-block:: python
+    
     actuation = ctrl(obs)
     obs, reward, done, info = env.step(actuation)
 
 
 Default flow configurations:
-------------
+----------------------------
 
 Hydrogym includes several simplistic flow configurations that are benchmark problems in flow control and
 reduced-order modeling.  This section describes a little about the benchmark configuration, control, and
@@ -61,7 +64,7 @@ also has a couple of useful references for the flow, although these should by no
 comprehensive literature reviews.
 
 Cylinder wake
-**********************
+*************
 
 .. image:: _static/imgs/cylinder.png
    :width: 600
@@ -85,7 +88,7 @@ By default, the available measurements are the lift and drag coefficients on the
 
 
 Fluidic pinball
-**********************
+***************
 
 .. image:: _static/imgs/pinball.png
    :width: 600
@@ -106,7 +109,8 @@ is chaotic, making this a much more challenging control problem.
 * `Maceda, et al (2021) <https://www.cambridge.org/core/services/aop-cambridge-core/content/view/D112E47F261BD4C611D0CB94A0A3FF38/S0022112021003013a.pdf/stabilization-of-the-fluidic-pinball-with-gradient-enriched-machine-learning-control.pdf>`_
 
 Open cavity flow
-**********************
+****************
+
 .. image:: _static/imgs/cavity.png
    :width: 600
 
@@ -123,7 +127,8 @@ present in the cylinder and pinball flows.
 * `Callaham, Brunton, Loiseau (2021) <https://www.cambridge.org/core/services/aop-cambridge-core/content/view/CC2980F9AA4AC20A7453C3056ED950C4/S0022112021009940a.pdf/on-the-role-of-nonlinear-correlations-in-reduced-order-modelling.pdf>`_
 
 Backwards-facing step
-**********************
+*********************
+
 .. image:: _static/imgs/step.png
    :width: 600
 
@@ -138,4 +143,3 @@ analysis shows the flow is most sensitive to disturbances.
 * `Boujo & Gallaire (2015) <https://www.cambridge.org/core/journals/journal-of-fluid-mechanics/article/abs/sensitivity-and-openloop-control-of-stochastic-response-in-a-noise-amplifier-flow-the-backwardfacing-step/3CEEBB6AD9784D555FDA086AF81BD416>`_
 * `Beneddine, et al (2016) <https://hal.inria.fr/hal-01445633/>`_
 * `Ducimetière, et al (2022) <https://www.cambridge.org/core/journals/journal-of-fluid-mechanics/article/weak-nonlinearity-for-strong-nonnormality/ADCBEAB2B445907FF022DD5E4F79A001>`_
-
