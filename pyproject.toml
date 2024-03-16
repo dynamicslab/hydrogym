@@ -78,7 +78,7 @@ select = ["E", "F"]
 ignore = ["F401", "E731"]
 
 [tool.codespell]
-skip = ["*.svg", "*.ipynb"]
+skip = '*.svg,*.ipynb'
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
