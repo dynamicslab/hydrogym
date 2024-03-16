@@ -17,7 +17,7 @@ this is heavily being worked on inside of Ray, we refer to Ray's documentation f
 `Ray cluster on Slurm <https://docs.ray.io/en/master/cluster/vms/user-guides/community/slurm.html>`_.
 
 Before starting up the Python environment, we then need to perform a number of configuration
-steps on all machines involed in our cluster.
+steps on all machines involved in our cluster.
 
 1. All machines that are meant to be used need to contain the same Pythone environment, libraries,
     and dependencies.
