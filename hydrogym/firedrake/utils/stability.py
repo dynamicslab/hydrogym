@@ -3,6 +3,7 @@
 This file specializes some of the Arnoldi iteration in `eig.py`
 for incompressible Navier-Stokes equations.
 """
+
 import firedrake as fd
 import ufl
 

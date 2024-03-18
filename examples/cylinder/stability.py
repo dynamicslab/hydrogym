@@ -55,22 +55,28 @@ def _filter_evals(evals, sigma, residuals, tol):
     return keep
 
 
-def stability_analysis(flow, sigma=0.0, m=100, tol=1e-6, adjoint=False):
+def stability_analysis(
+    flow,
+    sigma=0.0,
+    m=100,
+    tol=1e-6,
+    adjoint=False,
+    schur_restart=False,
+    schur_delta=0.1,
+):
 
     # TODO: Make this a LinearOperator-type object with __matmul__ and transpose
     arnoldi = hgym.utils.make_st_iterator(flow, sigma=sigma, adjoint=adjoint)
 
-    if args.schur:
-        n_evals = 24
-        evals, evecs_real, evecs_imag, residuals = hgym.utils.eig_ks(
-            arnoldi,
-            m=m,
-            tol=tol,
-            n_evals=n_evals,
-            sort=lambda x: x.real > -1.0,
-        )
-    else:
-        evals, evecs_real, evecs_imag, residuals = hgym.utils.eig_arnoldi(arnoldi, m=m)
+    n_evals = 12
+    evals, evecs_real, evecs_imag, residuals = hgym.utils.eig(
+        arnoldi,
+        schur_restart=schur_restart,
+        m=m,
+        tol=tol,
+        n_evals=n_evals,
+        sort=lambda x: x.real > -schur_delta,
+    )
 
     raw_evals = evals.copy()
 
@@ -218,7 +224,9 @@ if __name__ == "__main__":
         flow.save_checkpoint(f"{args.output_dir}/base.h5")
 
     hgym.print("Computing direct modes...")
-    dir_results = stability_analysis(flow, sigma, m, tol, adjoint=False)
+    dir_results = stability_analysis(
+        flow, sigma, m, tol, schur_restart=args.schur, adjoint=False
+    )
     np.save(f"{output_dir}/raw_evals", dir_results.raw_evals)
 
     # Save checkpoints

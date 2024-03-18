@@ -7,11 +7,10 @@ from scipy import linalg
 
 from .utils import print as parprint
 
-__all__ = ["eig_arnoldi"]
+__all__ = ["eig"]
 
 
-# TODO: Rename `sort` to `which`, as in `sparse.linalg.eigs`
-def sorted_eig(H, sort, inverse=True):
+def sorted_eig(H, which, inverse=True):
     evals, evecs = linalg.eig(H)
     if inverse:
         evals = 1 / evals  # Undo spectral shift
@@ -23,7 +22,7 @@ def sorted_eig(H, sort, inverse=True):
         "sr": evals.real,
         "li": -evals.imag,
         "si": evals.imag,
-    }[sort]
+    }[which]
     sort_idx = np.argsort(x)
 
     evals = evals[sort_idx]
@@ -37,13 +36,13 @@ def _arnoldi_factorization(
     v0,
     m=100,
     print_evals=True,
-    sort="lr",
+    which="lr",
     inverse=True,
     restart=None,
 ):
     """Run Arnoldi iteration.
 
-    Note that `sort`, and `inverse` here are only used for printing the eigenvalues.
+    Note that `which`, and `inverse` here are only used for printing the eigenvalues.
     Otherwise these are not used as part of the Arnoldi factorization. If
     `print_evals=False` these will be ignored.  Also, the printed eigenvalues do not
     include any spectral transformation.
@@ -91,7 +90,7 @@ def _arnoldi_factorization(
 
         # DEBUG: Print the eigenvalues
         if print_evals:
-            ritz_vals, ritz_vecs = sorted_eig(H[:j, :j], sort, inverse=inverse)
+            ritz_vals, ritz_vecs = sorted_eig(H[:j, :j], which, inverse=inverse)
             res = abs(beta * ritz_vecs[-1])
             parprint("\n*************************************")
             parprint(f"****** Arnoldi iteration {j} ********")
@@ -110,7 +109,7 @@ class ArnoldiIterator:
     inner_product: Callable
     random_vec: Callable = None
     print_evals: bool = True
-    sort: str = "lr"
+    which: str = "lr"
     inverse: bool = True
 
     def __call__(self, v0, m, restart=None):
@@ -121,32 +120,15 @@ class ArnoldiIterator:
             m=m,
             restart=restart,
             print_evals=self.print_evals,
-            sort=self.sort,
+            which=self.which,
             inverse=self.inverse,
         )
 
 
-def eig_arnoldi(arnoldi, v0=None, m=100, sort="lr", inverse=True, rng_seed=None):
-    if v0 is None:
-        v0 = arnoldi.random_vec(rng_seed)
-
-    V, H, beta = arnoldi(v0, m)
-    evals, ritz_vecs = sorted_eig(H, sort, inverse=inverse)
-
-    residuals = abs(beta * ritz_vecs[-1])
-
-    fn_space = v0.function_space()
-    evecs_real = [fd.Function(fn_space) for _ in range(m)]
-    evecs_imag = [fd.Function(fn_space) for _ in range(m)]
-    for i in range(m):
-        evecs_real[i].assign(sum(V[j] * ritz_vecs[j, i].real for j in range(m)))
-        evecs_imag[i].assign(sum(V[j] * ritz_vecs[j, i].imag for j in range(m)))
-    return evals, evecs_real, evecs_imag, residuals
-
-
-def eig_ks(
+def eig(
     arnoldi,
     v0=None,
+    schur_restart=False,
     n_evals=10,
     m=100,
     sort=None,
@@ -174,7 +156,7 @@ def eig_ks(
         V, H, beta = arnoldi(v0, m, restart=restart)
 
         # Check for convergence based on Arnoldi residuals
-        evals, ritz_vecs = sorted_eig(H, sort="lr", inverse=True)
+        evals, ritz_vecs = sorted_eig(H, which="lr", inverse=True)
         residuals = abs(beta * ritz_vecs[-1])
 
         converged = []
@@ -185,7 +167,11 @@ def eig_ks(
         parprint(f"Iteration {k}: {len(converged)} converged")
 
         # If enough eigenvalues have converged, return them and exit
-        if len(converged) >= n_evals or (maxiter is not None and k >= maxiter):
+        if (
+            (not schur_restart)
+            or (len(converged) >= n_evals)
+            or (maxiter is not None and k >= maxiter)
+        ):
             is_converged = True
             parprint(f"Converged: {len(converged)} eigenvalues")
 
