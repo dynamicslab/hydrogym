@@ -38,22 +38,24 @@ class InverseOperator:
 
     def __post_init__(self):
         self._f = fd.Function(self.function_space)
+        self._v = fd.Function(self.function_space)
         if self.solver_parameters is None:
             self.solver_parameters = MUMPS_SOLVER_PARAMETERS
+
+        self._problem = fd.LinearVariationalProblem(
+            self.J, self.M(self._v), self._f, bcs=self.bcs, constant_jacobian=True
+        )
+        self._solver = fd.LinearVariationalSolver(
+            self._problem, solver_parameters=self.solver_parameters
+        )
 
     def __matmul__(self, v0):
         """Solve the matrix pencil A @ f = M @ v0 for v1.
 
-        This is equivalent to the "inverse iteration" v1 = (A^{-1} @ M) @ v0
-
-        Stores the result in `v1`
+        This is equivalent to the "inverse iteration" f = (A^{-1} @ M) @ v0
         """
-        fd.solve(
-            self.J == self.M(v0),
-            self._f,
-            bcs=self.bcs,
-            solver_parameters=self.solver_parameters,
-        )
+        self._v.assign(v0)
+        self._solver.solve()
         if self.copy_output:
             return self._f.copy(deepcopy=True)
         return self._f
