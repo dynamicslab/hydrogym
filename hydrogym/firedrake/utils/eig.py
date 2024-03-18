@@ -1,64 +1,15 @@
 import dataclasses
+from functools import partial
 from typing import Callable
 
 import firedrake as fd
 import numpy as np
-import ufl
 from scipy import linalg
 
+from .linalg import LinearOperator
 from .utils import print as parprint
 
 __all__ = ["eig"]
-
-
-MUMPS_SOLVER_PARAMETERS = {
-    "mat_type": "aij",
-    "ksp_type": "preonly",
-    "pc_type": "lu",
-    "pc_factor_mat_solver_type": "mumps",
-}
-
-
-@dataclasses.dataclass
-class InverseOperator:
-    """A simple wrapper for the inverse of a matrix pencil.
-
-    Note that this object will own the output Function unless
-    `copy_output=True` is set.  This is memory-efficient, but could
-    lead to confusion if the output reference is modified. The Arnoldi
-    iteration algorithm is written so this isn't a problem.
-    """
-
-    J: ufl.Form
-    M: Callable[[fd.Function], ufl.Form]
-    bcs: list[fd.DirichletBC]
-    function_space: fd.FunctionSpace
-    solver_parameters: dict = None
-    copy_output: bool = False
-
-    def __post_init__(self):
-        self._f = fd.Function(self.function_space)
-        self._v = fd.Function(self.function_space)
-        if self.solver_parameters is None:
-            self.solver_parameters = MUMPS_SOLVER_PARAMETERS
-
-        self._problem = fd.LinearVariationalProblem(
-            self.J, self.M(self._v), self._f, bcs=self.bcs, constant_jacobian=True
-        )
-        self._solver = fd.LinearVariationalSolver(
-            self._problem, solver_parameters=self.solver_parameters
-        )
-
-    def __matmul__(self, v0):
-        """Solve the matrix pencil A @ f = M @ v0 for v1.
-
-        This is equivalent to the "inverse iteration" f = (A^{-1} @ M) @ v0
-        """
-        self._v.assign(v0)
-        self._solver.solve()
-        if self.copy_output:
-            return self._f.copy(deepcopy=True)
-        return self._f
 
 
 def sorted_eig(H, which, inverse=True):
@@ -83,7 +34,7 @@ def sorted_eig(H, which, inverse=True):
 
 @dataclasses.dataclass
 class ArnoldiIterator:
-    A: InverseOperator
+    A: LinearOperator
     inner_product: Callable
     random_vec: Callable = None
     print_evals: bool = True
@@ -168,8 +119,8 @@ class ArnoldiIterator:
         return V, H, beta
 
 
-def eig(
-    A: ArnoldiIterator,
+def _eig(
+    arnoldi: ArnoldiIterator,
     v0=None,
     schur_restart=False,
     n_evals=10,
@@ -180,8 +131,13 @@ def eig(
     maxiter=None,
     rng_seed=None,
 ):
+    """Compute eigenvalues and eigenvectors using Arnoldi iteration.
+
+    This function is written to be generic, i.e. not specific to `FlowConfig`
+    or Navier-Stokes.
+    """
     if v0 is None:
-        v0 = A.random_vec(rng_seed)
+        v0 = arnoldi.random_vec(rng_seed)
 
     # TODO: Handle sort functions better - use a lookup of pre-defined
     # functions for "lr", "sm", etc.
@@ -196,7 +152,7 @@ def eig(
     is_converged = False
     k = 0  # Iteration count (for logging)
     while not is_converged:
-        V, H, beta = A(v0, m, restart=restart)
+        V, H, beta = arnoldi(v0, m, restart=restart)
 
         # Check for convergence based on Arnoldi residuals
         evals, ritz_vecs = sorted_eig(H, which="lr", inverse=True)
@@ -258,3 +214,126 @@ def eig(
         # Restart with the wanted part of the Krylov basis
         restart = (Vp, S, p)
         k += 1
+
+
+# TODO: Too much duplicate code with complex_inv_iterator
+def _make_real_inv_iterator(flow, sigma, adjoint=False, solver_parameters=None):
+    """Construct a shift-inverse Arnoldi iterator with real (or zero) shift.
+
+    The shift-inverse iteration solves the matrix pencil
+    (J - sigma * M) @ v1 = M @ v0 for v1, where J is the Jacobian of the
+    Navier-Stokes equations, and M is the mass matrix.
+    """
+
+    # Set up function spaces
+    fn_space = flow.mixed_space
+    A = flow.linearize(
+        sigma=sigma, inverse=True, adjoint=adjoint, solver_parameters=solver_parameters
+    )
+
+    _inner_product = partial(flow.inner_product, augmented=False)
+
+    def _random_vec(rng_seed=None):
+        rng = fd.RandomGenerator(fd.PCG64(seed=rng_seed))
+        v0 = rng.standard_normal(fn_space)
+        alpha = fd.sqrt(_inner_product(v0, v0))
+        v0.assign(v0 / alpha)
+        return v0
+
+    return ArnoldiIterator(
+        A,
+        _inner_product,
+        _random_vec,
+        which="lr",
+        inverse=True,
+    )
+
+
+def _make_complex_inv_iterator(flow, sigma, adjoint=False, solver_parameters=None):
+    # TODO: Move this to FlowConfig method
+    """Construct a shift-inverse Arnoldi iterator with complex-valued shift.
+
+    The shifted bilinear form is `A = (J - sigma * M)`
+    For sigma = (sr, si), the real and imaginary parts of A are
+    A = (J - sr * M, -si * M)
+    The system solve is A @ v1 = M @ v0, so for complex vectors v = (vr, vi):
+    (Ar + 1j * Ai) @ (v1r + 1j * v1i) = M @ (v0r + 1j * v0i)
+    Since we can't do complex analysis without re-building PETSc, instead we treat this
+    as a block system:
+    ```
+      [Ar,   Ai]  [v1r]  = [M 0]  [v0r]
+      [-Ai,  Ar]  [v1i]    [0 M]  [v0i]
+    ```
+
+    Note that this will be more expensive than real- or zero-shifted iteration,
+    since there are twice as many degrees of freedom.  However, it will tend to
+    converge faster for the eigenvalues of interest.
+
+    The shift-inverse iteration solves the matrix pencil
+    (J - sigma * M) @ v1 = M @ v0 for v1, where J is the Jacobian of the
+    Navier-Stokes equations, and M is the mass matrix.
+    """
+
+    fn_space = flow.mixed_space
+    W = fn_space * fn_space
+    A = flow.linearize(
+        sigma=sigma, inverse=True, adjoint=adjoint, solver_parameters=solver_parameters
+    )
+
+    _inner_product = partial(flow.inner_product, augmented=True)
+
+    def _random_vec(rng_seed=None):
+        rng = fd.RandomGenerator(fd.PCG64(seed=rng_seed))
+        v0 = rng.standard_normal(W)
+        alpha = fd.sqrt(_inner_product(v0, v0))
+        v0.assign(v0 / alpha)
+        return v0
+
+    return ArnoldiIterator(
+        A,
+        _inner_product,
+        _random_vec,
+        which="lr",
+        inverse=True,
+    )
+
+
+def _make_st_iterator(flow, sigma=0.0, adjoint=False, solver_parameters=None):
+    """Construct a spectrally-transformed (shift-invert) Arnoldi iterator"""
+    if sigma.imag == 0.0:
+        return _make_real_inv_iterator(
+            flow, sigma.real, adjoint=adjoint, solver_parameters=solver_parameters
+        )
+    return _make_complex_inv_iterator(
+        flow, sigma, adjoint=adjoint, solver_parameters=solver_parameters
+    )
+
+
+def eig(
+    flow,
+    v0=None,
+    sigma=0.0,
+    adjoint=False,
+    schur_restart=False,
+    n_evals=10,
+    m=100,
+    sort=None,
+    tol=1e-10,
+    delta=0.1,
+    maxiter=None,
+    rng_seed=None,
+):
+    """Eigenvalue decomposition using a shift-invert Arnoldi method."""
+    arnoldi = _make_st_iterator(flow, sigma=sigma, adjoint=adjoint)
+    return _eig(
+        arnoldi,
+        v0=v0,
+        schur_restart=schur_restart,
+        n_evals=n_evals,
+        m=m,
+        sort=sort,
+        tol=tol,
+        delta=delta,
+        maxiter=maxiter,
+        rng_seed=rng_seed,
+    )

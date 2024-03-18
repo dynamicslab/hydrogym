@@ -65,12 +65,11 @@ def stability_analysis(
     schur_delta=0.1,
 ):
 
-    # TODO: Make this a LinearOperator-type object with __matmul__ and transpose
-    arnoldi = hgym.utils.make_st_iterator(flow, sigma=sigma, adjoint=adjoint)
-
     n_evals = 12
     evals, evecs_real, evecs_imag, residuals = hgym.utils.eig(
-        arnoldi,
+        flow,
+        sigma=sigma,
+        adjoint=adjoint,
         schur_restart=schur_restart,
         m=m,
         tol=tol,

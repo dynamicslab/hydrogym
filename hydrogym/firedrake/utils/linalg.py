@@ -1,4 +1,8 @@
-from typing import Iterable
+from __future__ import annotations
+
+import abc
+import dataclasses
+from typing import TYPE_CHECKING, Callable, Iterable
 
 import firedrake as fd
 import numpy as np
@@ -7,73 +11,105 @@ from firedrake import logging
 from modred import PODHandles, VectorSpaceHandles
 from scipy import sparse
 
-# Type suggestions
-from hydrogym.firedrake import FlowConfig
-
 from .modred_interface import Snapshot, vec_handle_mean
+
+if TYPE_CHECKING:
+    from hydrogym.firedrake import FlowConfig
+
+
+MUMPS_SOLVER_PARAMETERS = {
+    "mat_type": "aij",
+    "ksp_type": "preonly",
+    "pc_type": "lu",
+    "pc_factor_mat_solver_type": "mumps",
+}
+
+
+class LinearOperator(metaclass=abc.ABCMeta):
+    @abc.abstractmethod
+    def __matmul__(self, v: fd.Function):
+        """Return the matrix-vector product A @ v."""
+        pass
+
+
+class DirectOperator(LinearOperator):
+    J: ufl.Form
+    bcs: list[fd.DirichletBC]
+    function_space: fd.FunctionSpace
+
+    def __matmul__(self, v: fd.Function):
+        f_bar = fd.assemble(self.J @ v, bcs=self.bcs)  # Cofunction
+        return fd.Function(self.function_space, val=f_bar.dat)
+
+    @property
+    def T(self) -> InverseOperator:
+        """Return the adjoint operator.
+
+        This will solve the matrix pencil A^T @ f = M^T @ v0 for f.
+        """
+        cls = self.__class__
+        args = self.J.arguments()
+        JT = ufl.adjoint(self.J, reordered_arguments=(args[0], args[1]))
+        return cls(JT, self.bcs, self.function_space)
+
+
+@dataclasses.dataclass
+class InverseOperator(LinearOperator):
+    """A simple wrapper for the inverse of a matrix pencil.
+
+    Note that this object will own the output Function unless
+    `copy_output=True` is set.  This is memory-efficient, but could
+    lead to confusion if the output reference is modified. The Arnoldi
+    iteration algorithm is written so this isn't a problem.
+    """
+
+    J: ufl.Form
+    M: Callable[[fd.Function], ufl.Form]
+    bcs: list[fd.DirichletBC]
+    function_space: fd.FunctionSpace
+    solver_parameters: dict = None
+    copy_output: bool = False
+
+    def __post_init__(self):
+        self._f = fd.Function(self.function_space)
+        self._v = fd.Function(self.function_space)
+        if self.solver_parameters is None:
+            self.solver_parameters = MUMPS_SOLVER_PARAMETERS
+
+        self._problem = fd.LinearVariationalProblem(
+            self.J, self.M(self._v), self._f, bcs=self.bcs, constant_jacobian=True
+        )
+        self._solver = fd.LinearVariationalSolver(
+            self._problem, solver_parameters=self.solver_parameters
+        )
+
+    @property
+    def T(self) -> InverseOperator:
+        """Return the adjoint operator.
+
+        This will solve the matrix pencil A^T @ f = M^T @ v0 for f.
+        """
+        cls = self.__class__
+        args = self.J.arguments()
+        JT = ufl.adjoint(self.J, reordered_arguments=(args[0], args[1]))
+        return cls(JT, self.M, self.bcs, self.function_space, self.solver_parameters)
+
+    def __matmul__(self, v0):
+        """Solve the matrix pencil A @ f = M @ v0 for f.
+
+        This is equivalent to the "inverse iteration" f = (A^{-1} @ M) @ v0
+        """
+        self._v.assign(v0)
+        self._solver.solve()
+        if self.copy_output:
+            return self._f.copy(deepcopy=True)
+        return self._f
 
 
 def adjoint(L):
     args = L.arguments()
     L_adj = ufl.adjoint(L, reordered_arguments=(args[0], args[1]))
     return L_adj
-
-
-EPS_PARAMETERS = {
-    "eps_gen_non_hermitian": None,
-    "eps_target": "0",
-    "eps_type": "krylovschur",
-    "eps_largest_real": True,
-    "st_type": "sinvert",
-    "st_pc_factor_shift_type": "NONZERO",
-    "eps_tol": 1e-10,
-}
-
-
-def eig(A, M, num_eigenvalues=1, sigma=None, options={}):
-    """
-    Compute eigendecomposition of the matrix pencil `(A, M)` using SLEPc,
-        where `A` is the dynamics matrix and `M` is the mass matrix.
-
-    The default behavior is to use a shift-invert transformation to avoid inverting `M`,
-    which is singular in the case of the incompressible Navier-Stokes equations.
-    Ultimately this computes `[A - sigma * M]^-1` instead of `M^-1*A`, making it somewhat sensitive
-    to the choice of the shift `sigma`.  This should be chosen near eigenvalues of interest
-    """
-    import numpy as np
-    from firedrake import COMM_WORLD
-    from firedrake.petsc import PETSc
-    from slepc4py import SLEPc
-
-    assert (
-        PETSc.ScalarType == np.complex128
-    ), "Complex PETSc configuration required for stability analysis"
-
-    assert not (
-        (sigma is not None) and ("eps_target" in options)
-    ), "Shift value specified twice: use either `sigma` or `options['eps_target']` (behavior is the same)"
-
-    slepc_options = EPS_PARAMETERS.copy()
-    slepc_options.update(options)
-    if sigma is not None:
-        slepc_options.update({"eps_target": f"{sigma.real}+{sigma.imag}i"})
-
-    # SLEPc Setup
-    opts = PETSc.Options()
-    for key, val in slepc_options.items():
-        opts.setValue(key, val)
-
-    es = SLEPc.EPS().create(comm=COMM_WORLD)
-    es.setDimensions(num_eigenvalues)
-    es.setOperators(A, M)
-    es.setFromOptions()
-    es.solve()
-
-    nconv = es.getConverged()
-    vr, vi = A.getVecs()
-
-    evals = np.array([es.getEigenpair(i, vr, vi) for i in range(nconv)])
-    return evals, es
 
 
 def define_inner_product(mass_matrix):
