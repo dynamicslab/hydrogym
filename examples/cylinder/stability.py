@@ -145,11 +145,10 @@ parser.add_argument(
     help="Use Krylov-Schur iteration to restart the Arnoldi process.",
 )
 parser.add_argument(
-    "--adjoint",
+    "--no-adjoint",
     action="store_true",
-    dest="adjoint",
-    default=True,
-    help="Compute the adjoint modes along with the direct modes.",
+    default=False,
+    help="Skip computing the adjoint modes.",
 )
 parser.add_argument(
     "--sigma",
@@ -196,7 +195,7 @@ if __name__ == "__main__":
     hgym.print(f"Reynolds number:       {Re}")
     hgym.print(f"Krylov dimension:      {m}")
     hgym.print(f"Spectral shift:        {sigma}")
-    hgym.print(f"Include adjoint modes: {args.adjoint}")
+    hgym.print(f"Include adjoint modes: {not args.no_adjoint}")
     hgym.print(f"Krylov-Schur restart:  {args.schur}")
     hgym.print("")
 
@@ -245,7 +244,7 @@ if __name__ == "__main__":
             dir_results.evecs_imag[i].rename(f"evec_{i}_im")
             chk.save_function(dir_results.evecs_imag[i])
 
-    if args.adjoint:
+    if not args.no_adjoint:
         hgym.print("Computing adjoint modes...")
         adj_results = stability_analysis(flow, sigma, m, tol, adjoint=True)
 

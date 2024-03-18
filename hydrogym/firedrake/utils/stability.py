@@ -3,18 +3,13 @@
 This file specializes some of the Arnoldi iteration in `eig.py`
 for incompressible Navier-Stokes equations.
 """
+import dataclasses
+from typing import Callable
 
 import firedrake as fd
 import ufl
 
-from .eig import ArnoldiIterator
-
-MUMPS_SOLVER_PARAMETERS = {
-    "mat_type": "aij",
-    "ksp_type": "preonly",
-    "pc_type": "lu",
-    "pc_factor_mat_solver_type": "mumps",
-}
+from .eig import ArnoldiIterator, InverseOperator
 
 
 def _real_inner_product(q1, q2, assemble=True):
@@ -34,8 +29,6 @@ def _make_real_inv_iterator(flow, sigma, adjoint=False, solver_parameters=None):
     (J - sigma * M) @ v1 = M @ v0 for v1, where J is the Jacobian of the
     Navier-Stokes equations, and M is the mass matrix.
     n"""
-    if solver_parameters is None:
-        solver_parameters = MUMPS_SOLVER_PARAMETERS
 
     # Set up function spaces
     fn_space = flow.mixed_space
@@ -67,14 +60,7 @@ def _make_real_inv_iterator(flow, sigma, adjoint=False, solver_parameters=None):
         args = J.arguments()
         J = ufl.adjoint(J, reordered_arguments=(args[0], args[1]))
 
-    def _solve_inverse(v1, v0):
-        """Solve the matrix pencil A @ v1 = M @ v0 for v1.
-
-        This is equivalent to the "inverse iteration" v1 = (A^{-1} @ M) @ v0
-
-        Stores the result in `v1`
-        """
-        fd.solve(J == M(v0), v1, bcs=bcs, solver_parameters=solver_parameters)
+    A = InverseOperator(J, M, bcs, fn_space, solver_parameters)
 
     def _random_vec(rng_seed=None):
         rng = fd.RandomGenerator(fd.PCG64(seed=rng_seed))
@@ -84,10 +70,10 @@ def _make_real_inv_iterator(flow, sigma, adjoint=False, solver_parameters=None):
         return v0
 
     return ArnoldiIterator(
-        _solve_inverse,
+        A,
         _real_inner_product,
         _random_vec,
-        sort="lr",
+        which="lr",
         inverse=True,
     )
 
@@ -124,8 +110,6 @@ def _make_complex_inv_iterator(flow, sigma, adjoint=False, solver_parameters=Non
     (J - sigma * M) @ v1 = M @ v0 for v1, where J is the Jacobian of the
     Navier-Stokes equations, and M is the mass matrix.
     n"""
-    if solver_parameters is None:
-        solver_parameters = MUMPS_SOLVER_PARAMETERS
 
     # Set up function spaces
     fn_space = flow.mixed_space
@@ -184,14 +168,7 @@ def _make_complex_inv_iterator(flow, sigma, adjoint=False, solver_parameters=Non
         """Mass matrix for the Navier-Stokes equations"""
         return _complex_inner_product(q, q_test, assemble=False)
 
-    def _solve_inverse(v1, v0):
-        """Solve the matrix pencil A @ v1 = M @ v0 for v1.
-
-        This is equivalent to the "inverse iteration" v1 = (A^{-1} @ M) @ v0
-
-        Stores the result in `v1`
-        """
-        fd.solve(J == M(v0), v1, bcs=bcs, solver_parameters=solver_parameters)
+    A = InverseOperator(J, M, bcs, W, solver_parameters)
 
     def _random_vec(rng_seed=None):
         rng = fd.RandomGenerator(fd.PCG64(seed=rng_seed))
@@ -201,10 +178,10 @@ def _make_complex_inv_iterator(flow, sigma, adjoint=False, solver_parameters=Non
         return v0
 
     return ArnoldiIterator(
-        _solve_inverse,
+        A,
         _complex_inner_product,
         _random_vec,
-        sort="lr",
+        which="lr",
         inverse=True,
     )
 
