@@ -4,8 +4,8 @@ This is a work in progress - so far it's just the base flow and the control
 vector. Ultimately it will need LinearOperator functionality to have the form
 
 ````
-x' = Ax + Bu`
-y = Cx + Du
+x' = A*x + B*u
+y  = C*x + D*u
 ```
 
 where `x` is a firedrake.Function and `u` and `y` are numpy arrays.
