@@ -1,9 +1,9 @@
-name: Linting with Ruff
+name: Yapf Format
 
 on: [push, pull_request]
 
 jobs:
-  ruff:
+  yapf:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -17,10 +17,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install ruff codespell tomli
-      - name: Run Ruff
+          pip install yapf toml
+      - name: Run Yapf
         run: |
-          ruff check .
-      - name: Spelling check with codespell
-        run: |
-          codespell --toml pyproject.toml
+          yapf --diff --recursive .

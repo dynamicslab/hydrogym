@@ -134,7 +134,6 @@ class CylinderBase(FlowConfig):
 
     # der of velocity wrt to the unit normal at the surface of the cylinder
     # equivalent to directional derivative along normal:
-    # https://math.libretexts.org/Courses/University_of_California_Davis/UCD_Mat_21C%3A_Multivariate_Calculus/13%3A_Partial_Derivatives/13.5%3A_Directional_Derivatives_and_Gradient_Vectors#mjx-eqn-DD2v
     du_dn = dot(self.epsilon(u), self.n)
 
     # Get unit tangent vector

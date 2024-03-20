@@ -7,7 +7,7 @@
 <a href="https://python.org/"><img alt="Language: Python" src="https://img.shields.io/badge/language-Python-orange.svg"></a>
 <a href="https://spdx.org/licenses/MIT.html"><img alt="License WarpX" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
 <a href="https://join.slack.com/t/hydrogym/shared_invite/zt-27u914dfn-UFq3CkaxiLs8dwZ_fDkBuA"><img alt="Slack" src="https://img.shields.io/badge/slack-hydrogym-brightgreen.svg?logo=slack"></a>
-<a href="https://github.com/psf/black"><img alt="Code style: black" src="https://img.shields.io/badge/code%20style-black-000000.svg"></a>
+<a href="https://github.com/google/yapf"><img alt="Code style: yapf" src="https://img.shields.io/badge/code%20style-yapf-000000.svg"></a>
 </p>
 
 
@@ -26,7 +26,7 @@ Currently these "environments" are all implemented using the [Firedrake](https:/
     - High-level: `hydrogym.env.FlowEnv` classes implement the OpenAI `gym.Env` interface
     - Intermediate: Typical CFD interface with `hydrogym.FlowConfig` and `hydrogym.TransientSolver` classes
     - Low-level: Access to linearized operators and sparse scipy or PETSc CSR matrices
-* __Modeling and anlysis tools:__ Global stability analysis (via SLEPc) and modal decompositions (via modred)
+* __Modeling and analysis tools:__ Global stability analysis (via SLEPc) and modal decompositions (via modred)
 * __Scalable:__ Individual environments parallelized with MPI with a **highly scalable [Ray](https://github.com/ray-project/ray) backend reinforcement learning training**.
 
 # Installation
@@ -38,6 +38,9 @@ This means that the latest release of Hydrogym can be simply installed via [PyPI
 ```bash
 pip install hydrogym
 ```
+
+> BEWARE: The pip-package is currently behind the main repository, and we strongly urge users to build HydroGym
+>         directly from the source code. Once we've stabilized the package, we will update the pip package in turn.
 
 However, the package assumes that the solver backend is available, so in order to run simulations locally you will
 need to _separately_ ensure the solver backend is installed (again, currently all the environments are implemented with Firedrake).
@@ -79,7 +82,7 @@ For more detail, check out:
 
 There are currently a number of main flow configurations, the most prominent of which are:
 
-- Periodic cyclinder wake at Re=100
+- Periodic cylinder wake at Re=100
 - Chaotic pinball at Re=130
 - Open cavity at Re=7500
 - Backwards-facing step at Re=600

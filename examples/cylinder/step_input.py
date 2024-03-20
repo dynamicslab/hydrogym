@@ -1,5 +1,4 @@
 """Simulate step function input at Re=40"""
-
 import os
 
 import hydrogym.firedrake as hgym

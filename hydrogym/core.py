@@ -85,7 +85,7 @@ class PDEBase(metaclass=abc.ABCMeta):
     """Set the current state fields
 
         Should be overridden if a different assignment
-        mechansim is used (e.g. `Function.assign`)
+        mechanism is used (e.g. `Function.assign`)
 
         Args:
             q (StateType): State to be assigned
@@ -174,19 +174,17 @@ class PDEBase(metaclass=abc.ABCMeta):
       self.actuators[i].state = u
 
   def advance_time(self, dt: float, act: list[float] = None) -> list[float]:
-    """Update the current controls state.
-
-        May involve integrating a dynamics model rather than
-        directly setting the controls state.  Here, if actual
-        control is `u` and input is `v`, effectively
-            `du/dt = (1/tau)*(v - u)`
+    """Update the current controls state. May involve integrating
+        a dynamics model rather than directly setting the controls state.
+        Here, if actual control is `u` and input is `v`, effectively
+        `du/dt = (1/tau)*(v - u)`
 
         Args:
-            act (Iterable[ArrayLike]): Action inputs
-            dt (float): Time step
+          act (Iterable[ArrayLike]): Action inputs
+          dt (float): Time step
 
         Returns:
-            Iterable[ArrayLike]: Updated actuator state
+          Iterable[ArrayLike]: Updated actuator state
         """
     if act is None:
       act = self.control_state
