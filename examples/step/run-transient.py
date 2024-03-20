@@ -5,9 +5,9 @@ import psutil
 import hydrogym.firedrake as hgym
 
 Re = 600
-mesh_resolution = "m5"
-output_dir = f"./{Re}_{mesh_resolution}_output"
-restart = f"{output_dir}/steady.h5"
+output_dir = "output"
+mesh_resolution = "fine"
+restart = f"{output_dir}/{Re}_steady.h5"
 checkpoint = f"{output_dir}/checkpoint.h5"
 
 flow = hgym.Step(
@@ -16,7 +16,6 @@ flow = hgym.Step(
     restart=restart,
     velocity_order=1,
     noise_amplitude=1.0,
-    noise_seed=0,  # For reproducibility across meshes
 )
 
 # Store base flow for computing TKE

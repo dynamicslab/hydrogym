@@ -1,18 +1,12 @@
-import os
-
 import firedrake as fd
 import numpy as np
 
 import hydrogym.firedrake as hgym
 
+output_dir = "output"
 mesh_resolution = "fine"
 Re = 600
-output_dir = f"./{Re}_{mesh_resolution}_output"
-
-if not os.path.exists(output_dir):
-  os.makedirs(output_dir)
-
-checkpoint_prefix = f"{output_dir}/steady"
+checkpoint_prefix = f"{output_dir}/{Re}_steady"
 
 solver_parameters = {"snes_monitor": None}
 

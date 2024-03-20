@@ -1,9 +1,21 @@
+"""Illustrate constructing an LTI system from a flow configuration.
+
+This is a work in progress - so far it's just the base flow and the control
+vector. Ultimately it will need LinearOperator functionality to have the form
+
+````
+x' = Ax + Bu`
+y = Cx + Du
+```
+
+where `x` is a firedrake.Function and `u` and `y` are numpy arrays.
+"""
 import os
 
 import firedrake as fd
 import matplotlib.pyplot as plt
-from firedrake.pyplot import tripcolor, triplot
-from ufl import div, dot, dx, inner, nabla_grad
+from firedrake.pyplot import tripcolor
+from ufl import dx, inner
 
 import hydrogym.firedrake as hgym
 
