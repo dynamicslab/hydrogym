@@ -15,14 +15,14 @@ class Step(FlowConfig):
   """Backwards-facing step
 
     Notes on meshes:
+    - "coarse": outlet at L=15 with "medium" resolution (81k elements)
+        This mesh is much faster to run, but has differences of up to ~5% in
+        the separation and reattachment points.  It should not be considered
+        "validated" but can be used for testing and hyperparameter tuning.
     - "medium" - outlet at L=25 (110k elements)
     - "fine" - outlet at L=25 (223k elements)
-    - "m1" - "medium" resolution with outlet at L=10 (66k elements)
-    - "m2" - "medium" resolution with outlet at L=15 (81k elements)
-    - "m3" - "medium" resolution with outlet at L=20 (95k elements)
-    - "m4" - "fine" resolution with outlet at L=10 (130k elements)
-    - "m5" - "fine" resolution with outlet at L=15 (162k elements)
-    - "m6" - "fine" resolution with outlet at L=20 (193k elements)
+        This is the closest to the mesh used by the reference paper
+        (Boujo & Gallaire 2015, DOI:10.1017/jfm.2014.656)
     """
 
   DEFAULT_REYNOLDS = 600
