@@ -8,38 +8,38 @@ import hydrogym.firedrake as hgym
 
 
 def test_import_coarse():
-    hgym.Cylinder(mesh="coarse")
+  hgym.Cylinder(mesh="coarse")
 
 
 def test_import_medium():
-    hgym.Cylinder(mesh="medium")
+  hgym.Cylinder(mesh="medium")
 
 
 def test_import_fine():
-    hgym.Cylinder(mesh="fine")
+  hgym.Cylinder(mesh="fine")
 
 
 def test_steady(tol=1e-3):
-    flow = hgym.Cylinder(Re=100, mesh="medium")
-    solver = hgym.NewtonSolver(flow)
-    solver.solve()
+  flow = hgym.Cylinder(Re=100, mesh="medium")
+  solver = hgym.NewtonSolver(flow)
+  solver.solve()
 
-    CL, CD = flow.compute_forces()
-    assert abs(CL) < tol
-    assert abs(CD - 1.2840) < tol  # Re = 100
+  CL, CD = flow.compute_forces()
+  assert abs(CL) < tol
+  assert abs(CD - 1.2840) < tol  # Re = 100
 
 
 def test_steady_rotation(tol=1e-3):
-    flow = hgym.Cylinder(Re=100, mesh="medium")
-    flow.set_control(0.1)
+  flow = hgym.Cylinder(Re=100, mesh="medium")
+  flow.set_control(0.1)
 
-    solver = hgym.NewtonSolver(flow)
-    solver.solve()
+  solver = hgym.NewtonSolver(flow)
+  solver.solve()
 
-    # Lift/drag on cylinder
-    CL, CD = flow.compute_forces()
-    assert abs(CL - 0.0594) < tol
-    assert abs(CD - 1.2852) < tol  # Re = 100
+  # Lift/drag on cylinder
+  CL, CD = flow.compute_forces()
+  assert abs(CL - 0.0594) < tol
+  assert abs(CD - 1.2852) < tol  # Re = 100
 
 
 """
@@ -62,122 +62,122 @@ def test_steady_grad():
 
 
 def test_integrate():
-    flow = hgym.Cylinder(mesh="coarse")
-    dt = 1e-2
-    hgym.integrate(flow, t_span=(0, 10 * dt), dt=dt)
+  flow = hgym.Cylinder(mesh="coarse")
+  dt = 1e-2
+  hgym.integrate(flow, t_span=(0, 10 * dt), dt=dt)
 
 
 # Simple opposition control on lift
 def feedback_ctrl(y, K=0.1):
-    CL, CD = y
-    return K * CL
+  CL, CD = y
+  return K * CL
 
 
 def test_control():
-    flow = hgym.Cylinder(mesh="coarse")
-    dt = 1e-2
+  flow = hgym.Cylinder(mesh="coarse")
+  dt = 1e-2
 
-    solver = hgym.IPCS(flow, dt=dt)
+  solver = hgym.IPCS(flow, dt=dt)
 
-    num_steps = 10
-    for iter in range(num_steps):
-        y = flow.get_observations()
-        hgym.print(y)
-        flow = solver.step(iter, control=feedback_ctrl(y))
+  num_steps = 10
+  for iter in range(num_steps):
+    y = flow.get_observations()
+    hgym.print(y)
+    flow = solver.step(iter, control=feedback_ctrl(y))
 
 
 def test_env():
-    env_config = {
-        "flow": hgym.Cylinder,
-        "flow_config": {
-            "mesh": "coarse",
-        },
-        "solver": hgym.IPCS,
-    }
-    env = hgym.FlowEnv(env_config)
+  env_config = {
+      "flow": hgym.Cylinder,
+      "flow_config": {
+          "mesh": "coarse",
+      },
+      "solver": hgym.IPCS,
+  }
+  env = hgym.FlowEnv(env_config)
 
-    u = 0.0
-    for _ in range(10):
-        y, reward, done, info = env.step(u)
-        print(y)
-        u = feedback_ctrl(y)
+  u = 0.0
+  for _ in range(10):
+    y, reward, done, info = env.step(u)
+    print(y)
+    u = feedback_ctrl(y)
 
 
 def test_linearize():
-    flow = hgym.Cylinder(mesh="coarse")
+  flow = hgym.Cylinder(mesh="coarse")
 
-    solver = hgym.NewtonSolver(flow)
-    qB = solver.solve()
+  solver = hgym.NewtonSolver(flow)
+  qB = solver.solve()
 
-    A, M = hgym.modeling.linearize(flow, qB, backend="scipy")
-    A_adj, M = hgym.modeling.linearize(flow, qB, adjoint=True, backend="scipy")
+  A, M = hgym.modeling.linearize(flow, qB, backend="scipy")
+  A_adj, M = hgym.modeling.linearize(flow, qB, adjoint=True, backend="scipy")
 
 
 def test_act_implicit_no_damp():
-    print("")
-    print("No Damp")
-    time_start = time.time()
-    flow = hgym.Cylinder(mesh="coarse", actuator_integration="implicit")
-    dt = 1e-2
-    solver = hgym.IPCS(flow, dt=dt)
+  print("")
+  print("No Damp")
+  time_start = time.time()
+  flow = hgym.Cylinder(mesh="coarse", actuator_integration="implicit")
+  dt = 1e-2
+  solver = hgym.IPCS(flow, dt=dt)
 
-    assert flow.actuators[0].integration == "implicit"
+  assert flow.actuators[0].integration == "implicit"
 
-    # Since this feature is still experimental, modify actuator attributes *after*=
-    flow.actuators[0].k = 0
+  # Since this feature is still experimental, modify actuator attributes *after*=
+  flow.actuators[0].k = 0
 
-    # Apply steady torque for 0.1 seconds... should match analytical solution!
-    tf = 0.1  # sec
-    torque = 0.05  # Nm
-    analytical_sol = [torque * tf / flow.I_CM]
+  # Apply steady torque for 0.1 seconds... should match analytical solution!
+  tf = 0.1  # sec
+  torque = 0.05  # Nm
+  analytical_sol = [torque * tf / flow.I_CM]
 
-    # Run sim
-    num_steps = int(tf / dt)
-    for iter in range(num_steps):
-        flow = solver.step(iter, control=torque)
+  # Run sim
+  num_steps = int(tf / dt)
+  for iter in range(num_steps):
+    flow = solver.step(iter, control=torque)
 
-    print(flow.control_state[0].values(), analytical_sol)
+  print(flow.control_state[0].values(), analytical_sol)
 
-    final_torque = fd.Constant(flow.control_state[0]).values()
-    assert np.isclose(final_torque, analytical_sol)
+  final_torque = fd.Constant(flow.control_state[0]).values()
+  assert np.isclose(final_torque, analytical_sol)
 
-    print("finished @" + str(time.time() - time_start))
+  print("finished @" + str(time.time() - time_start))
 
 
 def test_act_implicit_fixed_torque():
-    print("")
-    print("Fixed Torque Convergence")
-    time_start = time.time()
-    flow = hgym.Cylinder(mesh="coarse", actuator_integration="implicit")
-    dt = 1e-3
-    solver = hgym.IPCS(flow, dt=dt)
+  print("")
+  print("Fixed Torque Convergence")
+  time_start = time.time()
+  flow = hgym.Cylinder(mesh="coarse", actuator_integration="implicit")
+  dt = 1e-3
+  solver = hgym.IPCS(flow, dt=dt)
 
-    assert flow.actuators[0].integration == "implicit"
+  assert flow.actuators[0].integration == "implicit"
 
-    # Obtain a torque value for which the system converges to a steady state angular velocity
-    tf = 0.1 * flow.TAU
-    omega = 1.0
-    torque = omega / flow.TAU  # Torque to reach steady-state value of `omega`
+  # Obtain a torque value for which the system converges to a steady state angular velocity
+  tf = 0.1 * flow.TAU
+  omega = 1.0
+  torque = omega / flow.TAU  # Torque to reach steady-state value of `omega`
 
-    # Run sim
-    num_steps = int(tf / dt)
-    for iter in range(num_steps):
-        flow = solver.step(iter, control=torque)
-        print(flow.control_state[0].values())
+  # Run sim
+  num_steps = int(tf / dt)
+  for iter in range(num_steps):
+    flow = solver.step(iter, control=torque)
+    print(flow.control_state[0].values())
 
-    final_torque = fd.Constant(flow.control_state[0]).values()
-    assert np.isclose(final_torque, omega, atol=1e-3)
+  final_torque = fd.Constant(flow.control_state[0]).values()
+  assert np.isclose(final_torque, omega, atol=1e-3)
 
-    print("finished @" + str(time.time() - time_start))
+  print("finished @" + str(time.time() - time_start))
 
 
 def isordered(arr):
-    if len(arr) < 2:
-        return True
-    for i in range(len(arr) - 1):
-        if arr[i] < arr[i + 1]:
-            return False
-        return True
+  if len(arr) < 2:
+    return True
+  for i in range(len(arr) - 1):
+    if arr[i] < arr[i + 1]:
+      return False
+    return True
 
 
 # sin function feeding into the controller
@@ -223,7 +223,6 @@ def isordered(arr):
 
 #     print("finished @" + str(time.time() - time_start))
 
-
 # Shear force test cases (shear force not fully implemented yet)
 
 # def test_shearForce0():
@@ -234,7 +233,6 @@ def isordered(arr):
 
 #     assert np.isclose(shear_force, 0.0, rtol=1e-3, atol=1e-3)
 
-
 # def test_shearForcePos():
 #     flow = gym.flow.Cylinder(Re=100, mesh="coarse")
 #     flow.set_control(fd.Constant(0.1))
@@ -242,7 +240,6 @@ def isordered(arr):
 #     shear_force = flow.shear_force()
 
 #     assert shear_force < 0
-
 
 # def test_shearForceNeg():
 #     flow = gym.flow.Cylinder(Re=100, mesh="coarse")
@@ -253,5 +250,5 @@ def isordered(arr):
 #     assert shear_force > 0
 
 if __name__ == "__main__":
-    # test_steady_grad()
-    test_control()
+  # test_steady_grad()
+  test_control()

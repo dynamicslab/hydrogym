@@ -8,144 +8,150 @@ import firedrake as fd
 from ufl import div, dot, dx, inner, nabla_grad
 
 if TYPE_CHECKING:
-    from ..flow import FlowConfig
+  from ..flow import FlowConfig
 
 __all__ = ["SUPG", "GLS", "ns_stabilization"]
 
 
 @dataclasses.dataclass
 class NavierStokesStabilization(metaclass=abc.ABCMeta):
-    flow: FlowConfig
-    q_trial: tuple[fd.Function, fd.Function]
-    q_test: tuple[fd.Function, fd.Function]
-    wind: fd.Function
-    dt: float | fd.Constant = None
-    u_t: fd.Function = None
-    f: fd.Function = None
+  flow: FlowConfig
+  q_trial: tuple[fd.Function, fd.Function]
+  q_test: tuple[fd.Function, fd.Function]
+  wind: fd.Function
+  dt: float | fd.Constant = None
+  u_t: fd.Function = None
+  f: fd.Function = None
 
-    def stabilize(self, weak_form):
-        # By default, no stabilization
-        return weak_form
+  def stabilize(self, weak_form):
+    # By default, no stabilization
+    return weak_form
 
 
 class UpwindNSStabilization(NavierStokesStabilization):
-    @property
-    def h(self):
-        return fd.CellSize(self.flow.mesh)
 
-    @property
-    def Lu(self):
-        (u, p) = self.q_trial
+  @property
+  def h(self):
+    return fd.CellSize(self.flow.mesh)
 
-        w = self.wind
-        sigma = self.flow.sigma
+  @property
+  def Lu(self):
+    (u, p) = self.q_trial
 
-        Lu = dot(w, nabla_grad(u)) - div(sigma(u, p))
+    w = self.wind
+    sigma = self.flow.sigma
 
-        if self.u_t is not None:
-            Lu += self.u_t
+    Lu = dot(w, nabla_grad(u)) - div(sigma(u, p))
 
-        if self.f is not None:
-            Lu -= self.f
+    if self.u_t is not None:
+      Lu += self.u_t
 
-        return Lu
+    if self.f is not None:
+      Lu -= self.f
 
-    @abc.abstractproperty
-    def Lv(self):
-        # Test function form for the stabilization term
-        pass
+    return Lu
 
-    @property
-    def tau_M(self):
-        # Stabilization constant for momentum residual
-        #
-        # Based on:
-        # https://github.com/florianwechsung/alfi/blob/master/alfi/stabilisation.py
+  @abc.abstractproperty
+  def Lv(self):
+    # Test function form for the stabilization term
+    pass
 
-        w = self.wind
-        h = self.h
-        nu = self.flow.nu
+  @property
+  def tau_M(self):
+    # Stabilization constant for momentum residual
+    #
+    # Based on:
+    # https://github.com/florianwechsung/alfi/blob/master/alfi/stabilisation.py
 
-        denom_sq = 4.0 * dot(w, w) / (h**2) + 9.0 * (4.0 * nu / h**2) ** 2
+    w = self.wind
+    h = self.h
+    nu = self.flow.nu
 
-        if self.dt is not None:
-            denom_sq += 4.0 / (self.dt**2)
+    denom_sq = 4.0 * dot(w, w) / (h**2) + 9.0 * (4.0 * nu / h**2)**2
 
-        return denom_sq ** (-0.5)
+    if self.dt is not None:
+      denom_sq += 4.0 / (self.dt**2)
 
-    @property
-    def tau_C(self):
-        # Stabilization constant for continuity residual
-        h = self.h
-        return h**2 / self.tau_M
+    return denom_sq**(-0.5)
 
-    @property
-    def momentum_stabilization(self):
-        return self.tau_M * inner(self.Lu, self.Lv) * dx
+  @property
+  def tau_C(self):
+    # Stabilization constant for continuity residual
+    h = self.h
+    return h**2 / self.tau_M
 
-    @property
-    def lsic_stabilization(self):
-        (u, _) = self.q_trial
-        (v, _) = self.q_test
-        return self.tau_C * inner(div(u), div(v)) * dx
+  @property
+  def momentum_stabilization(self):
+    return self.tau_M * inner(self.Lu, self.Lv) * dx
 
-    def stabilize(self, weak_form):
-        weak_form += self.momentum_stabilization
-        weak_form += self.lsic_stabilization
-        return weak_form
+  @property
+  def lsic_stabilization(self):
+    (u, _) = self.q_trial
+    (v, _) = self.q_test
+    return self.tau_C * inner(div(u), div(v)) * dx
+
+  def stabilize(self, weak_form):
+    weak_form += self.momentum_stabilization
+    weak_form += self.lsic_stabilization
+    return weak_form
 
 
 class SUPG(UpwindNSStabilization):
-    @property
-    def Lv(self):
-        (v, _) = self.q_test
-        w = self.wind
-        return dot(w, nabla_grad(v))
+
+  @property
+  def Lv(self):
+    (v, _) = self.q_test
+    w = self.wind
+    return dot(w, nabla_grad(v))
 
 
 class GLS(UpwindNSStabilization):
-    @property
-    def Lv(self):
-        (v, s) = self.q_test
-        w = self.wind
-        sigma = self.flow.sigma
-        return dot(w, nabla_grad(v)) - div(sigma(v, s))
+
+  @property
+  def Lv(self):
+    (v, s) = self.q_test
+    w = self.wind
+    sigma = self.flow.sigma
+    return dot(w, nabla_grad(v)) - div(sigma(v, s))
 
 
 class LinearizedNSStabilization(UpwindNSStabilization):
-    @property
-    def Lu(self):
-        (u, p) = self.q_trial
 
-        uB = self.wind
-        sigma = self.flow.sigma
+  @property
+  def Lu(self):
+    (u, p) = self.q_trial
 
-        Lu = dot(uB, nabla_grad(u)) + dot(u, nabla_grad(uB)) - div(sigma(u, p))
+    uB = self.wind
+    sigma = self.flow.sigma
 
-        if self.u_t is not None:
-            Lu += self.u_t
+    Lu = dot(uB, nabla_grad(u)) + dot(u, nabla_grad(uB)) - div(sigma(u, p))
 
-        if self.f is not None:
-            Lu -= self.f
+    if self.u_t is not None:
+      Lu += self.u_t
 
-        return Lu
+    if self.f is not None:
+      Lu -= self.f
+
+    return Lu
 
 
 class LinearizedSUPG(LinearizedNSStabilization):
-    @property
-    def Lv(self):
-        (v, _) = self.q_test
-        uB = self.wind
-        return dot(uB, nabla_grad(v)) + dot(v, nabla_grad(uB))
+
+  @property
+  def Lv(self):
+    (v, _) = self.q_test
+    uB = self.wind
+    return dot(uB, nabla_grad(v)) + dot(v, nabla_grad(uB))
 
 
 class LinearizedGLS(LinearizedNSStabilization):
-    @property
-    def Lv(self):
-        (v, s) = self.q_test
-        uB = self.wind
-        sigma = self.flow.sigma
-        return dot(uB, nabla_grad(v)) + dot(v, nabla_grad(uB)) - div(sigma(v, s))
+
+  @property
+  def Lv(self):
+    (v, s) = self.q_test
+    uB = self.wind
+    sigma = self.flow.sigma
+    return dot(uB, nabla_grad(v)) + dot(v, nabla_grad(uB)) - div(sigma(v, s))
 
 
 ns_stabilization = {

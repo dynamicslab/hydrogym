@@ -6,7 +6,7 @@ import hydrogym.firedrake as hgym
 
 output_dir = "output"
 if not os.path.exists(output_dir):
-    os.makedirs(output_dir)
+  os.makedirs(output_dir)
 
 stabilization = "gls"
 flow = hgym.Cylinder(
@@ -25,13 +25,13 @@ qB = steady_solver.solve()
 
 # 2. Set up step input
 def controller(t, u):
-    return flow.MAX_CONTROL if t > 5.0 else 0.0
+  return flow.MAX_CONTROL if t > 5.0 else 0.0
 
 
 # 3. Set up the logging callback
 def log_postprocess(flow):
-    CL, CD = flow.get_observations()
-    return CL, CD
+  CL, CD = flow.get_observations()
+  return CL, CD
 
 
 print_fmt = (

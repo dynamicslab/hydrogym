@@ -23,9 +23,9 @@ solver = hgym.NewtonSolver(
 )
 
 for i, Re in enumerate(Re_init):
-    flow.Re.assign(Re)
-    hgym.print(f"Steady solve at Re={Re_init[i]}")
-    qB = solver.solve()
+  flow.Re.assign(Re)
+  hgym.print(f"Steady solve at Re={Re_init[i]}")
+  qB = solver.solve()
 
 # Save checkpoint
 flow.q.assign(qB)

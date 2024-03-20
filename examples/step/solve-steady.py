@@ -1,12 +1,18 @@
+import os
+
 import firedrake as fd
 import numpy as np
 
 import hydrogym.firedrake as hgym
 
-output_dir = "output"
 mesh_resolution = "fine"
 Re = 600
-checkpoint_prefix = f"{output_dir}/{Re}_steady"
+output_dir = f"./{Re}_{mesh_resolution}_output"
+
+if not os.path.exists(output_dir):
+  os.makedirs(output_dir)
+
+checkpoint_prefix = f"{output_dir}/steady"
 
 solver_parameters = {"snes_monitor": None}
 
@@ -29,9 +35,9 @@ solver = hgym.NewtonSolver(
 )
 
 for i, Re in enumerate(Re_init):
-    flow.Re.assign(Re)
-    hgym.print(f"Steady solve at Re={Re_init[i]}")
-    qB = solver.solve()
+  flow.Re.assign(Re)
+  hgym.print(f"Steady solve at Re={Re_init[i]}")
+  qB = solver.solve()
 
 flow.save_checkpoint(f"{checkpoint_prefix}.h5")
 vort = flow.vorticity()

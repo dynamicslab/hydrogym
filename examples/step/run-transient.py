@@ -5,9 +5,9 @@ import psutil
 import hydrogym.firedrake as hgym
 
 Re = 600
-output_dir = "output"
-mesh_resolution = "fine"
-restart = f"{output_dir}/{Re}_steady.h5"
+mesh_resolution = "m5"
+output_dir = f"./{Re}_{mesh_resolution}_output"
+restart = f"{output_dir}/steady.h5"
 checkpoint = f"{output_dir}/checkpoint.h5"
 
 flow = hgym.Step(
@@ -16,6 +16,7 @@ flow = hgym.Step(
     restart=restart,
     velocity_order=1,
     noise_amplitude=1.0,
+    noise_seed=0,  # For reproducibility across meshes
 )
 
 # Store base flow for computing TKE
@@ -31,11 +32,11 @@ dt = 0.01
 
 
 def log_postprocess(flow):
-    KE = 0.5 * fd.assemble(fd.inner(flow.u, flow.u) * fd.dx)
-    TKE = flow.evaluate_objective()
-    CFL = flow.max_cfl(dt)
-    mem_usage = psutil.virtual_memory().percent
-    return [CFL, KE, TKE, mem_usage]
+  KE = 0.5 * fd.assemble(fd.inner(flow.u, flow.u) * fd.dx)
+  TKE = flow.evaluate_objective()
+  CFL = flow.max_cfl(dt)
+  mem_usage = psutil.virtual_memory().percent
+  return [CFL, KE, TKE, mem_usage]
 
 
 print_fmt = (

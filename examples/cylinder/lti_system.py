@@ -10,7 +10,7 @@ import hydrogym.firedrake as hgym
 show_plots = False
 output_dir = "output"
 if not os.path.exists(output_dir):
-    os.makedirs(output_dir)
+  os.makedirs(output_dir)
 
 flow = hgym.RotaryCylinder(Re=100, mesh="medium")
 
@@ -23,9 +23,9 @@ qB.rename("qB")
 print(flow.compute_forces(qB))
 
 if show_plots:
-    vort = flow.vorticity(qB.subfunctions[0])
-    fig, ax = plt.subplots(1, 1, figsize=(6, 3))
-    tripcolor(vort, axes=ax, cmap="RdBu", vmin=-2, vmax=2)
+  vort = flow.vorticity(qB.subfunctions[0])
+  fig, ax = plt.subplots(1, 1, figsize=(6, 3))
+  tripcolor(vort, axes=ax, cmap="RdBu", vmin=-2, vmax=2)
 
 # 2. Derive flow field associated with actuation BC
 # See Barbagallo et al. (2009) for details on the "lifting" procedure
@@ -43,11 +43,11 @@ zero = inner(fd.Constant((0.0, 0.0)), v) * dx
 fd.solve(J == zero, qC, bcs=bcs)
 
 if show_plots:
-    vort = flow.vorticity(qC.subfunctions[0])
-    fig, ax = plt.subplots(1, 1, figsize=(6, 3))
-    tripcolor(vort, axes=ax, cmap="RdBu", vmin=-2, vmax=2)
+  vort = flow.vorticity(qC.subfunctions[0])
+  fig, ax = plt.subplots(1, 1, figsize=(6, 3))
+  tripcolor(vort, axes=ax, cmap="RdBu", vmin=-2, vmax=2)
 
 with fd.CheckpointFile(f"{output_dir}/lin_fields.h5", "w") as chk:
-    chk.save_mesh(flow.mesh)
-    chk.save_function(qB)
-    chk.save_function(qC)
+  chk.save_mesh(flow.mesh)
+  chk.save_function(qB)
+  chk.save_function(qC)

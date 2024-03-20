@@ -8,14 +8,15 @@ output_dir = "output"
 
 
 def compute_vort(flow):
-    return (flow.u, flow.p, flow.vorticity())
+  return (flow.u, flow.p, flow.vorticity())
 
 
 def log_postprocess(flow):
-    CL, CD = flow.get_observations()
-    mem_usage = psutil.virtual_memory().available * 100 / psutil.virtual_memory().total
-    mem_usage = psutil.virtual_memory().percent
-    return CL, CD, mem_usage
+  CL, CD = flow.get_observations()
+  mem_usage = psutil.virtual_memory().available * 100 / psutil.virtual_memory(
+  ).total
+  mem_usage = psutil.virtual_memory().percent
+  return CL, CD, mem_usage
 
 
 callbacks = [
@@ -30,7 +31,6 @@ callbacks = [
         filename=None,
     ),
 ]
-
 
 flow = hgym.Cylinder(
     Re=100,
@@ -51,28 +51,29 @@ Kd = 0.0  # Derivative gain
 
 
 def controller(t, obs):
-    # return np.sin(t)
+  # return np.sin(t)
 
-    i = int(t // dt)
+  i = int(t // dt)
 
-    # Turn on feedback control halfway through
-    # if i > n_steps // 2:
-    #     u[i] = -Kp * y[i - 1] - Kd * dy[i - 1]
+  # Turn on feedback control halfway through
+  # if i > n_steps // 2:
+  #     u[i] = -Kp * y[i - 1] - Kd * dy[i - 1]
 
-    u[i] = -Kp * y[i - 1] - Kd * dy[i - 1]
+  u[i] = -Kp * y[i - 1] - Kd * dy[i - 1]
 
-    CL, CD = obs
+  CL, CD = obs
 
-    # Low-pass filter and estimate derivative
-    y[i] = y[i - 1] + (dt / flow.TAU) * (CL - y[i - 1])
-    dy[i] = (y[i] - y[i - 1]) / dt
+  # Low-pass filter and estimate derivative
+  y[i] = y[i - 1] + (dt / flow.TAU) * (CL - y[i - 1])
+  dy[i] = (y[i] - y[i - 1]) / dt
 
-    sio.savemat(f"{output_dir}/pd-control.mat", {"y": y, "u": u})
+  sio.savemat(f"{output_dir}/pd-control.mat", {"y": y, "u": u})
 
-    return u[i]
+  return u[i]
 
 
-hgym.integrate(flow, t_span=(0, Tf), dt=dt, callbacks=callbacks, controller=controller)
+hgym.integrate(
+    flow, t_span=(0, Tf), dt=dt, callbacks=callbacks, controller=controller)
 
 # for i in range(1, n_steps):
 #     # Turn on feedback control halfway through

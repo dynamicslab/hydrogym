@@ -7,7 +7,7 @@ import hydrogym.firedrake as hgym
 
 output_dir = "output"
 if not os.path.exists(output_dir):
-    os.makedirs(output_dir)
+  os.makedirs(output_dir)
 
 base_checkpoint = "output/base.h5"
 evec_checkpoint = "output/evecs.h5"
@@ -24,6 +24,6 @@ flow = hgym.Cavity(
 
 
 def inner_product(q1, q2):
-    u1 = q1.subfunctions[0]
-    u2 = q2.subfunctions[0]
-    return fd.assemble(inner(u1, u2) * dx)
+  u1 = q1.subfunctions[0]
+  u2 = q2.subfunctions[0]
+  return fd.assemble(inner(u1, u2) * dx)
