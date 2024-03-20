@@ -236,18 +236,14 @@ class Cylinder(CylinderBase):
         theta_up = 0.5 * pi
         A_up = ufl.conditional(
             abs(theta - theta_up) < omega / 2,
-            pi
-            / (2 * omega * self.rad**2)
-            * ufl.cos((pi / omega) * (theta - theta_up)),
+            pi / (2 * omega * self.rad**2) * ufl.cos((pi / omega) * (theta - theta_up)),
             0.0,
         )
 
         theta_lo = -0.5 * pi
         A_lo = ufl.conditional(
             abs(theta - theta_lo) < omega / 2,
-            pi
-            / (2 * omega * self.rad**2)
-            * ufl.cos((pi / omega) * (theta - theta_lo)),
+            pi / (2 * omega * self.rad**2) * ufl.cos((pi / omega) * (theta - theta_lo)),
             0.0,
         )
 

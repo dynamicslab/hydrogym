@@ -5,6 +5,7 @@ To get the leading mode, run with:
 mpiexec -np 20 python stability.py --output-dir eig_output --sigma 1.0+11j
 ```
 """
+
 import argparse
 import os
 
