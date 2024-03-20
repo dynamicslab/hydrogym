@@ -1,6 +1,7 @@
 """
 Simulate the flow around the cylinder with evenly spaced surface pressure probes.
 """
+
 import os
 import matplotlib.pyplot as plt
 import numpy as np

@@ -55,8 +55,11 @@ class Cavity(FlowConfig):
 
     return supported_obs_types[obs_type]
 
-  def init_bcs(self):
-    V, Q = self.function_spaces(mixed=True)
+  def init_bcs(self, function_spaces=None):
+    if function_spaces is None:
+      V, Q = self.function_spaces(mixed=True)
+    else:
+      V, Q = function_spaces
 
     # Define static boundary conditions
     self.U_inf = fd.Constant((1.0, 0.0))
@@ -88,9 +91,9 @@ class Cavity(FlowConfig):
   def collect_bcp(self):
     return [self.bcp_outflow]
 
-  def linearize_bcs(self):
+  def linearize_bcs(self, function_spaces=None):
     self.reset_controls()
-    self.init_bcs()
+    self.init_bcs(function_spaces=function_spaces)
     self.bcu_inflow.set_value(fd.Constant((0, 0)))
 
   def wall_stress_sensor(self, q=None):
@@ -111,22 +114,21 @@ class Cavity(FlowConfig):
     KE = 0.5 * fd.assemble(fd.inner(u - uB, u - uB) * fd.dx)
     return KE
 
-  # TODO: Rendering function needs to be revisited as this is only a hot-fix
   def render(self, mode="human", clim=None, levels=None, cmap="RdBu", **kwargs):
+    _fig, ax = plt.subplots(1, 1, figsize=(6, 3))
     if clim is None:
-      clim = (-2, 2)
+      clim = (-10, 10)
     if levels is None:
-      levels = np.linspace(*clim, 10)
-    vort = fd.project(fd.curl(self.u), self.pressure_space)
-    im = tricontourf(
-        vort,
-        cmap=cmap,
+      levels = np.linspace(*clim, 20)
+    tricontourf(
+        self.vorticity(),
         levels=levels,
         vmin=clim[0],
         vmax=clim[1],
         extend="both",
+        cmap=cmap,
         **kwargs,
     )
-
-    cyl = plt.Circle((0, 0), 0.5, edgecolor="k", facecolor="gray")
-    im.axes.add_artist(cyl)
+    ax.set_xlim([-0.5, 2.5])
+    ax.set_ylim([-1, 0.5])
+    ax.set_facecolor("grey")

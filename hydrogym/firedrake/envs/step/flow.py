@@ -12,6 +12,19 @@ from hydrogym.firedrake import FlowConfig, ObservationFunction, ScaledDirichletB
 
 
 class Step(FlowConfig):
+  """Backwards-facing step
+
+    Notes on meshes:
+    - "medium" - outlet at L=25 (110k elements)
+    - "fine" - outlet at L=25 (223k elements)
+    - "m1" - "medium" resolution with outlet at L=10 (66k elements)
+    - "m2" - "medium" resolution with outlet at L=15 (81k elements)
+    - "m3" - "medium" resolution with outlet at L=20 (95k elements)
+    - "m4" - "fine" resolution with outlet at L=10 (130k elements)
+    - "m5" - "fine" resolution with outlet at L=15 (162k elements)
+    - "m6" - "fine" resolution with outlet at L=20 (193k elements)
+    """
+
   DEFAULT_REYNOLDS = 600
   DEFAULT_MESH = "fine"
   DEFAULT_DT = 1e-2
@@ -78,8 +91,11 @@ class Step(FlowConfig):
 
     return supported_obs_types[obs_type]
 
-  def init_bcs(self):
-    V, Q = self.function_spaces(mixed=True)
+  def init_bcs(self, function_spaces=None):
+    if function_spaces is None:
+      V, Q = self.function_spaces(mixed=True)
+    else:
+      V, Q = function_spaces
 
     # Define static boundary conditions
     self.U_inf = ufl.as_tensor(
@@ -111,9 +127,9 @@ class Step(FlowConfig):
 
     return super().advance_time(dt, control)
 
-  def linearize_bcs(self):
+  def linearize_bcs(self, function_spaces=None):
     self.reset_controls()
-    self.init_bcs()
+    self.init_bcs(function_spaces=function_spaces)
     self.bcu_inflow.set_value(fd.Constant((0, 0)))
 
   def collect_bcu(self):
@@ -144,22 +160,34 @@ class Step(FlowConfig):
     KE = 0.5 * fd.assemble(fd.inner(u - uB, u - uB) * fd.dx)
     return KE
 
-  # TODO: Rendering function needs to be revisited as this is only a hot-fix
-  def render(self, mode="human", clim=None, levels=None, cmap="RdBu", **kwargs):
+  def render(
+      self,
+      mode="human",
+      axes=None,
+      clim=None,
+      levels=None,
+      cmap="RdBu",
+      xlim=None,
+      **kwargs,
+  ):
     if clim is None:
-      clim = (-2, 2)
+      clim = (-5, 5)
+    if xlim is None:
+      xlim = [-2, 10]
     if levels is None:
-      levels = np.linspace(*clim, 10)
-    vort = fd.project(fd.curl(self.u), self.pressure_space)
-    im = tricontourf(
-        vort,
-        cmap=cmap,
+      levels = np.linspace(*clim, 20)
+    if axes is None:
+      _fix, axes = plt.subplots(1, 1, figsize=(12, 2))
+    tricontourf(
+        self.vorticity(),
         levels=levels,
         vmin=clim[0],
         vmax=clim[1],
         extend="both",
+        cmap=cmap,
+        axes=axes,
         **kwargs,
     )
-
-    cyl = plt.Circle((0, 0), 0.5, edgecolor="k", facecolor="gray")
-    im.axes.add_artist(cyl)
+    axes.set_xlim(*xlim)
+    axes.set_ylim([-0.5, 0.5])
+    axes.set_facecolor("grey")
