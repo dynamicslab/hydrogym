@@ -124,7 +124,7 @@ def _eig(
     v0=None,
     schur_restart=False,
     n_evals=10,
-    m=100,
+    krylov_dim=100,
     sort=None,
     tol=1e-10,
     delta=0.1,
@@ -136,6 +136,7 @@ def _eig(
     This function is written to be generic, i.e. not specific to `FlowConfig`
     or Navier-Stokes.
     """
+    m = krylov_dim
     if v0 is None:
         v0 = arnoldi.random_vec(rng_seed)
 
@@ -216,14 +217,7 @@ def _eig(
         k += 1
 
 
-# TODO: Too much duplicate code with complex_inv_iterator
 def _make_real_inv_iterator(flow, sigma, adjoint=False, solver_parameters=None):
-    """Construct a shift-inverse Arnoldi iterator with real (or zero) shift.
-
-    The shift-inverse iteration solves the matrix pencil
-    (J - sigma * M) @ v1 = M @ v0 for v1, where J is the Jacobian of the
-    Navier-Stokes equations, and M is the mass matrix.
-    """
 
     # Set up function spaces
     fn_space = flow.mixed_space
@@ -250,30 +244,6 @@ def _make_real_inv_iterator(flow, sigma, adjoint=False, solver_parameters=None):
 
 
 def _make_complex_inv_iterator(flow, sigma, adjoint=False, solver_parameters=None):
-    # TODO: Move this to FlowConfig method
-    """Construct a shift-inverse Arnoldi iterator with complex-valued shift.
-
-    The shifted bilinear form is `A = (J - sigma * M)`
-    For sigma = (sr, si), the real and imaginary parts of A are
-    A = (J - sr * M, -si * M)
-    The system solve is A @ v1 = M @ v0, so for complex vectors v = (vr, vi):
-    (Ar + 1j * Ai) @ (v1r + 1j * v1i) = M @ (v0r + 1j * v0i)
-    Since we can't do complex analysis without re-building PETSc, instead we treat this
-    as a block system:
-    ```
-      [Ar,   Ai]  [v1r]  = [M 0]  [v0r]
-      [-Ai,  Ar]  [v1i]    [0 M]  [v0i]
-    ```
-
-    Note that this will be more expensive than real- or zero-shifted iteration,
-    since there are twice as many degrees of freedom.  However, it will tend to
-    converge faster for the eigenvalues of interest.
-
-    The shift-inverse iteration solves the matrix pencil
-    (J - sigma * M) @ v1 = M @ v0 for v1, where J is the Jacobian of the
-    Navier-Stokes equations, and M is the mass matrix.
-    """
-
     fn_space = flow.mixed_space
     W = fn_space * fn_space
     A = flow.linearize(
@@ -316,7 +286,7 @@ def eig(
     adjoint=False,
     schur_restart=False,
     n_evals=10,
-    m=100,
+    krylov_dim=100,
     sort=None,
     tol=1e-10,
     delta=0.1,
@@ -330,7 +300,7 @@ def eig(
         v0=v0,
         schur_restart=schur_restart,
         n_evals=n_evals,
-        m=m,
+        krylov_dim=krylov_dim,
         sort=sort,
         tol=tol,
         delta=delta,

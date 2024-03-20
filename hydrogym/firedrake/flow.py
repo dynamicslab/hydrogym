@@ -387,7 +387,9 @@ class FlowConfig(PDEBase):
             qB, sigma, adjoint=adjoint, solver_parameters=solver_parameters
         )
 
-    # TODO: Test this
+    # TODO: Test this. This is just here as an extension of the work done with
+    # shift-inverse-type operators, but hasn't been directly tested yet. Really
+    # it should be used for linearized time-stepping.
     def _jacobian_operator(self, qB, adjoint=False):
         """Construct the Jacobian operator for the Navier-Stokes equations.
 
@@ -422,6 +424,12 @@ class FlowConfig(PDEBase):
     def _real_shift_inv_operator(
         self, qB, sigma, adjoint=False, solver_parameters=None
     ):
+        """Construct a shift-inverse Arnoldi iterator with real (or zero) shift.
+
+        The shift-inverse iteration solves the matrix pencil
+        (J - sigma * M) @ v1 = M @ v0 for v1, where J is the Jacobian of the
+        Navier-Stokes equations, and M is the mass matrix.
+        """
         fn_space = self.mixed_space
         (uB, pB) = fd.split(qB)
         q_trial = fd.TrialFunction(fn_space)
@@ -456,6 +464,29 @@ class FlowConfig(PDEBase):
     def _complex_shift_inv_operator(
         self, qB, sigma, adjoint=False, solver_parameters=None
     ):
+        """Construct a shift-inverse Arnoldi iterator with complex-valued shift.
+
+        The shifted operator is `A = (J - sigma * M)`
+
+        For sigma = (sr, si), the real and imaginary parts of A are
+        A = (J - sr * M, -si * M)
+        The system solve is A @ v1 = M @ v0, so for complex vectors v = (vr, vi):
+        (Ar + 1j * Ai) @ (v1r + 1j * v1i) = M @ (v0r + 1j * v0i)
+        Since we can't do complex analysis without re-building PETSc, instead we treat this
+        as a block system:
+        ```
+        [Ar,   Ai]  [v1r]  = [M 0]  [v0r]
+        [-Ai,  Ar]  [v1i]    [0 M]  [v0i]
+        ```
+
+        Note that this will be more expensive than real- or zero-shifted iteration,
+        since there are twice as many degrees of freedom.  However, it will tend to
+        converge faster for the eigenvalues of interest.
+
+        The shift-inverse iteration solves the matrix pencil
+        (J - sigma * M) @ v1 = M @ v0 for v1, where J is the Jacobian of the
+        Navier-Stokes equations, and M is the mass matrix.
+        """
         fn_space = self.mixed_space
         W = fn_space * fn_space
         V1, Q1, V2, Q2 = W
