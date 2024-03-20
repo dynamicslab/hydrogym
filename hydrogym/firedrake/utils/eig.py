@@ -61,7 +61,7 @@ class ArnoldiIterator:
         `print_evals=False` these will be ignored.  Also, the printed eigenvalues do not
         include any spectral transformation.
 
-        Given a linear operato `A` to calculate a matrix-vector product `f = A @ v`
+        Given a linear operator `A` to calculate a matrix-vector product `f = A @ v`
         (or inverse iteration `f = A^{-1} @ v`, shifted matrix pencil iteration, etc.),
         an inner product `inner_product(u, v)`, and a starting vector `v0`, this
         function computes an m-stage Arnoldi decomposition of the matrix `A` (or matrix
