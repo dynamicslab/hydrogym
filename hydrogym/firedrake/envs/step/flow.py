@@ -1,9 +1,11 @@
 import os
 
 import firedrake as fd
+import matplotlib.pyplot as plt
 import numpy as np
 import ufl
 from firedrake.petsc import PETSc
+from firedrake.pyplot import tricontourf
 from ufl import dot, ds, exp, grad
 
 from hydrogym.firedrake import FlowConfig, ObservationFunction, ScaledDirichletBC
@@ -127,9 +129,9 @@ class Step(FlowConfig):
 
         return super().advance_time(dt, control)
 
-    def linearize_bcs(self):
+    def linearize_bcs(self, function_spaces=None):
         self.reset_controls()
-        self.init_bcs()
+        self.init_bcs(function_spaces=function_spaces)
         self.bcu_inflow.set_value(fd.Constant((0, 0)))
 
     def collect_bcu(self):
@@ -160,5 +162,34 @@ class Step(FlowConfig):
         KE = 0.5 * fd.assemble(fd.inner(u - uB, u - uB) * fd.dx)
         return KE
 
-    def render(self):
-        raise NotImplementedError("TODO: Implement render for Step environment")
+    def render(
+        self,
+        mode="human",
+        axes=None,
+        clim=None,
+        levels=None,
+        cmap="RdBu",
+        xlim=None,
+        **kwargs,
+    ):
+        if clim is None:
+            clim = (-5, 5)
+        if xlim is None:
+            xlim = [-2, 10]
+        if levels is None:
+            levels = np.linspace(*clim, 20)
+        if axes is None:
+            _fix, axes = plt.subplots(1, 1, figsize=(12, 2))
+        tricontourf(
+            self.vorticity(),
+            levels=levels,
+            vmin=clim[0],
+            vmax=clim[1],
+            extend="both",
+            cmap=cmap,
+            axes=axes,
+            **kwargs,
+        )
+        axes.set_xlim(*xlim)
+        axes.set_ylim([-0.5, 0.5])
+        axes.set_facecolor("grey")

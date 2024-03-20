@@ -198,7 +198,6 @@ if __name__ == "__main__":
     hgym.print(f"Krylov-Schur restart:  {args.schur}")
     hgym.print("")
 
-    # TODO: add config to either load the base flow or re-run the steady solver
     if args.base_flow:
         hgym.print(f"Loading base flow from checkpoint {args.base_flow}...")
         flow.load_checkpoint(args.base_flow)

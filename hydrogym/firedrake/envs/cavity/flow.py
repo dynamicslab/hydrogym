@@ -4,6 +4,7 @@ import firedrake as fd
 import matplotlib.pyplot as plt
 import numpy as np
 import ufl
+from firedrake.pyplot import tricontourf
 from ufl import dot, ds, grad
 
 from hydrogym.firedrake import FlowConfig, ObservationFunction, ScaledDirichletBC
@@ -120,10 +121,9 @@ class Cavity(FlowConfig):
             clim = (-10, 10)
         if levels is None:
             levels = np.linspace(*clim, 20)
-        fd.tricontourf(
+        tricontourf(
             self.vorticity(),
             levels=levels,
-            axes=ax,
             vmin=clim[0],
             vmax=clim[1],
             extend="both",
