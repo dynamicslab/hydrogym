@@ -26,6 +26,7 @@ extensions = [
     "sphinx.ext.viewcode",
     "sphinx.ext.napoleon",
     "sphinx.ext.mathjax",
+    "sphinx_design",
 ]
 autosummary_generate = True
 autoclass_content = "both"
