@@ -8,15 +8,61 @@ algorithmic approach. While the current
 
 
 Core Features
--------------
+^^^^^^^^^^^^^
 
-* **Hierarchical:** Designed for analysis and controller design from a high-level black-box interface
-  to low-level operator access.
-  * High-level: `hydrogym.env.FlowEnv` classes implement the OpenAI `gym.env` interface.
-  * Intermediate-level: Provides a typical CFD interface with `hydrogym.FlowConfig`, and `hydrogym.TransientSolver`.
-  * Low-level: Enables access to linearized operators, and sparse scipy or PETSc CSR matrices.
-* **Modeling and Analysis Tools:** Provides global stability analysis (via SLEPc) and modal decomposition (via modred).
-* **Scalable:** Individual environments parallelized with MPI with a **highly scalable** `Ray <https://github.com/ray-project/ray>`_ **backend reinforcement learning training.**
+.. grid::
+
+   .. grid-item-card::
+      :columns: 12 12 12 6
+
+      .. card:: Hierarchical Design
+         :class-card: sd-border-0
+         :shadow: none
+         :class-title: sd-fs-5
+
+         .. div:: sd-font-normal
+
+            Hierarchically designed for clean, industry-standard APIs with the expanded `hydrogym.env.FlowEnv` class
+            extending the `gymnasium.Env` interface.
+
+   .. grid-item-card::
+      :columns: 12 12 12 6
+
+      .. card:: Scalability
+         :class-card: sd-border-0
+         :shadow: none
+         :class-title: sd-fs-5
+
+         .. div:: sd-font-normal
+
+            Readily scalable experimentation infrastructure with `Ray <https://ray.io/>`_
+            to support the rapid experimentation at cluster-scale.
+
+   .. grid-item-card::
+      :columns: 12 12 12 6
+
+      .. card:: 4 Environments
+         :class-card: sd-border-0
+         :shadow: none
+         :class-title: sd-fs-5
+
+         .. div:: sd-font-normal
+
+            Provision of four environments for flow control with reinforcement learning
+            with varying computational requirements.
+
+   .. grid-item-card::
+      :columns: 12 12 12 6
+
+      .. card:: RL Interfaces
+         :class-card: sd-border-0
+         :shadow: none
+         :class-title: sd-fs-5
+
+         .. div:: sd-font-normal
+
+            Reinforcement learning interfaces to a broad set of the most popular RL frameworks
+            used today.
 
 
 .. note::
