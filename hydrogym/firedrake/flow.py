@@ -13,7 +13,7 @@ from ufl import curl, div, dot, inner, nabla_grad, sqrt, sym
 
 from ..core import ActuatorBase, PDEBase
 from .actuator import DampedActuator
-from .utils.linalg import DirectOperator, InverseOperator
+from .utils.linalg import DirectOperator
 
 
 class ScaledDirichletBC(fd.DirichletBC):
@@ -365,34 +365,12 @@ class FlowConfig(PDEBase):
   def linearize(self,
                 qB=None,
                 adjoint=False,
-                sigma=0.0,
-                inverse=False,
                 solver_parameters=None):
-    if sigma != 0.0 and not inverse:
-      raise ValueError("Must use `inverse=True` with spectral shift.")
+    """Linearize the Navier-Stokes equations around a base flow."""
 
     if qB is None:
       qB = self.q
 
-    if not inverse:
-      return self._jacobian_operator(qB, adjoint=adjoint)
-
-    if sigma.imag == 0.0:
-      return self._real_shift_inv_operator(
-          qB, sigma, adjoint=adjoint, solver_parameters=solver_parameters)
-
-    return self._complex_shift_inv_operator(
-        qB, sigma, adjoint=adjoint, solver_parameters=solver_parameters)
-
-  # TODO: Test this. This is just here as an extension of the work done with
-  # shift-inverse-type operators, but hasn't been directly tested yet. Really
-  # it should be used for linearized time-stepping.
-  def _jacobian_operator(self, qB, adjoint=False):
-    """Construct the Jacobian operator for the Navier-Stokes equations.
-
-        A matrix-vector product for this operator is equivalent to evaluating
-        the Jacobian of the Navier-Stokes equations at a given state.
-        """
     # Set up function spaces
     fn_space = self.mixed_space
     (uB, pB) = fd.split(qB)
@@ -411,135 +389,9 @@ class FlowConfig(PDEBase):
     # The Jacobian of F is the bilinear form J(qB, q_test) = dF/dq(qB) @ q_test
     J = fd.derivative(F, qB, q_trial)
 
-    A = DirectOperator(J, bcs, fn_space)
+    M = self.inner_product(q_trial, q_test, assemble=False)
 
-    if adjoint:
-      A = A.T
-
-    return A
-
-  def _real_shift_inv_operator(self,
-                               qB,
-                               sigma,
-                               adjoint=False,
-                               solver_parameters=None):
-    """Construct a shift-inverse Arnoldi iterator with real (or zero) shift.
-
-        The shift-inverse iteration solves the matrix pencil
-        (J - sigma * M) @ v1 = M @ v0 for v1, where J is the Jacobian of the
-        Navier-Stokes equations, and M is the mass matrix.
-        """
-    fn_space = self.mixed_space
-    (uB, pB) = fd.split(qB)
-    q_trial = fd.TrialFunction(fn_space)
-    q_test = fd.TestFunction(fn_space)
-    (v, s) = fd.split(q_test)
-
-    # Collect boundary conditions
-    self.linearize_bcs()
-    bcs = self.collect_bcs()
-
-    def M(q):
-      """Mass matrix for the Navier-Stokes equations"""
-      return self.inner_product(q, q_test, assemble=False)
-
-    # Linear form expressing the RHS of the Navier-Stokes without time derivative
-    # For a steady solution this is F(qB) = 0.
-    F = self.residual((uB, pB), q_test=(v, s))
-
-    if sigma != 0.0:
-      F -= sigma * M(qB)
-
-    # The Jacobian of F is the bilinear form J(qB, q_test) = dF/dq(qB) @ q_test
-    J = fd.derivative(F, qB, q_trial)
-
-    A = InverseOperator(J, M, bcs, fn_space, solver_parameters)
-
-    if adjoint:
-      A = A.T
-
-    return A
-
-  def _complex_shift_inv_operator(self,
-                                  qB,
-                                  sigma,
-                                  adjoint=False,
-                                  solver_parameters=None):
-    """Construct a shift-inverse Arnoldi iterator with complex-valued shift.
-
-        The shifted operator is `A = (J - sigma * M)`
-
-        For sigma = (sr, si), the real and imaginary parts of A are
-        A = (J - sr * M, -si * M)
-        The system solve is A @ v1 = M @ v0, so for complex vectors v = (vr, vi):
-        (Ar + 1j * Ai) @ (v1r + 1j * v1i) = M @ (v0r + 1j * v0i)
-        Since we can't do complex analysis without re-building PETSc, instead we treat this
-        as a block system:
-        ```
-        [Ar,   Ai]  [v1r]  = [M 0]  [v0r]
-        [-Ai,  Ar]  [v1i]    [0 M]  [v0i]
-        ```
-
-        Note that this will be more expensive than real- or zero-shifted iteration,
-        since there are twice as many degrees of freedom.  However, it will tend to
-        converge faster for the eigenvalues of interest.
-
-        The shift-inverse iteration solves the matrix pencil
-        (J - sigma * M) @ v1 = M @ v0 for v1, where J is the Jacobian of the
-        Navier-Stokes equations, and M is the mass matrix.
-        """
-    fn_space = self.mixed_space
-    W = fn_space * fn_space
-    V1, Q1, V2, Q2 = W
-
-    # Set the boundary conditions for each function space
-    # These will be identical
-    self.linearize_bcs(function_spaces=(V1, Q1))
-    bcs1 = self.collect_bcs()
-
-    self.linearize_bcs(function_spaces=(V2, Q2))
-    bcs2 = self.collect_bcs()
-
-    bcs = [*bcs1, *bcs2]
-
-    # Since the base flow is used to construct the Navier-Stokes Jacobian
-    # which is used on the diagonal block for both real and imaginary components,
-    # we have to duplicate the base flow for both components.  This does NOT
-    # mean that the base flow literally has an imaginary component
-    qB_aug = fd.Function(W)
-    uB_re, pB_re, uB_im, pB_im = fd.split(qB_aug)
-    qB_aug.subfunctions[0].interpolate(qB.subfunctions[0])
-    qB_aug.subfunctions[1].interpolate(qB.subfunctions[1])
-    qB_aug.subfunctions[2].interpolate(qB.subfunctions[0])
-    qB_aug.subfunctions[3].interpolate(qB.subfunctions[1])
-
-    # Create trial and test functions
-    q_trial = fd.TrialFunction(W)
-    q_test = fd.TestFunction(W)
-    (v_re, s_re, v_im, s_im) = fd.split(q_test)
-
-    # Construct the nonlinear residual for the Navier-Stokes equations
-    F_re = self.residual((uB_re, pB_re), q_test=(v_re, s_re))
-    F_im = self.residual((uB_im, pB_im), q_test=(v_im, s_im))
-
-    def _inner(u, v):
-      return ufl.inner(u, v) * ufl.dx
-
-    # Shift each block of the linear form appropriately
-    F11 = F_re - sigma.real * _inner(uB_re, v_re)
-    F22 = F_im - sigma.real * _inner(uB_im, v_im)
-    F12 = sigma.imag * _inner(uB_im, v_re)
-    F21 = -sigma.imag * _inner(uB_re, v_im)
-    F = F11 + F22 + F12 + F21
-
-    # Differentiate to get the bilinear form for the Jacobian
-    J = fd.derivative(F, qB_aug, q_trial)
-
-    def M(q):
-      """Mass matrix for the Navier-Stokes equations"""
-      return self.inner_product(q, q_test, assemble=False, augmented=True)
-
-    A = InverseOperator(J, M, bcs, W, solver_parameters)
+    A = DirectOperator(J, M, bcs, fn_space, solver_parameters=solver_parameters)
 
     if adjoint:
       A = A.T
