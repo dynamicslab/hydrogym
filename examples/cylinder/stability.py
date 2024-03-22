@@ -136,7 +136,7 @@ if __name__ == "__main__":
   with fd.CheckpointFile(f"{output_dir}/evecs.h5", "w") as chk:
     chk.save_mesh(flow.mesh)
     for i in range(len(evals)):
-      evecs[i].rename(f"v{i}")
+      evecs[i].rename(f"evec_{i}")
       chk.save_function(evecs[i])
 
   if not args.no_adjoint:
@@ -145,9 +145,10 @@ if __name__ == "__main__":
         A.T, n=args.n, sigma=sigma, tol=tol, krylov_dim=args.krylov_dim)
 
     # Save adjoint modes as checkpoints in the same file
-    with fd.CheckpointFile(f"{output_dir}/evecs.h5", "w") as chk:
+    with fd.CheckpointFile(f"{output_dir}/adj_evecs.h5", "w") as chk:
+      chk.save_mesh(flow.mesh)
       for i in range(len(evals)):
-        evecs[i].rename(f"w{i}")
+        evecs[i].rename(f"evec_{i}")
         chk.save_function(evecs[i])
 
   hgym.print(
