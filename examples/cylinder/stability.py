@@ -2,12 +2,57 @@ import argparse
 import os
 
 import firedrake as fd
+import ufl
 import numpy as np
 
-from firedrake.petsc import PETSc
-from slepc4py import SLEPc
-
 import hydrogym.firedrake as hgym
+
+
+def _duplicate_complex_conjugates(evals, evecs, tol=1e-10):
+  """Duplicate eigenvectors for complex conjugate pairs."""
+  V = []
+  all_evals = []
+  for (i, w) in enumerate(evals):
+    V.append(evecs[i])
+    all_evals.append(w)
+
+    # Double for complex conjugates
+    if abs(w.imag) < tol:
+      evals[i] = w.real
+      continue
+
+    q_conj = fd.Function(flow.mixed_space)
+    for (u1, u2) in zip(q_conj.subfunctions, evecs[i].subfunctions):
+      u1.interpolate(ufl.conj(u2))
+
+    V.append(q_conj)
+    all_evals.append(w.conjugate())
+  return all_evals, V
+
+
+def _normalize(V, inner_product):
+  """Normalize the eigenvectors against themselves."""
+  for i in range(len(V)):
+    # First normalize the direct eigenvector
+    alpha = np.sqrt(inner_product(V[i], V[i]))
+    V[i].assign(V[i] / alpha)
+  return V
+
+def _binormalize(V, W, inner_product):
+  """Normalize the adjoint eigenvectors against the direct eigenvectors."""
+  for i in range(len(V)):
+    alpha = inner_product(V[i], W[i])
+
+    # The adjoint eigenvectors can be the conjugate of the ones
+    # that are actually bi-orthogonal, so swap if necessary
+    if np.isclose(abs(alpha), 0, atol=tol):
+        # Swap adjoint vectors so that they are not orthonormal
+        W[i], W[i+1] = W[i+1], W[i]
+        alpha = flow.inner_product(V[i], W[i])
+      
+    W[i].assign(W[i] / alpha.conj())
+  return W
+
 
 parser = argparse.ArgumentParser(
     description="Stability analysis of the Re=100 cylinder wake.")
@@ -123,33 +168,46 @@ if __name__ == "__main__":
   qB = flow.q.copy(deepcopy=True)
   A = flow.linearize(qB)
 
-  evals, evecs = hgym.utils.linalg.eig(
+  evals, V = hgym.utils.linalg.eig(
       A, n=args.n, sigma=sigma, tol=tol, krylov_dim=args.krylov_dim)
-
-  np.save(f"{output_dir}/evals", evals)
 
   hgym.print("\n--- Eigenvalues ---")
   for i, w in enumerate(evals):
     hgym.print(f"Eigenvalue {i}: {w.real:0.6f} + {w.imag:0.6f}i")
-  
+
+  # Duplicate eigenvectors for complex conjugate pairs
+  evals, V = _duplicate_complex_conjugates(evals, V, tol=tol)
+
+  np.save(f"{output_dir}/evals", evals)
+
+  # Normalize the direct modes against themselves (not really necessary)
+  V = _normalize(V, flow.inner_product)
+
   # Save direct modes as checkpoints
   with fd.CheckpointFile(f"{output_dir}/evecs.h5", "w") as chk:
     chk.save_mesh(flow.mesh)
     for i in range(len(evals)):
-      evecs[i].rename(f"evec_{i}")
-      chk.save_function(evecs[i])
+      V[i].rename(f"evec_{i}")
+      chk.save_function(V[i])
 
   if not args.no_adjoint:
     hgym.print("\nComputing adjoint modes...")
-    evals, evecs = hgym.utils.linalg.eig(
+    evals, W = hgym.utils.linalg.eig(
         A.T, n=args.n, sigma=sigma, tol=tol, krylov_dim=args.krylov_dim)
+
+    # Duplicate eigenvectors for complex conjugate pairs
+    evals, W = _duplicate_complex_conjugates(evals, W, tol=tol)
+
+    # The adjoint basis is already bi-orthogonal with the direct basis, but
+    # we can still normalize it.
+    W = _binormalize(V, W, flow.inner_product)
 
     # Save adjoint modes as checkpoints in the same file
     with fd.CheckpointFile(f"{output_dir}/adj_evecs.h5", "w") as chk:
       chk.save_mesh(flow.mesh)
       for i in range(len(evals)):
-        evecs[i].rename(f"evec_{i}")
-        chk.save_function(evecs[i])
+        W[i].rename(f"evec_{i}")
+        chk.save_function(W[i])
 
   hgym.print(
       "NOTE: If there is a warning following this, ignore it.  It is raised by PETSc "

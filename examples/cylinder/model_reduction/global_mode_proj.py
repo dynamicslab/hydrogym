@@ -42,25 +42,10 @@ evals = np.load(f"{output_dir}/evals.npy")
 r = len(evals)
 tol = 1e-10
 V = []
-all_evals = []
 with fd.CheckpointFile(f"{output_dir}/evecs.h5", "r") as chk:
     for (i, w) in enumerate(evals[:r]):
         q = chk.load_function(flow.mesh, f"evec_{i}")
         V.append(q)
-        all_evals.append(w)
-
-        # Double for complex conjugates
-        if abs(w.imag) < tol:
-            evals[i] = w.real
-            continue
-
-        q_conj = fd.Function(flow.mixed_space)
-        for (u1, u2) in zip(q_conj.subfunctions, q.subfunctions):
-            u1.interpolate(ufl.conj(u2))
-
-        V.append(q_conj)
-        all_evals.append(w.conjugate())
-
 
 
 W = []
@@ -69,52 +54,17 @@ with fd.CheckpointFile(f"{output_dir}/adj_evecs.h5", "r") as chk:
         q = chk.load_function(flow.mesh, f"evec_{i}")
         W.append(q)
 
-        # Double for complex conjugates
-        if abs(w.imag) < tol:
-            evals[i] = w.real
-            continue
-
-        q_conj = fd.Function(flow.mixed_space)
-        for (u1, u2) in zip(q_conj.subfunctions, q.subfunctions):
-            u1.interpolate(ufl.conj(u2))
-
-        W.append(q_conj)
-
-all_evals = np.array(all_evals)
-
-# The basis is already bi-orthogonal, so we just need to normalize it
-def inner_product(q1, q2):
-    u1, u2 = q1.subfunctions[0], q2.subfunctions[0]
-    return fd.assemble(ufl.inner(u1, u2)*ufl.dx)
-
-for i in range(len(V)):
-    # First normalize the direct eigenvector
-    alpha = np.sqrt(inner_product(V[i], V[i]))
-    V[i].assign(V[i] / alpha)
-
-    # Then scale the adjoint eigenvector to have unit inner product
-    alpha = inner_product(V[i], W[i])
-
-    # The adjoint eigenvectors can be the conjugate of the ones
-    # that are actually bi-orthogonal, so swap if necessary
-    if np.isclose(abs(alpha), 0, atol=tol):
-        # Swap adjoint vectors so that they are not orthonormal
-        W[i], W[i+1] = W[i+1], W[i]
-
-        alpha = inner_product(V[i], W[i])
-
-    W[i].assign(W[i] / alpha.conj())
-
-
 # Sort by real part
-sort_idx = np.argsort(-all_evals.real)
-all_evals = all_evals[sort_idx]
+sort_idx = np.argsort(-evals.real)
+evals = evals[sort_idx]
 
 V = [V[i] for i in sort_idx]
 W = [W[i] for i in sort_idx]
 
 
+#
 # 4. Projection onto global modes
+#
 
 r = 12  # Number of global modes for projection
 Ar = np.zeros((r, r), dtype=np.complex128)
@@ -134,9 +84,9 @@ def real_part(q):
 
 for i in range(r):
     for j in range(r):
-        Ar[j, i] = inner_product(A @ V[i], W[j])
+        Ar[j, i] = flow.inner_product(A @ V[i], W[j])
 
-    Br[i, 0] = inner_product(qC, W[i])
+    Br[i, 0] = flow.inner_product(qC, W[i])
     Cr[0, i] = meas(V[i])
 
 # Finally the feedthrough term
