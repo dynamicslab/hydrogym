@@ -1,3 +1,4 @@
+import os
 import firedrake as fd
 import matplotlib.pyplot as plt
 import numpy as np
@@ -6,9 +7,14 @@ from scipy import linalg
 
 import hydrogym.firedrake as hgym
 
-output_dir = "../eig_output"
-output_dir = "../re40_med_eig_output"
-# output_dir = "../re40_fine_eig_output"
+eig_dir = "../eig_output"
+eig_dir = "../re40_med_eig_output"
+# eig_dir = "../re40_fine_eig_output"
+
+output_dir = "output"
+
+if not os.path.exists(output_dir):
+    os.makedirs(output_dir)
 
 
 def real_form(A, B, C, D):
@@ -69,7 +75,7 @@ flow = hgym.RotaryCylinder(
     Re=40,
     mesh="medium",
     velocity_order=2,
-    restart=f"{output_dir}/base.h5"
+    restart=f"{eig_dir}/base.h5"
 )
 
 qB = flow.q.copy(deepcopy=True)
@@ -91,20 +97,20 @@ fd.solve(J == zero, qC, bcs=bcs)
 
 
 # 3. Global stability modes
-evals = np.load(f"{output_dir}/evals.npy")
+evals = np.load(f"{eig_dir}/evals.npy")
 
 # Load the set of eigenvectors
 r = len(evals)
 tol = 1e-10
 V = []
-with fd.CheckpointFile(f"{output_dir}/evecs.h5", "r") as chk:
+with fd.CheckpointFile(f"{eig_dir}/evecs.h5", "r") as chk:
     for (i, w) in enumerate(evals[:r]):
         q = chk.load_function(flow.mesh, f"evec_{i}")
         V.append(q)
 
 
 W = []
-with fd.CheckpointFile(f"{output_dir}/adj_evecs.h5", "r") as chk:
+with fd.CheckpointFile(f"{eig_dir}/adj_evecs.h5", "r") as chk:
     for (i, w) in enumerate(evals[:r]):
         q = chk.load_function(flow.mesh, f"evec_{i}")
         W.append(q)
@@ -118,7 +124,7 @@ W = [W[i] for i in sort_idx]
 
 
 #
-# 4. Projection onto global modes
+# Projection onto global modes
 #
 
 r = 13  # Number of global modes for projection
@@ -158,8 +164,10 @@ Dr = meas(qC)
 # Convert the system to block-diagonal real form
 Ar, Br, Cr, Dr = real_form(Ar, Br, Cr, Dr)
 
+# Save the reduced-order model
+np.savez(f"{output_dir}/rom.npz", Ar=Ar, Br=Br, Cr=Cr, Dr=Dr)
 
-# 5. Transfer function of the reduced-order model
+# Plot transfer function of the reduced-order model
 def H(s):
     return Cr @ np.linalg.inv(Ar - s * np.eye(r)) @ Br + Dr
 
@@ -171,3 +179,4 @@ ax[0].semilogy(omega.imag, np.abs(H_omega))
 # ax[0].set_xlim(0, 2)
 ax[1].plot(omega.imag, np.angle(H_omega))
 plt.show()
+
