@@ -87,8 +87,10 @@ if __name__ == "__main__":
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
+    Re = 100
+
     flow = hgym.RotaryCylinder(
-        Re=40,
+        Re=Re,
         mesh="medium",
         velocity_order=2,
     )
@@ -111,10 +113,9 @@ if __name__ == "__main__":
     bcs = A.bcs
     h = 0.01  # Time step
 
+    solver = LinearBDFSolver(W, J, h, bcs, qC, order=2)
 
-    solver = LinearBDFSolver(W, A, h, bcs, qC, order=2)
-
-    tf = 1000.0
+    tf = 100.0
     n_steps = int(tf // h)
     CL = np.zeros(n_steps)
     CD = np.zeros(n_steps)
@@ -129,4 +130,4 @@ if __name__ == "__main__":
             hgym.print(f"t={i*h}, CL={CL[i]}, CD={CD[i]}")
 
     data = np.column_stack((np.arange(n_steps) * h, CL, CD))
-    np.save(f"{output_dir}/step_response.npy", data)
+    np.save(f"{output_dir}/re{Re}_step_response.npy", data)
