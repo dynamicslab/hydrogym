@@ -6,7 +6,7 @@ import numpy as np
 import ufl
 from firedrake import ds
 from firedrake.pyplot import tricontourf
-from ufl import as_vector, atan2, cos, dot, sign, sin, sqrt
+from ufl import as_vector, atan2, cos, dot, sign, sin, sqrt, inner
 
 from hydrogym.firedrake import FlowConfig, ObservationFunction, ScaledDirichletBC
 
@@ -109,8 +109,9 @@ class CylinderBase(FlowConfig):
     (u, p) = fd.split(q)
     # Lift/drag on cylinder
     force = -dot(self.sigma(u, p), self.n)
-    CL = fd.assemble(2 * force[1] * ds(self.CYLINDER))
-    CD = fd.assemble(2 * force[0] * ds(self.CYLINDER))
+    # Slightly odd inner product in assembly operation to allow for complex conjugations
+    CL = fd.assemble(inner(fd.Constant(1.0), 2 * force[1]) * ds(self.CYLINDER))
+    CD = fd.assemble(inner(fd.Constant(1.0), 2 * force[0]) * ds(self.CYLINDER))
     return CL, CD
 
   # get net shear force acting tangential to the surface of the cylinder
@@ -179,14 +180,15 @@ class CylinderBase(FlowConfig):
     CL, CD = self.compute_forces(q=q)
     return CD
 
-  def render(self, mode="human", clim=None, levels=None, cmap="RdBu", **kwargs):
+  def render(self, field=None, mode="human", clim=None, levels=None, cmap="RdBu", **kwargs):
     if clim is None:
       clim = (-2, 2)
     if levels is None:
       levels = np.linspace(*clim, 10)
-    vort = fd.project(fd.curl(self.u), self.pressure_space)
+    if field is None:
+      field = fd.project(fd.curl(self.u), self.pressure_space)
     im = tricontourf(
-        vort,
+        field,
         cmap=cmap,
         levels=levels,
         vmin=clim[0],

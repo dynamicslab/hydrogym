@@ -4,26 +4,7 @@ import firedrake as fd
 import hydrogym.firedrake as hgym
 import ufl
 
-
-def control_vec(flow):
-    """Derive flow field associated with actuation BC
-
-    See Barbagallo et al. (2009) for details on the "lifting" procedure
-    """
-    qB = flow.q
-    F = flow.residual(fd.split(qB))  # Nonlinear variational form
-    J = fd.derivative(F, qB)  # Jacobian with automatic differentiation
-
-    flow.linearize_bcs()
-    flow.set_control([1.0])
-    bcs = flow.collect_bcs()
-
-    # Solve steady, inhomogeneous problem
-    qC = fd.Function(flow.mixed_space, name="qC")
-    v, s = fd.TestFunctions(flow.mixed_space)
-    zero = ufl.inner(fd.Constant((0.0, 0.0)), v) * ufl.dx
-    fd.solve(J == zero, qC, bcs=bcs)
-    return qC
+from lti_system import control_vec
 
 _alpha_BDF = [1.0, 3.0 / 2.0, 11.0 / 6.0]
 _beta_BDF = [
