@@ -140,11 +140,9 @@ def meas(q):
     CL, _CD = flow.get_observations()
     return CL
 
-def real_part(q):
-    return
-
 for i in range(r):
     for j in range(r):
+        # # General Petrov-Galerkin projection
         # Ar[j, i] = flow.inner_product(A @ V[i], W[j])
 
         # Specifically for this projection, we know the result is diagonal

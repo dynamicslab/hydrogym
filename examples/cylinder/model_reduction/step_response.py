@@ -40,18 +40,21 @@ MUMPS_SOLVER_PARAMETERS = {
 }
 
 class LinearBDFSolver:
-    def __init__(self, function_space, bilinear_form, dt, bcs=None, q0=None, order=2, constant_jacobian=True):
+    def __init__(self, function_space, bilinear_form, dt, bcs=None, f=None, q0=None, order=2, constant_jacobian=True):
         self.function_space = function_space
         self.k = order
         self.h = dt
         self.alpha = _alpha_BDF[order - 1]
         self.beta = _beta_BDF[order - 1]
-        self.initialize(function_space, bilinear_form, bcs, q0, constant_jacobian)
+        self.initialize(function_space, bilinear_form, bcs, f, q0, constant_jacobian)
 
-    def initialize(self, W, A, bcs, q0, constant_jacobian):
+    def initialize(self, W, A, bcs, f, q0, constant_jacobian):
         if q0 is None:
             q0 = fd.Function(W)
         self.q = q0.copy(deepcopy=True)
+
+        if f is None:
+            f = fd.Function(W.sub(0))  # Zero function for RHS forcing
 
         self.u_prev = [fd.Function(W.sub(0)) for _ in range(self.k)]
         for u in self.u_prev:
@@ -65,7 +68,7 @@ class LinearBDFSolver:
         u_BDF = sum(beta * u_n for beta, u_n in zip(self.beta, self.u_prev))
 
         u_t = (self.alpha * u - u_BDF) / self.h  # BDF estimate of time derivative
-        F = ufl.inner(u_t, v) * ufl.dx - A
+        F = ufl.inner(u_t, v) * ufl.dx - (A + ufl.inner(f, v) * ufl.dx)
 
         a, L = ufl.lhs(F), ufl.rhs(F)
         self.prob = fd.LinearVariationalProblem(a, L, self.q, bcs=bcs, constant_jacobian=constant_jacobian)
