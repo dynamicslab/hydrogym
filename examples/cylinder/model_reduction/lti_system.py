@@ -49,9 +49,11 @@ def measurement_matrix(flow):
     
     This implementation is specific to the cylinder, but could be generalized
     """
+    flow.linearize_bcs()
+    bcs = flow.collect_bcs()
     q_test = fd.TestFunction(flow.mixed_space)
     Fy, Fx = flow.compute_forces(q=q_test)
-    qM = Fy.riesz_representation("L2")
+    qM = Fy.riesz_representation("L2", bcs=bcs)
     return qM
 
 if __name__ == "__main__":
