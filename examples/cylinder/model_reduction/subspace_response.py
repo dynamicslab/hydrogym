@@ -96,12 +96,14 @@ def impulse_response(
 
 
 if __name__ == "__main__":
-    output_dir = "impulse_output"
+    Re = 100
+
+    eig_dir = f"./re{Re}_med_eig_output"
+    output_dir = f"./re{Re}_impulse_output"
+
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    Re = 100
-    eig_dir = f"../re{Re}_med_eig_output"
 
     #
     # Steady base flow
@@ -130,48 +132,48 @@ if __name__ == "__main__":
     dt = 0.01
     tf = 10.0
 
-    # # Direct response (controllable modes)
-    # flow.q.assign(qB)
-    # data, snapshots = impulse_response(
-    #     flow,
-    #     qB,
-    #     qC,
-    #     Vu,
-    #     Wu,
-    #     adjoint=False,
-    #     dt=dt,
-    #     tf=tf,
-    # )
+    # Direct response (controllable modes)
+    flow.q.assign(qB)
+    data, snapshots = impulse_response(
+        flow,
+        qB,
+        qC,
+        Vu,
+        Wu,
+        adjoint=False,
+        dt=dt,
+        tf=tf,
+    )
 
-    # with fd.CheckpointFile(f"{output_dir}/re{Re}_dir_response.h5", "w") as chk:
-    #     chk.save_mesh(flow.mesh)
-    #     for (i, q) in enumerate(snapshots):
-    #         q.rename(f"q_{i}")
-    #         chk.save_function(q)
+    with fd.CheckpointFile(f"{output_dir}/dir_snapshots.h5", "w") as chk:
+        chk.save_mesh(flow.mesh)
+        for (i, q) in enumerate(snapshots):
+            q.rename(f"q_{i}")
+            chk.save_function(q)
 
-    # np.save(f"{output_dir}/re{Re}_dir_response.npy", data)
+    np.save(f"{output_dir}/dir_response.npy", data)
 
-    # # Adjoint response (observable modes)
+    # Adjoint response (observable modes)
 
-    # flow.q.assign(qB)
-    # data, snapshots = impulse_response(
-    #     flow,
-    #     qB,
-    #     qM,
-    #     Vu,
-    #     Wu,
-    #     adjoint=True,
-    #     dt=dt,
-    #     tf=tf,
-    # )
+    flow.q.assign(qB)
+    data, snapshots = impulse_response(
+        flow,
+        qB,
+        qM,
+        Vu,
+        Wu,
+        adjoint=True,
+        dt=dt,
+        tf=tf,
+    )
 
-    # with fd.CheckpointFile(f"{output_dir}/re{Re}_adj_response.h5", "w") as chk:
-    #     chk.save_mesh(flow.mesh)
-    #     for (i, q) in enumerate(snapshots):
-    #         q.rename(f"q_{i}")
-    #         chk.save_function(q)
+    with fd.CheckpointFile(f"{output_dir}/adj_snapshots.h5", "w") as chk:
+        chk.save_mesh(flow.mesh)
+        for (i, q) in enumerate(snapshots):
+            q.rename(f"q_{i}")
+            chk.save_function(q)
 
-    # np.save(f"{output_dir}/re{Re}_adj_response.npy", data)
+    np.save(f"{output_dir}/adj_response.npy", data)
 
 
     # Long simulation to derive transfer function
@@ -192,4 +194,4 @@ if __name__ == "__main__":
         save_snapshots=False,
     )
 
-    np.save(f"{output_dir}/re{Re}_long_response.npy", data)
+    np.save(f"{output_dir}/long_response.npy", data)
