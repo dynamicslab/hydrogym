@@ -20,6 +20,7 @@ MUMPS_SOLVER_PARAMETERS = {
     "pc_factor_mat_solver_type": "mumps",
 }
 
+# TODO: Move to lti_system
 class LinearBDFSolver:
     def __init__(self, function_space, bilinear_form, dt, bcs=None, f=None, q0=None, order=2, constant_jacobian=True):
         self.function_space = function_space

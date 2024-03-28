@@ -57,55 +57,11 @@ def load_eig(flow, eig_dir):
 # Step response
 #
 
-def step_response_BROKEN(
-    flow, q0, V, W, dt=0.01, tf=10.0, adjoint=False, save_interval=10, snapshot_file=None
-):
-    lin_flow = flow.linearize(flow.q, adjoint=adjoint)
-
-    # Second-order BDF time-stepping
-    fn_space = lin_flow.function_space
-    bcs = lin_flow.bcs
-    J = lin_flow.J
-
-    solver = LinearBDFSolver(fn_space, J, order=2, dt=dt, bcs=bcs, q0=q0)
-
-    n_steps = int(tf // dt)
-    CL = np.zeros(n_steps+1)
-    CD = np.zeros(n_steps+1)
-
-    flow.q.assign(solver.q)
-    CL[0], CD[0] = map(np.real, flow.get_observations())
-
-    snap_idx = 0
-
-    # if snapshot_file is not None:
-    #     with fd.CheckpointFile(snapshot_file, "w") as chk:
-    #         chk.save_mesh(flow.mesh)
-
-    for i in range(n_steps-1):
-        q = solver.step()
-        # Orthogonal projection onto the stable subspace
-        orthogonal_project(flow, q, V, W, adjoint=adjoint)
-        flow.q.assign(q)
-        CL[i+1], CD[i+1] = map(np.real, flow.get_observations())
-
-        if i % save_interval == 0:
-            hgym.print(f"t={i*dt:.2f}, CL={CL[i+1]:.4f}, CD={CD[i+1]:.4f}")
-
-            # if snapshot_file is not None:
-            #     with fd.CheckpointFile(snapshot_file, "w") as chk:
-            #         q.rename(f"q_{snap_idx}")
-            #         chk.save_function(q)
-            #     snap_idx += 1
-
-    data = np.column_stack((np.arange(n_steps+1) * dt, CL, CD))
-    return data
-
 
 def step_response(
     flow, qB, q0, Vu, Wu, dt=0.01, tf=10.0, adjoint=False, save_interval=10
 ):
-    lin_flow = flow.linearize(qB, adjoint=False)
+    lin_flow = flow.linearize(qB, adjoint=adjoint)
 
     # Initial condition via stable projection
     q0s = q0.copy(deepcopy=True)
@@ -114,6 +70,9 @@ def step_response(
     fn_space = lin_flow.function_space
     bcs = lin_flow.bcs
     J = lin_flow.J
+
+    # Project the initial condition onto the boundary conditions
+    q0s = fd.project(q0s, fn_space, bcs=bcs)
 
     solver = LinearBDFSolver(fn_space, J, order=2, dt=dt, bcs=bcs, q0=q0s)
 
@@ -173,6 +132,9 @@ if __name__ == "__main__":
     # Derive flow field associated with measurement matrix
     qM = measurement_matrix(flow)
 
+    dt = 0.01
+    tf = 10.0
+
     # Direct response (controllable modes)
     flow.q.assign(qB)
     data, snapshots = step_response(
@@ -182,6 +144,8 @@ if __name__ == "__main__":
         Vu,
         Wu,
         adjoint=False,
+        dt=dt,
+        tf=tf,
     )
 
     with fd.CheckpointFile(f"{output_dir}/re{Re}_dir_response.h5", "w") as chk:
@@ -202,6 +166,8 @@ if __name__ == "__main__":
         Vu,
         Wu,
         adjoint=True,
+        dt=dt,
+        tf=tf,
     )
 
     with fd.CheckpointFile(f"{output_dir}/re{Re}_adj_response.h5", "w") as chk:

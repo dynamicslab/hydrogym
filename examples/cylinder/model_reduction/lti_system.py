@@ -12,6 +12,7 @@ where `x` is a firedrake.Function and `u` and `y` are numpy arrays.
 """
 import os
 
+import numpy as np
 import firedrake as fd
 import matplotlib.pyplot as plt
 from firedrake.pyplot import tripcolor
@@ -19,6 +20,12 @@ import ufl
 
 import hydrogym.firedrake as hgym
 
+MUMPS_SOLVER_PARAMETERS = {
+    "mat_type": "aij",
+    "ksp_type": "preonly",
+    "pc_type": "lu",
+    "pc_factor_mat_solver_type": "mumps",
+}
 
 def control_vec(flow):
     """Derive flow field associated with actuation BC
@@ -50,11 +57,46 @@ def measurement_matrix(flow):
     This implementation is specific to the cylinder, but could be generalized
     """
     flow.linearize_bcs()
-    bcs = flow.collect_bcs()
     q_test = fd.TestFunction(flow.mixed_space)
     Fy, Fx = flow.compute_forces(q=q_test)
-    qM = Fy.riesz_representation("L2", bcs=bcs)
+    qM = Fy.riesz_representation("L2")
     return qM
+
+
+def make_transfer_function(lin_flow, qC, qM):
+  """Create a transfer function H(s) = C(sI - A)^{-1} B + D"""
+  # Feedthrough term
+  D = fd.assemble(
+    sum(ufl.inner(uM, uC) for (uM, uC) in zip(qM, qC)) * ufl.dx
+  )
+
+  # Solve (sM - A) q = B for q = (sI - A)^{-1} B
+  A = lin_flow.J
+  M = lin_flow.M
+  q = fd.Function(lin_flow.function_space)
+  _s = fd.Constant(0.0)
+
+  problem = fd.LinearVariationalProblem(
+    _s * M - A,
+    ufl.action(M, qC),
+    q,
+    bcs=lin_flow.bcs,
+  )
+
+  solver = fd.LinearVariationalSolver(
+    problem, solver_parameters=MUMPS_SOLVER_PARAMETERS
+  )
+
+  def transfer_function(s):
+    _s.assign(s)
+    solver.solve()
+    H_ex_D = fd.assemble(
+        sum(ufl.inner(uM, q) for (uM, q) in zip(qM, q)) * ufl.dx
+    )
+    return H_ex_D + D
+
+  return transfer_function
+
 
 if __name__ == "__main__":
   show_plots = False
@@ -111,3 +153,16 @@ if __name__ == "__main__":
     chk.save_function(qC)
     qM.rename("qM")
     chk.save_function(qM)
+
+
+  # 5. Create a transfer function H(s) = C(sI - A)^{-1} B + D
+  lin_flow = flow.linearize(qB)
+  transfer_function = make_transfer_function(lin_flow, qC, qM)
+
+  omega = np.linspace(0.0001, 4.0, 1000)
+  H = np.zeros(omega.shape, dtype=complex)
+  for i, s in enumerate(1j * omega):
+      H[i] = transfer_function(s)
+      print(f"{s} -> {abs(H[i])}")
+
+  np.savez(f"{output_dir}/transfer_function", omega=omega, H=H)
