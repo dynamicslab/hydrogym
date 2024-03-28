@@ -4,8 +4,7 @@ import numpy as np
 
 import hydrogym.firedrake as hgym
 
-from lti_system import control_vec, measurement_matrix
-from step_response import LinearBDFSolver
+from lti_system import control_vec, measurement_matrix, LinearBDFSolver
 
 
 def orthogonal_project(flow, q, V, W, adjoint=False):
@@ -53,13 +52,8 @@ def load_eig(flow, eig_dir):
     return evals, V, W
 
 
-#
-# Step response
-#
-
-
-def step_response(
-    flow, qB, q0, Vu, Wu, dt=0.01, tf=10.0, adjoint=False, save_interval=10
+def impulse_response(
+    flow, qB, q0, Vu, Wu, dt=0.01, tf=10.0, adjoint=False, save_interval=10, save_snapshots=True
 ):
     lin_flow = flow.linearize(qB, adjoint=adjoint)
 
@@ -86,8 +80,9 @@ def step_response(
     snapshots = []
     for i in range(n_steps-1):
         if i % save_interval == 0:
-            print(f"t={i*dt:.2f}, CL={CL[i]:.4f}, CD={CD[i]:.4f}")
-            snapshots.append(flow.q.copy(deepcopy=True))
+            hgym.print(f"t={i*dt:.2f}, CL={CL[i]:.4f}, CD={CD[i]:.4f}")
+            if save_snapshots:
+                snapshots.append(flow.q.copy(deepcopy=True))
 
         q = solver.step()
         orthogonal_project(flow, q, Vu, Wu, adjoint=adjoint)
@@ -135,9 +130,57 @@ if __name__ == "__main__":
     dt = 0.01
     tf = 10.0
 
-    # Direct response (controllable modes)
-    flow.q.assign(qB)
-    data, snapshots = step_response(
+    # # Direct response (controllable modes)
+    # flow.q.assign(qB)
+    # data, snapshots = impulse_response(
+    #     flow,
+    #     qB,
+    #     qC,
+    #     Vu,
+    #     Wu,
+    #     adjoint=False,
+    #     dt=dt,
+    #     tf=tf,
+    # )
+
+    # with fd.CheckpointFile(f"{output_dir}/re{Re}_dir_response.h5", "w") as chk:
+    #     chk.save_mesh(flow.mesh)
+    #     for (i, q) in enumerate(snapshots):
+    #         q.rename(f"q_{i}")
+    #         chk.save_function(q)
+
+    # np.save(f"{output_dir}/re{Re}_dir_response.npy", data)
+
+    # # Adjoint response (observable modes)
+
+    # flow.q.assign(qB)
+    # data, snapshots = impulse_response(
+    #     flow,
+    #     qB,
+    #     qM,
+    #     Vu,
+    #     Wu,
+    #     adjoint=True,
+    #     dt=dt,
+    #     tf=tf,
+    # )
+
+    # with fd.CheckpointFile(f"{output_dir}/re{Re}_adj_response.h5", "w") as chk:
+    #     chk.save_mesh(flow.mesh)
+    #     for (i, q) in enumerate(snapshots):
+    #         q.rename(f"q_{i}")
+    #         chk.save_function(q)
+
+    # np.save(f"{output_dir}/re{Re}_adj_response.npy", data)
+
+
+    # Long simulation to derive transfer function
+    # Note that running for much longer than this will eventually
+    # lead to instability as a result of small errors in the estimate
+    # of the unstable subspace compared to the time-stepping.
+    tf = 300.0
+    dt = 0.01
+    data, _snapshots = impulse_response(
         flow,
         qB,
         qC,
@@ -146,34 +189,7 @@ if __name__ == "__main__":
         adjoint=False,
         dt=dt,
         tf=tf,
+        save_snapshots=False,
     )
 
-    with fd.CheckpointFile(f"{output_dir}/re{Re}_dir_response.h5", "w") as chk:
-        chk.save_mesh(flow.mesh)
-        for (i, q) in enumerate(snapshots):
-            q.rename(f"q_{i}")
-            chk.save_function(q)
-
-    np.save(f"{output_dir}/re{Re}_dir_response.npy", data)
-
-    # Adjoint response (observable modes)
-
-    flow.q.assign(qB)
-    data, snapshots = step_response(
-        flow,
-        qB,
-        qM,
-        Vu,
-        Wu,
-        adjoint=True,
-        dt=dt,
-        tf=tf,
-    )
-
-    with fd.CheckpointFile(f"{output_dir}/re{Re}_adj_response.h5", "w") as chk:
-        chk.save_mesh(flow.mesh)
-        for (i, q) in enumerate(snapshots):
-            q.rename(f"q_{i}")
-            chk.save_function(q)
-
-    np.save(f"{output_dir}/re{Re}_adj_response.npy", data)
+    np.save(f"{output_dir}/re{Re}_long_response.npy", data)

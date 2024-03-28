@@ -27,6 +27,61 @@ MUMPS_SOLVER_PARAMETERS = {
     "pc_factor_mat_solver_type": "mumps",
 }
 
+
+_alpha_BDF = [1.0, 3.0 / 2.0, 11.0 / 6.0]
+_beta_BDF = [
+    [1.0],
+    [2.0, -1.0 / 2.0],
+    [3.0, -3.0 / 2.0, 1.0 / 3.0],
+]
+
+
+class LinearBDFSolver:
+    def __init__(self, function_space, bilinear_form, dt, bcs=None, f=None, q0=None, order=2, constant_jacobian=True):
+        self.function_space = function_space
+        self.k = order
+        self.h = dt
+        self.alpha = _alpha_BDF[order - 1]
+        self.beta = _beta_BDF[order - 1]
+        self.initialize(function_space, bilinear_form, bcs, f, q0, constant_jacobian)
+
+    def initialize(self, W, A, bcs, f, q0, constant_jacobian):
+        if q0 is None:
+            q0 = fd.Function(W)
+        self.q = q0.copy(deepcopy=True)
+
+        if f is None:
+            f = fd.Function(W.sub(0))  # Zero function for RHS forcing
+
+        self.u_prev = [fd.Function(W.sub(0)) for _ in range(self.k)]
+        for u in self.u_prev:
+            u.assign(self.q.subfunctions[0])
+
+        q_trial = fd.TrialFunction(W)
+        q_test = fd.TestFunction(W)
+        (u, p) = fd.split(q_trial)
+        (v, s) = fd.split(q_test)
+
+        u_BDF = sum(beta * u_n for beta, u_n in zip(self.beta, self.u_prev))
+
+        u_t = (self.alpha * u - u_BDF) / self.h  # BDF estimate of time derivative
+        F = ufl.inner(u_t, v) * ufl.dx - (A + ufl.inner(f, v) * ufl.dx)
+
+        a, L = ufl.lhs(F), ufl.rhs(F)
+        self.prob = fd.LinearVariationalProblem(a, L, self.q, bcs=bcs, constant_jacobian=constant_jacobian)
+
+        self.solver = fd.LinearVariationalSolver(
+            self.prob, solver_parameters=MUMPS_SOLVER_PARAMETERS)
+
+    def step(self):
+        self.solver.solve()
+        for j in range(self.k - 1):
+            idx = self.k - j - 1
+            self.u_prev[idx].assign(self.u_prev[idx-1])
+        self.u_prev[0].assign(self.q.subfunctions[0])
+        return self.q
+
+
 def control_vec(flow):
     """Derive flow field associated with actuation BC
 
@@ -155,14 +210,14 @@ if __name__ == "__main__":
     chk.save_function(qM)
 
 
-  # 5. Create a transfer function H(s) = C(sI - A)^{-1} B + D
-  lin_flow = flow.linearize(qB)
-  transfer_function = make_transfer_function(lin_flow, qC, qM)
+  # # 5. Create a transfer function H(s) = C(sI - A)^{-1} B + D
+  # lin_flow = flow.linearize(qB)
+  # transfer_function = make_transfer_function(lin_flow, qC, qM)
 
-  omega = np.linspace(0.0001, 4.0, 1000)
-  H = np.zeros(omega.shape, dtype=complex)
-  for i, s in enumerate(1j * omega):
-      H[i] = transfer_function(s)
-      print(f"{s} -> {abs(H[i])}")
+  # omega = np.linspace(0.0001, 4.0, 1000)
+  # H = np.zeros(omega.shape, dtype=complex)
+  # for i, s in enumerate(1j * omega):
+  #     H[i] = transfer_function(s)
+  #     print(f"{s} -> {abs(H[i])}")
 
-  np.savez(f"{output_dir}/transfer_function", omega=omega, H=H)
+  # np.savez(f"{output_dir}/transfer_function", omega=omega, H=H)
