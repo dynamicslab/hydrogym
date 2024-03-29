@@ -73,38 +73,38 @@ dt = 0.01
 solver = LinearBDFSolver(fn_space, J, order=2, dt=dt, bcs=bcs, q0=q0, f=f)
 
 
-#
-# Natural flow (no actuation)
-#
-tf = 50
-n_steps = int(tf // dt)
+# #
+# # Natural flow (no actuation)
+# #
+# tf = 50
+# n_steps = int(tf // dt)
 
-t = dt * np.arange(n_steps)
-x = np.zeros((n_steps, r), dtype=complex)  # Kalman filter state
-u = np.zeros((n_steps))  # Control signal
-y = np.zeros((n_steps))  # Measurement signal
+# t = dt * np.arange(n_steps)
+# x = np.zeros((n_steps, r), dtype=complex)  # Reduced state
+# u = np.zeros((n_steps))  # Control signal
+# y = np.zeros((n_steps))  # Measurement signal
 
-flow.q.assign(solver.q)
-hgym.print("\n**************************")
-hgym.print("*** DNS (no actuation) ***")
-hgym.print("**************************\n")
-for i in range(n_steps):
-    CL, CD = map(np.real, flow.get_observations())
-    y[i] = CL
-    x[i] = np.array([flow.inner_product(flow.q, W[j]) for j in range(r)])
+# flow.q.assign(solver.q)
+# hgym.print("\n**************************")
+# hgym.print("*** DNS (no actuation) ***")
+# hgym.print("**************************\n")
+# for i in range(n_steps):
+#     CL, CD = map(np.real, flow.get_observations())
+#     y[i] = CL
+#     x[i] = np.array([flow.inner_product(flow.q, W[j]) for j in range(r)])
 
-    if i % 10 == 0:
-        hgym.print(f"t={t[i]:.2f}, y={y[i]:.4f}, u={u[i]:.4f}")
+#     if i % 10 == 0:
+#         hgym.print(f"t={t[i]:.2f}, y={y[i]:.4f}, u={u[i]:.4f}")
 
-    q = solver.step()
-    flow.q.assign(q)
+#     q = solver.step()
+#     flow.q.assign(q)
 
-np.savez(f"{output_dir}/no_actuation.npz", t=t, y=y, u=u, x=x)
+# np.savez(f"{output_dir}/no_actuation.npz", t=t, y=y, u=u, x=x)
 
 #
 # Sinusoidal actuation (explicit RHS forcing)
 #
-q0 = fd.project(ufl.real(v0), fn_space)
+q0 = fd.project(ufl.real(V[0]), fn_space)
 q0.assign(q0 / flow.inner_product(q0, q0))
 solver.q.assign(q0)
 
@@ -114,7 +114,7 @@ m = 1
 p = 1
 
 t = dt * np.arange(n_steps)
-x = np.zeros((n_steps, r))  # Kalman filter state
+x = np.zeros((n_steps, r), dtype=complex)  # Reduced state
 u = np.zeros((n_steps))  # Control signal
 y = np.zeros((n_steps))  # Measurement signal
 
@@ -149,7 +149,7 @@ np.savez(f"{output_dir}/sine_actuation_ex.npz", t=t, y=y, u=u, x=x, rho=rho)
 #
 # Sine actuation (time-varying BC forcing)
 #
-q0 = fd.project(ufl.real(v0), fn_space)
+q0 = fd.project(ufl.real(V[0]), fn_space)
 q0.assign(q0 / flow.inner_product(q0, q0))
 solver.q.assign(q0)
 
@@ -159,7 +159,7 @@ m = 1
 p = 1
 
 t = dt * np.arange(n_steps)
-x = np.zeros((n_steps, r))  # Kalman filter state
+x = np.zeros((n_steps, r), dtype=complex)  # Reduced state
 u = np.zeros((n_steps))  # Control signal
 y = np.zeros((n_steps))  # Measurement signal
 
