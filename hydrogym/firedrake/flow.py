@@ -50,7 +50,17 @@ class FlowConfig(PDEBase):
       velocity_order = self.DEFAULT_VELOCITY_ORDER
     self.velocity_order = velocity_order
 
-    probes = config.pop("probes", None)
+    obs_type = config.pop("observation_type", None)
+    if obs_type == "velocity_probes":
+      probes = config.pop("probes", self.DEFAULT_VEL_PROBES)
+    elif obs_type == "pressure_probes":
+      probes = config.pop("probes", self.DEFAULT_PRES_PROBES)
+    elif obs_type == "vorticity_probes":
+      probes = config.pop("probes", self.DEFAULT_VORT_PROBES)
+    else:
+      probes = config.pop("probes", None)
+
+    # print("Probes are", probes, self.DEFAULT_PRES_PROBES, flush=True)
     if probes is None:
       probes = []
 
@@ -68,7 +78,7 @@ class FlowConfig(PDEBase):
     }
 
     self.obs_fun = self.configure_observations(
-        obs_type=config.pop("observation_type", None),
+        obs_type=obs_type,
         probe_obs_types=probe_obs_types,
     )
 
@@ -348,6 +358,7 @@ class FlowConfig(PDEBase):
 
   def pressure_probe(self, probes, q: fd.Function = None) -> list[float]:
     """Probe pressure around the cylinder"""
+    # print("pressure probing at:", probes, flush=True)
     if q is None:
       q = self.q
     p = q.subfunctions[1]
@@ -355,6 +366,7 @@ class FlowConfig(PDEBase):
 
   def vorticity_probe(self, probes, q: fd.Function = None) -> list[float]:
     """Probe vorticity in the wake."""
+    # print("vorticity probing at:", probes, flush=True)
     if q is None:
       u = None
     else:

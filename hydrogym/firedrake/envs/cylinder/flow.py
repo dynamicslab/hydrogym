@@ -10,26 +10,47 @@ from ufl import as_vector, atan2, cos, dot, sign, sin, sqrt
 
 from hydrogym.firedrake import FlowConfig, ObservationFunction, ScaledDirichletBC
 
-# Velocity probes
-xp = np.linspace(1.0, 10.0, 16)
-yp = np.linspace(-2.0, 2.0, 4)
-X, Y = np.meshgrid(xp, yp)
-DEFAULT_VEL_PROBES = [(x, y) for x, y in zip(X.ravel(), Y.ravel())]
+# # Velocity probes
+# xp = np.linspace(1.0, 10.0, 16)
+# yp = np.linspace(-2.0, 2.0, 4)
+# X, Y = np.meshgrid(xp, yp)
+# DEFAULT_VEL_PROBES = [(x, y) for x, y in zip(X.ravel(), Y.ravel())]
 
-# Pressure probes (spaced equally around the cylinder)
+# # Pressure probes (spaced equally around the cylinder)
+# xp = np.linspace(1.0, 4.0, 4)
+# yp = np.linspace(-0.66, 0.66, 3)
+# X, Y = np.meshgrid(xp, yp)
+# DEFAULT_PRES_PROBES = [(x, y) for x, y in zip(X.ravel(), Y.ravel())]
+
+# RADIUS = 0.5
+# DEFAULT_PRES_PROBES = [
+#     (RADIUS * np.cos(theta), RADIUS * np.sin(theta))
+#     for theta in np.linspace(0, 2 * np.pi, 20, endpoint=False)
+# ]
+
 RADIUS = 0.5
-DEFAULT_PRES_PROBES = [
-    (RADIUS * np.cos(theta), RADIUS * np.sin(theta))
-    for theta in np.linspace(0, 2 * np.pi, 20, endpoint=False)
-]
 
 
 class CylinderBase(FlowConfig):
+  # Velocity probes
+  xp = np.linspace(1.0, 10.0, 16)
+  yp = np.linspace(-2.0, 2.0, 4)
+  X, Y = np.meshgrid(xp, yp)
+  DEFAULT_VEL_PROBES = [(x, y) for x, y in zip(X.ravel(), Y.ravel())]
+
+  # Pressure probes (spaced equally around the cylinder)
+  xp = np.linspace(1, 4, 4)
+  yp = np.linspace(-0.66, 0.66, 3)
+  X, Y = np.meshgrid(xp, yp)
+  DEFAULT_PRES_PROBES = [(x, y) for x, y in zip(X.ravel(), Y.ravel())]
+
+  DEFAULT_VORT_PROBES = DEFAULT_PRES_PROBES
+
   DEFAULT_REYNOLDS = 100
   DEFAULT_MESH = "medium"
   DEFAULT_DT = 1e-2
 
-  MAX_CONTROL = 0.5 * np.pi
+  # MAX_CONTROL = 0.5 * np.pi
   # TAU = 0.556  # Time constant for controller damping (0.1*vortex shedding period)
   TAU = 0.0556  # Time constant for controller damping (0.01*vortex shedding period)
 
@@ -174,10 +195,15 @@ class CylinderBase(FlowConfig):
     self.bcu_inflow.set_value(fd.Constant((0, 0)))
     self.bcu_freestream.set_value(fd.Constant(0.0))
 
-  def evaluate_objective(self, q: fd.Function = None) -> float:
+  def evaluate_objective(self, q: fd.Function = None, averaged_objective_values=None, lambda_value=0.1, return_objective_values=False) -> float:
     """The objective function for this flow is the drag coefficient"""
-    CL, CD = self.compute_forces(q=q)
-    return CD
+    if averaged_objective_values is None:
+        CL, CD = self.compute_forces(q=q)
+        if return_objective_values:
+          return CL, CD
+    else:
+        CL, CD = averaged_objective_values
+    return CD + lambda_value * CL
 
   def render(self, mode="human", clim=None, levels=None, cmap="RdBu", **kwargs):
     if clim is None:
@@ -200,7 +226,7 @@ class CylinderBase(FlowConfig):
 
 
 class RotaryCylinder(CylinderBase):
-  MAX_CONTROL = 0.5 * np.pi
+  MAX_CONTROL = 4.0
   DEFAULT_DT = 1e-2
 
   @property
@@ -213,7 +239,7 @@ class RotaryCylinder(CylinderBase):
 
 
 class Cylinder(CylinderBase):
-  MAX_CONTROL = 0.1
+  MAX_CONTROL = 0.5
   DEFAULT_DT = 1e-2
 
   @property

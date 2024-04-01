@@ -113,9 +113,13 @@ class Pinball(FlowConfig):
     CL, CD = self.compute_forces()
     return [*CL, *CD]
 
-  def evaluate_objective(self, q=None):
-    CL, CD = self.compute_forces(q=q)
-    return sum(CD)
+  def evaluate_objective(self, q: fd.Function = None, averaged_objective_values=None) -> float:
+    """The objective function for this flow is the drag coefficient"""
+    if averaged_objective_values is None:
+        CL, CD = self.compute_forces(q=q)
+    else:
+        CL, CD = averaged_objective_values[:3], averaged_objective_values[3:]
+    return sum(np.square(CD))
 
   def render(self, mode="human", clim=None, levels=None, cmap="RdBu", **kwargs):
     if clim is None:

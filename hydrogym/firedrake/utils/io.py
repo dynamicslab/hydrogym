@@ -81,6 +81,32 @@ class LogCallback(CallbackBase):
       if self.print_fmt is not None:
         print(self.print_fmt.format(*new_data.ravel()))
 
+def log_postprocess(flow):
+    obs = flow.evaluate_objective(return_objective_values=True)
+    return obs
+
+class RewardCallback(CallbackBase):
+    def __init__(
+        self,
+        num_sim_substeps_per_actuation: int,
+        postprocess: Callable = log_postprocess,
+        interval: Optional[int] = 1,
+    ):
+        super().__init__(interval=interval)
+        self.postprocess = postprocess
+        self.num_sim_substeps_per_actuation = num_sim_substeps_per_actuation
+        self.data = []
+
+    def __call__(self, iter: int, t: float, flow: Tuple[fd.Function]):
+        if iter % self.interval == 0:
+            # self.data.append([self.postprocess(flow)])
+            self.data.append([*self.postprocess(flow)])
+            # if ((iter + 1) * self.dt * 10e6) % (self.DT * 10e6) == 0:
+            if (iter + 1) % self.num_sim_substeps_per_actuation == 0:
+                self.data = np.array(self.data)
+                flow.reward_array = self.data
+                self.data = []
+
 
 class SnapshotCallback(CallbackBase):
 
