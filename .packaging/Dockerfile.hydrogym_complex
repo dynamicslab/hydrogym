@@ -1,0 +1,16 @@
+# Build of Firedrake/PETSc/Hydrogym with complex numbers.
+# Useful for calling SLEPc for linear stability and operator analysis
+
+FROM firedrakeproject/firedrake-complex
+
+USER firedrake
+WORKDIR /home/firedrake
+
+# Activation of the virtual environment
+RUN bash -c "source firedrake/bin/activate"
+
+# Clone HydroGym
+RUN bash -c "git clone https://github.com/dynamicslab/hydrogym.git"
+
+# Installation of HydroGym
+RUN bash -c "cd hydrogym && pip install ."
