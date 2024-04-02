@@ -13,6 +13,8 @@ where `x` is a firedrake.Function and `u` and `y` are numpy arrays.
 import os
 
 import numpy as np
+from scipy import linalg
+
 import firedrake as fd
 import matplotlib.pyplot as plt
 from firedrake.pyplot import tripcolor
@@ -152,6 +154,59 @@ def make_transfer_function(lin_flow, qC, qM):
 
   return transfer_function
 
+
+# Convert the system to real form
+# See: https://github.com/scipy/scipy/blob/v1.12.0/scipy/linalg/_decomp.py#L1458-L1605
+def real_form(A, B, C, D):
+    w = np.diag(A)
+    n = w.shape[-1]
+
+    # get indices for each first pair of complex eigenvalues
+    complex_mask = np.iscomplex(w)
+
+    # find complex indices
+    idx = np.nonzero(complex_mask)
+    idx_stack = idx[:-1]
+    idx_elem = idx[-1]
+
+    # filter them to conjugate indices, assuming pairs are not interleaved
+    j = idx_elem[0::2]
+    k = idx_elem[1::2]
+    stack_ind = ()
+    for i in idx_stack:
+        # should never happen, assuming nonzero orders by the last axis
+        assert (i[0::2] == i[1::2]).all(),\
+                "Conjugate pair spanned different arrays!"
+        stack_ind += (i[0::2],)
+
+    # all eigenvalues to diagonal form
+    Ar = np.zeros((n, n), dtype=w.real.dtype)
+    di = range(n)
+    Ar[di, di] = w.real
+
+    # complex eigenvalues to real block diagonal form
+    Ar[stack_ind + (j, k)] = w[stack_ind + (j,)].imag
+    Ar[stack_ind + (k, j)] = w[stack_ind + (k,)].imag
+
+    # Transformation matrix such that z = T @ x
+    T = np.zeros((n, n), dtype=np.cdouble)
+    T[di, di] = 1.0
+    T[stack_ind + (j, j)] = 0.5j
+    T[stack_ind + (j, k)] = 0.5
+    T[stack_ind + (k, j)] = -0.5j
+    T[stack_ind + (k, k)] = 0.5
+
+    T = T.conj()
+
+    # Transform the measurement matrix
+    Cr = np.real(C @ T)  # <-- conj??
+
+    # Transform the input matrix
+    Br = np.real(linalg.inv(T) @ B)
+
+    Dr = D.real
+
+    return Ar, Br, Cr, Dr, T
 
 if __name__ == "__main__":
   show_plots = False
