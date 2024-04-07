@@ -39,12 +39,16 @@ class CylinderBase(FlowConfig):
   DEFAULT_VEL_PROBES = [(x, y) for x, y in zip(X.ravel(), Y.ravel())]
 
   # Pressure probes (spaced equally around the cylinder)
-  xp = np.linspace(1, 4, 4)
+  xp = np.linspace(1.0, 4.0, 4)
   yp = np.linspace(-0.66, 0.66, 3)
   X, Y = np.meshgrid(xp, yp)
   DEFAULT_PRES_PROBES = [(x, y) for x, y in zip(X.ravel(), Y.ravel())]
 
-  DEFAULT_VORT_PROBES = DEFAULT_PRES_PROBES
+  # Vorticity probes (spaced equally around the cylinder)
+  xp = np.linspace(1.0, 4.0, 4)
+  yp = np.linspace(-0.66, 0.66, 3)
+  X, Y = np.meshgrid(xp, yp)
+  DEFAULT_VORT_PROBES = [(x, y) for x, y in zip(X.ravel(), Y.ravel())]
 
   DEFAULT_REYNOLDS = 100
   DEFAULT_MESH = "medium"
@@ -195,7 +199,7 @@ class CylinderBase(FlowConfig):
     self.bcu_inflow.set_value(fd.Constant((0, 0)))
     self.bcu_freestream.set_value(fd.Constant(0.0))
 
-  def evaluate_objective(self, q: fd.Function = None, averaged_objective_values=None, lambda_value=0.1, return_objective_values=False) -> float:
+  def evaluate_objective(self, q: fd.Function = None, averaged_objective_values=None, lambda_value=0.33, return_objective_values=False) -> float:
     """The objective function for this flow is the drag coefficient"""
     if averaged_objective_values is None:
         CL, CD = self.compute_forces(q=q)
@@ -203,7 +207,7 @@ class CylinderBase(FlowConfig):
           return CL, CD
     else:
         CL, CD = averaged_objective_values
-    return CD + lambda_value * CL
+    return np.square(CD) + lambda_value * np.square(CL)
 
   def render(self, mode="human", clim=None, levels=None, cmap="RdBu", **kwargs):
     if clim is None:

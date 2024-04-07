@@ -25,6 +25,20 @@ class Step(FlowConfig):
         (Boujo & Gallaire 2015, DOI:10.1017/jfm.2014.656)
     """
 
+  # Velocity probes
+  xp = np.linspace(0.1, 0.9, 4)
+  yp = np.linspace(-0.1, 0.1, 3)
+  X, Y = np.meshgrid(xp, yp)
+  DEFAULT_VEL_PROBES = [(x, y) for x, y in zip(X.ravel(), Y.ravel())]
+
+  # Pressure probes (spaced equally around the cylinder)
+  xp = np.linspace(2.5, 5.0, 4)
+  yp = np.linspace(-0.45, 0.45,3)
+  X, Y = np.meshgrid(xp, yp)
+  DEFAULT_PRES_PROBES = [(x, y) for x, y in zip(X.ravel(), Y.ravel())]
+
+  DEFAULT_VORT_PROBES = DEFAULT_PRES_PROBES
+
   DEFAULT_REYNOLDS = 600
   DEFAULT_MESH = "fine"
   DEFAULT_DT = 1e-2

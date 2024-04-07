@@ -21,16 +21,25 @@ mesh = "medium"
 method = "BDF"
 
 # Configure pressure probes - evenly spaced around the cylinder
-n_probes = 8
-R = 0.5
-probes = [(R * np.cos(theta), R * np.sin(theta))
-          for theta in np.linspace(0, 2 * np.pi, n_probes, endpoint=False)]
+# n_probes = 8
+# R = 0.5
+# probes = [(R * np.cos(theta), R * np.sin(theta))
+#           for theta in np.linspace(0, 2 * np.pi, n_probes, endpoint=False)]
+
+observation_type = "velocity_probes"
+
+# Velocity probes
+xp = np.linspace(1.0, 10.0, 16)
+yp = np.linspace(-2.0, 2.0, 4)
+X, Y = np.meshgrid(xp, yp)
+probes = [(x, y) for x, y in zip(X.ravel(), Y.ravel())]
+n_probes = len(probes)
 
 flow = hgym.Cylinder(
     Re=100,
     mesh=mesh,
     velocity_order=velocity_order,
-    observation_type="pressure_probes",
+    observation_type=observation_type,
     probes=probes,
 )
 
@@ -49,7 +58,7 @@ def log_postprocess(flow):
 print_fmt = "t: {0:0.2f},\t\t p[4]: {5}"  # This will format the output
 log = hgym.utils.io.LogCallback(
     postprocess=log_postprocess,
-    nvals=n_probes + 1,
+    nvals=n_probes*2 + 1 if observation_type == "velocity_probes" else n_probes + 1,
     interval=1,
     print_fmt=print_fmt,
     filename=data_file,

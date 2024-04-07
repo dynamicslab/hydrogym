@@ -161,6 +161,8 @@ class FlowConfig(PDEBase):
 
     self.split_solution()  # Break out and rename main solution
 
+    self._vorticity = fd.Function(self.pressure_space, name="vort")
+
   def set_state(self, q: fd.Function):
     """Set the current state fields
 
@@ -217,9 +219,8 @@ class FlowConfig(PDEBase):
         """
     if u is None:
       u = self.u
-    vort = fd.project(curl(u), self.pressure_space)
-    vort.rename("vort")
-    return vort
+    self._vorticity.project(curl(u))
+    return self._vorticity
 
   def function_spaces(self, mixed: bool = True):
     """Function spaces for velocity and pressure
