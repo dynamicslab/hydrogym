@@ -30,7 +30,7 @@ flow = hgym.Cylinder(
     Re=100,
     mesh=mesh,
     velocity_order=velocity_order,
-    observation_type="pressure_probes",
+    observation_type="vorticity_probes",
     probes=probes,
 )
 
