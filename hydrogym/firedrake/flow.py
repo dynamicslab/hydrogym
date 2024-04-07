@@ -209,7 +209,7 @@ class FlowConfig(PDEBase):
         """
     if u is None:
       u = self.u
-    self._vorticity.interpolate(curl(u))
+    self._vorticity.project(curl(u))
     return self._vorticity
 
   def function_spaces(self, mixed: bool = True):
