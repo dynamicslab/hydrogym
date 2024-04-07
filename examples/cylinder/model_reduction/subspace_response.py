@@ -130,7 +130,7 @@ if __name__ == "__main__":
     qM = measurement_matrix(flow)
 
     dt = 0.01
-    tf = 10.0
+    tf = 50.0
 
     # Direct response (controllable modes)
     flow.q.assign(qB)
@@ -176,22 +176,22 @@ if __name__ == "__main__":
     np.save(f"{output_dir}/adj_response.npy", data)
 
 
-    # Long simulation to derive transfer function
-    # Note that running for much longer than this will eventually
-    # lead to instability as a result of small errors in the estimate
-    # of the unstable subspace compared to the time-stepping.
-    tf = 300.0
-    dt = 0.01
-    data, _snapshots = impulse_response(
-        flow,
-        qB,
-        qC,
-        Vu,
-        Wu,
-        adjoint=False,
-        dt=dt,
-        tf=tf,
-        save_snapshots=False,
-    )
+    # # Long simulation to derive transfer function
+    # # Note that running for much longer than this will eventually
+    # # lead to instability as a result of small errors in the estimate
+    # # of the unstable subspace compared to the time-stepping.
+    # tf = 300.0
+    # dt = 0.01
+    # data, _snapshots = impulse_response(
+    #     flow,
+    #     qB,
+    #     qC,
+    #     Vu,
+    #     Wu,
+    #     adjoint=False,
+    #     dt=dt,
+    #     tf=tf,
+    #     save_snapshots=False,
+    # )
 
-    np.save(f"{output_dir}/long_response.npy", data)
+    # np.save(f"{output_dir}/long_response.npy", data)
