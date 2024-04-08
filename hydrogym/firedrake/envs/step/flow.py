@@ -40,7 +40,14 @@ class Step(FlowConfig):
   OUTLET = 3
   WALL = 4
   CONTROL = 5
-  SENSOR = 6
+  SENSOR = 16
+  START_SENSOR = 6 
+  
+  NUM_SENSORS = 30 # Total number of sensors
+  START_SENSOR_X = 2.7 # x placement of first sensor
+  SENSOR_LEN = 0.2 # Length of each sensor
+  END_SENSOR_X = 7.7 # x placement of last sensor
+  
 
   MESH_DIR = os.path.abspath(f"{__file__}/..")
 
@@ -83,7 +90,8 @@ class Step(FlowConfig):
     supported_obs_types = {
         **probe_obs_types,
         "stress_sensor":
-            ObservationFunction(self.wall_stress_sensor, num_outputs=1),
+           ObservationFunction(self.wall_stress_sensor, num_outputs=1),
+        "reattachment": ObservationFunction(self.reattachment_length, num_outputs=1),
     }
 
     if obs_type not in supported_obs_types:
@@ -102,7 +110,7 @@ class Step(FlowConfig):
         (1.0 - ((self.y - 0.25) / 0.25)**2, 0.0 * self.y))
     self.bcu_inflow = fd.DirichletBC(V, self.U_inf, self.INLET)
     self.bcu_noslip = fd.DirichletBC(V, fd.Constant((0, 0)),
-                                     (self.WALL, self.SENSOR))
+                                     (self.WALL, 6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30))
     self.bcp_outflow = fd.DirichletBC(Q, fd.Constant(0), self.OUTLET)
 
     # Define time-varying boundary conditions for actuation
@@ -141,13 +149,31 @@ class Step(FlowConfig):
 
   def collect_bcp(self):
     return [self.bcp_outflow]
+  
+  def reattachment_length(self, q=None):
+    """Estimate of reattachment length from wall shear stress"""
+    if q is None:
+      q = self.q
+    # Get the wall shear stress of all sensors along the wall
+    shear_stress = []
+    for n in range(self.START_SENSOR, self.NUM_SENSORS + 1):
+      shear_stress.append(self.wall_stress_sensor(q=None, sensor=n)[0])
+    print(shear_stress)
+    zero_gradient = [i for i,ss in enumerate(shear_stress) if ss >= 0.0]
+    if len(zero_gradient) > 0:
+      xr = zero_gradient[0]*self.SENSOR_LEN + self.START_SENSOR_X
+    else:
+      xr = self.END_SENSOR_X
+    return (xr,)
 
-  def wall_stress_sensor(self, q=None):
+  def wall_stress_sensor(self, q=None, sensor=None):
     """Integral of wall-normal shear stress (see Barbagallo et al, 2009)"""
     if q is None:
       q = self.q
+    if sensor is None:
+      sensor = self.SENSOR
     u = q.subfunctions[0]
-    m = fd.assemble(-dot(grad(u[0]), self.n) * ds(self.SENSOR))
+    m = fd.assemble(-dot(grad(u[0]), self.n) * ds(sensor))
     return (m,)
 
   def evaluate_objective(self, q=None, qB=None):
@@ -191,3 +217,4 @@ class Step(FlowConfig):
     axes.set_xlim(*xlim)
     axes.set_ylim([-0.5, 0.5])
     axes.set_facecolor("grey")
+
