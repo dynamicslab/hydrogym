@@ -1,3 +1,6 @@
+"""Impulse response of the stable subspace of the cylinder wake."""
+
+import argparse
 import os
 import firedrake as fd
 import numpy as np
@@ -17,7 +20,7 @@ def orthogonal_project(flow, q, V, W, adjoint=False):
     return q
 
 
-def load_eig(flow, eig_dir):
+def load_eig(flow, eig_dir, unstable_only=True):
     """Load eigenvalues and (direct, adjoint) eigenvectors."""
     evals = np.load(f"{eig_dir}/evals.npy")
 
@@ -48,6 +51,12 @@ def load_eig(flow, eig_dir):
 
     V = [V[i] for i in sort_idx]
     W = [W[i] for i in sort_idx]
+
+    if unstable_only:
+        unstable_idx = np.where(evals.real > 0)[0]
+        V = [V[i] for i in unstable_idx]
+        W = [W[i] for i in unstable_idx]
+        evals = evals[unstable_idx]
 
     return evals, V, W
 
@@ -95,15 +104,68 @@ def impulse_response(
 
 
 
+parser = argparse.ArgumentParser(
+    description="Impulse response of the stable subspace of the cylinder wake.")
+parser.add_argument(
+    "--mesh",
+    default="medium",
+    type=str,
+    help='Identifier for the mesh resolution. Options: ["medium", "fine"]',
+)
+parser.add_argument(
+    "--reynolds",
+    default=100.0,
+    type=float,
+    help="Reynolds number of the flow",
+)
+parser.add_argument(
+    "--dt",
+    default=1e-2,
+    type=float,
+    help="Time step for the impulse response simulation.",
+)
+parser.add_argument(
+    "--tf",
+    default=50.0,
+    type=float,
+    help="End time for the impulse response simulation.",
+)
+parser.add_argument(
+    "--output-dir",
+    type=str,
+    default="impulse_output",
+    help="Directory in which output files will be stored.",
+)
+parser.add_argument(
+    "--eig-dir",
+    type=str,
+    default="eig_output",
+    help="Directory with results of stability analysis.",
+)
+parser.add_argument(
+    "--no-adjoint",
+    action="store_true",
+    default=False,
+    help="Skip computing the adjoint modes.",
+)
+parser.add_argument(
+    "--no-snapshots",
+    action="store_true",
+    default=False,
+    help="Skip saving snapshots.",
+)
 if __name__ == "__main__":
-    Re = 100
+    args = parser.parse_args()
 
-    eig_dir = f"./re{Re}_med_eig_output"
-    output_dir = f"./re{Re}_impulse_output"
+    mesh = args.mesh
+    Re = args.reynolds
+    eig_dir = args.eig_dir
+    output_dir = args.output_dir
+    dt = args.dt
+    tf = args.tf
 
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
-
 
     #
     # Steady base flow
@@ -111,17 +173,11 @@ if __name__ == "__main__":
     flow = hgym.RotaryCylinder(
         Re=Re,
         velocity_order=2,
+        mesh=mesh,
         restart=f"{eig_dir}/base.h5"
     )
 
     qB = flow.q.copy(deepcopy=True)
-
-
-    # Unstable subspace
-    evals, V, W = load_eig(flow, eig_dir)
-    unstable_idx = np.where(evals.real > 0)[0]
-    Vu = [V[i] for i in unstable_idx]
-    Wu = [W[i] for i in unstable_idx]
 
     # Derive flow field associated with actuation BC
     qC = control_vec(flow)
@@ -129,12 +185,17 @@ if __name__ == "__main__":
     # Derive flow field associated with measurement matrix
     qM = measurement_matrix(flow)
 
-    dt = 0.01
-    tf = 50.0
+    #
+    # Load unstable subspace - direct and adjoint global modes
+    #
+    evals, Vu, Wu = load_eig(flow, eig_dir, unstable_only=True)
 
+    #
     # Direct response (controllable modes)
+    #
     flow.q.assign(qB)
-    data, snapshots = impulse_response(
+    save_snapshots = not args.no_snapshots
+    data, X = impulse_response(
         flow,
         qB,
         qC,
@@ -143,20 +204,26 @@ if __name__ == "__main__":
         adjoint=False,
         dt=dt,
         tf=tf,
+        save_snapshots=save_snapshots,
     )
 
-    with fd.CheckpointFile(f"{output_dir}/dir_snapshots.h5", "w") as chk:
-        chk.save_mesh(flow.mesh)
-        for (i, q) in enumerate(snapshots):
-            q.rename(f"q_{i}")
-            chk.save_function(q)
+    if save_snapshots:
+        with fd.CheckpointFile(f"{output_dir}/dir_snapshots.h5", "w") as chk:
+            chk.save_mesh(flow.mesh)
+            for (i, q) in enumerate(X):
+                q.rename(f"q_{i}")
+                chk.save_function(q)
 
     np.save(f"{output_dir}/dir_response.npy", data)
 
+    #
     # Adjoint response (observable modes)
-
+    #
+    if args.no_adjoint:
+        exit()
+    
     flow.q.assign(qB)
-    data, snapshots = impulse_response(
+    data, Y = impulse_response(
         flow,
         qB,
         qM,
@@ -165,33 +232,14 @@ if __name__ == "__main__":
         adjoint=True,
         dt=dt,
         tf=tf,
+        save_snapshots=save_snapshots,
     )
 
-    with fd.CheckpointFile(f"{output_dir}/adj_snapshots.h5", "w") as chk:
-        chk.save_mesh(flow.mesh)
-        for (i, q) in enumerate(snapshots):
-            q.rename(f"q_{i}")
-            chk.save_function(q)
+    if save_snapshots:
+        with fd.CheckpointFile(f"{output_dir}/adj_snapshots.h5", "w") as chk:
+            chk.save_mesh(flow.mesh)
+            for (i, q) in enumerate(Y):
+                q.rename(f"q_{i}")
+                chk.save_function(q)
 
     np.save(f"{output_dir}/adj_response.npy", data)
-
-
-    # # Long simulation to derive transfer function
-    # # Note that running for much longer than this will eventually
-    # # lead to instability as a result of small errors in the estimate
-    # # of the unstable subspace compared to the time-stepping.
-    # tf = 300.0
-    # dt = 0.01
-    # data, _snapshots = impulse_response(
-    #     flow,
-    #     qB,
-    #     qC,
-    #     Vu,
-    #     Wu,
-    #     adjoint=False,
-    #     dt=dt,
-    #     tf=tf,
-    #     save_snapshots=False,
-    # )
-
-    # np.save(f"{output_dir}/long_response.npy", data)
