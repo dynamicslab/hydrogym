@@ -60,6 +60,18 @@ parser.add_argument(
     help='Identifier for the mesh resolution. Options: ["medium", "fine"]',
 )
 parser.add_argument(
+    "--reynolds",
+    default=100.0,
+    type=float,
+    help="Reynolds number of the flow",
+)
+parser.add_argument(
+    "--eig-dir",
+    type=str,
+    default="eig_output",
+    help="Directory with results of stability analysis.",
+)
+parser.add_argument(
     "--snapshot-dir",
     type=str,
     default="impulse_output",
@@ -71,23 +83,42 @@ parser.add_argument(
     default="bpod_output",
     help="Directory in which output files will be stored.",
 )
+parser.add_argument(
+    "--num-modes",
+    type=int,
+    default=64,
+    help="Number of BPOD modes to compute (default 64).",
+)
+parser.add_argument(
+    "--num-dir-snapshots",
+    type=int,
+    default=500,
+    help="Number of direct snapshots in impulse response.",
+)
+parser.add_argument(
+    "--num-adj-snapshots",
+    type=int,
+    default=500,
+    help="Number of adjoint snapshots in impulse response.",
+)
 if __name__ == "__main__":
     args = parser.parse_args()
-
-    Re = 100
-    output_dir = f"./re{Re}_med_bpod_output"
 
     mesh = args.mesh
     Re = args.reynolds
     output_dir = args.output_dir
+    eig_dir = args.eig_dir
+    snapshot_dir = args.snapshot_dir
+    r = args.num_modes
 
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
     flow = hgym.RotaryCylinder(
-        Re=100,
+        Re=Re,
         velocity_order=2,
-        mesh=mesh
+        mesh=mesh,
+        restart=f"{eig_dir}/base.h5",
     )
 
     qB = flow.q.copy(deepcopy=True)
@@ -99,7 +130,7 @@ if __name__ == "__main__":
 
     # Direct impulse response solution
     X = []
-    m_d = 100  # Number of direct snapshots
+    m_d = args.num_dir_snapshots  # Number of direct snapshots
     with fd.CheckpointFile(f"{snapshot_dir}/dir_snapshots.h5", "r") as chk:
         for i in range(m_d):
             q = chk.load_function(flow.mesh, f"q_{i}")
@@ -107,7 +138,7 @@ if __name__ == "__main__":
 
     # Adjoint impulse response solution
     Y = []
-    m_a = 100  # Number of adjoint snapshots
+    m_a = args.num_adj_snapshots  # Number of adjoint snapshots
     with fd.CheckpointFile(f"{snapshot_dir}/adj_snapshots.h5", "r") as chk:
         for i in range(m_a):
             q = chk.load_function(flow.mesh, f"q_{i}")
@@ -116,13 +147,12 @@ if __name__ == "__main__":
     #
     # BPOD: Method of snapshots
     #
-    V_bpod, W_bpod, S = bpod(X, Y, flow.inner_product, r=64)
-
+    V_bpod, W_bpod, S = bpod(X, Y, flow.inner_product, r=r)
 
     #
     # Save the BPOD modes and Hankel singular values
     #
-    with fd.CheckpointFile(f"{output_dir}/bpod_modes.h5", "r") as chk:
+    with fd.CheckpointFile(f"{output_dir}/bpod_modes.h5", "w") as chk:
         chk.save_mesh(flow.mesh)
         for i, v in enumerate(V_bpod):
             v.rename(f"v_{i}")

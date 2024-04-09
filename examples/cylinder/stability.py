@@ -8,7 +8,7 @@ import numpy as np
 import hydrogym.firedrake as hgym
 
 
-def _duplicate_complex_conjugates(evals, evecs, tol=1e-10):
+def duplicate_complex_conjugates(evals, evecs, tol=1e-10):
   """Duplicate eigenvectors for complex conjugate pairs."""
   V = []
   all_evals = []
@@ -30,7 +30,7 @@ def _duplicate_complex_conjugates(evals, evecs, tol=1e-10):
   return all_evals, V
 
 
-def _normalize(V, inner_product):
+def normalize(V, inner_product):
   """Normalize the eigenvectors against themselves."""
   for i in range(len(V)):
     # First normalize the direct eigenvector
@@ -38,14 +38,16 @@ def _normalize(V, inner_product):
     V[i].assign(V[i] / alpha)
   return V
 
-def _binormalize(V, W, inner_product):
+
+def binormalize(V, W, inner_product):
   """Normalize the adjoint eigenvectors against the direct eigenvectors."""
+  print(len(V), len(W))
   for i in range(len(V)):
     alpha = inner_product(V[i], W[i])
 
     # The adjoint eigenvectors can be the conjugate of the ones
     # that are actually bi-orthogonal, so swap if necessary
-    if np.isclose(abs(alpha), 0, atol=tol):
+    if np.isclose(abs(alpha), 0, atol=tol) and i < len(V) - 1:
         # Swap adjoint vectors so that they are not orthonormal
         W[i], W[i+1] = W[i+1], W[i]
         alpha = flow.inner_product(V[i], W[i])
@@ -176,12 +178,17 @@ if __name__ == "__main__":
     hgym.print(f"Eigenvalue {i}: {w.real:0.6f} + {w.imag:0.6f}i")
 
   # Duplicate eigenvectors for complex conjugate pairs
-  evals, V = _duplicate_complex_conjugates(evals, V, tol=tol)
+  evals, V = duplicate_complex_conjugates(evals, V, tol=tol)
 
   np.save(f"{output_dir}/evals", evals)
 
+  # Keep only the unstable modes
+  keep_idx = np.nonzero(np.real(evals) > 0)[0]
+  evals = evals[keep_idx]
+  V = [V[i] for i in keep_idx]
+
   # Normalize the direct modes against themselves (not really necessary)
-  V = _normalize(V, flow.inner_product)
+  V = normalize(V, flow.inner_product)
 
   # Save direct modes as checkpoints
   with fd.CheckpointFile(f"{output_dir}/evecs.h5", "w") as chk:
@@ -192,15 +199,24 @@ if __name__ == "__main__":
 
   if not args.no_adjoint:
     hgym.print("\nComputing adjoint modes...")
-    evals, W = hgym.utils.linalg.eig(
+    adj_evals, W = hgym.utils.linalg.eig(
         A.T, n=args.n, sigma=sigma, tol=tol, krylov_dim=args.krylov_dim)
+    
+    hgym.print("\n--- Adjoint eigenvalues ---")
+    for i, ev in enumerate(adj_evals):
+      hgym.print(f"Eigenvalue {i}: {ev.real:0.6f} + {ev.imag:0.6f}i")
 
     # Duplicate eigenvectors for complex conjugate pairs
-    evals, W = _duplicate_complex_conjugates(evals, W, tol=tol)
+    adj_evals, W = duplicate_complex_conjugates(adj_evals, W, tol=tol)
+
+    # Keep only the unstable modes
+    keep_idx = np.nonzero(np.real(adj_evals) > 0)[0]
+    adj_evals = adj_evals[keep_idx]
+    W = [W[i] for i in keep_idx]
 
     # The adjoint basis is already bi-orthogonal with the direct basis, but
     # we can still normalize it.
-    W = _binormalize(V, W, flow.inner_product)
+    W = binormalize(V, W, flow.inner_product)
 
     # Save adjoint modes as checkpoints in the same file
     with fd.CheckpointFile(f"{output_dir}/adj_evecs.h5", "w") as chk:
