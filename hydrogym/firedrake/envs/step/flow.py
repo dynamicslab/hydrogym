@@ -164,7 +164,7 @@ class Step(FlowConfig):
     m = fd.assemble(-dot(grad(u[0]), self.n) * ds(self.SENSOR))
     return (m,)
 
-  def evaluate_objective(self, q=None, qB=None, averaged_objective_values=None):
+  def evaluate_objective(self, q=None, qB=None, averaged_objective_values=None, return_objective_values=False):
     if averaged_objective_values is None:
         if q is None:
             q = self.q

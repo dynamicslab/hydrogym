@@ -33,8 +33,8 @@ RADIUS = 0.5
 
 class CylinderBase(FlowConfig):
   # Velocity probes
-  xp = np.linspace(1.0, 10.0, 16)
-  yp = np.linspace(-2.0, 2.0, 4)
+  xp = np.linspace(1.0, 4.0, 4)
+  yp = np.linspace(-0.66, 0.66, 3)
   X, Y = np.meshgrid(xp, yp)
   DEFAULT_VEL_PROBES = [(x, y) for x, y in zip(X.ravel(), Y.ravel())]
 
@@ -56,7 +56,8 @@ class CylinderBase(FlowConfig):
 
   # MAX_CONTROL = 0.5 * np.pi
   # TAU = 0.556  # Time constant for controller damping (0.1*vortex shedding period)
-  TAU = 0.0556  # Time constant for controller damping (0.01*vortex shedding period)
+  TAU = 0.278  # Time constant for controller damping (0.05*vortex shedding period)
+  # TAU = 0.0556  # Time constant for controller damping (0.01*vortex shedding period)
 
   # Domain labels
   FLUID = 1
@@ -199,7 +200,7 @@ class CylinderBase(FlowConfig):
     self.bcu_inflow.set_value(fd.Constant((0, 0)))
     self.bcu_freestream.set_value(fd.Constant(0.0))
 
-  def evaluate_objective(self, q: fd.Function = None, averaged_objective_values=None, lambda_value=0.33, return_objective_values=False) -> float:
+  def evaluate_objective(self, q: fd.Function = None, averaged_objective_values=None, lambda_value=0.2, return_objective_values=False) -> float:
     """The objective function for this flow is the drag coefficient"""
     if averaged_objective_values is None:
         CL, CD = self.compute_forces(q=q)
@@ -207,7 +208,8 @@ class CylinderBase(FlowConfig):
           return CL, CD
     else:
         CL, CD = averaged_objective_values
-    return np.square(CD) + lambda_value * np.square(CL)
+    # return np.square(CD) + lambda_value * np.square(CL)
+    return np.abs(CD) + lambda_value * np.abs(CL)
 
   def render(self, mode="human", clim=None, levels=None, cmap="RdBu", **kwargs):
     if clim is None:
@@ -243,7 +245,7 @@ class RotaryCylinder(CylinderBase):
 
 
 class Cylinder(CylinderBase):
-  MAX_CONTROL = 0.5
+  MAX_CONTROL = 0.15
   DEFAULT_DT = 1e-2
 
   @property
@@ -272,7 +274,7 @@ class Cylinder(CylinderBase):
     theta_lo = -0.5 * pi
     A_lo = ufl.conditional(
         abs(theta - theta_lo) < omega / 2,
-        pi / (2 * omega * self.rad**2) * ufl.cos(
+        -pi / (2 * omega * self.rad**2) * ufl.cos(
             (pi / omega) * (theta - theta_lo)),
         0.0,
     )
