@@ -8,6 +8,7 @@ import numpy as np
 import psutil
 
 import hydrogym.firedrake as hgym
+from hydrogym.firedrake.envs.cylinder.flow import DEFAULT_PROBES
 
 output_dir = "output"
 if not os.path.exists(output_dir):
@@ -20,18 +21,22 @@ stabilization = "gls"
 mesh = "medium"
 method = "BDF"
 
-# Configure pressure probes - evenly spaced around the cylinder
-n_probes = 8
-R = 0.5
-probes = [(R * np.cos(theta), R * np.sin(theta))
-          for theta in np.linspace(0, 2 * np.pi, n_probes, endpoint=False)]
+# # Configure pressure probes
+# evenly spaced around the cylinder
+# n_probes = 8
+# R = 0.5
+# probes = [(R * np.cos(theta), R * np.sin(theta))
+#           for theta in np.linspace(0, 2 * np.pi, n_probes, endpoint=False)]
+
+# Distributed in the wake
+n_probes = len(DEFAULT_PROBES)
 
 flow = hgym.Cylinder(
     Re=100,
     mesh=mesh,
     velocity_order=velocity_order,
-    observation_type="vorticity_probes",
-    probes=probes,
+    observation_type="pressure_probes",
+    probes=DEFAULT_PROBES,
 )
 
 # Time step

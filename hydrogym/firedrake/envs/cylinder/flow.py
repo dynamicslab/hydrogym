@@ -14,15 +14,9 @@ from hydrogym.firedrake import FlowConfig, ObservationFunction, ScaledDirichletB
 xp = np.linspace(1.0, 10.0, 16)
 yp = np.linspace(-2.0, 2.0, 4)
 X, Y = np.meshgrid(xp, yp)
-DEFAULT_VEL_PROBES = [(x, y) for x, y in zip(X.ravel(), Y.ravel())]
+DEFAULT_PROBES = [(x, y) for x, y in zip(X.ravel(), Y.ravel())]
 
-# Pressure probes (spaced equally around the cylinder)
 RADIUS = 0.5
-DEFAULT_PRES_PROBES = [
-    (RADIUS * np.cos(theta), RADIUS * np.sin(theta))
-    for theta in np.linspace(0, 2 * np.pi, 20, endpoint=False)
-]
-
 
 class CylinderBase(FlowConfig):
   DEFAULT_REYNOLDS = 100

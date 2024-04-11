@@ -35,6 +35,14 @@ class ObservationFunction(NamedTuple):
     return self.func(q)
 
 
+def probe(field, x0, y0, width):
+  """Probe a field at a point (x0, y0) with a width"""
+  x, y = fd.SpatialCoordinate(field.ufl_domain())
+  kernel =  (1 / (2 * np.pi * width ** 2)) * fd.exp(
+    -0.5 * ((x - x0)**2 + (y - y0)**2) / width**2)
+  return fd.assemble(kernel * field * dx)
+
+
 class FlowConfig(PDEBase):
   DEFAULT_REYNOLDS = 1
   DEFAULT_VELOCITY_ORDER = 2  # Taylor-Hood elements
@@ -54,17 +62,20 @@ class FlowConfig(PDEBase):
     if probes is None:
       probes = []
 
+    kernel_width = config.pop("probe_kernel_width", 0.1)
     probe_obs_types = {
         "velocity_probes":
             ObservationFunction(
-                partial(self.velocity_probe, probes),
+                partial(self.velocity_probe, probes, kernel_width),
                 num_outputs=2 * len(probes)),
         "pressure_probes":
             ObservationFunction(
-                partial(self.pressure_probe, probes), num_outputs=len(probes)),
+                partial(self.pressure_probe, probes, kernel_width),
+                num_outputs=len(probes)),
         "vorticity_probes":
             ObservationFunction(
-                partial(self.vorticity_probe, probes), num_outputs=len(probes)),
+                partial(self.vorticity_probe, probes, kernel_width),
+                num_outputs=len(probes)),
     }
 
     self.obs_fun = self.configure_observations(
@@ -336,7 +347,7 @@ class FlowConfig(PDEBase):
       return M
     return fd.assemble(M)
 
-  def velocity_probe(self, probes, q: fd.Function = None) -> list[float]:
+  def velocity_probe(self, probes, kernel_width, q: fd.Function = None) -> list[float]:
     """Probe velocity in the wake.
 
         Returns a list of velocities at the probe locations, ordered as
@@ -347,14 +358,15 @@ class FlowConfig(PDEBase):
     u = q.subfunctions[0]
     return np.stack(u.at(probes)).flatten("F")
 
-  def pressure_probe(self, probes, q: fd.Function = None) -> list[float]:
+  def pressure_probe(self, probes, kernel_width, q: fd.Function = None) -> list[float]:
     """Probe pressure around the cylinder"""
     if q is None:
       q = self.q
     p = q.subfunctions[1]
-    return np.stack(p.at(probes))
+    # return np.stack(p.at(probes))
+    return np.stack([probe(p, x, y, kernel_width) for x, y in probes])
 
-  def vorticity_probe(self, probes, q: fd.Function = None) -> list[float]:
+  def vorticity_probe(self, probes, kernel_width, q: fd.Function = None) -> list[float]:
     """Probe vorticity in the wake."""
     if q is None:
       u = None
