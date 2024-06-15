@@ -1,4 +1,5 @@
 from typing import Callable, Optional, Tuple
+import collections
 
 import firedrake as fd
 import numpy as np
@@ -83,7 +84,10 @@ class LogCallback(CallbackBase):
 
 def log_postprocess(flow):
     obs = flow.evaluate_objective(return_objective_values=True)
-    return obs
+    if isinstance(obs, collections.abc.Iterable):
+      return obs
+    else:
+      return [obs]
 
 class RewardCallback(CallbackBase):
     def __init__(

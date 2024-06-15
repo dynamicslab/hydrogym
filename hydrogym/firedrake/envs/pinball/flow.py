@@ -16,8 +16,8 @@ class Pinball(FlowConfig):
   rad = 0.5
   
   # Velocity probes
-  xp = np.linspace(rad * 1.5 * 1.866 + 1.5, rad * 1.5 * 1.866 + 4.5, 4)
-  yp = np.linspace(-(1.5 * rad + 0.75), (1.5 * rad + 0.75), 4)
+  xp = np.linspace(3, 9, 6)
+  yp = np.linspace(-1.25, 1.25, 5)
   X, Y = np.meshgrid(xp, yp)
   DEFAULT_VEL_PROBES = [(x, y) for x, y in zip(X.ravel(), Y.ravel())]
 
@@ -58,8 +58,10 @@ class Pinball(FlowConfig):
   x0 = [0.0, rad * 1.5 * 1.866, rad * 1.5 * 1.866]
   y0 = [0.0, 1.5 * rad, -1.5 * rad]
 
-  MAX_CONTROL = 4.0 #0.5 * np.pi
-  TAU = 1.0  # TODO: Tune this based on vortex shedding period
+  MAX_CONTROL = 1.0 #0.5 * np.pi
+  CONTROL_SCALING = 5.0
+  # TAU = 0.5  # TODO: Tune this based on vortex shedding period
+  TAU = 0.04  # Time constant for controller damping (0.01*vortex shedding period)
 
   MESH_DIR = os.path.abspath(f"{__file__}/..")
 
@@ -152,7 +154,9 @@ class Pinball(FlowConfig):
           return [*CL, *CD]
     else:
         CL, CD = averaged_objective_values[:3], averaged_objective_values[3:]
-    return sum(np.square(CD))
+    # print('pinball lambda', self.reward_lambda, CD, sum(np.square(CD)), flush=True)
+    return sum(np.square(CD)) + self.reward_lambda * sum(np.square(CL))
+    # return -(1.5 - (sum(CD) + self.reward_lambda * np.abs(sum(CL))))
 
   def render(self, mode="human", clim=None, levels=None, cmap="RdBu", **kwargs):
     if clim is None:

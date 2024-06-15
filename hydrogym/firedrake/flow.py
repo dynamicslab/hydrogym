@@ -355,7 +355,10 @@ class FlowConfig(PDEBase):
     if q is None:
       q = self.q
     u = q.subfunctions[0]
-    return np.stack(u.at(probes)).flatten("F")
+
+    # probe_values = np.stack([u.at(probe) for probe in probes]).flatten("F")
+    probe_values = np.stack(u.at(probes)).flatten("F")
+    return probe_values
 
   def pressure_probe(self, probes, q: fd.Function = None) -> list[float]:
     """Probe pressure around the cylinder"""
@@ -363,17 +366,20 @@ class FlowConfig(PDEBase):
     if q is None:
       q = self.q
     p = q.subfunctions[1]
-    return np.stack(p.at(probes))
+    # probe_values = np.stack([p.at(probe) for probe in probes])
+    probe_values = np.stack(p.at(probes))
+    return probe_values
 
   def vorticity_probe(self, probes, q: fd.Function = None) -> list[float]:
     """Probe vorticity in the wake."""
-    # print("vorticity probing at:", probes, flush=True)
     if q is None:
       u = None
     else:
       u = q.subfunctions[0]
     vort = self.vorticity(u=u)
-    return np.stack(vort.at(probes))
+    # probe_values = np.stack([vort.at(probe) for probe in probes])
+    probe_values = np.stack(vort.at(probes))
+    return probe_values
 
   def linearize(self,
                 qB=None,

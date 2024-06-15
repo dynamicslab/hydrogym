@@ -1,8 +1,8 @@
 import abc
 from typing import Any, Callable, Iterable, Tuple, TypeVar, Union
 
-# import gym
-import gymnasium as gym
+import gym
+# import gymnasium as gym
 import numpy as np
 from numpy.typing import ArrayLike
 
@@ -48,6 +48,7 @@ class PDEBase(metaclass=abc.ABCMeta):
 
   def __init__(self, **config):
     self.mesh = self.load_mesh(name=config.get("mesh", self.DEFAULT_MESH))
+    self.reward_lambda = config.get("reward_lambda", 0.0)
     self.initialize_state()
 
     self.reset()
@@ -187,6 +188,7 @@ class PDEBase(metaclass=abc.ABCMeta):
         Returns:
           Iterable[ArrayLike]: Updated actuator state
         """
+
     if act is None:
       act = self.control_state
     self.t += dt
@@ -363,7 +365,6 @@ class TransientSolver:
 class FlowEnv(gym.Env):
 
   def __init__(self, env_config: dict):
-
     self.flow: PDEBase = env_config.get("flow")(
         **env_config.get("flow_config", {}))
     
@@ -438,10 +439,14 @@ class FlowEnv(gym.Env):
         Returns:
             Tuple[ObsType, float, bool, dict]: obs, reward, done, info
         """
+        action = action * self.flow.CONTROL_SCALING
+        
         if self.num_sim_substeps_per_actuation is not None and self.num_sim_substeps_per_actuation > 1:
             self.action = action
             self.flow = self.solver.solve_multistep(num_substeps=self.num_sim_substeps_per_actuation, callbacks=[self.rewardLogCallback], controller=self.constant_action_controller, start_iteration_value=self.iter)
             if self.reward_aggreation_rule == "mean":
+                # print('flow_array', self.flow.reward_array,flush=True)
+                # print('mean flow_array', np.mean(self.flow.reward_array, axis=0),flush=True)
                 averaged_objective_values = np.mean(self.flow.reward_array, axis=0)
             elif self.reward_aggreation_rule == "sum":
                 averaged_objective_values = np.sum(self.flow.reward_array, axis=0)
@@ -509,3 +514,6 @@ class FlowEnv(gym.Env):
   def close(self):
     for cb in self.callbacks:
       cb.close()
+
+
+

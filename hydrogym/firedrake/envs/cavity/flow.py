@@ -17,14 +17,19 @@ class Cavity(FlowConfig):
   X, Y = np.meshgrid(xp, yp)
   DEFAULT_VEL_PROBES = [(x, y) for x, y in zip(X.ravel(), Y.ravel())]
 
-  # Pressure probes (spaced equally around the cylinder)
-  xp = np.linspace(0.25, 0.95, 4)
-  yp = np.linspace(-0.075, 0.075, 3)
+  # # Pressure probes (spaced equally around the cylinder)
+  # xp = np.linspace(0.25, 0.95, 4)
+  # yp = np.linspace(-0.075, 0.075, 3)
+  # X, Y = np.meshgrid(xp, yp)
+  # DEFAULT_PRES_PROBES = [(x, y) for x, y in zip(X.ravel(), Y.ravel())]
+  # DEFAULT_PRES_PROBES.extend([(0.4833333, -0.15), (0.4833333, -0.225),
+  #                            (0.7166666, -0.15), (0.7166666, -0.225)])
+  # DEFAULT_PRES_PROBES.extend([(1.05, 0.005), (1.2, 0.005), (1.35, 0.005), (1.5, 0.005)])
+
+  xp = np.linspace(0.1, 0.5, 4)
+  yp = np.linspace(-0.025, 0.025, 3)
   X, Y = np.meshgrid(xp, yp)
   DEFAULT_PRES_PROBES = [(x, y) for x, y in zip(X.ravel(), Y.ravel())]
-  DEFAULT_PRES_PROBES.extend([(0.4833333, -0.15), (0.4833333, -0.225),
-                             (0.7166666, -0.15), (0.7166666, -0.225)])
-  DEFAULT_PRES_PROBES.extend([(1.05, 0.005), (1.2, 0.005), (1.35, 0.005), (1.5, 0.005)])
 
   DEFAULT_VORT_PROBES = DEFAULT_VEL_PROBES
 
@@ -36,7 +41,8 @@ class Cavity(FlowConfig):
   FUNCTIONS = ("q", "qB"
               )  # This flow needs a base flow to compute fluctuation KE
 
-  MAX_CONTROL = 0.1
+  MAX_CONTROL = 1.0
+  CONTROL_SCALING = 0.1
   TAU = 0.075  # Time constant for controller damping (0.01*instability frequency)
 
   # Domain labels
@@ -131,7 +137,7 @@ class Cavity(FlowConfig):
         uB = qB.subfunctions[0]
         KE = 0.5 * fd.assemble(fd.inner(u - uB, u - uB) * fd.dx)
     else:
-        KE = averaged_objective_values
+        KE = averaged_objective_values[0]
     return KE
 
   def render(self, mode="human", clim=None, levels=None, cmap="RdBu", **kwargs):

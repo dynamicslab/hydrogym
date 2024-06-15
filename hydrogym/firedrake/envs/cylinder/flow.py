@@ -56,8 +56,8 @@ class CylinderBase(FlowConfig):
 
   # MAX_CONTROL = 0.5 * np.pi
   # TAU = 0.556  # Time constant for controller damping (0.1*vortex shedding period)
-  TAU = 0.278  # Time constant for controller damping (0.05*vortex shedding period)
-  # TAU = 0.0556  # Time constant for controller damping (0.01*vortex shedding period)
+  # TAU = 0.278  # Time constant for controller damping (0.05*vortex shedding period)
+  TAU = 0.0556  # Time constant for controller damping (0.01*vortex shedding period)
 
   # Domain labels
   FLUID = 1
@@ -232,7 +232,8 @@ class CylinderBase(FlowConfig):
 
 
 class RotaryCylinder(CylinderBase):
-  MAX_CONTROL = 4.0
+  MAX_CONTROL = 1.0
+  CONTROL_SCALING = 5.0
   DEFAULT_DT = 1e-2
 
   @property
@@ -245,7 +246,8 @@ class RotaryCylinder(CylinderBase):
 
 
 class Cylinder(CylinderBase):
-  MAX_CONTROL = 0.15
+  MAX_CONTROL = 0.1
+  CONTROL_SCALING = 1.0
   DEFAULT_DT = 1e-2
 
   @property
