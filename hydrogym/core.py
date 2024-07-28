@@ -34,7 +34,9 @@ class PDEBase(metaclass=abc.ABCMeta):
     any information about solving the time-varying equations
     """
 
-  MAX_CONTROL = np.inf
+  # MAX_CONTROL = np.inf
+  MAX_CONTROL_LOW = -np.inf
+  MAX_CONTROL_UP = np.inf
   DEFAULT_MESH = ""
   DEFAULT_DT = np.inf
 
@@ -406,8 +408,8 @@ class FlowEnv(gym.Env):
         dtype=float,
     )
     self.action_space = gym.spaces.Box(
-        low=-self.flow.MAX_CONTROL,
-        high=self.flow.MAX_CONTROL,
+        low=self.flow.MAX_CONTROL_LOW,
+        high=self.flow.MAX_CONTROL_UP,
         shape=(self.flow.num_inputs,),
         dtype=float,
     )

@@ -232,7 +232,8 @@ class CylinderBase(FlowConfig):
 
 
 class RotaryCylinder(CylinderBase):
-  MAX_CONTROL = 1.0
+  MAX_CONTROL_LOW = -1.0
+  MAX_CONTROL_UP = 1.0
   CONTROL_SCALING = 5.0
   DEFAULT_DT = 1e-2
 
@@ -246,7 +247,8 @@ class RotaryCylinder(CylinderBase):
 
 
 class Cylinder(CylinderBase):
-  MAX_CONTROL = 0.1
+  MAX_CONTROL_LOW = -0.1
+  MAX_CONTROL_UP = 0.1
   CONTROL_SCALING = 1.0
   DEFAULT_DT = 1e-2
 

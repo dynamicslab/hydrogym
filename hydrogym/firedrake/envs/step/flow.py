@@ -48,7 +48,8 @@ class Step(FlowConfig):
   FUNCTIONS = ("q", "qB"
               )  # This flow needs a base flow to compute fluctuation KE
 
-  MAX_CONTROL = 1.0
+  MAX_CONTROL_LOW = -1.0
+  MAX_CONTROL_UP = 1.0
   CONTROL_SCALING = 0.1  # Arbitrary... should tune this
   TAU = 0.005  # Time constant for controller damping (0.01*instability frequency)
 

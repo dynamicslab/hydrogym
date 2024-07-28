@@ -315,8 +315,8 @@ class FlowConfig(PDEBase):
 
       if hasattr(self, "bcu_actuation"):
         for i in range(self.num_inputs):
-          u = np.clip(self.actuators[i].state, -self.MAX_CONTROL,
-                      self.MAX_CONTROL)
+          u = np.clip(self.actuators[i].state, self.MAX_CONTROL_LOW,
+                      self.MAX_CONTROL_UP)
           self.bcu_actuation[i].set_scale(u)
 
   def inner_product(

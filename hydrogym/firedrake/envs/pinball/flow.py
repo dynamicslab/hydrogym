@@ -58,10 +58,11 @@ class Pinball(FlowConfig):
   x0 = [0.0, rad * 1.5 * 1.866, rad * 1.5 * 1.866]
   y0 = [0.0, 1.5 * rad, -1.5 * rad]
 
-  MAX_CONTROL = 1.0 #0.5 * np.pi
+  MAX_CONTROL_LOW = -1.0
+  MAX_CONTROL_UP = 1.0
   CONTROL_SCALING = 5.0
-  # TAU = 0.5  # TODO: Tune this based on vortex shedding period
-  TAU = 0.04  # Time constant for controller damping (0.01*vortex shedding period)
+  TAU = 0.5  # TODO: Tune this based on vortex shedding period
+  # TAU = 0.04  # Time constant for controller damping (0.01*vortex shedding period)
 
   MESH_DIR = os.path.abspath(f"{__file__}/..")
 
@@ -155,7 +156,8 @@ class Pinball(FlowConfig):
     else:
         CL, CD = averaged_objective_values[:3], averaged_objective_values[3:]
     # print('pinball lambda', self.reward_lambda, CD, sum(np.square(CD)), flush=True)
-    return sum(np.square(CD)) + self.reward_lambda * sum(np.square(CL))
+    # return sum(np.square(CD)) + self.reward_lambda * sum(np.square(CL))
+    return sum(CD)
     # return -(1.5 - (sum(CD) + self.reward_lambda * np.abs(sum(CL))))
 
   def render(self, mode="human", clim=None, levels=None, cmap="RdBu", **kwargs):
