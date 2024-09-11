@@ -82,11 +82,14 @@ def test_control():
 
 def test_env():
   env_config = {
-      "flow": hgym.Cylinder,
-      "flow_config": {
-          "mesh": "medium",
-      },
-      "solver": hgym.SemiImplicitBDF,
+    "flow": hgym.Cylinder,
+    "flow_config": {
+      "mesh": "medium",
+    },
+    "solver": hgym.SemiImplicitBDF,
+    "solver_config": {
+      "dt": 1e-2,
+    },
   }
   env = hgym.FlowEnv(env_config)
 
@@ -94,6 +97,8 @@ def test_env():
   for _ in range(10):
     y, reward, done, info = env.step(u)
     u = feedback_ctrl(y)
+
+  env.reset()
 
 
 def test_linearize():

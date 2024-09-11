@@ -315,7 +315,7 @@ class TransientSolver:
         """
     raise NotImplementedError
 
-  def reset(self, t=0.0):
+  def reset(self):
     """Reset variables for the timestepper"""
     pass
 
@@ -389,7 +389,7 @@ class FlowEnv(gym.Env):
   def reset(self, t=0.0) -> Union[ArrayLike, Tuple[ArrayLike, dict]]:
     self.iter = 0
     self.flow.reset(q0=self.q0, t=t)
-    self.solver.reset(t=t)
+    self.solver.reset()
 
     return self.flow.get_observations()
 
