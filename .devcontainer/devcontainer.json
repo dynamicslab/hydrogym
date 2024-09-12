@@ -18,7 +18,7 @@
 
 	// Use 'postCreateCommand' to run commands after the container is created.
 	// Setting up an editable version of HydroGym
-	// "postCreateCommand": "source /home/firedrake/firedrake/bin/activate && pip install -e ."
+	"postCreateCommand": "source /home/firedrake/firedrake/bin/activate && pip install -e ."
 
 	// Configure tool-specific properties.
 	// "customizations": {},

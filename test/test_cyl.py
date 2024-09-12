@@ -82,14 +82,14 @@ def test_control():
 
 def test_env():
   env_config = {
-    "flow": hgym.Cylinder,
-    "flow_config": {
-      "mesh": "medium",
-    },
-    "solver": hgym.SemiImplicitBDF,
-    "solver_config": {
-      "dt": 1e-2,
-    },
+      "flow": hgym.Cylinder,
+      "flow_config": {
+          "mesh": "medium",
+      },
+      "solver": hgym.SemiImplicitBDF,
+      "solver_config": {
+          "dt": 1e-2,
+      },
   }
   env = hgym.FlowEnv(env_config)
 
