@@ -209,7 +209,7 @@ class RotaryCylinder(CylinderBase):
     theta = atan2(ufl.real(self.y), ufl.real(self.x))  # Angle from origin
     self.rad = fd.Constant(RADIUS)
     # Tangential velocity
-    return ufl.as_tensor((self.rad * sin(theta), self.rad * cos(theta)))
+    return ufl.as_tensor((-self.rad * sin(theta), self.rad * cos(theta)))
 
 
 class Cylinder(CylinderBase):
