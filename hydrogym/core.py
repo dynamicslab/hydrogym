@@ -453,7 +453,6 @@ class FlowEnv(gym.Env):
     else:
       self.solver.step(self.iter, control=action)
       self.iter += 1
-      t = self.iter * self.solver.dt
       self.t += self.dt
       reward = self.get_reward()
 
