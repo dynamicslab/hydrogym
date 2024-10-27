@@ -14,7 +14,7 @@ from hydrogym.firedrake import FlowConfig, ObservationFunction, ScaledDirichletB
 
 class Pinball(FlowConfig):
   rad = 0.5
-  
+
   # Velocity probes
   xp = np.linspace(3, 9, 6)
   yp = np.linspace(-1.25, 1.25, 5)
@@ -26,22 +26,20 @@ class Pinball(FlowConfig):
   yp = np.linspace(-0.66, 0.66, 3)
   X, Y = np.meshgrid(xp, yp)
 
-  DEFAULT_PRES_PROBES = [
-    (rad * 1.5 * 1.866 - 0.51, 1.5 * rad),
-    (rad * 1.5 * 1.866, 1.5 * rad + 0.51),
-    (rad * 1.5 * 1.866 + 0.5, 1.5 * rad+ 0.51),
-    (rad * 1.5 * 1.866 - 0.51, -1.5 * rad),
-    (rad * 1.5 * 1.866, -(1.5 * rad + 0.51)),
-    (rad * 1.5 * 1.866 + 0.5, -(1.5 * rad+ 0.51)),
-    (rad * 1.5 * 1.866 + 1.5, 1.5 * rad - 0.5),
-    (rad * 1.5 * 1.866 + 2.5, 1.5 * rad - 0.25),
-    (rad * 1.5 * 1.866 + 1.5, 1.5 * rad + 0.5),
-    (rad * 1.5 * 1.866 + 2.5, 1.5 * rad + 0.75),
-    (rad * 1.5 * 1.866 + 1.5, -(1.5 * rad - 0.5)),
-    (rad * 1.5 * 1.866 + 2.5, -(1.5 * rad - 0.25)),
-    (rad * 1.5 * 1.866 + 1.5, -(1.5 * rad + 0.5)),
-    (rad * 1.5 * 1.866 + 2.5, -(1.5 * rad + 0.75))
-                            ]
+  DEFAULT_PRES_PROBES = [(rad * 1.5 * 1.866 - 0.51, 1.5 * rad),
+                         (rad * 1.5 * 1.866, 1.5 * rad + 0.51),
+                         (rad * 1.5 * 1.866 + 0.5, 1.5 * rad + 0.51),
+                         (rad * 1.5 * 1.866 - 0.51, -1.5 * rad),
+                         (rad * 1.5 * 1.866, -(1.5 * rad + 0.51)),
+                         (rad * 1.5 * 1.866 + 0.5, -(1.5 * rad + 0.51)),
+                         (rad * 1.5 * 1.866 + 1.5, 1.5 * rad - 0.5),
+                         (rad * 1.5 * 1.866 + 2.5, 1.5 * rad - 0.25),
+                         (rad * 1.5 * 1.866 + 1.5, 1.5 * rad + 0.5),
+                         (rad * 1.5 * 1.866 + 2.5, 1.5 * rad + 0.75),
+                         (rad * 1.5 * 1.866 + 1.5, -(1.5 * rad - 0.5)),
+                         (rad * 1.5 * 1.866 + 2.5, -(1.5 * rad - 0.25)),
+                         (rad * 1.5 * 1.866 + 1.5, -(1.5 * rad + 0.5)),
+                         (rad * 1.5 * 1.866 + 2.5, -(1.5 * rad + 0.75))]
 
   DEFAULT_VORT_PROBES = DEFAULT_PRES_PROBES
 
@@ -98,10 +96,9 @@ class Pinball(FlowConfig):
   def num_inputs(self) -> int:
     return len(self.CYLINDER)
 
-  def configure_observations(
-      self,
-      obs_type=None,
-      probe_obs_types={}) -> ObservationFunction:
+  def configure_observations(self,
+                             obs_type=None,
+                             probe_obs_types={}) -> ObservationFunction:
     if obs_type is None:
       obs_type = "lift_drag"
 
@@ -142,18 +139,17 @@ class Pinball(FlowConfig):
     self.bcu_inflow.set_value(fd.Constant((0, 0)))
     self.bcu_freestream.set_value(fd.Constant(0.0))
 
-  def evaluate_objective(
-      self, 
-      q: fd.Function = None,
-      averaged_objective_values=None,
-      return_objective_values=False) -> float:
+  def evaluate_objective(self,
+                         q: fd.Function = None,
+                         averaged_objective_values=None,
+                         return_objective_values=False) -> float:
     """The objective function for this flow is the drag coefficient"""
     if averaged_objective_values is None:
-        CL, CD = self.compute_forces(q=q)
-        if return_objective_values:
-          return [*CL, *CD]
+      CL, CD = self.compute_forces(q=q)
+      if return_objective_values:
+        return [*CL, *CD]
     else:
-        CL, CD = averaged_objective_values[:3], averaged_objective_values[3:]
+      CL, CD = averaged_objective_values[:3], averaged_objective_values[3:]
 
     return sum(CD)
 

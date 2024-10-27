@@ -52,10 +52,9 @@ class CylinderBase(FlowConfig):
   def num_inputs(self) -> int:
     return 1  # Rotary control
 
-  def configure_observations(
-      self,
-      obs_type=None,
-      probe_obs_types={}) -> ObservationFunction:
+  def configure_observations(self,
+                             obs_type=None,
+                             probe_obs_types={}) -> ObservationFunction:
     if obs_type is None:
       obs_type = "lift_drag"
 
@@ -161,19 +160,18 @@ class CylinderBase(FlowConfig):
     self.bcu_inflow.set_value(fd.Constant((0, 0)))
     self.bcu_freestream.set_value(fd.Constant(0.0))
 
-  def evaluate_objective(
-      self,
-      q: fd.Function = None,
-      averaged_objective_values=None,
-      lambda_value=0.2,
-      return_objective_values=False) -> float:
+  def evaluate_objective(self,
+                         q: fd.Function = None,
+                         averaged_objective_values=None,
+                         lambda_value=0.2,
+                         return_objective_values=False) -> float:
     """The objective function for this flow is the drag coefficient"""
     if averaged_objective_values is None:
-        CL, CD = self.compute_forces(q=q)
-        if return_objective_values:
-          return CL, CD
+      CL, CD = self.compute_forces(q=q)
+      if return_objective_values:
+        return CL, CD
     else:
-        CL, CD = averaged_objective_values
+      CL, CD = averaged_objective_values
     # return np.square(CD) + lambda_value * np.square(CL)
     return np.abs(CD) + lambda_value * np.abs(CL)
 

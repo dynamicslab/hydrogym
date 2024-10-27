@@ -118,22 +118,21 @@ class Cavity(FlowConfig):
     m = fd.assemble(-dot(grad(u[0]), self.n) * ds(self.SENSOR))
     return (m,)
 
-  def evaluate_objective(
-      self,
-      q=None,
-      qB=None,
-      averaged_objective_values=None,
-      return_objective_values=False):
+  def evaluate_objective(self,
+                         q=None,
+                         qB=None,
+                         averaged_objective_values=None,
+                         return_objective_values=False):
     if averaged_objective_values is None:
-        if q is None:
-            q = self.q
-        if qB is None:
-            qB = self.qB
-        u = q.subfunctions[0]
-        uB = qB.subfunctions[0]
-        KE = 0.5 * fd.assemble(fd.inner(u - uB, u - uB) * fd.dx)
+      if q is None:
+        q = self.q
+      if qB is None:
+        qB = self.qB
+      u = q.subfunctions[0]
+      uB = qB.subfunctions[0]
+      KE = 0.5 * fd.assemble(fd.inner(u - uB, u - uB) * fd.dx)
     else:
-        KE = averaged_objective_values[0]
+      KE = averaged_objective_values[0]
     return KE
 
   def render(self, mode="human", clim=None, levels=None, cmap="RdBu", **kwargs):
