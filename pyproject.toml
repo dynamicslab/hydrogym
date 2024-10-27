@@ -70,12 +70,20 @@ seaborn = "^0.12.1"
 [tool.yapf]
 based_on_style = "yapf"
 
+[tool.yapfignore]
+ignore_patterns = [
+    "hydrogym/experimental/*"
+]
+
 [tool.ruff]
 line-length = 120
 
 [tool.ruff.lint]
 select = ["E", "F"]
 ignore = ["F401", "E731"]
+
+[tool.ruff.lint.per-file-ignores]
+"hydrogym/experimental/*" = ["E", "F"]
 
 [tool.codespell]
 skip = '*.svg,*.ipynb'
