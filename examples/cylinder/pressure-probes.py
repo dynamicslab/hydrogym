@@ -51,7 +51,8 @@ def log_postprocess(flow):
 print_fmt = "t: {0:0.2f},\t\t p[4]: {5}"  # This will format the output
 log = hgym.utils.io.LogCallback(
     postprocess=log_postprocess,
-    nvals=n_probes*2 + 1 if observation_type == "velocity_probes" else n_probes + 1,
+    nvals=n_probes * 2 +
+    1 if observation_type == "velocity_probes" else n_probes + 1,
     interval=1,
     print_fmt=print_fmt,
     filename=data_file,
