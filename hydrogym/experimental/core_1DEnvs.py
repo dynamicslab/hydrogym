@@ -4,7 +4,6 @@ from typing import Any, Callable, Iterable, Tuple, TypeVar, Union
 import gym
 # import gymnasium as gym
 import numpy as np
-import torch
 from numpy.typing import ArrayLike
 
 class OneDimEnv(gym.Env):
@@ -12,11 +11,8 @@ class OneDimEnv(gym.Env):
   def __init__(self, env_config: dict):
     self.backend = env_config.get("backend", {"torch"})
 
-
-    self.solver: PDESolverBase1D = env_config.get("flow")(
+    self.solver: PDESolver1D = env_config.get("flow")(
         **env_config.get("flow_config", {}))
-    
-    self.set_seed(env_config.get("seed"))
 
     self.observation_space = gym.spaces.Box(
       low=-np.inf,
@@ -26,19 +22,16 @@ class OneDimEnv(gym.Env):
     )
 
     self.action_space = gym.spaces.Box(
-        low=self.solver.MAX_CONTROL_LOW,
-        high=self.solver.MAX_CONTROL_UP,
+        low=-self.solver.MAX_CONTROL,
+        high=self.solver.MAX_CONTROL,
         shape=(self.solver.num_inputs,),
         dtype=float,
     )
 
+    self.iter: int = 0
     self.max_steps = env_config.get("max_steps", 1e6)
     self.dt = env_config.get("flow_config", {}).get("dt", None)
     assert self.dt is not None, f"Error: Solver timestep dt ({self.dt}) must not be None"
-  
-  def set_seed(self, seed):
-    np.random.seed(seed)
-    self.solver.set_seed(seed)
 
   def constant_action_controller(self, t, y):
         return self.action
@@ -58,13 +51,10 @@ class OneDimEnv(gym.Env):
         self.solver.step(control=action)
         reward = self.get_reward()
         obs = self.solver.get_observations()
-        if reward == -torch.inf:
-           done = True
-        else:
-          done = self.check_complete()
+        done = self.check_complete()
         info = {}
 
-        self.solver.iter += 1
+        self.iter += 1
 
         return obs, reward, done, info
   
@@ -72,11 +62,12 @@ class OneDimEnv(gym.Env):
         return -self.solver.evaluate_objective()
 
   def check_complete(self):
-    return False if self.solver.iter < self.max_steps else True
+    return self.iter > self.max_steps
 
   def reset(self) -> Union[ArrayLike, Tuple[ArrayLike, dict]]:
 
     self.solver.reset()
+    self.iter = 0
     info = {}
 
     return self.solver.get_observations(), info
@@ -85,7 +76,7 @@ class OneDimEnv(gym.Env):
     self.solver.render(mode=mode, **kwargs)
 
 
-class PDESolverBase1D(metaclass=abc.ABCMeta):
+class PDESolver1D(metaclass=abc.ABCMeta):
   """
     Basic configuration of the 1D PDE Solver
 
@@ -136,14 +127,17 @@ class PDESolverBase1D(metaclass=abc.ABCMeta):
     pass
 
 if __name__ == '__main__':
+    # torch.set_default_tensor_type('torch.cuda.FloatTensor')
     from tqdm import tqdm
     import torch
 
     torch.manual_seed(0)
     np.random.seed(0)
 
+    import hydrogym
+
     config = {
-            "flow": Kuramoto_Sivashinsky,
+            "flow": hydrogym.torch_env.Kuramoto_Sivashinsky,
             "flow_config": {
                             "dt": 0.001,
                             "restart": 'ks_init.tensor',
@@ -153,6 +147,7 @@ if __name__ == '__main__':
             "max_steps": 100,
         }
     
+    # ks_init = torch.load('/net/beegfs-hpc/work/lagemannk/container/hydrogym_dev2/home/firedrake/hydrogym_rllib_multiEnv/hydrogym/hydrogym/torch_env/ks_init.tensor')
     env = OneDimEnv(config)
 
     action_space = env.action_space 
@@ -184,5 +179,9 @@ if __name__ == '__main__':
     plt.savefig('/net/beegfs-hpc/work/lagemannk/container/workspace_christian_ext/logs/result.png', bbox_inches='tight')
     plt.close()
 
-    env.reset()    
+    env.reset()
+
+
+
+    
   
