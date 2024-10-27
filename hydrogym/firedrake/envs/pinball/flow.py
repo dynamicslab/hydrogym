@@ -98,9 +98,10 @@ class Pinball(FlowConfig):
   def num_inputs(self) -> int:
     return len(self.CYLINDER)
 
-  def configure_observations(self,
-                             obs_type=None,
-                             probe_obs_types={}) -> ObservationFunction:
+  def configure_observations(
+      self,
+      obs_type=None,
+      probe_obs_types={}) -> ObservationFunction:
     if obs_type is None:
       obs_type = "lift_drag"
 
@@ -141,11 +142,11 @@ class Pinball(FlowConfig):
     self.bcu_inflow.set_value(fd.Constant((0, 0)))
     self.bcu_freestream.set_value(fd.Constant(0.0))
 
-  # def get_observations(self):
-  #   CL, CD = self.compute_forces()
-  #   return [*CL, *CD]
-
-  def evaluate_objective(self, q: fd.Function = None, averaged_objective_values=None, return_objective_values=False) -> float:
+  def evaluate_objective(
+      self, 
+      q: fd.Function = None,
+      averaged_objective_values=None,
+      return_objective_values=False) -> float:
     """The objective function for this flow is the drag coefficient"""
     if averaged_objective_values is None:
         CL, CD = self.compute_forces(q=q)
@@ -153,10 +154,8 @@ class Pinball(FlowConfig):
           return [*CL, *CD]
     else:
         CL, CD = averaged_objective_values[:3], averaged_objective_values[3:]
-    # print('pinball lambda', self.reward_lambda, CD, sum(np.square(CD)), flush=True)
-    # return sum(np.square(CD)) + self.reward_lambda * sum(np.square(CL))
+
     return sum(CD)
-    # return -(1.5 - (sum(CD) + self.reward_lambda * np.abs(sum(CL))))
 
   def render(self, mode="human", clim=None, levels=None, cmap="RdBu", **kwargs):
     if clim is None:

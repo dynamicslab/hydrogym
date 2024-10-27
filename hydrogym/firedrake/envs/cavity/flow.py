@@ -16,16 +16,6 @@ class Cavity(FlowConfig):
   yp = np.linspace(-0.05, 0.05, 4)
   X, Y = np.meshgrid(xp, yp)
   DEFAULT_VEL_PROBES = [(x, y) for x, y in zip(X.ravel(), Y.ravel())]
-
-  # # Pressure probes (spaced equally around the cylinder)
-  # xp = np.linspace(0.25, 0.95, 4)
-  # yp = np.linspace(-0.075, 0.075, 3)
-  # X, Y = np.meshgrid(xp, yp)
-  # DEFAULT_PRES_PROBES = [(x, y) for x, y in zip(X.ravel(), Y.ravel())]
-  # DEFAULT_PRES_PROBES.extend([(0.4833333, -0.15), (0.4833333, -0.225),
-  #                            (0.7166666, -0.15), (0.7166666, -0.225)])
-  # DEFAULT_PRES_PROBES.extend([(1.05, 0.005), (1.2, 0.005), (1.35, 0.005), (1.5, 0.005)])
-
   xp = np.linspace(0.1, 0.5, 4)
   yp = np.linspace(-0.025, 0.025, 3)
   X, Y = np.meshgrid(xp, yp)
@@ -128,7 +118,12 @@ class Cavity(FlowConfig):
     m = fd.assemble(-dot(grad(u[0]), self.n) * ds(self.SENSOR))
     return (m,)
 
-  def evaluate_objective(self, q=None, qB=None, averaged_objective_values=None, return_objective_values=False):
+  def evaluate_objective(
+      self,
+      q=None,
+      qB=None,
+      averaged_objective_values=None,
+      return_objective_values=False):
     if averaged_objective_values is None:
         if q is None:
             q = self.q

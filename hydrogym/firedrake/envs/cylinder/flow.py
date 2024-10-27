@@ -10,24 +10,6 @@ from ufl import as_vector, atan2, cos, dot, sign, sin, sqrt
 
 from hydrogym.firedrake import FlowConfig, ObservationFunction, ScaledDirichletBC
 
-# # Velocity probes
-# xp = np.linspace(1.0, 10.0, 16)
-# yp = np.linspace(-2.0, 2.0, 4)
-# X, Y = np.meshgrid(xp, yp)
-# DEFAULT_VEL_PROBES = [(x, y) for x, y in zip(X.ravel(), Y.ravel())]
-
-# # Pressure probes (spaced equally around the cylinder)
-# xp = np.linspace(1.0, 4.0, 4)
-# yp = np.linspace(-0.66, 0.66, 3)
-# X, Y = np.meshgrid(xp, yp)
-# DEFAULT_PRES_PROBES = [(x, y) for x, y in zip(X.ravel(), Y.ravel())]
-
-# RADIUS = 0.5
-# DEFAULT_PRES_PROBES = [
-#     (RADIUS * np.cos(theta), RADIUS * np.sin(theta))
-#     for theta in np.linspace(0, 2 * np.pi, 20, endpoint=False)
-# ]
-
 RADIUS = 0.5
 
 
@@ -55,8 +37,6 @@ class CylinderBase(FlowConfig):
   DEFAULT_DT = 1e-2
 
   # MAX_CONTROL = 0.5 * np.pi
-  # TAU = 0.556  # Time constant for controller damping (0.1*vortex shedding period)
-  # TAU = 0.278  # Time constant for controller damping (0.05*vortex shedding period)
   TAU = 0.0556  # Time constant for controller damping (0.01*vortex shedding period)
 
   # Domain labels
@@ -72,9 +52,10 @@ class CylinderBase(FlowConfig):
   def num_inputs(self) -> int:
     return 1  # Rotary control
 
-  def configure_observations(self,
-                             obs_type=None,
-                             probe_obs_types={}) -> ObservationFunction:
+  def configure_observations(
+      self,
+      obs_type=None,
+      probe_obs_types={}) -> ObservationFunction:
     if obs_type is None:
       obs_type = "lift_drag"
 
@@ -158,7 +139,7 @@ class CylinderBase(FlowConfig):
     (u, p) = fd.split(q)
     (v, s) = fd.TestFunctions(self.mixed_space)
 
-    # der of velocity wrt to the unit normal at the surface of the cylinder
+    # Order of velocity wrt to the unit normal at the surface of the cylinder
     # equivalent to directional derivative along normal:
     du_dn = dot(self.epsilon(u), self.n)
 
@@ -175,32 +156,17 @@ class CylinderBase(FlowConfig):
         (direction / self.Re * sqrt(du_dn_t[0]**2 + du_dn_t[1]**2)) *
         ds(self.CYLINDER))
 
-  # TODO: Add back in when linearization is fixed
-  # def linearize_control(self, qB=None):
-  #     """
-  #     Solve linear problem with nonzero Dirichlet BCs to derive forcing term for unsteady DNS
-  #     """
-  #     if qB is None:
-  #         qB = self.solve_steady()
-
-  #     A = self.linearize_dynamics(qB, adjoint=False)
-  #     # M = self.mass_matrix()
-  #     self.linearize_bcs()  # Linearize BCs first (sets freestream to zero)
-  #     self.set_control([1.0])  # Now change the cylinder rotation  TODO: FIX
-
-  #     (v, _) = fd.TestFunctions(self.mixed_space)
-  #     zero = fd.inner(fd.Constant((0, 0)), v) * fd.dx  # Zero RHS for linear form
-
-  #     f = fd.Function(self.mixed_space)
-  #     fd.solve(A == zero, f, bcs=self.collect_bcs())
-  #     return f
-
   def linearize_bcs(self, function_spaces=None):
     self.reset_controls(function_spaces=function_spaces)
     self.bcu_inflow.set_value(fd.Constant((0, 0)))
     self.bcu_freestream.set_value(fd.Constant(0.0))
 
-  def evaluate_objective(self, q: fd.Function = None, averaged_objective_values=None, lambda_value=0.2, return_objective_values=False) -> float:
+  def evaluate_objective(
+      self,
+      q: fd.Function = None,
+      averaged_objective_values=None,
+      lambda_value=0.2,
+      return_objective_values=False) -> float:
     """The objective function for this flow is the drag coefficient"""
     if averaged_objective_values is None:
         CL, CD = self.compute_forces(q=q)

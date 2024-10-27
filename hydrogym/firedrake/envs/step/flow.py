@@ -26,8 +26,6 @@ class Step(FlowConfig):
     """
 
   # Velocity probes
-  # xp = np.linspace(3, 8.5, 7)
-  # yp = np.linspace(-0.475, -0.2, 3)
   xp = np.linspace(0.1, 3, 5)
   yp = np.linspace(-0.1, 0.2, 4)
   X, Y = np.meshgrid(xp, yp)
@@ -99,9 +97,10 @@ class Step(FlowConfig):
         exp(-((self.x - x0)**2 + (self.y - y0)**2) / delta**2),
     ))
 
-  def configure_observations(self,
-                             obs_type=None,
-                             probe_obs_types={}) -> ObservationFunction:
+  def configure_observations(
+      self,
+      obs_type=None,
+      probe_obs_types={}) -> ObservationFunction:
     if obs_type is None:
       obs_type = "stress_sensor"  # Shear stress on downstream wall
 
@@ -125,13 +124,18 @@ class Step(FlowConfig):
     # Define static boundary conditions
     self.U_inf = ufl.as_tensor(
         (1.0 - ((self.y - 0.25) / 0.25)**2, 0.0 * self.y))
-    self.bcu_inflow = fd.DirichletBC(V, self.U_inf, self.INLET)
-    # self.bcu_noslip = fd.DirichletBC(V, fd.Constant((0, 0)),
-    #                                  (self.WALL, self.SENSOR))
-    self.bcu_noslip = fd.DirichletBC(V, fd.Constant((0, 0)),
-                                    #  (self.WALL, self.SENSOR))
-                                     (self.WALL, 6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30))
-    self.bcp_outflow = fd.DirichletBC(Q, fd.Constant(0), self.OUTLET)
+    self.bcu_inflow = fd.DirichletBC(
+      V,
+      self.U_inf,
+      self.INLET)
+    self.bcu_noslip = fd.DirichletBC(
+      V,
+      fd.Constant((0, 0)),
+      (self.WALL, 6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30))
+    self.bcp_outflow = fd.DirichletBC(
+      Q,
+      fd.Constant(0),
+      self.OUTLET)
 
     # Define time-varying boundary conditions for actuation
     u_bc = ufl.as_tensor((0.0 * self.x, -self.x * (1600 * self.x + 560) / 147))
@@ -196,7 +200,12 @@ class Step(FlowConfig):
     m = fd.assemble(-dot(grad(u[0]), self.n) * ds(sensor))
     return (m,)
 
-  def evaluate_objective(self, q=None, qB=None, averaged_objective_values=None, return_objective_values=False):
+  def evaluate_objective(
+      self,
+      q=None,
+      qB=None,
+      averaged_objective_values=None,
+      return_objective_values=False):
     if averaged_objective_values is None:
         if q is None:
             q = self.q
@@ -207,9 +216,6 @@ class Step(FlowConfig):
         KE = 0.5 * fd.assemble(fd.inner(u - uB, u - uB) * fd.dx)
     else:
         KE = averaged_objective_values[0]
-    # print("KE", KE, flush=True)
-    # ReLen = self.reattachment_length(q)
-    # print("Reattachment length", ReLen[0], flush=True)
     return KE
 
   def render(
