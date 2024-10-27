@@ -136,7 +136,6 @@ class PDESolverBase1D(metaclass=abc.ABCMeta):
     pass
 
 if __name__ == '__main__':
-    # torch.set_default_tensor_type('torch.cuda.FloatTensor')
     from tqdm import tqdm
     import torch
 
@@ -154,7 +153,6 @@ if __name__ == '__main__':
             "max_steps": 100,
         }
     
-    # ks_init = torch.load('/net/beegfs-hpc/work/lagemannk/container/hydrogym_dev2/home/firedrake/hydrogym_rllib_multiEnv/hydrogym/hydrogym/torch_env/ks_init.tensor')
     env = OneDimEnv(config)
 
     action_space = env.action_space 
@@ -186,9 +184,5 @@ if __name__ == '__main__':
     plt.savefig('/net/beegfs-hpc/work/lagemannk/container/workspace_christian_ext/logs/result.png', bbox_inches='tight')
     plt.close()
 
-    env.reset()
-
-
-
-    
+    env.reset()    
   
