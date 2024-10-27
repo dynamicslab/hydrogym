@@ -47,6 +47,23 @@ need to _separately_ ensure the solver backend is installed (again, currently al
 Alternatively (and this is important for large-scale RL training), the core Hydrogym package can (or will soon be able to) launch reinforcement learning training on a Ray-cluster without an underlying Firedrake install.
 For more information and suggested approaches see the [Installation Docs](https://hydrogym.readthedocs.io/en/latest/installation.html).
 
+To add HydroGym to an existing Firedrake installation, and install from the repository, run:
+
+```bash
+git clone https://github.com/dynamicslab/hydrogym.git
+cd hydrogym
+pip install .
+```
+
+As the mesh files are stored in [git large file storage](https://git-lfs.github.com/), you will need to install git-lfs
+to download the mesh files.
+
+```bash
+git lfs install && git lfs fetch --all
+```
+
+At which point you are ready to run HydroGym locally.
+
 # Quickstart Guide
 
  Having installed Hydrogym into our virtual environment experimenting with Hydrogym is as easy as starting the Python interpreter

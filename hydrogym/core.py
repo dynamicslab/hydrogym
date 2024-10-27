@@ -40,8 +40,7 @@ class PDEBase(metaclass=abc.ABCMeta):
   DEFAULT_MESH = ""
   DEFAULT_DT = np.inf
 
-  # Timescale used to smooth inputs
-  #  (should be less than any meaningful timescale of the system)
+  # Timescale used to smooth inputs (should be less than any meaningful timescale of the system)
   TAU = 0.0
 
   StateType = TypeVar("StateType")
@@ -359,7 +358,7 @@ class TransientSolver:
         """
     raise NotImplementedError
 
-  def reset(self, t=0.0):
+  def reset(self):
     """Reset variables for the timestepper"""
     self.t = 0.0
 
@@ -497,16 +496,8 @@ class FlowEnv(gym.Env):
 
   def reset(self, t=0.0) -> Union[ArrayLike, Tuple[ArrayLike, dict]]:
     self.iter = 0
-    self.t = 0.
-
-    if self.restart_ckpts is not None:
-      ckpt_index = np.random.randint(0, len(self.restart_ckpts))
-      self.flow.load_checkpoint(self.restart_ckpts[ckpt_index])
-      # print("Loaded ckeckpoint:", self.restart_ckpts[ckpt_index], flush=True)
-
-    self.flow.reset(q0=self.flow.copy_state() if self.restart_ckpts is not None else self.q0)
+    self.flow.reset(q0=self.q0, t=t)
     self.solver.reset()
-    info = {}
 
     return self.flow.get_observations(), info
 

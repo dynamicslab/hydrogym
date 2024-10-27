@@ -1,3 +1,4 @@
+import pytest
 import firedrake as fd
 import numpy as np
 
@@ -41,10 +42,11 @@ def test_steady_rotation(tol=1e-3):
   assert abs(CD - 1.49) < tol  # Re = 100
 
 
-def test_integrate():
+@pytest.mark.parametrize("k", [1, 3])
+def test_integrate(k):
   flow = hgym.Cylinder(mesh="medium")
   dt = 1e-2
-  hgym.integrate(flow, t_span=(0, 10 * dt), dt=dt)
+  hgym.integrate(flow, t_span=(0, 10 * dt), dt=dt, order=k)
 
 
 # Simple opposition control on lift
@@ -87,6 +89,9 @@ def test_env():
           "mesh": "medium",
       },
       "solver": hgym.SemiImplicitBDF,
+      "solver_config": {
+          "dt": 1e-2,
+      },
   }
   env = hgym.FlowEnv(env_config)
 
@@ -94,6 +99,8 @@ def test_env():
   for _ in range(10):
     y, reward, done, info = env.step(u)
     u = feedback_ctrl(y)
+
+  env.reset()
 
 
 def test_linearize():

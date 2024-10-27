@@ -1,9 +1,9 @@
 n1 = 30.0;
 n2 = 5.0;
-n3 = 1.0;
-x_ninf = -20.0;
-x_pinf = 40.0;
-y_inf = 30.0;
+n3 = 3.0;
+x_ninf = -6.0;
+x_pinf = 20.0;
+y_inf = 6.0;
 
 // Cylinder points
 R = 0.5;

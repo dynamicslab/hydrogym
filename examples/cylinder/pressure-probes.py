@@ -20,15 +20,8 @@ stabilization = "gls"
 mesh = "medium"
 method = "BDF"
 
-# Configure pressure probes - evenly spaced around the cylinder
-# n_probes = 8
-# R = 0.5
-# probes = [(R * np.cos(theta), R * np.sin(theta))
-#           for theta in np.linspace(0, 2 * np.pi, n_probes, endpoint=False)]
-
-observation_type = "velocity_probes"
-
 # Velocity probes
+observation_type = "velocity_probes"
 xp = np.linspace(1.0, 10.0, 16)
 yp = np.linspace(-2.0, 2.0, 4)
 X, Y = np.meshgrid(xp, yp)
@@ -39,7 +32,7 @@ flow = hgym.Cylinder(
     Re=100,
     mesh=mesh,
     velocity_order=velocity_order,
-    observation_type=observation_type,
+    observation_type="vorticity_probes",
     probes=probes,
 )
 
@@ -82,7 +75,7 @@ hgym.integrate(
     callbacks=callbacks,
     method=method,
     stabilization=stabilization,
-    # controller=controller,
+    # controller=controller, --> TODO: This needs to be done in a more principled fashion
 )
 
 data = np.loadtxt(data_file)

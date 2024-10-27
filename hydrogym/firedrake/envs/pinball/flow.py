@@ -46,7 +46,7 @@ class Pinball(FlowConfig):
   DEFAULT_VORT_PROBES = DEFAULT_PRES_PROBES
 
   DEFAULT_REYNOLDS = 30
-  DEFAULT_MESH = "fine"
+  DEFAULT_MESH = "medium"
   DEFAULT_DT = 1e-2
 
   FLUID = 1
@@ -55,14 +55,12 @@ class Pinball(FlowConfig):
   OUTLET = 4
   CYLINDER = (5, 6, 7)
 
-  x0 = [0.0, rad * 1.5 * 1.866, rad * 1.5 * 1.866]
+  rad = 0.5
+  x0 = [0.0, rad * 1.5 * 1.732, rad * 1.5 * 1.732]
   y0 = [0.0, 1.5 * rad, -1.5 * rad]
 
-  MAX_CONTROL_LOW = -1.0
-  MAX_CONTROL_UP = 1.0
-  CONTROL_SCALING = 5.0
-  TAU = 0.5  # TODO: Tune this based on vortex shedding period
-  # TAU = 0.04  # Time constant for controller damping (0.01*vortex shedding period)
+  MAX_CONTROL = 10.0  # TODO: Limit this based on literature
+  TAU = 0.05  # TODO: Tune this based on vortex shedding period
 
   MESH_DIR = os.path.abspath(f"{__file__}/..")
 
@@ -90,7 +88,7 @@ class Pinball(FlowConfig):
           ufl.real(self.x - self.x0[cyl_idx]))  # Angle from center of cylinder
 
       # Tangential velocity
-      u_bc = ufl.as_tensor((self.rad * sin(theta), self.rad * cos(theta)))
+      u_bc = ufl.as_tensor((-self.rad * sin(theta), self.rad * cos(theta)))
       sub_domain = self.CYLINDER[cyl_idx]
       self.bcu_actuation.append(ScaledDirichletBC(V, u_bc, sub_domain))
 
