@@ -50,7 +50,17 @@ class FlowConfig(PDEBase):
       velocity_order = self.DEFAULT_VELOCITY_ORDER
     self.velocity_order = velocity_order
 
-    probes = config.pop("probes", None)
+    obs_type = config.pop("observation_type", None)
+    if obs_type == "velocity_probes":
+      probes = config.pop("probes", self.DEFAULT_VEL_PROBES)
+    elif obs_type == "pressure_probes":
+      probes = config.pop("probes", self.DEFAULT_PRES_PROBES)
+    elif obs_type == "vorticity_probes":
+      probes = config.pop("probes", self.DEFAULT_VORT_PROBES)
+    else:
+      probes = config.pop("probes", None)
+
+    # print("Probes are", probes, self.DEFAULT_PRES_PROBES, flush=True)
     if probes is None:
       probes = []
 
@@ -68,7 +78,7 @@ class FlowConfig(PDEBase):
     }
 
     self.obs_fun = self.configure_observations(
-        obs_type=config.pop("observation_type", None),
+        obs_type=obs_type,
         probe_obs_types=probe_obs_types,
     )
 
@@ -305,8 +315,8 @@ class FlowConfig(PDEBase):
 
       if hasattr(self, "bcu_actuation"):
         for i in range(self.num_inputs):
-          u = np.clip(self.actuators[i].state, -self.MAX_CONTROL,
-                      self.MAX_CONTROL)
+          u = np.clip(self.actuators[i].state, self.MAX_CONTROL_LOW,
+                      self.MAX_CONTROL_UP) * self.CONTROL_SCALING
           self.bcu_actuation[i].set_scale(u)
 
   def inner_product(
@@ -345,14 +355,20 @@ class FlowConfig(PDEBase):
     if q is None:
       q = self.q
     u = q.subfunctions[0]
-    return np.stack(u.at(probes)).flatten("F")
+
+    # probe_values = np.stack([u.at(probe) for probe in probes]).flatten("F")
+    probe_values = np.stack(u.at(probes)).flatten("F")
+    return probe_values
 
   def pressure_probe(self, probes, q: fd.Function = None) -> list[float]:
     """Probe pressure around the cylinder"""
+    # print("pressure probing at:", probes, flush=True)
     if q is None:
       q = self.q
     p = q.subfunctions[1]
-    return np.stack(p.at(probes))
+    # probe_values = np.stack([p.at(probe) for probe in probes])
+    probe_values = np.stack(p.at(probes))
+    return probe_values
 
   def vorticity_probe(self, probes, q: fd.Function = None) -> list[float]:
     """Probe vorticity in the wake."""
@@ -361,7 +377,9 @@ class FlowConfig(PDEBase):
     else:
       u = q.subfunctions[0]
     vort = self.vorticity(u=u)
-    return np.stack(vort.at(probes))
+    # probe_values = np.stack([vort.at(probe) for probe in probes])
+    probe_values = np.stack(vort.at(probes))
+    return probe_values
 
   def linearize(self,
                 qB=None,

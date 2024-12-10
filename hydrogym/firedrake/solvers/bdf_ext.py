@@ -156,7 +156,7 @@ class SemiImplicitBDF(NavierStokesTransientSolver):
     self.flow.set_control(bc_scale)
 
     # Solve the linear problem
-    if (self.k == 1) or (iter > self.k - 1):
+    if iter > self.k - 1:
       self.petsc_solver.solve()
     else:
       self.startup_solvers[iter - 1].solve()

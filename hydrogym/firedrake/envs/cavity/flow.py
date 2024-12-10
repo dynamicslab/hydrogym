@@ -11,6 +11,28 @@ from hydrogym.firedrake import FlowConfig, ObservationFunction, ScaledDirichletB
 
 
 class Cavity(FlowConfig):
+  # Velocity probes
+  xp = np.linspace(0.5, 0.95, 4)
+  yp = np.linspace(-0.05, 0.05, 4)
+  X, Y = np.meshgrid(xp, yp)
+  DEFAULT_VEL_PROBES = [(x, y) for x, y in zip(X.ravel(), Y.ravel())]
+
+  # # Pressure probes (spaced equally around the cylinder)
+  # xp = np.linspace(0.25, 0.95, 4)
+  # yp = np.linspace(-0.075, 0.075, 3)
+  # X, Y = np.meshgrid(xp, yp)
+  # DEFAULT_PRES_PROBES = [(x, y) for x, y in zip(X.ravel(), Y.ravel())]
+  # DEFAULT_PRES_PROBES.extend([(0.4833333, -0.15), (0.4833333, -0.225),
+  #                            (0.7166666, -0.15), (0.7166666, -0.225)])
+  # DEFAULT_PRES_PROBES.extend([(1.05, 0.005), (1.2, 0.005), (1.35, 0.005), (1.5, 0.005)])
+
+  xp = np.linspace(0.1, 0.5, 4)
+  yp = np.linspace(-0.025, 0.025, 3)
+  X, Y = np.meshgrid(xp, yp)
+  DEFAULT_PRES_PROBES = [(x, y) for x, y in zip(X.ravel(), Y.ravel())]
+
+  DEFAULT_VORT_PROBES = DEFAULT_VEL_PROBES
+
   DEFAULT_REYNOLDS = 7500
   DEFAULT_MESH = "fine"
   DEFAULT_DT = 1e-4
@@ -19,7 +41,9 @@ class Cavity(FlowConfig):
   FUNCTIONS = ("q", "qB"
               )  # This flow needs a base flow to compute fluctuation KE
 
-  MAX_CONTROL = 0.1
+  MAX_CONTROL_LOW = 0.0
+  MAX_CONTROL_UP = 0.03
+  CONTROL_SCALING = 1.0
   TAU = 0.075  # Time constant for controller damping (0.01*instability frequency)
 
   # Domain labels
@@ -104,14 +128,17 @@ class Cavity(FlowConfig):
     m = fd.assemble(-dot(grad(u[0]), self.n) * ds(self.SENSOR))
     return (m,)
 
-  def evaluate_objective(self, q=None, qB=None):
-    if q is None:
-      q = self.q
-    if qB is None:
-      qB = self.qB
-    u = q.subfunctions[0]
-    uB = qB.subfunctions[0]
-    KE = 0.5 * fd.assemble(fd.inner(u - uB, u - uB) * fd.dx)
+  def evaluate_objective(self, q=None, qB=None, averaged_objective_values=None, return_objective_values=False):
+    if averaged_objective_values is None:
+        if q is None:
+            q = self.q
+        if qB is None:
+            qB = self.qB
+        u = q.subfunctions[0]
+        uB = qB.subfunctions[0]
+        KE = 0.5 * fd.assemble(fd.inner(u - uB, u - uB) * fd.dx)
+    else:
+        KE = averaged_objective_values[0]
     return KE
 
   def render(self, mode="human", clim=None, levels=None, cmap="RdBu", **kwargs):

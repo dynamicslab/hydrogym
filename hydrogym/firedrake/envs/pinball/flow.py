@@ -13,6 +13,60 @@ from hydrogym.firedrake import FlowConfig, ObservationFunction, ScaledDirichletB
 
 
 class Pinball(FlowConfig):
+  rad = 0.5
+  
+  # # Velocity probes
+  # xp = np.linspace(3, 9, 6)
+  # yp = np.linspace(-1.25, 1.25, 5)
+  # X, Y = np.meshgrid(xp, yp)
+  # DEFAULT_VEL_PROBES = [(x, y) for x, y in zip(X.ravel(), Y.ravel())]
+
+  # Pressure probes (spaced equally around the cylinder)
+  xp = np.linspace(2.0, 4.5, 5)
+  yp = np.linspace(-1.25, 1.25, 7)
+  X, Y = np.meshgrid(xp, yp)
+
+  DEFAULT_PRES_PROBES = [(x, y) for x, y in zip(X.ravel(), Y.ravel())]
+
+  # xp = np.linspace(0.51, 0.89, 3)
+  # yp = np.linspace(-1.375, 1.375, 7)
+  # X, Y = np.meshgrid(xp, yp)
+  # DEFAULT_PRES_PROBES.extend([(x, y) for x, y in zip(X.ravel(), Y.ravel())])
+
+  # xp = np.linspace(1.2, 1.8, 4)
+  # yp = np.linspace(-0.24, 0.24, 3)
+  # X, Y = np.meshgrid(xp, yp)
+  # DEFAULT_PRES_PROBES.extend([(x, y) for x, y in zip(X.ravel(), Y.ravel())])
+
+  # DEFAULT_PRES_PROBES.extend([(0.51, -1.375), (0.51, 1.375),
+  #                            (0.89, -1.375), (0.89, 1.375)])
+
+  # print('Length default pressure probes:', len(DEFAULT_PRES_PROBES), flush=True)
+  # print('Default pressure probes:', DEFAULT_PRES_PROBES, flush=True)
+
+  # DEFAULT_PRES_PROBES = [
+  #   # (rad * 1.5 * 1.732 - 0.51, 1.5 * rad),
+  #   # (rad * 1.5 * 1.732, 1.5 * rad + 0.51),
+  #   # (rad * 1.5 * 1.732 + 0.5, 1.5 * rad+ 0.51),
+  #   # (rad * 1.5 * 1.732 - 0.51, -1.5 * rad),
+  #   # (rad * 1.5 * 1.732, -(1.5 * rad + 0.51)),
+  #   # (rad * 1.5 * 1.732 + 0.5, -(1.5 * rad+ 0.51)),
+  #   # (rad * 1.5 * 1.732 + 1.5, 1.5 * rad - 0.5),
+  #   # (rad * 1.5 * 1.732 + 2.5, 1.5 * rad - 0.25),
+  #   # (rad * 1.5 * 1.732 + 1.5, 1.5 * rad + 0.5),
+  #   # (rad * 1.5 * 1.732 + 2.5, 1.5 * rad + 0.75),
+  #   # (rad * 1.5 * 1.732 + 1.5, -(1.5 * rad - 0.5)),
+  #   # (rad * 1.5 * 1.732 + 2.5, -(1.5 * rad - 0.25)),
+  #   # (rad * 1.5 * 1.732 + 1.5, -(1.5 * rad + 0.5)),
+  #   (rad * 1.5 * 1.732 + 2.5, -(1.5 * rad + 0.75))
+  #                           ]
+
+  # print('Length default pressure probes:', len(DEFAULT_PRES_PROBES), flush=True)
+  # print('Default pressure probes:', DEFAULT_PRES_PROBES, flush=True)
+
+  DEFAULT_VEL_PROBES = DEFAULT_PRES_PROBES
+  DEFAULT_VORT_PROBES = DEFAULT_PRES_PROBES
+
   DEFAULT_REYNOLDS = 30
   DEFAULT_MESH = "medium"
   DEFAULT_DT = 1e-2
@@ -23,12 +77,14 @@ class Pinball(FlowConfig):
   OUTLET = 4
   CYLINDER = (5, 6, 7)
 
-  rad = 0.5
   x0 = [0.0, rad * 1.5 * 1.732, rad * 1.5 * 1.732]
   y0 = [0.0, 1.5 * rad, -1.5 * rad]
 
-  MAX_CONTROL = 10.0  # TODO: Limit this based on literature
+  MAX_CONTROL_LOW = -1.0
+  MAX_CONTROL_UP = 1.0
+  CONTROL_SCALING = 7.0
   TAU = 0.05  # TODO: Tune this based on vortex shedding period
+  # TAU = 0.04  # Time constant for controller damping (0.01*vortex shedding period)
 
   MESH_DIR = os.path.abspath(f"{__file__}/..")
 
@@ -109,13 +165,23 @@ class Pinball(FlowConfig):
     self.bcu_inflow.set_value(fd.Constant((0, 0)))
     self.bcu_freestream.set_value(fd.Constant(0.0))
 
-  def get_observations(self):
-    CL, CD = self.compute_forces()
-    return [*CL, *CD]
+  # def get_observations(self):
+  #   CL, CD = self.compute_forces()
+  #   return [*CL, *CD]
 
-  def evaluate_objective(self, q=None):
-    CL, CD = self.compute_forces(q=q)
-    return sum(CD)
+  def evaluate_objective(self, q: fd.Function = None, averaged_objective_values=None, return_objective_values=False) -> float:
+    """The objective function for this flow is the drag coefficient"""
+    if averaged_objective_values is None:
+        CL, CD = self.compute_forces(q=q)
+        if return_objective_values:
+          return [*CL, *CD]
+    else:
+        CL, CD = averaged_objective_values[:3], averaged_objective_values[3:]
+    # print('pinball lambda', self.reward_lambda, CD, sum(CD), flush=True)
+    # return sum(np.square(CD)) + self.reward_lambda * sum(np.square(CL))
+    return sum(CD) + self.reward_lambda * sum(CL)
+    # return sum(CD)
+    # return -(1.5 - (sum(CD) + self.reward_lambda * np.abs(sum(CL))))
 
   def render(self, mode="human", clim=None, levels=None, cmap="RdBu", **kwargs):
     if clim is None:
