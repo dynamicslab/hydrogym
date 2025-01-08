@@ -1,3 +1,0 @@
-[submodule "third_party/firedrake"]
-	path = third_party/firedrake
-	url = https://github.com/firedrakeproject/firedrake
