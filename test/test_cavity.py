@@ -57,6 +57,9 @@ def test_env():
           "Re": 10
       },
       "solver": hgym.SemiImplicitBDF,
+      "solver_config": {
+          "dt": 1e-4
+      },
   }
   env = hgym.FlowEnv(env_config)
 
