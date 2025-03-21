@@ -1,7 +1,7 @@
 import abc
 from typing import Any, Callable, Iterable, Tuple, TypeVar, Union
 
-import gym
+import gymnasium as gym
 import numpy as np
 from numpy.typing import ArrayLike
 
