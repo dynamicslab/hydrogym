@@ -69,6 +69,9 @@ def test_env():
           "mesh": "fine",
       },
       "solver": hgym.SemiImplicitBDF,
+      "solver_config": {
+          "dt": 1e-2
+      },
   }
   env = hgym.FlowEnv(env_config)
 
