@@ -73,8 +73,8 @@ interactive = [
     "seaborn>=0.12.1"
 ]
 
-[project.scripts]
-hydrogym = "hydrogym/cli:main"
+#[project.scripts]
+#hydrogym = "hydrogym/cli:main"
 
 [tool.yapf]
 based_on_style = "yapf"
