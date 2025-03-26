@@ -10,7 +10,7 @@ class ArgumentParser(Tap):
 
 def main():
     # Read in the command-line arguments
-    args = ArgumentParser().parse_args()
+    args = ArgumentParser().parse_args()  # noqa: F841
 
     # Checks for the correctness of the inputs
 

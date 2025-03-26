@@ -14,7 +14,7 @@ try:
     from ufl import as_vector, atan2, cos, dot, sign, sin, sqrt
 except ImportError as e:
     raise DependencyNotInstalled(
-        "Firedrake is not installed, consult `https://www.firedrakeproject.org/install.html` for installation instructions."
+        "Firedrake is not installed, consult `https://www.firedrakeproject.org/install.html` for installation instructions."  # noqa: E501
     ) from e
 
 
