@@ -77,9 +77,6 @@ interactive = [
 #[project.scripts]
 #hydrogym = "hydrogym/cli:main"
 
-[tool.yapf]
-based_on_style = "yapf"
-
 [tool.ruff]
 line-length = 120
 
