@@ -11,7 +11,7 @@ import hydrogym.firedrake as hgym
 
 output_dir = "output"
 if not os.path.exists(output_dir):
-  os.makedirs(output_dir)
+    os.makedirs(output_dir)
 
 data_file = f"{output_dir}/pressure.dat"
 
@@ -23,8 +23,7 @@ method = "BDF"
 # Configure pressure probes - evenly spaced around the cylinder
 n_probes = 8
 R = 0.5
-probes = [(R * np.cos(theta), R * np.sin(theta))
-          for theta in np.linspace(0, 2 * np.pi, n_probes, endpoint=False)]
+probes = [(R * np.cos(theta), R * np.sin(theta)) for theta in np.linspace(0, 2 * np.pi, n_probes, endpoint=False)]
 
 flow = hgym.Cylinder(
     Re=100,
@@ -40,9 +39,9 @@ dt = 0.1
 
 
 def log_postprocess(flow):
-  mem_usage = psutil.virtual_memory().percent
-  p = flow.get_observations()
-  return *p, mem_usage
+    mem_usage = psutil.virtual_memory().percent
+    p = flow.get_observations()
+    return *p, mem_usage
 
 
 # Set up the callback
@@ -62,7 +61,7 @@ callbacks = [
 
 
 def controller(t, y):
-  return [flow.MAX_CONTROL]
+    return [flow.MAX_CONTROL]
 
 
 hgym.print("Beginning integration")
@@ -78,7 +77,7 @@ hgym.integrate(
 
 data = np.loadtxt(data_file)
 t = data[:, 0]
-p = data[:, 1:n_probes + 1]
+p = data[:, 1 : n_probes + 1]
 
 plt.figure(figsize=(7, 2))
 plt.plot(t, p)

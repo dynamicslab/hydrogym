@@ -16,10 +16,10 @@ flow = hgym.Pinball(
 
 
 def log_postprocess(flow):
-  mem_usage = psutil.virtual_memory().percent
-  obs = flow.get_observations()
-  CL = obs[:3]
-  return *CL, mem_usage
+    mem_usage = psutil.virtual_memory().percent
+    obs = flow.get_observations()
+    CL = obs[:3]
+    return *CL, mem_usage
 
 
 # Set up the callback
@@ -39,7 +39,7 @@ callbacks = [
 
 
 def controller(t, obs):
-  return np.array([0.0, 1.0, 1.0])
+    return np.array([0.0, 1.0, 1.0])
 
 
 # Simulation config

@@ -19,9 +19,9 @@ dt = 0.1
 
 
 def log_postprocess(flow):
-  mem_usage = psutil.virtual_memory().percent
-  CL, CD = flow.get_observations()
-  return CL, CD, mem_usage
+    mem_usage = psutil.virtual_memory().percent
+    CL, CD = flow.get_observations()
+    return CL, CD, mem_usage
 
 
 # Set up the callback
@@ -41,7 +41,7 @@ callbacks = [
 
 
 def controller(t, y):
-  return [flow.MAX_CONTROL]
+    return [flow.MAX_CONTROL]
 
 
 hgym.print("Beginning integration")
