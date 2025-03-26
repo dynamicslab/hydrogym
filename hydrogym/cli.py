@@ -6,7 +6,7 @@ from tap import Tap
 class ArgumentParser(Tap):
     environment: str  # Choice of environment to be run
     algorithm: str  # Choice of RL algorithm to be run
-    
+
 
 def main():
     # Read in the command-line arguments
@@ -14,7 +14,7 @@ def main():
 
     # Checks for the correctness of the inputs
 
-    print("We did it!", args.environment)
+    # print("We did it!", args.environment)
 
 
 if __name__ == "__main__":

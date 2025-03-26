@@ -1,1 +1,1 @@
-from .flow import Cavity
+from hydrogym.firedrake.envs.cavity.flow import Cavity
