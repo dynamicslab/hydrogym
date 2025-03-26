@@ -1,6 +1,6 @@
 [project]
 name = "hydrogym"
-version = "0.1.2.3"
+version = "0.1.3.0"
 authors = [
     {name="HydroGym Team"}
 ]
@@ -60,6 +60,7 @@ dev = [
     "tomli>=2.0.1",
     "codespell>=2.2.6",
     "pytest>=8.1.1"
+    "isort>=6.0.1"
 ]
 interactive = [
     "jupyterlab>=3.5.2",
