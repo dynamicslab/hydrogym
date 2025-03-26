@@ -59,7 +59,7 @@ dev = [
     "toml>=0.10.2",
     "tomli>=2.0.1",
     "codespell>=2.2.6",
-    "pytest>=8.1.1"
+    "pytest>=8.1.1",
     "isort>=6.0.1"
 ]
 interactive = [
