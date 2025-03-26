@@ -150,26 +150,6 @@ class CylinderBase(FlowConfig):
 
         return fd.assemble((direction / self.Re * sqrt(du_dn_t[0] ** 2 + du_dn_t[1] ** 2)) * ds(self.CYLINDER))
 
-    # TODO: Add back in when linearization is fixed
-    # def linearize_control(self, qB=None):
-    #     """
-    #     Solve linear problem with nonzero Dirichlet BCs to derive forcing term for unsteady DNS
-    #     """
-    #     if qB is None:
-    #         qB = self.solve_steady()
-
-    #     A = self.linearize_dynamics(qB, adjoint=False)
-    #     # M = self.mass_matrix()
-    #     self.linearize_bcs()  # Linearize BCs first (sets freestream to zero)
-    #     self.set_control([1.0])  # Now change the cylinder rotation  TODO: FIX
-
-    #     (v, _) = fd.TestFunctions(self.mixed_space)
-    #     zero = fd.inner(fd.Constant((0, 0)), v) * fd.dx  # Zero RHS for linear form
-
-    #     f = fd.Function(self.mixed_space)
-    #     fd.solve(A == zero, f, bcs=self.collect_bcs())
-    #     return f
-
     def linearize_bcs(self, function_spaces=None):
         self.reset_controls(function_spaces=function_spaces)
         self.bcu_inflow.set_value(fd.Constant((0, 0)))

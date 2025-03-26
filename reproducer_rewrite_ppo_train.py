@@ -30,7 +30,6 @@ class ArgumentParser(Tap):
 # Read in the command-line arguments
 args = ArgumentParser().parse_args()
 
-
 class FlowEnv(gym.Env):
     def __init__(self, env_config: dict):
         self.flow: PDEBase = env_config.get("flow")(**env_config.get("flow_config", {}))
@@ -76,7 +75,7 @@ class FlowEnv(gym.Env):
         done = self.check_complete()
         info = {}
 
-        # Hacking around it for now
+        # Truncation=False as we handle it through the max_steps for now
         truncated = False
 
         obs = self.stack_observations(obs)
@@ -119,24 +118,28 @@ log = hydrogym.firedrake.utils.io.LogCallback(
     filename=None,
 )
 
+
+# Dictionary of the flow configuration
+flow_dict = {
+    "flow": hydrogym.firedrake.Cylinder,
+    "flow_config": {
+        "Re": args.reynolds_number,
+        "mesh": args.mesh_resolution,
+    },
+    "solver": hydrogym.firedrake.SemiImplicitBDF,
+    "solver_config": {
+        "dt": args.time_step,
+    },
+    "callbacks": [log],
+    "max_steps": 10000,
+}
+
 # Create a config instance for the PPO algorithm.
 config = (
     PPOConfig()
     .environment(
         FlowEnv,
-        env_config={
-            "flow": hydrogym.firedrake.Cylinder,
-            "flow_config": {
-                "Re": args.reynolds_number,
-                "mesh": args.mesh_resolution,
-            },
-            "solver": hydrogym.firedrake.SemiImplicitBDF,
-            "solver_config": {
-                "dt": args.time_step,
-            },
-            # "callbacks": [log],
-            "max_steps": 10000,  # --> This should be going into the `training`
-        },
+        env_config=flow_dict,
     )
     .env_runners(num_env_runners=2)
     .training(

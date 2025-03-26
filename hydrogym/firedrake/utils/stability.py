@@ -1,8 +1,7 @@
 from typing import NamedTuple
 
 import numpy as np
-from hydrogyn.firedrake.utils.eig import eig
-
+from hydrogym.firedrake.utils.eig import eig
 from hydrogym.firedrake.utils.utils import print as parprint
 from hydrogym.utils import DependencyNotInstalled
 
