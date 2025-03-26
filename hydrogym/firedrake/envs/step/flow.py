@@ -14,7 +14,7 @@ try:
     from ufl import dot, ds, exp, grad
 except ImportError as e:
     raise DependencyNotInstalled(
-        "Firedrake is not installed, consult `https://www.firedrakeproject.org/install.html` for installation instructions."
+        "Firedrake is not installed, consult `https://www.firedrakeproject.org/install.html` for installation instructions."  # noqa: E501
     ) from e
 
 
