@@ -363,9 +363,12 @@ class FlowEnv(gym.Env):
         done = self.check_complete()
         info = {}
 
+        # Truncation=False as we handle it through max_steps for now
+        truncated=False
+
         obs = self.stack_observations(obs)
 
-        return obs, reward, done, info
+        return obs, reward, done, truncated, info
 
     # TODO: Use this to allow for arbitrary returns from collect_observations
     #  That are then converted to a list/tuple/ndarray here
@@ -378,12 +381,15 @@ class FlowEnv(gym.Env):
     def check_complete(self):
         return self.iter > self.max_steps
 
-    def reset(self, t=0.0) -> Union[ArrayLike, Tuple[ArrayLike, dict]]:
+    def reset(self, seed=None, t=0.0, options=None) -> Union[ArrayLike, Tuple[ArrayLike, dict]]:
+        super().reset(seed=seed)
         self.iter = 0
         self.flow.reset(q0=self.q0, t=t)
         self.solver.reset()
 
-        return self.flow.get_observations()
+        info = {}
+
+        return self.flow.get_observations(), info
 
     def render(self, mode="human", **kwargs):
         self.flow.render(mode=mode, **kwargs)
