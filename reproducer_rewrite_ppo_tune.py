@@ -154,7 +154,8 @@ tuner = tune.Tuner(
     param_space=config,
     # Specify a stopping criterion. Note that the criterion has to match one of the
     # pretty printed result metrics from the results returned previously by
-    # ``.train()``.
+    # ``.train()``
+    # TODO: Doesn't work properly so far. The stop condition is not read it.
     run_config=train.RunConfig(
         stop={"CD": 0.2},
     ),

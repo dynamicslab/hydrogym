@@ -82,11 +82,10 @@ for i in range(num_steps):
     (lift, drag), reward, done, info = env.step(action)
 ```
 
-To test that you can run individual environment instances in a multithreaded fashion, run the steady-state Newton solver on the cylinder wake with 4 processors:
+to then train our first reinforcement learning agent, we import [RLLib](https://docs.ray.io/en/latest/rllib/index.html) and configure a simple proximal policy optimization (PPO) agent:
 
-```bash
-cd /path/to/hydrogym/examples/cylinder
-mpiexec -np 4 python pd-control.py
+```python
+
 ```
 
 For more detail, check out:
