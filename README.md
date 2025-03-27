@@ -66,33 +66,81 @@ At which point you are ready to run HydroGym locally.
 
 # Quickstart Guide
 
- Having installed Hydrogym into our virtual environment experimenting with Hydrogym is as easy as starting the Python interpreter
+Having installed Hydrogym into our virtual environment experimenting with Hydrogym is as easy as starting the Python interpreter
  
- ```bash
- python
- ```
- 
- and then setting up a Hydrogym environment instance
- 
-```python
-import hydrogym.firedrake as hgym
-env = hgym.FlowEnv({"flow": hgym.Cylinder}) # Cylinder wake flow configuration
-for i in range(num_steps):
-    action = 0.0   # Put your control law here
-    (lift, drag), reward, done, info = env.step(action)
+```bash
+python
 ```
 
-to then train our first reinforcement learning agent, we import [RLLib](https://docs.ray.io/en/latest/rllib/index.html) and configure a simple proximal policy optimization (PPO) agent:
+where we have to begin by defining a logging Callback
 
 ```python
+import hydrogym
+log = hydrogym.firedrake.utils.io.LogCallback(
+    postprocess=lambda flow: flow.get_observations(),
+    nvals=2,
+    interval=1,
+    print_fmt="t: {0:0.2f},\t\t CL: {1:0.3f},\t\t CD: {2:0.03f}",
+    filename=None,
+)
+```
+ 
+at which point we are able to define our first flow control environment through a dictionary
 
+```python
+flow_dict = {
+    "flow": hydrogym.firedrake.Cylinder,
+    "flow_config": {
+        "Re": 100,
+        "mesh": "medium",
+    },
+    "solver": hydrogym.firedrake.SemiImplicitBDF,
+    "solver_config": {
+        "dt": 1e-2,
+    },
+    "callbacks": [log],
+    "max_steps": 10000,
+}
 ```
 
-For more detail, check out:
+and are able to subsequently define the [PPO](https://spinningup.openai.com/en/latest/algorithms/ppo.html) algorithm for which we import [RLLib](https://docs.ray.io/en/latest/rllib/index.html) and configure a simple proximal policy optimization (PPO) agent:
 
-* A quick tour of features in `notebooks/overview.ipynb`
+```python
+from hydrogym.core import FlowEnv
+from ray.rllib.algorithms.ppo import PPOConfig
+config = (
+    PPOConfig()
+    .environment(
+        FlowEnv,
+        env_config=flow_dict,
+    )
+    .env_runners(
+        num_env_runners=2,
+        sample_timeout_s = 300.0
+    )
+    .training(
+        lr=0.0002,
+        train_batch_size_per_learner=2000,
+        num_epochs=10,
+    )
+)
+```
+
+which then has to be constructed, and can then be trained
+
+```python
+from pprint import pprint
+ppo = config.build_algo()
+
+for _ in range(4):
+    pprint(ppo.train())
+```
+
+To continue on from this very first example, and dive into more details, check out:
+
+* A quick tour of features in `colabs/overview.ipynb`
 * Example codes for various simulation, modeling, and control tasks in `examples`
-* The [ReadTheDocs](https://hydrogym.readthedocs.io/en/latest/)
+* The [Docs](https://hydrogym.readthedocs.io/en/latest/)
 
 # Flow configurations
 
