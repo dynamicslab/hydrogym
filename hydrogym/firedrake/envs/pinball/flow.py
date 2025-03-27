@@ -37,7 +37,7 @@ class Pinball(FlowConfig):
     MAX_CONTROL = 10.0  # TODO: Limit this based on literature
     TAU = 0.05  # TODO: Tune this based on vortex shedding period
 
-    MESH_DIR = os.path.abspath(f"{__file__}/assets/..")
+    MESH_DIR = os.path.join(os.path.dirname(__file__), "assets")
 
     def init_bcs(self, function_spaces=None):
         if function_spaces is None:

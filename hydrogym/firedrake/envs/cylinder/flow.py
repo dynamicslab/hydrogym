@@ -47,7 +47,7 @@ class CylinderBase(FlowConfig):
     OUTLET = 4
     CYLINDER = 5
 
-    MESH_DIR = os.path.abspath(f"{__file__}/assets/..")
+    MESH_DIR = os.path.join(os.path.dirname(__file__), "assets")
 
     @property
     def num_inputs(self) -> int:
