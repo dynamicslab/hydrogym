@@ -13,6 +13,36 @@ from hydrogym.firedrake import FlowConfig, ObservationFunction, ScaledDirichletB
 
 
 class Pinball(FlowConfig):
+  rad = 0.5
+
+  # Velocity probes
+  xp = np.linspace(3, 9, 6)
+  yp = np.linspace(-1.25, 1.25, 5)
+  X, Y = np.meshgrid(xp, yp)
+  DEFAULT_VEL_PROBES = [(x, y) for x, y in zip(X.ravel(), Y.ravel())]
+
+  # Pressure probes (spaced equally around the cylinder)
+  xp = np.linspace(1, 4, 4)
+  yp = np.linspace(-0.66, 0.66, 3)
+  X, Y = np.meshgrid(xp, yp)
+
+  DEFAULT_PRES_PROBES = [(rad * 1.5 * 1.866 - 0.51, 1.5 * rad),
+                         (rad * 1.5 * 1.866, 1.5 * rad + 0.51),
+                         (rad * 1.5 * 1.866 + 0.5, 1.5 * rad + 0.51),
+                         (rad * 1.5 * 1.866 - 0.51, -1.5 * rad),
+                         (rad * 1.5 * 1.866, -(1.5 * rad + 0.51)),
+                         (rad * 1.5 * 1.866 + 0.5, -(1.5 * rad + 0.51)),
+                         (rad * 1.5 * 1.866 + 1.5, 1.5 * rad - 0.5),
+                         (rad * 1.5 * 1.866 + 2.5, 1.5 * rad - 0.25),
+                         (rad * 1.5 * 1.866 + 1.5, 1.5 * rad + 0.5),
+                         (rad * 1.5 * 1.866 + 2.5, 1.5 * rad + 0.75),
+                         (rad * 1.5 * 1.866 + 1.5, -(1.5 * rad - 0.5)),
+                         (rad * 1.5 * 1.866 + 2.5, -(1.5 * rad - 0.25)),
+                         (rad * 1.5 * 1.866 + 1.5, -(1.5 * rad + 0.5)),
+                         (rad * 1.5 * 1.866 + 2.5, -(1.5 * rad + 0.75))]
+
+  DEFAULT_VORT_PROBES = DEFAULT_PRES_PROBES
+
   DEFAULT_REYNOLDS = 30
   DEFAULT_MESH = "medium"
   DEFAULT_DT = 1e-2
@@ -109,12 +139,18 @@ class Pinball(FlowConfig):
     self.bcu_inflow.set_value(fd.Constant((0, 0)))
     self.bcu_freestream.set_value(fd.Constant(0.0))
 
-  def get_observations(self):
-    CL, CD = self.compute_forces()
-    return [*CL, *CD]
+  def evaluate_objective(self,
+                         q: fd.Function = None,
+                         averaged_objective_values=None,
+                         return_objective_values=False) -> float:
+    """The objective function for this flow is the drag coefficient"""
+    if averaged_objective_values is None:
+      CL, CD = self.compute_forces(q=q)
+      if return_objective_values:
+        return [*CL, *CD]
+    else:
+      CL, CD = averaged_objective_values[:3], averaged_objective_values[3:]
 
-  def evaluate_objective(self, q=None):
-    CL, CD = self.compute_forces(q=q)
     return sum(CD)
 
   def render(self, mode="human", clim=None, levels=None, cmap="RdBu", **kwargs):
