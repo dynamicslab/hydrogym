@@ -1,28 +1,30 @@
 {
 	"name": "HydroGym Devpod",
-
-	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
-	// 	pulling from Dockerhub
-	"image": "lpaehler/hydrogym-devpod:stable",
-	"features": {
-		"ghcr.io/devcontainers-contrib/features/black:2": {},
-		"ghcr.io/devcontainers-contrib/features/poetry:2": {},
-		"ghcr.io/devcontainers-contrib/features/ruff:1": {}
+	"build": {
+    	"args": {
+    	    "REMOTE_USER": "${localEnv:USER}",
+    	    "REMOTE_UID": "${localEnv:REMOTE_UID:1003}",
+    	    "REMOTE_GID": "${localEnv:REMOTE_GID:1003}"
+    	},
+    	"dockerfile": "Dockerfile"
 	},
-
-	// Features to add to the dev container. More info: https://containers.dev/features.
-	// "features": {},
-
-	// Use 'forwardPorts' to make a list of ports inside the container available locally.
-	// "forwardPorts": [],
-
-	// Use 'postCreateCommand' to run commands after the container is created.
-	// Setting up an editable version of HydroGym
-	"postCreateCommand": "source /home/firedrake/firedrake/bin/activate && pip install -e ."
-
-	// Configure tool-specific properties.
-	// "customizations": {},
-
-	// Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
-	// "remoteUser": "root"
+	"features": {
+		"ghcr.io/devcontainers/features/git:1": {},
+		"ghcr.io/devcontainers/features/git-lfs:1": {}
+	},
+	"customizations": {
+        "vscode": {
+            "extensions": [
+                // Python development
+                "ms-python.python",
+                "charliermarsh.ruff"
+            ]
+        }
+    },
+	"remoteUser": "${localEnv:USER}",
+    "containerUser": "${localEnv:USER}",
+  	"forwardPorts": [],
+	"postAttachCommand": "",
+  	"postStartCommand": "sudo chown -R ${localEnv:USER}:${localEnv:USER} /workspaces"
 }
+// Add ~/.local/bin to the PATH
