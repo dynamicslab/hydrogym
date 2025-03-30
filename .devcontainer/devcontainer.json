@@ -3,8 +3,8 @@
 	"build": {
     	"args": {
     	    "REMOTE_USER": "${localEnv:USER}",
-    	    "REMOTE_UID": "${localEnv:REMOTE_UID:1003}",
-    	    "REMOTE_GID": "${localEnv:REMOTE_GID:1003}"
+    	    "REMOTE_UID": "${localEnv:REMOTE_UID:1000}",
+    	    "REMOTE_GID": "${localEnv:REMOTE_GID:1000}"
     	},
     	"dockerfile": "Dockerfile"
 	},
@@ -24,7 +24,6 @@
 	"remoteUser": "${localEnv:USER}",
     "containerUser": "${localEnv:USER}",
   	"forwardPorts": [],
-	"postAttachCommand": "",
   	"postStartCommand": "sudo chown -R ${localEnv:USER}:${localEnv:USER} /workspaces"
 }
 // Add ~/.local/bin to the PATH

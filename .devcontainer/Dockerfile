@@ -1,8 +1,9 @@
-From firedrakeproject/firedrake:latest
+From firedrakeproject/firedrake
 
 ARG REMOTE_USER
 ARG REMOTE_UID
 ARG REMOTE_GID
+RUN userdel -r ubuntu
 RUN <<EOF
     addgroup --gid ${REMOTE_GID} ${REMOTE_USER}
     adduser --disabled-password --uid ${REMOTE_UID} --gid ${REMOTE_GID} ${REMOTE_USER}
