@@ -81,4 +81,5 @@ Core Features
    integrations/index
    glossary
    dev_notes/index
+   changelog
    API Reference <_autosummary/hydrogym>
