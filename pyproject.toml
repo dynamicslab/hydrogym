@@ -87,7 +87,7 @@ line-length = 120
 
 [tool.ruff.lint]
 select = ["E", "F"]
-ignore = ["F401", "E731"]
+ignore = ["F401", "E501", "E731"]
 
 [tool.codespell]
 skip = '*.svg,*.ipynb'
