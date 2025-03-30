@@ -4,7 +4,7 @@ Developer Documentation
 .. toctree::
     :maxdepth: 1
 
-    docker_development
+    development_setup
     testing
     distributed_backend
     further_backend

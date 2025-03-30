@@ -7,25 +7,24 @@ from numpy.typing import ArrayLike
 
 
 class ActuatorBase:
+    def __init__(self, state=0.0, **kwargs):
+        self.x = state
 
-  def __init__(self, state=0.0, **kwargs):
-    self.x = state
+    @property
+    def state(self) -> float:
+        return self.x
 
-  @property
-  def state(self) -> float:
-    return self.x
+    @state.setter
+    def state(self, u: float):
+        self.x = u
 
-  @state.setter
-  def state(self, u: float):
-    self.x = u
-
-  def step(self, u: float, dt: float):
-    """Update the state of the actuator"""
-    raise NotImplementedError
+    def step(self, u: float, dt: float):
+        """Update the state of the actuator"""
+        raise NotImplementedError
 
 
 class PDEBase(metaclass=abc.ABCMeta):
-  """
+    """
     Basic configuration of the state of the PDE model
 
     Will contain any time-varying flow fields, boundary
@@ -33,56 +32,56 @@ class PDEBase(metaclass=abc.ABCMeta):
     any information about solving the time-varying equations
     """
 
-  MAX_CONTROL = np.inf
-  DEFAULT_MESH = ""
-  DEFAULT_DT = np.inf
+    MAX_CONTROL = np.inf
+    DEFAULT_MESH = ""
+    DEFAULT_DT = np.inf
 
-  # Timescale used to smooth inputs
-  #  (should be less than any meaningful timescale of the system)
-  TAU = 0.0
+    # Timescale used to smooth inputs
+    #  (should be less than any meaningful timescale of the system)
+    TAU = 0.0
 
-  StateType = TypeVar("StateType")
-  MeshType = TypeVar("MeshType")
-  BCType = TypeVar("BCType")
+    StateType = TypeVar("StateType")
+    MeshType = TypeVar("MeshType")
+    BCType = TypeVar("BCType")
 
-  def __init__(self, **config):
-    self.mesh = self.load_mesh(name=config.get("mesh", self.DEFAULT_MESH))
-    self.initialize_state()
+    def __init__(self, **config):
+        self.mesh = self.load_mesh(name=config.get("mesh", self.DEFAULT_MESH))
+        self.initialize_state()
 
-    self.reset()
+        self.reset()
 
-    if config.get("restart"):
-      self.load_checkpoint(config["restart"])
+        if config.get("restart"):
+            self.load_checkpoint(config["restart"])
 
-  @property
-  @abc.abstractmethod
-  def num_inputs(self) -> int:
-    """Length of the control vector (number of actuators)"""
-    pass
+    @property
+    @abc.abstractmethod
+    def num_inputs(self) -> int:
+        """Length of the control vector (number of actuators)"""
+        pass
 
-  @property
-  @abc.abstractmethod
-  def num_outputs(self) -> int:
-    """Number of scalar observed variables"""
-    pass
+    @property
+    @abc.abstractmethod
+    def num_outputs(self) -> int:
+        """Number of scalar observed variables"""
+        pass
 
-  @abc.abstractmethod
-  def load_mesh(self, name: str) -> MeshType:
-    """Load mesh from the file `name`"""
-    pass
+    @abc.abstractmethod
+    def load_mesh(self, name: str) -> MeshType:
+        """Load mesh from the file `name`"""
+        pass
 
-  @abc.abstractmethod
-  def initialize_state(self):
-    """Set up mesh, function spaces, state vector, etc"""
-    pass
+    @abc.abstractmethod
+    def initialize_state(self):
+        """Set up mesh, function spaces, state vector, etc"""
+        pass
 
-  @abc.abstractmethod
-  def init_bcs(self):
-    """Initialize any boundary conditions for the PDE."""
-    pass
+    @abc.abstractmethod
+    def init_bcs(self):
+        """Initialize any boundary conditions for the PDE."""
+        pass
 
-  def set_state(self, q: StateType):
-    """Set the current state fields
+    def set_state(self, q: StateType):
+        """Set the current state fields
 
         Should be overridden if a different assignment
         mechanism is used (e.g. `Function.assign`)
@@ -90,61 +89,61 @@ class PDEBase(metaclass=abc.ABCMeta):
         Args:
             q (StateType): State to be assigned
         """
-    self.q = q
+        self.q = q
 
-  def state(self) -> StateType:
-    """Return current state field(s) of the PDE"""
-    return self.q
+    def state(self) -> StateType:
+        """Return current state field(s) of the PDE"""
+        return self.q
 
-  @abc.abstractmethod
-  def copy_state(self, deepcopy=True):
-    """Return a copy of the flow state"""
-    pass
+    @abc.abstractmethod
+    def copy_state(self, deepcopy=True):
+        """Return a copy of the flow state"""
+        pass
 
-  def reset(self, q0: StateType = None, t: float = 0.0):
-    """Reset the PDE to an initial state
+    def reset(self, q0: StateType = None, t: float = 0.0):
+        """Reset the PDE to an initial state
 
         Args:
             q0 (StateType, optional):
                 State to which the PDE fields will be assigned.
                 Defaults to None.
         """
-    self.t = t
-    if q0 is not None:
-      self.set_state(q0)
-    self.reset_controls()
+        self.t = t
+        if q0 is not None:
+            self.set_state(q0)
+        self.reset_controls()
 
-  def reset_controls(self):
-    """Reset the controls to a zero state
+    def reset_controls(self):
+        """Reset the controls to a zero state
 
         Note that this is broken out from `reset` because
         the two are not necessarily called together (e.g.
         for linearization or deriving the control vector)
 
         """
-    self.actuators = [ActuatorBase() for _ in range(self.num_inputs)]
-    self.init_bcs()
+        self.actuators = [ActuatorBase() for _ in range(self.num_inputs)]
+        self.init_bcs()
 
-  def collect_bcs(self) -> Iterable[BCType]:
-    """Return the set of boundary conditions"""
-    return []
+    def collect_bcs(self) -> Iterable[BCType]:
+        """Return the set of boundary conditions"""
+        return []
 
-  @abc.abstractmethod
-  def save_checkpoint(self, filename: str):
-    pass
+    @abc.abstractmethod
+    def save_checkpoint(self, filename: str):
+        pass
 
-  @abc.abstractmethod
-  def load_checkpoint(self, filename: str):
-    pass
+    @abc.abstractmethod
+    def load_checkpoint(self, filename: str):
+        pass
 
-  @abc.abstractmethod
-  def get_observations(self) -> Iterable[ArrayLike]:
-    """Return the set of measurements/observations"""
-    pass
+    @abc.abstractmethod
+    def get_observations(self) -> Iterable[ArrayLike]:
+        """Return the set of measurements/observations"""
+        pass
 
-  @abc.abstractmethod
-  def evaluate_objective(self, q: StateType = None) -> ArrayLike:
-    """Return the objective function to be minimized
+    @abc.abstractmethod
+    def evaluate_objective(self, q: StateType = None) -> ArrayLike:
+        """Return the objective function to be minimized
 
         Args:
             q (StateType, optional):
@@ -154,27 +153,27 @@ class PDEBase(metaclass=abc.ABCMeta):
         Returns:
             ArrayLike: objective function (negative of reward)
         """
-    pass
+        pass
 
-  def enlist(self, x: Any) -> Iterable[Any]:
-    """Convert scalar or array-like to a list"""
-    if not isinstance(x, (list, tuple, np.ndarray)):
-      x = [x]
-    return list(x)
+    def enlist(self, x: Any) -> Iterable[Any]:
+        """Convert scalar or array-like to a list"""
+        if not isinstance(x, (list, tuple, np.ndarray)):
+            x = [x]
+        return list(x)
 
-  @property
-  def control_state(self) -> Iterable[ArrayLike]:
-    return [a.state for a in self.actuators]
+    @property
+    def control_state(self) -> Iterable[ArrayLike]:
+        return [a.state for a in self.actuators]
 
-  def set_control(self, act: ArrayLike = None):
-    """Directly set the control state"""
-    if act is None:
-      act = np.zeros(self.num_inputs)
-    for i, u in enumerate(self.enlist(act)):
-      self.actuators[i].state = u
+    def set_control(self, act: ArrayLike = None):
+        """Directly set the control state"""
+        if act is None:
+            act = np.zeros(self.num_inputs)
+        for i, u in enumerate(self.enlist(act)):
+            self.actuators[i].state = u
 
-  def advance_time(self, dt: float, act: list[float] = None) -> list[float]:
-    """Update the current controls state. May involve integrating
+    def advance_time(self, dt: float, act: list[float] = None) -> list[float]:
+        """Update the current controls state. May involve integrating
         a dynamics model rather than directly setting the controls state.
         Here, if actual control is `u` and input is `v`, effectively
         `du/dt = (1/tau)*(v - u)`
@@ -186,26 +185,26 @@ class PDEBase(metaclass=abc.ABCMeta):
         Returns:
           Iterable[ArrayLike]: Updated actuator state
         """
-    if act is None:
-      act = self.control_state
-    self.t += dt
+        if act is None:
+            act = self.control_state
+        self.t += dt
 
-    act = self.enlist(act)
-    assert len(act) == self.num_inputs
+        act = self.enlist(act)
+        assert len(act) == self.num_inputs
 
-    for i, u in enumerate(act):
-      self.actuators[i].step(u, dt)
+        for i, u in enumerate(act):
+            self.actuators[i].step(u, dt)
 
-    return self.control_state
+        return self.control_state
 
-  def dot(self, q1: StateType, q2: StateType) -> float:
-    """Inner product between states q1 and q2"""
-    return np.dot(q1, q2)
+    def dot(self, q1: StateType, q2: StateType) -> float:
+        """Inner product between states q1 and q2"""
+        return np.dot(q1, q2)
 
-  @abc.abstractmethod
-  def render(self, **kwargs):
-    """Plot the current PDE state (called by `gym.Env`)"""
-    pass
+    @abc.abstractmethod
+    def render(self, **kwargs):
+        """Plot the current PDE state (called by `gym.Env`)"""
+        pass
 
 
 '''
@@ -233,9 +232,8 @@ class EvaluationActor:
 
 
 class CallbackBase:
-
-  def __init__(self, interval: int = 1):
-    """
+    def __init__(self, interval: int = 1):
+        """
         Base class for things that happen every so often in the simulation
         (e.g. save output for visualization or write some info to a log file).
 
@@ -244,10 +242,10 @@ class CallbackBase:
 
         TODO: Add a ControllerCallback
         """
-    self.interval = interval
+        self.interval = interval
 
-  def __call__(self, iter: int, t: float, flow: PDEBase) -> bool:
-    """Check if this is an 'iostep' by comparing to `self.interval`
+    def __call__(self, iter: int, t: float, flow: PDEBase) -> bool:
+        """Check if this is an 'iostep' by comparing to `self.interval`
 
         Args:
             iter (int): Iteration number
@@ -257,29 +255,29 @@ class CallbackBase:
         Returns:
             bool: whether or not to do the thing in this iteration
         """
-    return iter % self.interval == 0
+        return iter % self.interval == 0
 
-  def close(self):
-    """Close any open files, etc."""
-    pass
+    def close(self):
+        """Close any open files, etc."""
+        pass
 
 
 class TransientSolver:
-  """Time-stepping code for updating the transient PDE"""
+    """Time-stepping code for updating the transient PDE"""
 
-  def __init__(self, flow: PDEBase, dt: float = None):
-    self.flow = flow
-    if dt is None:
-      dt = flow.DEFAULT_DT
-    self.dt = dt
+    def __init__(self, flow: PDEBase, dt: float = None):
+        self.flow = flow
+        if dt is None:
+            dt = flow.DEFAULT_DT
+        self.dt = dt
 
-  def solve(
-      self,
-      t_span: Tuple[float, float],
-      callbacks: Iterable[CallbackBase] = [],
-      controller: Callable = None,
-  ) -> PDEBase:
-    """Solve the initial-value problem for the PDE.
+    def solve(
+        self,
+        t_span: Tuple[float, float],
+        callbacks: Iterable[CallbackBase] = [],
+        controller: Callable = None,
+    ) -> PDEBase:
+        """Solve the initial-value problem for the PDE.
 
         Args:
             t_span (Tuple[float, float]): Tuple of start and end times
@@ -291,68 +289,62 @@ class TransientSolver:
         Returns:
             PDEBase: The state of the PDE at the end of the solve
         """
-    for iter, t in enumerate(np.arange(*t_span, self.dt)):
-      if controller is not None:
-        y = self.flow.get_observations()
-        u = controller(t, y)
-      else:
-        u = None
-      flow = self.step(iter, control=u)
-      for cb in callbacks:
-        cb(iter, t, flow)
+        for iter, t in enumerate(np.arange(*t_span, self.dt)):
+            if controller is not None:
+                y = self.flow.get_observations()
+                u = controller(t, y)
+            else:
+                u = None
+            flow = self.step(iter, control=u)
+            for cb in callbacks:
+                cb(iter, t, flow)
 
-    for cb in callbacks:
-      cb.close()
+        for cb in callbacks:
+            cb.close()
 
-    return flow
+        return flow
 
-  def step(self, iter: int, control: Iterable[float] = None, **kwargs):
-    """Advance the transient simulation by one time step
+    def step(self, iter: int, control: Iterable[float] = None, **kwargs):
+        """Advance the transient simulation by one time step
 
         Args:
             iter (int): Iteration count
             control (Iterable[float], optional): Actuation input. Defaults to None.
         """
-    raise NotImplementedError
+        raise NotImplementedError
 
-  def reset(self):
-    """Reset variables for the timestepper"""
-    pass
+    def reset(self):
+        """Reset variables for the timestepper"""
+        pass
 
 
 class FlowEnv(gym.Env):
+    def __init__(self, env_config: dict):
+        self.flow: PDEBase = env_config.get("flow")(**env_config.get("flow_config", {}))
+        self.solver: TransientSolver = env_config.get("solver")(self.flow, **env_config.get("solver_config", {}))
+        self.callbacks: Iterable[CallbackBase] = env_config.get("callbacks", [])
+        self.max_steps: int = env_config.get("max_steps", int(1e6))
+        self.iter: int = 0
+        self.q0: self.flow.StateType = self.flow.copy_state()
 
-  def __init__(self, env_config: dict):
-    self.flow: PDEBase = env_config.get("flow")(
-        **env_config.get("flow_config", {}))
-    self.solver: TransientSolver = env_config.get("solver")(
-        self.flow, **env_config.get("solver_config", {}))
-    self.callbacks: Iterable[CallbackBase] = env_config.get("callbacks", [])
-    self.max_steps: int = env_config.get("max_steps", int(1e6))
-    self.iter: int = 0
-    self.q0: self.flow.StateType = self.flow.copy_state()
+        self.observation_space = gym.spaces.Box(
+            low=-np.inf,
+            high=np.inf,
+            shape=(self.flow.num_outputs,),
+            dtype=float,
+        )
+        self.action_space = gym.spaces.Box(
+            low=-self.flow.MAX_CONTROL,
+            high=self.flow.MAX_CONTROL,
+            shape=(self.flow.num_inputs,),
+            dtype=float,
+        )
 
-    self.observation_space = gym.spaces.Box(
-        low=-np.inf,
-        high=np.inf,
-        shape=(self.flow.num_outputs,),
-        dtype=float,
-    )
-    self.action_space = gym.spaces.Box(
-        low=-self.flow.MAX_CONTROL,
-        high=self.flow.MAX_CONTROL,
-        shape=(self.flow.num_inputs,),
-        dtype=float,
-    )
+    def set_callbacks(self, callbacks: Iterable[CallbackBase]):
+        self.callbacks = callbacks
 
-  def set_callbacks(self, callbacks: Iterable[CallbackBase]):
-    self.callbacks = callbacks
-
-  def step(
-      self,
-      action: Iterable[ArrayLike] = None
-  ) -> Tuple[ArrayLike, float, bool, dict]:
-    """Advance the state of the environment.  See gym.Env documentation
+    def step(self, action: Iterable[ArrayLike] = None) -> Tuple[ArrayLike, float, bool, dict]:
+        """Advance the state of the environment.  See gym.Env documentation
 
         Args:
             action (Iterable[ArrayLike], optional): Control inputs. Defaults to None.
@@ -360,42 +352,48 @@ class FlowEnv(gym.Env):
         Returns:
             Tuple[ArrayLike, float, bool, dict]: obs, reward, done, info
         """
-    self.solver.step(self.iter, control=action)
-    self.iter += 1
-    t = self.iter * self.solver.dt
-    for cb in self.callbacks:
-      cb(self.iter, t, self.flow)
-    obs = self.flow.get_observations()
+        self.solver.step(self.iter, control=action)
+        self.iter += 1
+        t = self.iter * self.solver.dt
+        for cb in self.callbacks:
+            cb(self.iter, t, self.flow)
+        obs = self.flow.get_observations()
 
-    reward = self.get_reward()
-    done = self.check_complete()
-    info = {}
+        reward = self.get_reward()
+        done = self.check_complete()
+        info = {}
 
-    obs = self.stack_observations(obs)
+        # Truncation=False as we handle it through max_steps for now
+        truncated = False
 
-    return obs, reward, done, info
+        obs = self.stack_observations(obs)
 
-  # TODO: Use this to allow for arbitrary returns from collect_observations
-  #  That are then converted to a list/tuple/ndarray here
-  def stack_observations(self, obs):
-    return obs
+        return obs, reward, done, truncated, info
 
-  def get_reward(self):
-    return -self.solver.dt * self.flow.evaluate_objective()
+    # TODO: Use this to allow for arbitrary returns from collect_observations
+    #  That are then converted to a list/tuple/ndarray here
+    def stack_observations(self, obs):
+        return obs
 
-  def check_complete(self):
-    return self.iter > self.max_steps
+    def get_reward(self):
+        return -self.solver.dt * self.flow.evaluate_objective()
 
-  def reset(self, t=0.0) -> Union[ArrayLike, Tuple[ArrayLike, dict]]:
-    self.iter = 0
-    self.flow.reset(q0=self.q0, t=t)
-    self.solver.reset()
+    def check_complete(self):
+        return self.iter > self.max_steps
 
-    return self.flow.get_observations()
+    def reset(self, seed=None, t=0.0, options=None) -> Union[ArrayLike, Tuple[ArrayLike, dict]]:
+        super().reset(seed=seed)
+        self.iter = 0
+        self.flow.reset(q0=self.q0, t=t)
+        self.solver.reset()
 
-  def render(self, mode="human", **kwargs):
-    self.flow.render(mode=mode, **kwargs)
+        info = {}
 
-  def close(self):
-    for cb in self.callbacks:
-      cb.close()
+        return self.flow.get_observations(), info
+
+    def render(self, mode="human", **kwargs):
+        self.flow.render(mode=mode, **kwargs)
+
+    def close(self):
+        for cb in self.callbacks:
+            cb.close()
