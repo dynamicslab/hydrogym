@@ -4,7 +4,9 @@ Integrations
 .. toctree::
     :maxdepth: 1
 
-    torch_rl
-    rllib
+    stable_baselines_3
     cleanrl
-    rlx
+    rllib
+    acme
+    torch_rl
+    leanrl

@@ -1,5 +1,9 @@
-Container-based Development
+Development Setup
 ===========================
+
+.. note::
+   
+   This note is heavily outdated and to be replaced in the coming days.
 
 We strongly recommend development in the provided Docker container. The docker container
 is available from `DockerHub <https://hub.docker.com/repository/docker/lpaehler/hydrogym/general>`_
