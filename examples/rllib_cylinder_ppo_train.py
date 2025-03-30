@@ -26,11 +26,14 @@ class ArgumentParser(Tap):
     batch_size_per_learner: int = 2000  # Batch size per learner
     number_of_epochs: int = 10  # Number of epochs
     num_runners: int = 16  # Number of environment runners
-    checkpoint_path: str = "/home/lpaehler/Work/ReinforcementLearning/hydrogym-dev/ppo_checkpoint"  # Path to store checkpoints into
+    checkpoint_path: str = (
+        "/home/lpaehler/Work/ReinforcementLearning/hydrogym-dev/ppo_checkpoint"  # Path to store checkpoints into
+    )
 
 
 # Read in the command-line arguments
 args = ArgumentParser().parse_args()
+
 
 class FlowEnv(gym.Env):
     def __init__(self, env_config: dict):
@@ -143,10 +146,7 @@ config = (
         FlowEnv,
         env_config=flow_dict,
     )
-    .env_runners(
-        num_env_runners=args.num_runners,
-        sample_timeout_s = 300.0
-    )
+    .env_runners(num_env_runners=args.num_runners, sample_timeout_s=300.0)
     .training(
         lr=args.learning_rate,
         train_batch_size_per_learner=args.batch_size_per_learner,

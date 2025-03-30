@@ -364,7 +364,7 @@ class FlowEnv(gym.Env):
         info = {}
 
         # Truncation=False as we handle it through max_steps for now
-        truncated=False
+        truncated = False
 
         obs = self.stack_observations(obs)
 

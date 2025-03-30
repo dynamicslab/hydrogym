@@ -17,6 +17,7 @@ from hydrogym.core import PDEBase, TransientSolver, CallbackBase
 
 logging.set_log_level(logging.DEBUG)
 
+
 class ArgumentParser(Tap):
     reynolds_number: int = 100  # Reynolds number
     mesh_resolution: str = "medium"  # Mesh resolution
@@ -25,8 +26,10 @@ class ArgumentParser(Tap):
     number_of_epochs: int = 10  # Number of epochs
     num_runners: int = 16  # Number of environment runners
 
+
 # Read in the command-line arguments
 args = ArgumentParser().parse_args()
+
 
 class FlowEnv(gym.Env):
     def __init__(self, env_config: dict):
@@ -137,10 +140,7 @@ config = (
         FlowEnv,
         env_config=flow_dict,
     )
-    .env_runners(
-        num_env_runners=args.num_runners,
-        sample_timeout_s = 300.0
-    )
+    .env_runners(num_env_runners=args.num_runners, sample_timeout_s=300.0)
     .training(
         lr=tune.grid_search([0.0005, 0.0002, 0.0001]),
         train_batch_size_per_learner=args.batch_size_per_learner,
