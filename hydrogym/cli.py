@@ -1,7 +1,5 @@
 from tap import Tap
 
-# Whole bunch of HydroGym-specific imports
-
 
 class ArgumentParser(Tap):
     environment: str  # Choice of environment to be run
