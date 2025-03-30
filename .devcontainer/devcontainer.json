@@ -22,8 +22,5 @@
         }
     },
 	"remoteUser": "${localEnv:USER}",
-    "containerUser": "${localEnv:USER}",
-  	"forwardPorts": [],
-  	"postStartCommand": "sudo chown -R ${localEnv:USER}:${localEnv:USER} /workspaces"
+    "containerUser": "${localEnv:USER}"
 }
-// Add ~/.local/bin to the PATH

@@ -13,4 +13,6 @@ EOF
 RUN apt-get update && apt-get install -y sudo && \
   echo "${REMOTE_USER} ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/${REMOTE_USER}
 
+ENV PATH=$PATH:/home/${REMOTE_USER}/.local/bin
+
 USER ${REMOTE_USER}
