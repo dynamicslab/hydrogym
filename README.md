@@ -28,6 +28,20 @@ Currently these "environments" are all implemented using the [Firedrake](https:/
 * __Modeling and analysis tools:__ Global stability analysis (via SLEPc) and modal decompositions (via modred)
 * __Scalable:__ Individual environments parallelized with MPI with a **highly scalable [Ray](https://github.com/ray-project/ray) backend reinforcement learning training**.
 
+# Reinforcement Learning Framework Support
+
+HydroGym aims to support a commensurate variety of reinforcement learning frameworks for all use-cases. As such, we currently have the following support in place:
+
+| Algorithm    | Stable Baselines 3 | CleanRL | RLLib | Acme | TorchRL | LeanRL |
+| -------- | ------- | ------- | ------ | ------- | ----- | ---- |
+| PPO    |   |   | $\checkmark$ |   |   |   |
+| A2C    |   |   |   |   |   |   |
+| DQN    |   |   |   |   |   |   |
+| SAC    |   |   |   |   |   |   |
+| DDPG   |   |   |   |   |   |   |
+| TD3    |   |   |   |   |   |   |
+
+
 # Installation
 
 By design, the core components of Hydrogym are independent of the underlying solvers in order to avoid custom or complex
