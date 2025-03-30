@@ -19,8 +19,7 @@ installs the required additional dependencies now to run `rllib` with HydroGym o
 
     pip install -e .
 
-or 
-`Link text <https://domain.invalid/>`_
+or
 
 .. code-block:: bash
 
