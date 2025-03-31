@@ -63,9 +63,7 @@ html_theme_options = {
     "repository_url": "https://github.com/dynamicslab/hydrogym",
     "use_repository_button": True,  # add a 'link to repository' button
     "use_issues_button": True,  # add an 'Open an Issue' button
-    "path_to_docs":
-        ("docs"),  # used to compute the path to launch notebooks in colab
-    "prev_next_buttons_location": None,
+    "path_to_docs": ("docs"),  # used to compute the path to launch notebooks in colab
     "show_navbar_depth": 1,
 }
 

@@ -1,2 +1,2 @@
-from . import distributed, firedrake
-from .core import CallbackBase, FlowEnv, PDEBase, TransientSolver
+from hydrogym import distributed, firedrake
+from hydrogym.core import CallbackBase, FlowEnv, PDEBase, TransientSolver

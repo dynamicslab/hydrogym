@@ -1,1 +1,1 @@
-from .flow import Pinball
+from hydrogym.firedrake.envs.pinball.flow import Pinball

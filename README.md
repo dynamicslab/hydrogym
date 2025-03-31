@@ -7,7 +7,6 @@
 <a href="https://python.org/"><img alt="Language: Python" src="https://img.shields.io/badge/language-Python-orange.svg"></a>
 <a href="https://spdx.org/licenses/MIT.html"><img alt="License WarpX" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
 <a href="https://join.slack.com/t/hydrogym/shared_invite/zt-27u914dfn-UFq3CkaxiLs8dwZ_fDkBuA"><img alt="Slack" src="https://img.shields.io/badge/slack-hydrogym-brightgreen.svg?logo=slack"></a>
-<a href="https://github.com/google/yapf"><img alt="Code style: yapf" src="https://img.shields.io/badge/code%20style-yapf-000000.svg"></a>
 </p>
 
 
@@ -28,6 +27,20 @@ Currently these "environments" are all implemented using the [Firedrake](https:/
     - Low-level: Access to linearized operators and sparse scipy or PETSc CSR matrices
 * __Modeling and analysis tools:__ Global stability analysis (via SLEPc) and modal decompositions (via modred)
 * __Scalable:__ Individual environments parallelized with MPI with a **highly scalable [Ray](https://github.com/ray-project/ray) backend reinforcement learning training**.
+
+# Reinforcement Learning Framework Support
+
+HydroGym aims to support a commensurate variety of reinforcement learning frameworks for all use-cases. As such, we currently have the following support in place:
+
+| Algorithm    | Stable Baselines 3 | CleanRL | RLLib | Acme | TorchRL | LeanRL |
+| -------- | ------- | ------- | ------ | ------- | ----- | ---- |
+| PPO    |   |   | $\checkmark$ |   |   |   |
+| A2C    |   |   |   |   |   |   |
+| DQN    |   |   |   |   |   |   |
+| SAC    |   |   |   |   |   |   |
+| DDPG   |   |   |   |   |   |   |
+| TD3    |   |   |   |   |   |   |
+
 
 # Installation
 
@@ -66,34 +79,81 @@ At which point you are ready to run HydroGym locally.
 
 # Quickstart Guide
 
- Having installed Hydrogym into our virtual environment experimenting with Hydrogym is as easy as starting the Python interpreter
+Having installed Hydrogym into our virtual environment experimenting with Hydrogym is as easy as starting the Python interpreter
  
- ```bash
- python
- ```
- 
- and then setting up a Hydrogym environment instance
- 
-```python
-import hydrogym.firedrake as hgym
-env = hgym.FlowEnv({"flow": hgym.Cylinder}) # Cylinder wake flow configuration
-for i in range(num_steps):
-    action = 0.0   # Put your control law here
-    (lift, drag), reward, done, info = env.step(action)
-```
-
-To test that you can run individual environment instances in a multithreaded fashion, run the steady-state Newton solver on the cylinder wake with 4 processors:
-
 ```bash
-cd /path/to/hydrogym/examples/cylinder
-mpiexec -np 4 python pd-control.py
+python
 ```
 
-For more detail, check out:
+where we have to begin by defining a logging Callback
 
-* A quick tour of features in `notebooks/overview.ipynb`
+```python
+import hydrogym
+log = hydrogym.firedrake.utils.io.LogCallback(
+    postprocess=lambda flow: flow.get_observations(),
+    nvals=2,
+    interval=1,
+    print_fmt="t: {0:0.2f},\t\t CL: {1:0.3f},\t\t CD: {2:0.03f}",
+    filename=None,
+)
+```
+ 
+at which point we are able to define our first flow control environment through a dictionary
+
+```python
+flow_dict = {
+    "flow": hydrogym.firedrake.Cylinder,
+    "flow_config": {
+        "Re": 100,
+        "mesh": "medium",
+    },
+    "solver": hydrogym.firedrake.SemiImplicitBDF,
+    "solver_config": {
+        "dt": 1e-2,
+    },
+    "callbacks": [log],
+    "max_steps": 10000,
+}
+```
+
+and are able to subsequently define the [PPO](https://spinningup.openai.com/en/latest/algorithms/ppo.html) algorithm for which we import [RLLib](https://docs.ray.io/en/latest/rllib/index.html) and configure a simple proximal policy optimization (PPO) agent:
+
+```python
+from hydrogym.core import FlowEnv
+from ray.rllib.algorithms.ppo import PPOConfig
+config = (
+    PPOConfig()
+    .environment(
+        FlowEnv,
+        env_config=flow_dict,
+    )
+    .env_runners(
+        num_env_runners=2,
+        sample_timeout_s = 300.0
+    )
+    .training(
+        lr=0.0002,
+        train_batch_size_per_learner=2000,
+        num_epochs=10,
+    )
+)
+```
+
+which then has to be constructed, and can then be trained
+
+```python
+from pprint import pprint
+ppo = config.build_algo()
+
+for _ in range(4):
+    pprint(ppo.train())
+```
+
+To continue on from this very first example, and dive into more details, check out:
+
+* A quick tour of features in `colabs/overview.ipynb`
 * Example codes for various simulation, modeling, and control tasks in `examples`
-* The [ReadTheDocs](https://hydrogym.readthedocs.io/en/latest/)
+* The [Docs](https://hydrogym.readthedocs.io/en/latest/)
 
 # Flow configurations
 

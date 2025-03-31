@@ -79,6 +79,8 @@ Core Features
    basics
    user_docs/index
    integrations/index
+   examples/index
    glossary
    dev_notes/index
+   changelog
    API Reference <_autosummary/hydrogym>

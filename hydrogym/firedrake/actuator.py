@@ -1,13 +1,20 @@
-import firedrake as fd
 import numpy as np
-import pyadjoint
-from ufl import exp
 
-from ..core import ActuatorBase
+from hydrogym.core import ActuatorBase
+from hydrogym.utils import DependencyNotInstalled
+
+try:
+    import firedrake as fd
+    import pyadjoint
+    from ufl import exp
+except ImportError as e:
+    raise DependencyNotInstalled(
+        "Firedrake is not installed, consult `https://www.firedrakeproject.org/install.html` for installation instructions."  # noqa: E501
+    ) from e
 
 
 class DampedActuator(ActuatorBase):
-  """Simple damped actuator model.
+    """Simple damped actuator model.
 
     Dynamics are given by the following ODE:
 
@@ -24,25 +31,25 @@ class DampedActuator(ActuatorBase):
     remaining parameter is named `damping`, and corresponds to k/m = 1/tau.
     """
 
-  def __init__(
-      self,
-      damping: float,
-      state: float = 0.0,
-  ):
-    self.alpha = damping
-    self._x = pyadjoint.AdjFloat(state)
-    self.x = fd.Constant(state)
+    def __init__(
+        self,
+        damping: float,
+        state: float = 0.0,
+    ):
+        self.alpha = damping
+        self._x = pyadjoint.AdjFloat(state)
+        self.x = fd.Constant(state)
 
-  @property
-  def state(self) -> np.ndarray:
-    return self.x.values()[0]
+    @property
+    def state(self) -> np.ndarray:
+        return self.x.values()[0]
 
-  @state.setter
-  def state(self, u: float):
-    self._x = pyadjoint.AdjFloat(u)
-    self.x.assign(u)
+    @state.setter
+    def state(self, u: float):
+        self._x = pyadjoint.AdjFloat(u)
+        self.x.assign(u)
 
-  def step(self, u: float, dt: float):
-    """Update the state of the actuator"""
-    self._x = u + (self._x - u) * exp(-self.alpha * dt)
-    self.x.assign(self._x, annotate=True)
+    def step(self, u: float, dt: float):
+        """Update the state of the actuator"""
+        self._x = u + (self._x - u) * exp(-self.alpha * dt)
+        self.x.assign(self._x, annotate=True)

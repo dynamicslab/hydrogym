@@ -1,11 +1,10 @@
 from hydrogym.core import FlowEnv
+from hydrogym.firedrake.actuator import DampedActuator
+from hydrogym.firedrake.flow import FlowConfig, ObservationFunction, ScaledDirichletBC
+from hydrogym.firedrake.solvers import LinearizedBDF, NewtonSolver, SemiImplicitBDF, integrate
+from hydrogym.firedrake.utils import io, is_rank_zero, linalg, modeling, print
 
-from .actuator import DampedActuator
-from .flow import FlowConfig, ObservationFunction, ScaledDirichletBC
-from .solvers import LinearizedBDF, NewtonSolver, SemiImplicitBDF, integrate
-from .utils import io, is_rank_zero, linalg, modeling, print
-
-from .envs import Cylinder, RotaryCylinder, Pinball, Cavity, Step  # isort:skip
+from hydrogym.firedrake.envs import Cylinder, RotaryCylinder, Pinball, Cavity, Step  # isort:skip
 
 __all__ = [
     "FlowConfig",

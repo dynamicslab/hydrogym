@@ -3,8 +3,8 @@ Installing Hydrogym
 
 .. _installation:
 
-Installation
-------------
+Installation of HydroGym
+------------------------
 
 **NOTE:** We are still pre-release and several components (in particular the distributed workflow) have not been fully merged.
 
@@ -34,7 +34,7 @@ which switches the behaviour to look for a Firedrake installation inside of the 
 allows for debugging on any laptop. All other dependencies are handled as usual by `pip <https://pip.pypa.io/en/stable/>`_.
 
 Firedrake (local installation)
----------
+------------------------------
 
 For a local installation Firedrake and Hydrogym must be installed independently into the same virtual environment.
 This could be done by either following the `Firedrake installation instructions <https://www.firedrakeproject.org/download.html>`_
@@ -81,8 +81,8 @@ you should also run `export OMP_NUM_THREADS=1` which will considerably accelerat
 
     Where a module system is available such as on a cluster, and the module system provides a MPI-enabled version of Firedrake this should **strictly** be preferred.
 
-Development Setup
------------------
+Development Setup (deprecated)
+------------------------------
 
 For developing Hydrogym we use `Poetry <https://python-poetry.org>`_ for cleaner dependency management. Following Poetry's installation instructions:
 
