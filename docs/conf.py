@@ -64,7 +64,6 @@ html_theme_options = {
     "use_repository_button": True,  # add a 'link to repository' button
     "use_issues_button": True,  # add an 'Open an Issue' button
     "path_to_docs": ("docs"),  # used to compute the path to launch notebooks in colab
-    "prev_next_buttons_location": None,
     "show_navbar_depth": 1,
 }
 
