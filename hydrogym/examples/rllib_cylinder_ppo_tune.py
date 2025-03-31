@@ -1,20 +1,12 @@
 import os
-
-os.environ["OMP_NUM_THREADS"] = "1"
-
 from ray import train, tune
 from ray.rllib.algorithms.ppo import PPOConfig
-
 from firedrake import logging
-import numpy as np
 from tap import Tap
-from typing import Iterable, Tuple, Union
-from numpy.typing import ArrayLike
-import gymnasium as gym
 
 import hydrogym
-from hydrogym.core import PDEBase, TransientSolver, CallbackBase
 
+os.environ["OMP_NUM_THREADS"] = "1"
 logging.set_log_level(logging.DEBUG)
 
 
@@ -24,90 +16,11 @@ class ArgumentParser(Tap):
     time_step: float = 1e-2  # Time step
     batch_size_per_learner: int = 2000  # Batch size per learner
     number_of_epochs: int = 10  # Number of epochs
-    num_runners: int = 16  # Number of environment runners
+    num_runners: int = 8  # Number of environment runners
 
 
 # Read in the command-line arguments
 args = ArgumentParser().parse_args()
-
-
-class FlowEnv(gym.Env):
-    def __init__(self, env_config: dict):
-        self.flow: PDEBase = env_config.get("flow")(**env_config.get("flow_config", {}))
-        self.solver: TransientSolver = env_config.get("solver")(self.flow, **env_config.get("solver_config", {}))
-        self.callbacks: Iterable[CallbackBase] = env_config.get("callbacks", [])
-        self.max_steps: int = env_config.get("max_steps", int(1e6))
-        self.iter: int = 0
-        self.q0: self.flow.StateType = self.flow.copy_state()
-
-        self.observation_space = gym.spaces.Box(
-            low=-np.inf,
-            high=np.inf,
-            shape=(self.flow.num_outputs,),
-            dtype=float,
-        )
-        self.action_space = gym.spaces.Box(
-            low=-self.flow.MAX_CONTROL,
-            high=self.flow.MAX_CONTROL,
-            shape=(self.flow.num_inputs,),
-            dtype=float,
-        )
-
-    def set_callbacks(self, callbacks: Iterable[CallbackBase]):
-        self.callbacks = callbacks
-
-    def step(self, action: Iterable[ArrayLike] = None) -> Tuple[ArrayLike, float, bool, dict]:
-        """Advance the state of the environment.  See gymnasium.Env documentation
-
-        Args:
-            action (Iterable[ArrayLike], optional): Control inputs. Defaults to None.
-
-        Returns:
-            Tuple[ArrayLike, float, bool, dict]: obs, reward, done, info
-        """
-        self.solver.step(self.iter, control=action)
-        self.iter += 1
-        t = self.iter * self.solver.dt
-        for cb in self.callbacks:
-            cb(self.iter, t, self.flow)
-        obs = self.flow.get_observations()
-
-        reward = self.get_reward()
-        done = self.check_complete()
-        info = {}
-
-        # Truncation=False as we handle it through the max_steps for now
-        truncated = False
-
-        obs = self.stack_observations(obs)
-
-        return obs, reward, done, truncated, info
-
-    def stack_observations(self, obs):
-        return obs
-
-    def get_reward(self):
-        return -self.solver.dt * self.flow.evaluate_objective()
-
-    def check_complete(self):
-        return self.iter > self.max_steps
-
-    def reset(self, seed=None, t=0.0, options=None) -> Union[ArrayLike, Tuple[ArrayLike, dict]]:
-        super().reset(seed=seed)
-        self.iter = 0
-        self.flow.reset(q0=self.q0, t=t)
-        self.solver.reset()
-
-        info = {}
-
-        return self.flow.get_observations(), info
-
-    def render(self, mode="human", **kwargs):
-        self.flow.render(mode=mode, **kwargs)
-
-    def close(self):
-        for cb in self.callbacks:
-            cb.close()
 
 
 # Define the logging callback
@@ -137,7 +50,7 @@ flow_dict = {
 config = (
     PPOConfig()
     .environment(
-        FlowEnv,
+        hydrogym.FlowEnv,
         env_config=flow_dict,
     )
     .env_runners(num_env_runners=args.num_runners, sample_timeout_s=300.0)
@@ -155,7 +68,7 @@ tuner = tune.Tuner(
     # Specify a stopping criterion. Note that the criterion has to match one of the
     # pretty printed result metrics from the results returned previously by
     # ``.train()``
-    # TODO: Doesn't work properly so far. The stop condition is not read it.
+    # TODO: Doesn't work properly so far. The stop condition is not read in.
     run_config=train.RunConfig(
         stop={"CD": 0.2},
     ),
