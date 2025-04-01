@@ -7,6 +7,7 @@
    :show-inheritance:
    :inherited-members:
    :special-members: __call__, __add__, __mul__
+   :no-index: hydrogym.examples.rllib_cylinder_ppo_tune.main, hydrogym.examples.rllib_cylinder_ppo_tune.main, hydrogym.examples.rllib_cylinder_ppo_tune.ArgumentParser, hydrogym.examples.rllib_cylinder_ppo_tune.ArgumentParser
 
    {% block methods %}
    {% if methods %}

@@ -1,6 +1,7 @@
 {{ fullname | escape | underline}}
 
 .. automodule:: {{ fullname }}
+   :no-index: hydrogym.examples.rllib_cylinder_ppo_tune.main, hydrogym.examples.rllib_cylinder_ppo_tune.main, hydrogym.examples.rllib_cylinder_ppo_tune.ArgumentParser, hydrogym.examples.rllib_cylinder_ppo_tune.ArgumentParser
 
    {% block attributes %}
    {% if attributes %}
