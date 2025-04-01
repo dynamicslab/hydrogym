@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import abc
-import dataclasses
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from hydrogym.utils import DependencyNotInstalled
@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 __all__ = ["SUPG", "GLS", "ns_stabilization"]
 
 
-@dataclasses.dataclass
+@dataclass
 class NavierStokesStabilization(metaclass=abc.ABCMeta):
     flow: FlowConfig
     q_trial: tuple[fd.Function, fd.Function]
@@ -57,7 +57,8 @@ class UpwindNSStabilization(NavierStokesStabilization):
 
         return Lu
 
-    @abc.abstractproperty
+    @property
+    @abc.abstractmethod
     def Lv(self):
         # Test function form for the stabilization term
         pass

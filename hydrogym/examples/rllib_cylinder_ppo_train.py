@@ -15,9 +15,7 @@ class ArgumentParser(Tap):
     batch_size_per_learner: int = 2000  # Batch size per learner
     number_of_epochs: int = 10  # Number of epochs
     num_runners: int = 16  # Number of environment runners
-    checkpoint_path: str = (
-        "/home/lpaehler/Work/ReinforcementLearning/hydrogym-dev/ppo_checkpoint"  # Path to store checkpoints into
-    )
+    checkpoint_path: str ="/home/lpaehler/Work/ReinforcementLearning/hydrogym-dev/ppo_checkpoint"  # Path to store checkpoints into  # noqa: E501
 
 
 def main():

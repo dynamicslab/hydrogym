@@ -1,8 +1,6 @@
 import os
-
 import matplotlib.pyplot as plt
 import numpy as np
-
 from hydrogym.firedrake import FlowConfig, ObservationFunction, ScaledDirichletBC
 from hydrogym.utils import DependencyNotInstalled
 
@@ -22,14 +20,15 @@ class Step(FlowConfig):
     """Backwards-facing step
 
     Notes on meshes:
-    - "coarse": outlet at L=15 with "medium" resolution (81k elements)
+
+    :var coarse: outlet at L=15 with "medium" resolution (81k elements)
         This mesh is much faster to run, but has differences of up to ~5% in
         the separation and reattachment points.  It should not be considered
         "validated" but can be used for testing and hyperparameter tuning.
-    - "medium" - outlet at L=25 (110k elements)
-    - "fine" - outlet at L=25 (223k elements)
-        This is the closest to the mesh used by the reference paper
-        (Boujo & Gallaire 2015, DOI:10.1017/jfm.2014.656)
+    :var medium: outlet at L=25 (110k elements)
+    :var fine: outlet at L=25 (223k elements)
+        This is the closest to the mesh used by the reference paper of
+        `Boujo & Gallaire, 2015 <https://doi.org/10.1017/jfm.2014.656>`_.
     """
 
     DEFAULT_REYNOLDS = 600

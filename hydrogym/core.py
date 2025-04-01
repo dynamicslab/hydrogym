@@ -119,7 +119,6 @@ class PDEBase(metaclass=abc.ABCMeta):
         Note that this is broken out from `reset` because
         the two are not necessarily called together (e.g.
         for linearization or deriving the control vector)
-
         """
         self.actuators = [ActuatorBase() for _ in range(self.num_inputs)]
         self.init_bcs()
@@ -205,30 +204,6 @@ class PDEBase(metaclass=abc.ABCMeta):
     def render(self, **kwargs):
         """Plot the current PDE state (called by `gym.Env`)"""
         pass
-
-
-'''
-
-@ray.remote
-class EvaluationActor:
-    """To remotely evaluate Firedrake solutions."""
-
-    def __init__(self, firedrake_instance: "Firedrake_instance", index: int, seeds:
-            Union[ActorSeeds, tuple], state:dict):
-        """
-        Initialize a remote runner for a Firedrake problem instance.
-
-        Args:
-            firedrake_instance: The Firedrake problem instance to be run.
-            index: The index of the actor in question.
-            seed: An integer to be used as the seed.
-            state: The state dictionary to be loaded.
-        """
-       
-       # Add whole class and the two following to have the evaluation logic.
-       # Pipe Firedrake problem into Evotorch's harness, then simmer down the logic needed to have this 
-       #   code here running.
-'''
 
 
 class CallbackBase:

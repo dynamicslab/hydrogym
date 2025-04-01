@@ -11,8 +11,7 @@ def main():
     args = ArgumentParser().parse_args()  # noqa: F841
 
     # Checks for the correctness of the inputs
-
-    # print("We did it!", args.environment)
+    print("We did it!", args.environment)
 
 
 if __name__ == "__main__":
