@@ -3,6 +3,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from hydrogym.firedrake import FlowConfig, ObservationFunction, ScaledDirichletBC
 from hydrogym.utils import DependencyNotInstalled
+from omegaconf import DictConfig, OmegaConf
+import hydra
 
 try:
     import firedrake as fd
@@ -16,6 +18,7 @@ except ImportError as e:
     ) from e
 
 
+@hydra.main(version_base=None, config_name="step_default")
 class Step(FlowConfig):
     """Backwards-facing step
 
@@ -30,23 +33,6 @@ class Step(FlowConfig):
         This is the closest to the mesh used by the reference paper of
         `Boujo & Gallaire, 2015 <https://doi.org/10.1017/jfm.2014.656>`_.
     """
-
-    DEFAULT_REYNOLDS = 600
-    DEFAULT_MESH = "fine"
-    DEFAULT_DT = 1e-2
-
-    FUNCTIONS = ("q", "qB")  # This flow needs a base flow to compute fluctuation KE
-
-    MAX_CONTROL = 0.1  # Arbitrary... should tune this
-    TAU = 0.005  # Time constant for controller damping (0.01*instability frequency)
-
-    FLUID = 1
-    INLET = 2
-    OUTLET = 3
-    WALL = 4
-    CONTROL = 5
-    SENSOR = 6
-
     MESH_DIR = os.path.join(os.path.dirname(__file__), "assets")
 
     def __init__(self, **kwargs):
@@ -71,8 +57,6 @@ class Step(FlowConfig):
 
     @property
     def body_force(self):
-        delta = 0.1
-        x0, y0 = -1.0, 0.25
         w = self.noise_state
         return w * ufl.as_tensor(
             (

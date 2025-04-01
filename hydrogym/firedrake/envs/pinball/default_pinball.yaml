@@ -1,0 +1,13 @@
+# Default configuration for the pinball environment
+flow:
+  default_reynolds: 30
+  default_mesh: "medium"
+  default_dt: 0.01
+  max_control: 10.0  # Arbitray, should see further tuning
+  tau: 0.05  # Time constant for controller damping (0.01 * instability frequency)
+  fluid: 1
+  inlet: 2
+  freestream: 3
+  outlet: 4
+  cylinder: (5, 6, 7)
+  radius: 0.5

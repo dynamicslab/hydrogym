@@ -1,8 +1,8 @@
 import os
-
 import matplotlib.pyplot as plt
 import numpy as np
-
+from omegaconf import DictConfig, OmegaConf
+import hydra
 from hydrogym.firedrake import FlowConfig, ObservationFunction, ScaledDirichletBC
 from hydrogym.utils import DependencyNotInstalled
 
@@ -31,21 +31,11 @@ DEFAULT_PRES_PROBES = [
 ]
 
 
+@hydra.main(version_base=None, config_name="default_cylinder")
 class CylinderBase(FlowConfig):
-    DEFAULT_REYNOLDS = 100
-    DEFAULT_MESH = "medium"
-    DEFAULT_DT = 1e-2
 
     MAX_CONTROL = 0.5 * np.pi
     # TAU = 0.556  # Time constant for controller damping (0.1*vortex shedding period)
-    TAU = 0.0556  # Time constant for controller damping (0.01*vortex shedding period)
-
-    # Domain labels
-    FLUID = 1
-    INLET = 2
-    FREESTREAM = 3
-    OUTLET = 4
-    CYLINDER = 5
 
     MESH_DIR = os.path.join(os.path.dirname(__file__), "assets")
 
@@ -181,8 +171,6 @@ class CylinderBase(FlowConfig):
 
 
 class RotaryCylinder(CylinderBase):
-    MAX_CONTROL = 0.5 * np.pi
-    DEFAULT_DT = 1e-2
 
     @property
     def cyl_velocity_field(self):
@@ -194,8 +182,6 @@ class RotaryCylinder(CylinderBase):
 
 
 class Cylinder(CylinderBase):
-    MAX_CONTROL = 0.1
-    DEFAULT_DT = 1e-2
 
     @property
     def cyl_velocity_field(self):

@@ -1,0 +1,18 @@
+# Default configuration for the cylinder environment
+flow:
+  default_reynolds: 100
+  default_mesh: "medium"
+  default_dt: 0.01
+  max_control: 0.5  # Arbitray, should see further tuning
+  tau: 0.0556  # Time constant for controller damping (0.01 * instability frequency)
+  fluid: 1
+  inlet: 2
+  freestream: 3
+  outlet: 4
+  cylinder: 5
+rotary_cylinder:
+  max_control: 0.5
+  default_dt: 0.01
+cylinder:
+  max_control: 0.1
+  default_dt: 0.01

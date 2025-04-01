@@ -1,0 +1,17 @@
+# Default configuration for the step environment
+flow:
+  default_reynolds: 600
+  default_mesh: "fine"
+  default_dt: 0.01
+  max_control: 0.1  # Arbitray, should see further tuning
+  tau: 0.005  # Time constant for controller damping (0.01 * instability frequency)
+  fluid: 1
+  inlet: 2
+  outlet: 3
+  wall: 4
+  control: 5
+  sensor: 6
+body_force:
+  delta: 0.1
+  x0: -1.0
+  y0: 0.25

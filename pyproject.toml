@@ -61,7 +61,8 @@ dev = [
     "tomli>=2.0.1",
     "codespell>=2.2.6",
     "pytest>=8.1.1",
-    "isort>=6.0.1"
+    "isort>=6.0.1",
+    "mypy>=1.15.0"
 ]
 rllib = [
     "dm-tree>=0.1.9",

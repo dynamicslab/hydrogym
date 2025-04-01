@@ -1,8 +1,9 @@
 import os
 from typing import Iterable
-
 import matplotlib.pyplot as plt
 import numpy as np
+from omegaconf import DictConfig, OmegaConf
+import hydra
 
 from hydrogym.firedrake import FlowConfig, ObservationFunction, ScaledDirichletBC
 from hydrogym.utils import DependencyNotInstalled
@@ -19,23 +20,11 @@ except ImportError as e:
     ) from e
 
 
+@hydra.main(version_base=None, config_name="default_cylinder")
 class Pinball(FlowConfig):
-    DEFAULT_REYNOLDS = 30
-    DEFAULT_MESH = "medium"
-    DEFAULT_DT = 1e-2
 
-    FLUID = 1
-    INLET = 2
-    FREESTREAM = 3
-    OUTLET = 4
-    CYLINDER = (5, 6, 7)
-
-    rad = 0.5
     x0 = [0.0, rad * 1.5 * 1.732, rad * 1.5 * 1.732]
     y0 = [0.0, 1.5 * rad, -1.5 * rad]
-
-    MAX_CONTROL = 10.0  # TODO: Limit this based on literature
-    TAU = 0.05  # TODO: Tune this based on vortex shedding period
 
     MESH_DIR = os.path.join(os.path.dirname(__file__), "assets")
 

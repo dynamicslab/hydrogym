@@ -1,8 +1,8 @@
 import os
-
 import matplotlib.pyplot as plt
 import numpy as np
-
+from omegaconf import DictConfig, OmegaConf
+import hydra
 from hydrogym.firedrake import FlowConfig, ObservationFunction, ScaledDirichletBC
 from hydrogym.utils import DependencyNotInstalled
 
@@ -17,26 +17,9 @@ except ImportError as e:
     ) from e
 
 
+@hydra.main(version_base=None, config_name="default_cavity")
 class Cavity(FlowConfig):
-    DEFAULT_REYNOLDS = 7500
-    DEFAULT_MESH = "fine"
-    DEFAULT_DT = 1e-4
-    DEFAULT_STABILIZATION = "none"
-
     FUNCTIONS = ("q", "qB")  # This flow needs a base flow to compute fluctuation KE
-
-    MAX_CONTROL = 0.1
-    TAU = 0.075  # Time constant for controller damping (0.01*instability frequency)
-
-    # Domain labels
-    FLUID = 1
-    INLET = 2
-    FREESTREAM = 3
-    OUTLET = 4
-    SLIP = 5
-    WALL = (6, 8)
-    CONTROL = 7
-    SENSOR = 8
 
     MESH_DIR = os.path.join(os.path.dirname(__file__), "assets")
 

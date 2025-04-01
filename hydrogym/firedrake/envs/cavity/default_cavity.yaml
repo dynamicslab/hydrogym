@@ -1,0 +1,16 @@
+# Default configuration for the cavity environment
+flow:
+  default_reynolds: 7500
+  default_mesh: "fine"
+  default_dt: 0.0001
+  default_stabilization: "none"
+  max_control: 0.1  # Arbitray, should see further tuning
+  tau: 0.075  # Time constant for controller damping (0.01 * instability frequency)
+  fluid: 1
+  inlet: 2
+  freestream: 3
+  outlet: 4
+  slip: 5
+  wall: (6, 8)
+  control: 7
+  sensor: 8
