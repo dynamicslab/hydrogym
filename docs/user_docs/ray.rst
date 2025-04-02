@@ -1,5 +1,5 @@
-Setup of Ray Cluster
-====================
+Cluster Setup
+=============
 
 To utilize the distributed backend to Hydrogym, wherein Hydrogym utilizes an underlying cluster
 to launch as many agents as possible at the same time for faster Reinforcement/Evolutionary learning,

@@ -1,2 +1,2 @@
-Determining Scaling Behaviour
-=============================
+Scaling RL Training
+===================
