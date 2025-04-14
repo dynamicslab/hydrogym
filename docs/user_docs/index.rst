@@ -9,3 +9,4 @@ User Documentation
     colab
     ray
     parallel_scaling
+    wandb

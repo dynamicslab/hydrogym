@@ -5,6 +5,8 @@ Development Setup
    
    This note is heavily outdated and to be replaced in the coming days.
 
+   MyPy to already be weaved into this developer's note.
+
 We strongly recommend development in the provided Docker container. The docker container
 is available from `DockerHub <https://hub.docker.com/repository/docker/lpaehler/hydrogym/general>`_
 , and can be pulled with
