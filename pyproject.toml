@@ -21,6 +21,9 @@ classifiers=[
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Topic :: Scientific/Engineering :: Atmospheric Science",
     "Topic :: Scientific/Engineering :: Hydrology",
@@ -32,9 +35,6 @@ keywords = [
     "Scientific Machine Learning",
     "Benchmarking",
     "Computational Fluid Dynamics"
-]
-include = [
-    { path = "hydrogym"}
 ]
 dependencies = [
     "control>=0.9.2",
@@ -94,6 +94,14 @@ ignore = ["F401", "E501", "E731"]
 [tool.codespell]
 skip = '*.svg,*.ipynb'
 
+[tool.scikit-build]
+minimum-version = "build-system.requires"
+build-dir = "build/{wheel_tag}"
+
 [build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = [
+    "scikit-build-core>=0.10",
+    "typing-extensions",
+    "hatch-fancy-pypi-readme"
+]
+build-backend = "scikit_build_core.build"
