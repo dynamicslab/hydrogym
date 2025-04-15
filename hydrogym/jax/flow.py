@@ -19,9 +19,11 @@ class FlowConfig(PDEBase):
         self.domain_x = config.get("domain_x", self.DEFAULT_DOMAIN_X)
         self.domain_y = config.get("domain_y", self.DEFAULT_DOMAIN_Y)
         self.obs_size = config.get("obs_size", self.DEFAULT_OBS_SIZE)
-        self.control_function = ( jnp.zeros_like(self.load_mesh()[0]), jnp.zeros_like(self.load_mesh()[1]) )
+        self.control_function = ( jnp.zeros_like(self.load_mesh('default')[0]), jnp.zeros_like(self.load_mesh('default')[1]) )
         
-    def load_mesh(self): 
+        super().__init__(**config)
+        
+    def load_mesh(self, name): 
         """
             Create jax grid given the desired dimensions and spacing in real space
             
@@ -46,15 +48,15 @@ class FlowConfig(PDEBase):
     def state(self) -> jnp.array:
         return self.state
     
-    def get_observations(self, state) -> jnp.array:
+    def get_observations(self) -> jnp.array:
         
         n, m = self.grid_size
         divisor = n // self.obs_size 
         
-        def calculate_velocity(state):
+        def calculate_velocity(trajectory):
             
             points = [
-                self._calculate_velocity_point(state, x, y)
+                self._calculate_velocity_point(trajectory, x, y)
                 for x in range(0, n, int(n/divisor))
                 for y in range(0, m, int(m/divisor))
             ]
@@ -64,9 +66,9 @@ class FlowConfig(PDEBase):
             obs_val = calculate_velocity(state) # To use energy observation, swap this with calculate_energy
             return carry, obs_val
             
-        _, all_obs = lax.scan(scan_fn, None, state)
-                        
-        return jnp.mean(all_obs, axis=0)
+        _, all_obs = lax.scan(scan_fn, None, self.vorticity)
+        #jnp.mean(all_obs, axis=1)      
+        return all_obs
     
     def load_fft_mesh(self):
         """Create jax grid given desired dimensions and spacing in real Fourier space
@@ -91,7 +93,7 @@ class FlowConfig(PDEBase):
         Returns:
             fft vorticity field 
         """
-        X, Y = self.load_mesh()
+        X, Y = self.load_mesh('default')
         # Gradients of φ(x,y) #
         def dstream_func_dx(x, y):
             return jnp.cos(x)
@@ -106,8 +108,8 @@ class FlowConfig(PDEBase):
         vorticity  = dv_dx - du_dy
         vorticity_0 = jnp.fft.rfftn(vorticity)
         
-        self._vorticity = vorticity_0
-        return self._vorticity
+        self.vorticity = vorticity_0
+        return self.vorticity
     
     def set_BCs(self):
         # Set the boundary conditions 
@@ -133,7 +135,7 @@ class FlowConfig(PDEBase):
     @property
     def num_inputs(self) -> int:
         """Length of the control vector (number of actuators)"""
-        pass
+        return 2
 
     @property
     def num_outputs(self) -> int:
