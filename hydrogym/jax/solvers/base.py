@@ -2,6 +2,7 @@ import tree_math
 from typing import Callable, Iterable, Tuple
 import jax.numpy as jnp 
 import numpy as np
+import jax
 from jax import lax
 
 from hydrogym.core import CallbackBase, PDEBase, TransientSolver
@@ -24,7 +25,7 @@ class PseudoSpectralNavierStokes2D:
   def __init__(self, flow: FlowConfig): 
       self.flow = flow 
       self.grid = flow.load_fft_mesh()
-      self.real_grid = flow.load_mesh()
+      self.real_grid = flow.load_mesh('name')
       self.kx, self.ky = self.grid
       self.x, self.y = self.real_grid
           
@@ -176,23 +177,35 @@ class RK4CNSolver(TransientSolver):
     func = self.RK4_CN()
     
     def inner_scan(initialization):
-        f = lambda init, inputs: (func(init), init)
-        final_state, outputs = lax.scan(f, initialization, xs=None, length=save_n)
-        return final_state
-      
-    for iter, t in enumerate(np.arange(0, 10, dt)):
-      for cb in callbacks:
-            cb(iter, t, flow)
-    
+      f = lambda init, inputs: (func(init), init)
+      final_state, outputs = lax.scan(f, initialization, xs=None, length=save_n)
+      return final_state
+
     return inner_scan 
   
   def solve(self, dt: float, flow: FlowConfig, t_span: Tuple[float, float], callbacks: Iterable[CallbackBase] = [], controller: Callable = None, save_n: int = 1) -> PDEBase:
-    inner_scan = self.step(flow, dt, save_n, callbacks)
-    steps = t_span[1]
-    initialization = flow.initialize_state()
+
+    end_time = t_span[1]
     
-    outer_scan = lambda init, inputs: (inner_scan(init), inner_scan(init))
-    print("steps=", steps, "save_n=", save_n)
-    outer_steps = int(steps / save_n)
+    if end_time < 1:
+      raise ValueError("This flow configuration requires the end time to be at least 1. Please adjust your t_span value and run again.")
+    
+    initialization = flow.initialize_state()
+    step_to_save = int(save_n // dt) 
+
+    total_steps = end_time // dt 
+    outer_steps = total_steps // step_to_save 
+    
+    
+    inner_scan = self.step(flow, dt, step_to_save, callbacks)
+    
+    outer_scan = lambda init, inputs: (inner_scan(init), 
+                                       inner_scan(init))
+    
     final_state, outputs = lax.scan(outer_scan, initialization, xs=None, length=outer_steps)
+    flow.vorticity = outputs 
+    # Dummy values for iter, t for hydrogym api callback function. 
+    # Optimized iteration through JAX (with scan) is not the same as native python, and the iterations can not easily be tracked.
+    for cb in callbacks:
+      cb(flow)
     return final_state, outputs
