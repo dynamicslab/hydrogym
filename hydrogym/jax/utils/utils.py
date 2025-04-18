@@ -178,35 +178,3 @@ def compute_divergence(omega_hat, kx, ky):
     dv_dy = jnp.gradient(vreal, axis=1)
 
     return du_dx + dv_dy 
-    
-def create_animation(trajectory, gif_name, frame_interval_factor):
-    """
-        Produces an animation of the trajectory.
-        
-    Args: 
-        trajectory: numpy file of fft vorticity trajectory
-        gif_name: file name of gif file that will be saved 
-        interval: frame interval as related to the length of the trajectory. 
-    """
-    if type(trajectory) == str:
-        trajectory = jnp.load(trajectory)
-    simulation = jnp.fft.irfftn(trajectory, axes=(1,2))
-
-    fig, ax = plt.subplots()
-    cax = ax.imshow(simulation[0], cmap='icefire',interpolation='nearest', vmin=-8, vmax=8)
-    fig.colorbar(cax)
-    
-    num_frames = len(simulation)
-    interval = int(num_frames * frame_interval_factor)
-
-    timestamp = ax.text(0.5, 1.05, '', transform=ax.transAxes, ha='center')
-
-    def update_frame(frame):
-        cax.set_array(simulation[frame])
-        timestamp.set_text(f'Time: {frame}')
-        return cax, timestamp
-
-    ani = animation.FuncAnimation(fig, update_frame, frames=num_frames, interval=interval)
-
-    # Save as a GIF
-    ani.save('{}.gif'.format(gif_name), writer=PillowWriter(fps=interval))
