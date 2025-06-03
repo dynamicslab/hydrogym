@@ -1,0 +1,21 @@
+name: Static Typechecking with mypy
+
+on: [push, pull_request]
+
+jobs:
+  mypy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: docs/requirements-dev.txt
+      - run: pip install -r docs/requirements-dev.txt
+      - run: mypy --config-file hydrogym/mypy.ini
