@@ -1,4 +1,4 @@
-name: mypy
+name: Static Typechecking with mypy
 
 on: [push, pull_request]
 
