@@ -1,0 +1,3 @@
+# Requirements file for external linters and checks we run on
+# hydrogym in CI
+mypy==1.15
