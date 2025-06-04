@@ -1,0 +1,6 @@
+{
+    "name": "hydrogym-docs",
+    "scripts": {
+        "build": "make html"
+    }
+}
