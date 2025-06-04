@@ -25,3 +25,4 @@ sphinxcontrib-serializinghtml==1.1.5
 urllib3==1.26.19
 sphinx-design==0.5.0
 legacy-cgi
+standard-imghdr
