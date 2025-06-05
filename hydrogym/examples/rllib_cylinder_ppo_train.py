@@ -1,4 +1,5 @@
 import os
+import warnings
 from ray.rllib.algorithms.ppo import PPOConfig
 from pprint import pprint
 from firedrake import logging
@@ -25,8 +26,9 @@ def main():
     # Set the number of OpenMP threads to 1 to improve the performance of Firedrake
     os.environ["OMP_NUM_THREADS"] = "1"
 
-    # Return Debug logging info
+    # Reduce the returned error messages to only the necessary ones
     logging.set_log_level(logging.DEBUG)
+    warnings.filterwarnings("ignore")
 
     # Define the logging callback
     log = hydrogym.firedrake.utils.io.LogCallback(

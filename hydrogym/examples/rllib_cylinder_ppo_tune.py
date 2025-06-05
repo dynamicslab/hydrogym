@@ -1,4 +1,5 @@
 import os
+import warnings
 from ray import train, tune
 from ray.rllib.algorithms.ppo import PPOConfig
 from firedrake import logging
@@ -25,6 +26,7 @@ def main():
 
     # Return Debug logging info
     logging.set_log_level(logging.DEBUG)
+    warnings.filterwarnings("ignore")
 
     # Define the logging callback
     log = hydrogym.firedrake.utils.io.LogCallback(
