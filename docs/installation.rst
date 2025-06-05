@@ -3,8 +3,8 @@ Installing Hydrogym
 
 .. _installation:
 
-Installation
-------------
+Setup
+-----
 
 **NOTE:** We are still pre-release and several components (in particular the distributed workflow) have not been fully merged.
 
@@ -34,7 +34,7 @@ which switches the behaviour to look for a Firedrake installation inside of the 
 allows for debugging on any laptop. All other dependencies are handled as usual by `pip <https://pip.pypa.io/en/stable/>`_.
 
 Firedrake (local installation)
----------
+------------------------------
 
 For a local installation Firedrake and Hydrogym must be installed independently into the same virtual environment.
 This could be done by either following the `Firedrake installation instructions <https://www.firedrakeproject.org/download.html>`_

@@ -125,21 +125,3 @@ present in the cylinder and pinball flows.
 * `Sipp & Lebedev (2007) <https://www.cambridge.org/core/journals/journal-of-fluid-mechanics/article/abs/global-stability-of-base-and-mean-flows-a-general-approach-and-its-applications-to-cylinder-and-open-cavity-flows/EC31631718EB33AA5C671A8F7EAA043C>`_
 * `Sipp, et al (2010) <http://www.ladhyx.polytechnique.fr/people/meliga/pdf/AMR.pdf>`_
 * `Callaham, Brunton, Loiseau (2021) <https://www.cambridge.org/core/services/aop-cambridge-core/content/view/CC2980F9AA4AC20A7453C3056ED950C4/S0022112021009940a.pdf/on-the-role-of-nonlinear-correlations-in-reduced-order-modelling.pdf>`_
-
-Backwards-facing step
-*********************
-
-.. image:: _static/imgs/step.png
-   :width: 600
-
-The backwards-facing step is a benchmark problem used both in modeling and control and as a test of numerical methods.  The flow is constricted
-upstream and expands over a step to a straight channel downstream.  While the flow is linearly stable at moderate Reynolds numbers (Re=600 by
-default here), it is an "amplifier" flow, meaning that small disturbances are amplified over a finite time horizon before being advected out
-of the domain.  Hence, this flow configuration is forced by small-amplitude random noise upstream of the step, in the approximate region where 
-analysis shows the flow is most sensitive to disturbances.
-
-**References**
-
-* `Boujo & Gallaire (2015) <https://www.cambridge.org/core/journals/journal-of-fluid-mechanics/article/abs/sensitivity-and-openloop-control-of-stochastic-response-in-a-noise-amplifier-flow-the-backwardfacing-step/3CEEBB6AD9784D555FDA086AF81BD416>`_
-* `Beneddine, et al (2016) <https://hal.inria.fr/hal-01445633/>`_
-* `Ducimetière, et al (2022) <https://www.cambridge.org/core/journals/journal-of-fluid-mechanics/article/weak-nonlinearity-for-strong-nonnormality/ADCBEAB2B445907FF022DD5E4F79A001>`_

@@ -1,13 +1,15 @@
 # Configuration file for the Sphinx documentation builder.
 import os
 import sys
+from pathlib import Path
 
-sys.path.insert(0, os.path.abspath(".."))
+#sys.path.insert(0, os.path.abspath(".."))
+sys.path.insert(0, str(Path('..').resolve()))
 
 # -- Project information
 
 project = "Hydrogym"
-copyright = "2024, Hydrogym Developers"
+copyright = "2025, Hydrogym Developers"
 author = "The HydroGym Developers"
 
 release = "0.1"
@@ -32,6 +34,7 @@ autosummary_generate = True
 autoclass_content = "both"
 html_show_sourcelink = False
 autodoc_inherit_docstrings = True
+set_type_checking_flag = True
 
 intersphinx_mapping = {
     "rtd": ("https://docs.readthedocs.io/en/stable/", None),
@@ -44,8 +47,12 @@ templates_path = ["_templates"]
 autodoc_mock_imports = [
     "firedrake",
     "pyadjoint",
+    "numpy",
+    "gym",
     "ufl",
-    "mpi4py",
+    "scipy",
+    "matplotlib",
+    "mpi4py"
 ]
 
 # -- Options for HTML output
@@ -63,9 +70,7 @@ html_theme_options = {
     "repository_url": "https://github.com/dynamicslab/hydrogym",
     "use_repository_button": True,  # add a 'link to repository' button
     "use_issues_button": True,  # add an 'Open an Issue' button
-    "path_to_docs":
-        ("docs"),  # used to compute the path to launch notebooks in colab
-    "prev_next_buttons_location": None,
+    "path_to_docs": ("docs"),  # used to compute the path to launch notebooks in colab
     "show_navbar_depth": 1,
 }
 
