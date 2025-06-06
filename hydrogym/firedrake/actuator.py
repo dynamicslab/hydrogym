@@ -3,14 +3,9 @@ import numpy as np
 from hydrogym.core import ActuatorBase
 from hydrogym.utils import DependencyNotInstalled
 
-try:
-    import firedrake as fd
-    import pyadjoint
-    from ufl import exp
-except ImportError as e:
-    raise DependencyNotInstalled(
-        "Firedrake is not installed, consult `https://www.firedrakeproject.org/install.html` for installation instructions."  # noqa: E501
-    ) from e
+import firedrake as fd
+import pyadjoint
+from ufl import exp
 
 
 class DampedActuator(ActuatorBase):

@@ -8,16 +8,11 @@ import hydra
 from hydrogym.firedrake import FlowConfig, ObservationFunction, ScaledDirichletBC
 from hydrogym.utils import DependencyNotInstalled
 
-try:
-    import firedrake as fd
-    import ufl
-    from firedrake import ds
-    from firedrake.pyplot import tricontourf
-    from ufl import atan2, cos, dot, sin
-except ImportError as e:
-    raise DependencyNotInstalled(
-        "Firedrake is not installed, consult `https://www.firedrakeproject.org/install.html` for installation instructions."  # noqa: E501
-    ) from e
+import firedrake as fd
+import ufl
+from firedrake import ds
+from firedrake.pyplot import tricontourf
+from ufl import atan2, cos, dot, sin
 
 
 @hydra.main(version_base=None, config_name="default_cylinder")

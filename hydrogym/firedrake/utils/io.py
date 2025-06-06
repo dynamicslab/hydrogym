@@ -6,13 +6,8 @@ from hydrogym.core import CallbackBase, PDEBase
 from hydrogym.firedrake.utils.utils import is_rank_zero, print
 from hydrogym.utils import DependencyNotInstalled
 
-try:
-    import firedrake as fd
-    from firedrake import logging
-except ImportError as e:
-    raise DependencyNotInstalled(
-        "Firedrake is not installed, consult `https://www.firedrakeproject.org/install.html` for installation instructions."  # noqa: E501
-    ) from e
+import firedrake as fd
+from firedrake import logging
 
 
 class ParaviewCallback(CallbackBase):

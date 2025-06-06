@@ -9,14 +9,10 @@ from scipy import sparse
 
 from hydrogym.utils import DependencyNotInstalled
 
-try:
-    import firedrake as fd
-    import ufl
-    from firedrake import logging
-except ImportError as e:
-    raise DependencyNotInstalled(
-        "Firedrake is not installed, consult `https://www.firedrakeproject.org/install.html` for installation instructions."  # noqa: E501
-    ) from e
+import firedrake as fd
+import ufl
+from firedrake import logging
+
 
 if TYPE_CHECKING:
     from hydrogym.firedrake import FlowConfig

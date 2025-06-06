@@ -6,14 +6,10 @@ from hydrogym.firedrake.solvers.stabilization import ns_stabilization
 from hydrogym.firedrake.utils import white_noise
 from hydrogym.utils import DependencyNotInstalled
 
-try:
-    import firedrake as fd
-    from firedrake import logging
-    from ufl import as_ufl, div, dot, ds, dx, inner, lhs, nabla_grad, rhs
-except ImportError as e:
-    raise DependencyNotInstalled(
-        "Firedrake is not installed, consult `https://www.firedrakeproject.org/install.html` for installation instructions."  # noqa: E501
-    ) from e
+import firedrake as fd
+from firedrake import logging
+from ufl import as_ufl, div, dot, ds, dx, inner, lhs, nabla_grad, rhs
+
 
 __all__ = ["NewtonSolver"]
 

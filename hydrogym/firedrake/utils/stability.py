@@ -5,12 +5,8 @@ from hydrogym.firedrake.utils.eig import eig
 from hydrogym.firedrake.utils.utils import print as parprint
 from hydrogym.utils import DependencyNotInstalled
 
-try:
-    import firedrake as fd
-except ImportError as e:
-    raise DependencyNotInstalled(
-        "Firedrake is not installed, consult `https://www.firedrakeproject.org/install.html` for installation instructions."  # noqa: E501
-    ) from e
+import firedrake as fd
+
 
 __all__ = ["stability_analysis"]
 

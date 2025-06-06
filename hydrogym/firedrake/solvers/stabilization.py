@@ -6,13 +6,9 @@ from typing import TYPE_CHECKING
 
 from hydrogym.utils import DependencyNotInstalled
 
-try:
-    import firedrake as fd
-    from ufl import div, dot, dx, inner, nabla_grad
-except ImportError as e:
-    raise DependencyNotInstalled(
-        "Firedrake is not installed, consult `https://www.firedrakeproject.org/install.html` for installation instructions."  # noqa: E501
-    ) from e
+import firedrake as fd
+from ufl import div, dot, dx, inner, nabla_grad
+
 
 if TYPE_CHECKING:
     from hydrogym.firedrake.flow import FlowConfig

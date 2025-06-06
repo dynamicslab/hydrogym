@@ -10,17 +10,12 @@ from hydrogym.firedrake.actuator import DampedActuator
 from hydrogym.firedrake.utils.linalg import DirectOperator, InverseOperator
 from hydrogym.utils import DependencyNotInstalled
 
-try:
-    import firedrake as fd
-    import pyadjoint
-    import ufl
-    from firedrake import dx, logging
-    from firedrake.__future__ import interpolate
-    from ufl import curl, div, dot, inner, nabla_grad, sqrt, sym
-except ImportError as e:
-    raise DependencyNotInstalled(
-        "Firedrake is not installed, consult `https://www.firedrakeproject.org/install.html` for installation instructions."  # noqa: E501
-    ) from e
+import firedrake as fd
+import pyadjoint
+import ufl
+from firedrake import dx, logging
+from firedrake.__future__ import interpolate
+from ufl import curl, div, dot, inner, nabla_grad, sqrt, sym
 
 
 class ScaledDirichletBC(fd.DirichletBC):

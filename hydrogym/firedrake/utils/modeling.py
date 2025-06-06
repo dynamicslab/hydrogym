@@ -9,13 +9,8 @@ from hydrogym.firedrake.utils import linalg
 from hydrogym.firedrake.utils.utils import get_array
 from hydrogym.utils import DependencyNotInstalled
 
-try:
-    import firedrake as fd
-    from ufl import dx, inner
-except ImportError as e:
-    raise DependencyNotInstalled(
-        "Firedrake is not installed, consult `https://www.firedrakeproject.org/install.html` for installation instructions."  # noqa: E501
-    ) from e
+import firedrake as fd
+from ufl import dx, inner
 
 
 # Ignore deprecation warnings in projection
