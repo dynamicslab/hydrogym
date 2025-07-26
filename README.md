@@ -13,7 +13,7 @@
 
 # About this Package
 
-__IMPORTANT NOTE: This package is still ahead of an official public release, so consider anything here as an early beta. In other words, we're not guaranteeing any of this is working or correct yet. Use at your own risk__
+__IMPORTANT NOTE: This package is still ahead of an official public release, so consider anything here as an early beta. Use at your own risk__
 
 HydroGym is an open-source library of challenge problems in data-driven modeling and control of fluid dynamics.
 It is roughly designed as an abstract interface for control of PDEs that is compatible with typical reinforcement learning APIs
@@ -80,7 +80,7 @@ At which point you are ready to run HydroGym locally.
 # Quickstart Guide
 
 Having installed Hydrogym into our virtual environment experimenting with Hydrogym is as easy as starting the Python interpreter
- 
+
 ```bash
 python
 ```
@@ -97,7 +97,7 @@ log = hydrogym.firedrake.utils.io.LogCallback(
     filename=None,
 )
 ```
- 
+
 at which point we are able to define our first flow control environment through a dictionary
 
 ```python
@@ -165,3 +165,18 @@ There are currently a number of main flow configurations, the most prominent of 
 - Backwards-facing step at Re=600
 
 with visualizations of the flow configurations available in the [docs](docs/FlowConfigurations.md).
+
+# Citing HydroGym
+
+To cite HydroGym, please cite the following paper:
+
+```bibtex
+@inproceedings{lagemann2025hydrogym,
+  title={HydroGym: A Reinforcement Learning Platform for Fluid Dynamics},
+  author={Lagemann, Christian and Paehler, Ludger and Callaham, Jared and Mokbel, Sajeda and Ahnert, Samuel and Lagemann, Kai and Lagemann, Esther and Adams, Nikolaus and Brunton, Steven},
+  booktitle={7th Annual Learning for Dynamics$\backslash$\& Control Conference},
+  pages={497--512},
+  year={2025},
+  organization={PMLR}
+}
+```
