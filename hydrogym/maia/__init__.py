@@ -27,6 +27,14 @@ Available Functions:
     - list_registered_types: Show all registered environment types
 """
 
+try:
+    import mpi4py  # noqa: F401
+except ImportError:
+    raise ImportError(
+        "MAIA solver dependencies are not installed. "
+        "Install them with: pip install hydrogym[maia]"
+    ) from None
+
 # Import core classes and exceptions
 from .env_core import (
     MaiaFlowEnv,

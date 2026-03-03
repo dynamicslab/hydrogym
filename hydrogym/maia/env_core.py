@@ -18,7 +18,7 @@ import toml
 from einops import rearrange
 from mpi4py import MPI
 
-from hydrogym.maia.hf_data_manager import HFDataManager
+from hydrogym.data_manager import HFDataManager
 from hydrogym.maia.mpmd_interface import MaiaInterface
 
 
@@ -41,6 +41,8 @@ class MaiaFlowEnv(gym.Env):
     - Action space configuration
 
     Attributes:
+        SOLVER_TYPE: Solver profile key from :data:`~hydrogym.data_manager.SOLVER_PROFILES`.
+            Override in subclasses for environments that target a different solver backend.
         environment_name: Name of the CFD environment configuration.
         env_data_path: Path to the local environment data directory.
         cfg: OmegaConf configuration object.
@@ -48,6 +50,8 @@ class MaiaFlowEnv(gym.Env):
         observation_space: Gymnasium observation space.
         action_space: Gymnasium action space.
     """
+
+    SOLVER_TYPE: str = 'MAIA_LB'
 
     def __init__(self, env_config: Dict):
         """
@@ -79,7 +83,8 @@ class MaiaFlowEnv(gym.Env):
         self.data_manager = HFDataManager(
             repo_id=self.hf_repo_id,
             local_fallback_dir=self.local_fallback_dir,
-            use_clean_cache=self.use_clean_cache
+            use_clean_cache=self.use_clean_cache,
+            fallback_profile=self.SOLVER_TYPE,
         )
 
         # Environment identification
