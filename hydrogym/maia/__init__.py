@@ -39,71 +39,98 @@ from .workspace import MaiaWorkspace, prepare_maia_workspace
 # (e.g. for workspace preparation on a login node).
 
 _MPI_ATTRS = frozenset([
-    'MaiaFlowEnv', 'ConfigError',
-    'from_hf', 'list_available_environments', 'list_registered_types',
+    'MaiaFlowEnv',
+    'ConfigError',
+    'from_hf',
+    'list_available_environments',
+    'list_registered_types',
     'MaiaInterface',
-    'Cylinder', 'RotaryCylinder',
-    'Cavity', 'Cavity3Jet',
-    'Pinball', 'JetPinball',
-    'NACA0012', 'NACA0012Gust',
+    'Cylinder',
+    'RotaryCylinder',
+    'Cavity',
+    'Cavity3Jet',
+    'Pinball',
+    'JetPinball',
+    'NACA0012',
+    'NACA0012Gust',
     'SquareCylinder',
     'Cube',
     'Sphere',
+    'ZPGTBLBase',
+    'ZPGTBLJet',
+    'ZPGTBLSurfaceWave',
+    'DRA2303Base',
+    'DRA2303Jet',
+    'DRA2303SurfaceWave',
 ])
 
 
 def _load_mpi_deps() -> None:
-    """Import all MPI-dependent components and inject them into this module."""
-    try:
-        import mpi4py  # noqa: F401
-    except ImportError:
-        raise ImportError(
-            "MAIA solver dependencies are not installed. "
-            "Install them with: pip install hydrogym[maia]"
-        ) from None
+  """Import all MPI-dependent components and inject them into this module."""
+  try:
+    import mpi4py  # noqa: F401
+  except ImportError:
+    raise ImportError("MAIA solver dependencies are not installed. "
+                      "Install them with: pip install hydrogym[maia]") from None
 
-    import sys
-    _mod = sys.modules[__name__]
+  import sys
+  _mod = sys.modules[__name__]
 
-    from .env_core import (
-        MaiaFlowEnv, ConfigError, from_hf,
-        list_available_environments, list_registered_types,
-    )
-    from .mpmd_interface import MaiaInterface
-    from .envs.cylinder import Cylinder, RotaryCylinder
-    from .envs.cavity import Cavity, Cavity3Jet
-    from .envs.pinball import Pinball, JetPinball
-    from .envs.naca0012 import NACA0012, NACA0012Gust
-    from .envs.square_cylinder import SquareCylinder
-    from .envs.cube import Cube
-    from .envs.sphere import Sphere
+  from .env_core import (
+      MaiaFlowEnv,
+      ConfigError,
+      from_hf,
+      list_available_environments,
+      list_registered_types,
+  )
+  from .mpmd_interface import MaiaInterface
+  from .envs.cylinder import Cylinder, RotaryCylinder
+  from .envs.cavity import Cavity, Cavity3Jet
+  from .envs.pinball import Pinball, JetPinball
+  from .envs.naca0012 import NACA0012, NACA0012Gust
+  from .envs.square_cylinder import SquareCylinder
+  from .envs.cube import Cube
+  from .envs.sphere import Sphere
+  from .envs.turbulent_boundary_layer import ZPGTBLBase, ZPGTBLJet, ZPGTBLSurfaceWave
+  from .envs.dra2303 import DRA2303Base, DRA2303Jet, DRA2303SurfaceWave
 
-    for _name, _obj in [
-        ('MaiaFlowEnv', MaiaFlowEnv), ('ConfigError', ConfigError),
-        ('from_hf', from_hf),
-        ('list_available_environments', list_available_environments),
-        ('list_registered_types', list_registered_types),
-        ('MaiaInterface', MaiaInterface),
-        ('Cylinder', Cylinder), ('RotaryCylinder', RotaryCylinder),
-        ('Cavity', Cavity), ('Cavity3Jet', Cavity3Jet),
-        ('Pinball', Pinball), ('JetPinball', JetPinball),
-        ('NACA0012', NACA0012), ('NACA0012Gust', NACA0012Gust),
-        ('SquareCylinder', SquareCylinder),
-        ('Cube', Cube),
-        ('Sphere', Sphere),
-    ]:
-        setattr(_mod, _name, _obj)
+  for _name, _obj in [
+      ('MaiaFlowEnv', MaiaFlowEnv),
+      ('ConfigError', ConfigError),
+      ('from_hf', from_hf),
+      ('list_available_environments', list_available_environments),
+      ('list_registered_types', list_registered_types),
+      ('MaiaInterface', MaiaInterface),
+      ('Cylinder', Cylinder),
+      ('RotaryCylinder', RotaryCylinder),
+      ('Cavity', Cavity),
+      ('Cavity3Jet', Cavity3Jet),
+      ('Pinball', Pinball),
+      ('JetPinball', JetPinball),
+      ('NACA0012', NACA0012),
+      ('NACA0012Gust', NACA0012Gust),
+      ('SquareCylinder', SquareCylinder),
+      ('Cube', Cube),
+      ('Sphere', Sphere),
+      ('ZPGTBLBase', ZPGTBLBase),
+      ('ZPGTBLJet', ZPGTBLJet),
+      ('ZPGTBLSurfaceWave', ZPGTBLSurfaceWave),
+      ('DRA2303Base', DRA2303Base),
+      ('DRA2303Jet', DRA2303Jet),
+      ('DRA2303SurfaceWave', DRA2303SurfaceWave),
+  ]:
+    setattr(_mod, _name, _obj)
 
 
 def __getattr__(name: str):
-    if name in _MPI_ATTRS:
-        _load_mpi_deps()
-        import sys
-        try:
-            return getattr(sys.modules[__name__], name)
-        except AttributeError:
-            pass
-    raise AttributeError(f"module 'hydrogym.maia' has no attribute {name!r}")
+  if name in _MPI_ATTRS:
+    _load_mpi_deps()
+    import sys
+    try:
+      return getattr(sys.modules[__name__], name)
+    except AttributeError:
+      pass
+  raise AttributeError(f"module 'hydrogym.maia' has no attribute {name!r}")
 
 
 __all__ = [
@@ -129,4 +156,10 @@ __all__ = [
     'SquareCylinder',
     'Cube',
     'Sphere',
+    'ZPGTBLBase',
+    'ZPGTBLJet',
+    'ZPGTBLSurfaceWave',
+    'DRA2303Base',
+    'DRA2303Jet',
+    'DRA2303SurfaceWave',
 ]

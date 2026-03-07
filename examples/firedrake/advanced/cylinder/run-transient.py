@@ -49,10 +49,11 @@ flow = hgym.RotaryCylinder(
     restart=restart,
     mesh=mesh_resolution,
     velocity_order=velocity_order,
+    use_HF_data_manager=False,
 )
 
 # Time integration parameters
-tf = 300.0  # Final time 
+tf = 300.0  # Final time
 dt = 0.01  # Time step size (adjust for CFL condition)
 
 

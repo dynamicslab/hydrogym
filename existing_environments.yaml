@@ -1,0 +1,99 @@
+firedrake:
+  - Cavity_2D_Re7500_fine_FD
+  - Cavity_2D_Re7500_medium_FD
+  - Cylinder_2D_Re100_fine_FD
+  - Cylinder_2D_Re100_medium_FD
+  - Cylinder_2D_Re200_fine_FD
+  - Cylinder_2D_Re200_medium_FD
+  - Cylinder_2D_Re500_fine_FD
+  - Cylinder_2D_Re500_medium_FD
+  - Pinball_2D_Re100_fine_FD
+  - Pinball_2D_Re120_fine_FD
+  - Pinball_2D_Re150_fine_FD
+  - Pinball_2D_Re30_fine_FD
+  - Pinball_2D_Re80_fine_FD
+  - RotaryCylinder_2D_Re100_fine_FD
+  - RotaryCylinder_2D_Re100_medium_FD
+  - RotaryCylinder_2D_Re200_fine_FD
+  - RotaryCylinder_2D_Re200_medium_FD
+  - RotaryCylinder_2D_Re500_fine_FD
+  - RotaryCylinder_2D_Re500_medium_FD
+  - Step_2D_Re600_fine_FD
+
+maia_structured_fv:
+  - DRA2303Jet_3D_Re400000_Ma02
+  - DRA2303Jet_3D_Re400000_Ma07
+  - DRA2303SurfaceWave_3D_Re400000_Ma02
+  - DRA2303SurfaceWave_3D_Re400000_Ma07
+  - ZPGTBLJet_3D_Re1000
+  - ZPGTBLJet_3D_Re5000
+  - ZPGTBLSurfaceWave_3D_Re1000
+  - ZPGTBLSurfaceWave_3D_Re5000
+
+nek5000:
+  - TCFmini_3D_Re180
+
+maia_lbm:
+  - Cavity3Jet_2D_Re4140
+  - Cavity3Jet_2D_Re7500
+  - Cavity_2D_Re4140
+  - Cavity_2D_Re7500
+  - Cube_3D_Re1000
+  - Cube_3D_Re300
+  - Cube_3D_Re3700
+  - Cylinder_2D_Re1000
+  - Cylinder_2D_Re200
+  - Cylinder_2D_Re3900
+  - Cylinder_3D_Re1000
+  - Cylinder_3D_Re200
+  - Cylinder_3D_Re3900
+  - NACA0012Gust_2D_Re1000_AOA20
+  - NACA0012Gust_2D_Re1000_AOA40
+  - NACA0012Gust_2D_Re100_AOA20
+  - NACA0012Gust_2D_Re100_AOA40
+  - NACA0012Gust_3D_Re10000_AOA12
+  - NACA0012Gust_3D_Re1000_AOA20
+  - NACA0012Gust_3D_Re1000_AOA40
+  - NACA0012Gust_3D_Re100_AOA20
+  - NACA0012Gust_3D_Re100_AOA40
+  - NACA0012Gust_3D_Re50000_AOA12
+  - NACA0012_2D_Re1000_AOA20
+  - NACA0012_2D_Re1000_AOA40
+  - NACA0012_2D_Re100_AOA20
+  - NACA0012_2D_Re100_AOA40
+  - NACA0012_3D_Re10000_AOA12
+  - NACA0012_3D_Re1000_AOA20
+  - NACA0012_3D_Re1000_AOA40
+  - NACA0012_3D_Re100_AOA20
+  - NACA0012_3D_Re100_AOA40
+  - NACA0012_3D_Re50000_AOA12
+  - Pinball_2D_Re100
+  - Pinball_2D_Re150
+  - Pinball_2D_Re30
+  - Pinball_2D_Re75
+  - Pinball_3D_Re100
+  - Pinball_3D_Re150
+  - Pinball_3D_Re30
+  - Pinball_3D_Re75
+  - RotaryCylinder_2D_Re1000
+  - RotaryCylinder_2D_Re200
+  - RotaryCylinder_2D_Re3900
+  - RotaryCylinder_3D_Re1000
+  - RotaryCylinder_3D_Re200
+  - RotaryCylinder_3D_Re3900
+  - Sphere_3D_Re300
+  - Sphere_3D_Re3700
+  - SquareCylinder_2D_Re1000
+  - SquareCylinder_2D_Re200
+  - SquareCylinder_2D_Re3900
+  - SquareCylinder_3D_Re1000
+  - SquareCylinder_3D_Re200
+  - SquareCylinder_3D_Re3900
+
+JAX:
+  - Kolmogorov_Flow_2D_Re1000
+  - TCF_3D_Re180
+
+JAX-Fluids:
+  - JetEngineTVC_2D_ReX_Ma2.2
+  - JetEngineTVD_3D_ReX_Ma2.2

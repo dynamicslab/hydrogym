@@ -113,6 +113,7 @@ if __name__ == "__main__":
       Re=Re,
       mesh=mesh,
       velocity_order=velocity_order,
+      use_HF_data_manager=False,
   )
 
   hgym.print("|------------------------------------------------|")

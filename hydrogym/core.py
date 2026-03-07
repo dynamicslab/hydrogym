@@ -63,7 +63,8 @@ class PDEBase(metaclass=abc.ABCMeta):
         if len(restart) > 0:
           self.load_checkpoint(restart[0])
       else:
-        raise ValueError(f"restart must be a string or list of strings, got {type(restart)}")
+        raise ValueError(
+            f"restart must be a string or list of strings, got {type(restart)}")
 
   @property
   @abc.abstractmethod
@@ -395,8 +396,7 @@ class FlowEnv(gym.Env):
       warnings.warn(
           "num_sim_substeps_per_actuation is deprecated, use num_substeps",
           DeprecationWarning,
-          stacklevel=2
-      )
+          stacklevel=2)
       self.num_substeps = actuation_config["num_sim_substeps_per_actuation"]
     else:
       self.num_substeps = actuation_config.get("num_substeps", 1)
@@ -405,11 +405,11 @@ class FlowEnv(gym.Env):
       warnings.warn(
           "reward_aggreation_rule is deprecated (and misspelled), use reward_aggregation",
           DeprecationWarning,
-          stacklevel=2
-      )
+          stacklevel=2)
       self.reward_aggregation = actuation_config["reward_aggreation_rule"]
     else:
-      self.reward_aggregation = actuation_config.get("reward_aggregation", "mean")
+      self.reward_aggregation = actuation_config.get("reward_aggregation",
+                                                     "mean")
 
     if self.num_substeps < 1:
       raise ValueError(f"num_substeps must be >= 1, got {self.num_substeps}")
@@ -417,8 +417,7 @@ class FlowEnv(gym.Env):
     if self.reward_aggregation not in ["mean", "sum", "median"]:
       raise ValueError(
           f"reward_aggregation must be 'mean', 'sum', or 'median', "
-          f"got {self.reward_aggregation}"
-      )
+          f"got {self.reward_aggregation}")
 
     # Multiple checkpoint support
     flow_config = env_config.get("flow_config", {})

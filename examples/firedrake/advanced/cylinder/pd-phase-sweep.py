@@ -69,7 +69,8 @@ def compute_vort(flow):
 # Extract force coefficients for performance analysis
 def log_postprocess(flow):
   CL, CD = flow.get_observations()  # Lift and drag coefficients
-  mem_usage = psutil.virtual_memory().available * 100 / psutil.virtual_memory().total
+  mem_usage = psutil.virtual_memory().available * 100 / psutil.virtual_memory(
+  ).total
   mem_usage = psutil.virtual_memory().percent
   return CL, CD, mem_usage
 
@@ -97,6 +98,7 @@ flow = hgym.RotaryCylinder(
     restart=restart,  # Start from developed vortex shedding
     callbacks=callbacks,
     velocity_order=velocity_order,
+    use_HF_data_manager=False,
 )
 
 # Phase sweep parameters
@@ -167,4 +169,5 @@ hgym.integrate(
     controller=controller,
     stabilization=stabilization,
 )
-hgym.print(f"Phase sweep complete. Results saved to {output_dir}/phase-sweep.dat")
+hgym.print(
+    f"Phase sweep complete. Results saved to {output_dir}/phase-sweep.dat")

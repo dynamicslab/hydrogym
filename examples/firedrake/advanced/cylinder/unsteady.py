@@ -32,7 +32,8 @@ os.makedirs(output_dir, exist_ok=True)
 pvd_out = f"{output_dir}/solution.pvd"
 checkpoint = f"{output_dir}/checkpoint.h5"
 
-flow = hgym.Cylinder(Re=Re, mesh=mesh_resolution, velocity_order=2)
+flow = hgym.Cylinder(
+    Re=Re, mesh=mesh_resolution, velocity_order=2, use_HF_data_manager=False)
 
 # ========================================================================
 # Stage 1: Solve steady state (unstable equilibrium at Re=100)
@@ -47,14 +48,13 @@ solver_parameters = {"snes_monitor": None}
 Re_init = [40, 60, 80, Re]
 
 for i, Re_val in enumerate(Re_init):
-    flow.Re.assign(Re_val)
-    hgym.print(f"Steady solve at Re={Re_init[i]}")
-    solver = hgym.NewtonSolver(
-        flow,
-        stabilization="none",  # Taylor-Hood (P2-P1) is inf-sup stable
-        solver_parameters=solver_parameters
-    )
-    qB = solver.solve()
+  flow.Re.assign(Re_val)
+  hgym.print(f"Steady solve at Re={Re_init[i]}")
+  solver = hgym.NewtonSolver(
+      flow,
+      stabilization="none",  # Taylor-Hood (P2-P1) is inf-sup stable
+      solver_parameters=solver_parameters)
+  qB = solver.solve()
 
 # Save steady state as base flow
 flow.qB = flow.q.copy(deepcopy=True)
@@ -73,21 +73,22 @@ dt = 0.01
 
 
 def log_postprocess(flow):
-    CL, CD = flow.get_observations()
-    CFL = flow.max_cfl(dt)
-    mem_usage = psutil.virtual_memory().percent
-    return [CFL, CL, CD, mem_usage]
+  CL, CD = flow.get_observations()
+  CFL = flow.max_cfl(dt)
+  mem_usage = psutil.virtual_memory().percent
+  return [CFL, CL, CD, mem_usage]
 
 
 def compute_vort(flow):
-    return (flow.u, flow.p, flow.vorticity())
+  return (flow.u, flow.p, flow.vorticity())
 
 
 print_fmt = (
     "t: {0:0.2f}\t\tCFL: {1:0.2f}\t\tCL: {2:0.4f}\t\tCD: {3:0.4f}\t\tMem: {4:0.1f}"
 )
 callbacks = [
-    hgym.io.ParaviewCallback(interval=100, filename=pvd_out, postprocess=compute_vort),
+    hgym.io.ParaviewCallback(
+        interval=100, filename=pvd_out, postprocess=compute_vort),
     hgym.io.CheckpointCallback(interval=500, filename=checkpoint),
     hgym.io.LogCallback(
         postprocess=log_postprocess,
