@@ -66,12 +66,17 @@ toml = { version = "^0.10.0", optional = true }
 pymech = { version = "^1.4.0", optional = true }
 pettingzoo = { version = "^1.24.0", optional = true }
 stable-baselines3 = { version = "^2.7.1", optional = true }
+supersuit = { version = "3.10.0", optional = true }
 
 [tool.poetry.extras]
 firedrake = ["gmsh", "psutil"]
 maia = ["mpi4py", "omegaconf", "einops", "toml"]
-nek = ["mpi4py", "omegaconf", "pymech", "pettingzoo", "stable-baselines3"]
-all = ["gmsh", "psutil", "mpi4py", "omegaconf", "einops", "toml", "pymech", "pettingzoo", "stable-baselines3"]
+nek = ["mpi4py", "omegaconf", "pymech", "pettingzoo", "stable-baselines3", "supersuit"]
+all = [
+  "gmsh", "psutil",
+  "mpi4py", "omegaconf", "einops", "toml",
+  "pymech", "pettingzoo", "stable-baselines3", "supersuit"
+]
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.1.6"
