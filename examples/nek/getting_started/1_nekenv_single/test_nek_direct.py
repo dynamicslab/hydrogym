@@ -70,6 +70,13 @@ def main():
   # Direct instantiation
   env = NekEnv(env_config=env_config)
 
+  # [YW-MOD] Modify the par file to ensure the simulation configuration is correct
+  from hydrogym.nek.nek_lib.nek_utils import NEK_INIT 
+  nek_init = NEK_INIT(nek=env.conf.simulation, drl=env.conf.runner, rank_folder=env.run_folder)
+  nek_init.rewrite_REA_v19() # Rewrite the par file, v19 corresponds to the new Nek5000 format
+  # The simulation will be reset anyway, so writting the par file at this point is a perfect timing 
+  # [YW-MOD] End
+
   print("\nEnvironment info:")
   print('=' * 80)
   print(f"  Observation space: {env.observation_space.shape}")
@@ -93,13 +100,14 @@ def main():
 
   for step in range(max_steps):
     # Define action (example: zero control - baseline)
-    action = np.zeros(action_dim, dtype=np.float32)
+    # action = np.zeros(action_dim, dtype=np.float32)
 
     # OR use constant blowing:
     # action = np.ones(action_dim, dtype=np.float32) * 0.01
 
     # OR use opposition control:
-    # action = -obs[:action_dim]
+    action = -obs[1::2] # [YW-MOD] Oppose to the wall-normal vel, as the observation is staggered so we sort the even indices
+    
 
     # Step environment
     obs, reward, terminated, truncated, info = env.step(action)

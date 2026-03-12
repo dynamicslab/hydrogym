@@ -1,0 +1,831 @@
+=== NEK5000 Single Agent ===
+Mode: train
+Environment: TCFmini_3D_Re180
+Nek5000 procs: 10
+
+=== Training SB3 Agent ===
+======================================================================
+NEK5000 Workspace Preparation
+======================================================================
+Environment:      TCFmini_3D_Re180
+Clean cache:      /home/easybuild/.cache/hydrogym
+Work directory:   ./train_run
+Source:           Local (/workspace/hydrogym_NEK/packaged_envs)
+======================================================================
+
+Initializing data manager...
+
+Step 1: Getting environment 'TCFmini_3D_Re180'...
+Downloading TCFmini_3D_Re180 from Hugging Face Hub...
+Copying to clean cache: /home/easybuild/.cache/hydrogym/TCFmini_3D_Re180
+Environment ready at: /home/easybuild/.cache/hydrogym/TCFmini_3D_Re180
+✓ Environment copied to clean cache: /home/easybuild/.cache/hydrogym/TCFmini_3D_Re180
+
+Step 2: Preparing workspace with symlinks...
+Checking file: phill.re2
+Checking file: phill.par
+
+Step 3: Creating Nek5000 session files...
+✓ Created SESSION.NAME: /home/easybuild/yw_hydrogym/examples/nek/getting_started/1_nekenv_single/train_run/SESSION.NAME
+✓ Symlinked int_pos: /home/easybuild/yw_hydrogym/examples/nek/getting_started/1_nekenv_single/train_run/int_pos
+✓ Copied restarts: /home/easybuild/yw_hydrogym/examples/nek/getting_started/1_nekenv_single/train_run/rs6phill0.f00003 with index 1
+
+======================================================================
+Workspace Ready!
+======================================================================
+Clean cache:      /home/easybuild/.cache/hydrogym/TCFmini_3D_Re180/
+  Files copied:   phill.re2, phill.ma2, phill.par, restarts/
+
+Work directory:   /home/easybuild/yw_hydrogym/examples/nek/getting_started/1_nekenv_single/train_run
+  Symlinks to:    /home/easybuild/.cache/hydrogym/TCFmini_3D_Re180/
+  Parameter file: phill.par
+
+File structure:
+  1. Source:      /workspace/hydrogym_NEK/packaged_envs/TCFmini_3D_Re180/
+  2. Clean cache: /home/easybuild/.cache/hydrogym/TCFmini_3D_Re180/ (copied)
+  3. Workspace:   /home/easybuild/yw_hydrogym/examples/nek/getting_started/1_nekenv_single/train_run/ (symlinks + config)
+======================================================================
+
+Next steps:
+  1. Inspect cached files: ls -lh /home/easybuild/.cache/hydrogym/TCFmini_3D_Re180
+  2. Review configuration: cat /home/easybuild/yw_hydrogym/examples/nek/getting_started/1_nekenv_single/train_run/phill.par
+  3. Restart index: 1
+  4. Run test: ./run_example.sh
+======================================================================
+Training SB3 Agent on NekEnv (Single Agent)
+======================================================================
+Algorithm: TD3
+Environment: TCFmini_3D_Re180
+Total timesteps: 5000000
+======================================================================
+
+Getting TCFmini_3D_Re180 from Hugging Face Hub...
+Using environment at: /home/easybuild/.cache/huggingface/hub/datasets--dynamicslab--HydroGym-environments/snapshots/debb115db52ed4d058250c1cf3b009a33cb998f5/TCFmini_3D_Re180
+[NEK] Using environment data from: /home/easybuild/.cache/huggingface/hub/datasets--dynamicslab--HydroGym-environments/snapshots/debb115db52ed4d058250c1cf3b009a33cb998f5/TCFmini_3D_Re180
+[NEK] Using config file: /home/easybuild/.cache/huggingface/hub/datasets--dynamicslab--HydroGym-environments/snapshots/debb115db52ed4d058250c1cf3b009a33cb998f5/TCFmini_3D_Re180/environment_config.yaml
+[NEK] Found restart files at: /home/easybuild/.cache/huggingface/hub/datasets--dynamicslab--HydroGym-environments/snapshots/debb115db52ed4d058250c1cf3b009a33cb998f5/TCFmini_3D_Re180/./restart_files
+[NEK] Created SESSION.NAME: /home/easybuild/yw_hydrogym/examples/nek/getting_started/1_nekenv_single/train_run/SESSION.NAME
+  Case: phill
+  Work directory: /home/easybuild/yw_hydrogym/examples/nek/getting_started/1_nekenv_single/train_run
+[MPI_SPLIT] World rank 0, color 0, local_comm size: 1, local rank: 0
+[MPI_SPLIT] Inter-comm created: local_size=1, remote_size=10
+------------ INITIALIZATION -------------
+[NEK] REQUEST NODE LIST (expecting 10 ranks)
+[NEK] RAW NODE LIST RECEIVED: [216 216 144   0   0   0   0   0   0   0]
+[NEK] Before filter: [0 1 2 3 4 5 6 7 8 9]
+[NEK] After filter (0 < node_list <= 220): [0 1 2]
+[NEK] Control points per rank: [216 216 144]
+[NEK] Will receive actuator info from 3 ranks
+[NEK] Processing rank nid=0
+[NEK] Waiting to receive NUMCTRL from rank 0, tag=10000
+[NEK] Received NUMCTRL from rank 0
+[NEK] Waiting to receive GLLID from rank 0, tag=20000
+[NEK] Received GLLID from rank 0
+[NEK] Waiting to receive FACEID from rank 0, tag=30000
+[NEK] Received FACEID from rank 0
+[NEK] Waiting to receive ix from rank 0, tag=40000
+[NEK] Received ix from rank 0
+[NEK] Waiting to receive iy from rank 0, tag=50000
+[NEK] Received iy from rank 0
+[NEK] Waiting to receive iz from rank 0, tag=60000
+[NEK] Received iz from rank 0
+[NEK] Waiting to receive x from rank 0, tag=100000
+[NEK] Received x from rank 0
+[NEK] Waiting to receive y from rank 0, tag=200000
+[NEK] Received y from rank 0
+[NEK] Waiting to receive z from rank 0, tag=300000
+[NEK] Received z from rank 0
+[NEK] Processing rank nid=1
+[NEK] Waiting to receive NUMCTRL from rank 1, tag=10001
+[NEK] Received NUMCTRL from rank 1
+[NEK] Waiting to receive GLLID from rank 1, tag=20001
+[NEK] Received GLLID from rank 1
+[NEK] Waiting to receive FACEID from rank 1, tag=30001
+[NEK] Received FACEID from rank 1
+[NEK] Waiting to receive ix from rank 1, tag=40001
+[NEK] Received ix from rank 1
+[NEK] Waiting to receive iy from rank 1, tag=50001
+[NEK] Received iy from rank 1
+[NEK] Waiting to receive iz from rank 1, tag=60001
+[NEK] Received iz from rank 1
+[NEK] Waiting to receive x from rank 1, tag=100001
+[NEK] Received x from rank 1
+[NEK] Waiting to receive y from rank 1, tag=200001
+[NEK] Received y from rank 1
+[NEK] Waiting to receive z from rank 1, tag=300001
+[NEK] Received z from rank 1
+[NEK] Processing rank nid=2
+[NEK] Waiting to receive NUMCTRL from rank 2, tag=10002
+[NEK] Received NUMCTRL from rank 2
+[NEK] Waiting to receive GLLID from rank 2, tag=20002
+[NEK] Received GLLID from rank 2
+[NEK] Waiting to receive FACEID from rank 2, tag=30002
+[NEK] Received FACEID from rank 2
+[NEK] Waiting to receive ix from rank 2, tag=40002
+[NEK] Received ix from rank 2
+[NEK] Waiting to receive iy from rank 2, tag=50002
+[NEK] Received iy from rank 2
+[NEK] Waiting to receive iz from rank 2, tag=60002
+[NEK] Received iz from rank 2
+[NEK] Waiting to receive x from rank 2, tag=100002
+[NEK] Received x from rank 2
+[NEK] Waiting to receive y from rank 2, tag=200002
+[NEK] Received y from rank 2
+[NEK] Waiting to receive z from rank 2, tag=300002
+[NEK] Received z from rank 2
+[NEK] INIT END, NUM ACTUATORS=576
+[NEK] DUMP ACTUATOR INFO : history/ACTUATOR_INFO.csv
+[NEK] GLL WEIGHT=[0.06666667 0.37847496 0.55485838 0.55485838 0.37847496 0.06666667]
+SCALE: dUdy=12.4271
+ Utau=0.0638
+------------ FINISH INITIALIZATION -------------
+
+--------------------------------------------------------
+███╗   ██╗███████╗██╗  ██╗    ██████╗ ██████╗ ██╗     
+████╗  ██║██╔════╝██║ ██╔╝    ██╔══██╗██╔══██╗██║     
+██╔██╗ ██║█████╗  █████╔╝     ██║  ██║██████╔╝██║     
+██║╚██╗██║██╔══╝  ██╔═██╗     ██║  ██║██╔══██╗██║     
+██║ ╚████║███████╗██║  ██╗    ██████╔╝██║  ██║███████╗
+            NEK5000 Reinforcement Learning
+                    HydroGym-dev
+                    Yuning Wang
+--------------------------------------------------------
+
+
+[IO] Writting .par file:
+./phill.par
+[IO] WRITTEN .par file: ./phill.par
+Environment created (Wrapped in Monitor, DummyVecEnv, VecNormalize):
+  Observation space: Box(-inf, inf, (1152,), float32)
+  Action space: Box(-1.0, 1.0, (576,), float32)
+
+Creating TD3 model...
+Using cpu device
+✓ Model created
+
+Log directory: logs/TD3_NekEnv_20260312_151121
+
+======================================================================
+Starting training...
+======================================================================
+
+[NEK] RESET!
+[NEK] EPISODE=1
+[NEK] SAVE LOG
+[RSTART] RESET: /home/easybuild/.cache/huggingface/hub/datasets--dynamicslab--HydroGym-environments/snapshots/debb115db52ed4d058250c1cf3b009a33cb998f5/TCFmini_3D_Re180/restart_files/init_1/rs6phill0.f00001
+[RSTART] RESET: /home/easybuild/.cache/huggingface/hub/datasets--dynamicslab--HydroGym-environments/snapshots/debb115db52ed4d058250c1cf3b009a33cb998f5/TCFmini_3D_Re180/restart_files/init_1/rs6phill0.f00002
+[RSTART] RESET: /home/easybuild/.cache/huggingface/hub/datasets--dynamicslab--HydroGym-environments/snapshots/debb115db52ed4d058250c1cf3b009a33cb998f5/TCFmini_3D_Re180/restart_files/init_1/rs6phill0.f00003
+[NEK] Start SIM
+[NEK] STATE RECV
+Logging to logs/TD3_NekEnv_20260312_151121/TD3_run_1
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=0 dUdy=11.43044 R=-0.05394
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=1 dUdy=11.43017 R=-0.05391
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=2 dUdy=11.42932 R=-0.05383
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=3 dUdy=12.46579 R=-0.14940
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=4 dUdy=12.31614 R=-0.13560
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=5 dUdy=12.74214 R=-0.17488
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=6 dUdy=12.93438 R=-0.19261
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=7 dUdy=12.16631 R=-0.12179
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=8 dUdy=13.00673 R=-0.19928
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=9 dUdy=13.37688 R=-0.23341
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=10 dUdy=13.94485 R=-0.28578
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=11 dUdy=13.24947 R=-0.22166
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=12 dUdy=14.13087 R=-0.30293
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=13 dUdy=14.69422 R=-0.35487
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=14 dUdy=15.22462 R=-0.40378
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=15 dUdy=15.62589 R=-0.44078
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=16 dUdy=15.29447 R=-0.41022
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=17 dUdy=15.52878 R=-0.43182
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=18 dUdy=15.45754 R=-0.42525
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=19 dUdy=16.41248 R=-0.51330
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=20 dUdy=16.39912 R=-0.51207
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=21 dUdy=15.25748 R=-0.40681
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=22 dUdy=14.99532 R=-0.38263
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=23 dUdy=15.88225 R=-0.46441
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=24 dUdy=16.37657 R=-0.50999
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=25 dUdy=16.18516 R=-0.49234
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=26 dUdy=15.65881 R=-0.44381
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=27 dUdy=16.49054 R=-0.52050
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=28 dUdy=16.34585 R=-0.50716
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=29 dUdy=16.63315 R=-0.53365
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=30 dUdy=16.87752 R=-0.55618
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=31 dUdy=16.64688 R=-0.53492
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=32 dUdy=15.87348 R=-0.46360
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=33 dUdy=15.77366 R=-0.45440
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=34 dUdy=16.75205 R=-0.54461
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=35 dUdy=16.27625 R=-0.50074
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=36 dUdy=15.41985 R=-0.42178
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=37 dUdy=15.86191 R=-0.46254
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=38 dUdy=15.98230 R=-0.47364
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=39 dUdy=15.60328 R=-0.43869
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=40 dUdy=15.57493 R=-0.43608
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=41 dUdy=16.09325 R=-0.48387
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=42 dUdy=14.79901 R=-0.36453
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=43 dUdy=14.50333 R=-0.33727
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=44 dUdy=14.85800 R=-0.36997
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=45 dUdy=15.51561 R=-0.43061
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=46 dUdy=14.69248 R=-0.35471
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=47 dUdy=14.03996 R=-0.29455
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=48 dUdy=14.96260 R=-0.37962
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=49 dUdy=14.05336 R=-0.29578
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=50 dUdy=13.67356 R=-0.26076
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=51 dUdy=13.12254 R=-0.20996
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=52 dUdy=13.54284 R=-0.24871
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=53 dUdy=13.51831 R=-0.24645
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=54 dUdy=13.48243 R=-0.24314
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=55 dUdy=14.06483 R=-0.29684
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=56 dUdy=12.94293 R=-0.19340
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=57 dUdy=14.00975 R=-0.29176
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=58 dUdy=13.29507 R=-0.22586
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=59 dUdy=12.79855 R=-0.18008
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=60 dUdy=13.95956 R=-0.28713
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=61 dUdy=13.58441 R=-0.25254
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=62 dUdy=12.19676 R=-0.12459
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=63 dUdy=11.51110 R=-0.06137
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=64 dUdy=11.26393 R=-0.03858
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=65 dUdy=10.44274 R=0.03713
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=66 dUdy=10.77635 R=0.00637
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=67 dUdy=11.36547 R=-0.04795
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=68 dUdy=10.87140 R=-0.00239
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=69 dUdy=10.12489 R=0.06644
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=70 dUdy=9.40742 R=0.13259
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=71 dUdy=9.84188 R=0.09253
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=72 dUdy=9.97732 R=0.08005
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=73 dUdy=9.77521 R=0.09868
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=74 dUdy=10.30902 R=0.04946
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=75 dUdy=12.13263 R=-0.11868
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=76 dUdy=10.96061 R=-0.01062
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=77 dUdy=12.18322 R=-0.12335
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=78 dUdy=11.19919 R=-0.03261
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=79 dUdy=10.40304 R=0.04079
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=80 dUdy=12.37262 R=-0.14081
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=81 dUdy=11.56605 R=-0.06644
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=82 dUdy=11.79115 R=-0.08720
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=83 dUdy=11.35582 R=-0.04706
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=84 dUdy=10.69412 R=0.01396
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=85 dUdy=11.55361 R=-0.06529
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=86 dUdy=11.08731 R=-0.02230
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=87 dUdy=11.56432 R=-0.06628
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=88 dUdy=12.25927 R=-0.13036
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=89 dUdy=12.33452 R=-0.13730
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=90 dUdy=11.90803 R=-0.09797
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=91 dUdy=11.48996 R=-0.05942
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=92 dUdy=12.80727 R=-0.18089
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=93 dUdy=12.52431 R=-0.15480
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=94 dUdy=12.56550 R=-0.15859
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=95 dUdy=14.98939 R=-0.38209
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=96 dUdy=14.65762 R=-0.35150
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=97 dUdy=14.58804 R=-0.34508
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=98 dUdy=14.12574 R=-0.30246
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=99 dUdy=13.99232 R=-0.29015
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=100 dUdy=16.01260 R=-0.47643
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=101 dUdy=14.97553 R=-0.38081
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=102 dUdy=14.95207 R=-0.37865
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=103 dUdy=15.03690 R=-0.38647
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=104 dUdy=15.09856 R=-0.39215
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=105 dUdy=15.14199 R=-0.39616
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=106 dUdy=15.25749 R=-0.40681
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=107 dUdy=15.35412 R=-0.41572
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=108 dUdy=15.56048 R=-0.43474
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=109 dUdy=15.73197 R=-0.45056
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=110 dUdy=16.00518 R=-0.47575
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=111 dUdy=16.27883 R=-0.50098
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=112 dUdy=16.66285 R=-0.53639
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=113 dUdy=17.04853 R=-0.57195
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=114 dUdy=17.54474 R=-0.61770
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=115 dUdy=18.03900 R=-0.66328
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=116 dUdy=18.61461 R=-0.71635
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=117 dUdy=19.18367 R=-0.76882
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=118 dUdy=19.80186 R=-0.82582
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=119 dUdy=20.40571 R=-0.88150
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=120 dUdy=21.03456 R=-0.93948
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=121 dUdy=21.60886 R=-0.99243
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=122 dUdy=22.20201 R=-1.04712
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=123 dUdy=22.73898 R=-1.09663
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=124 dUdy=23.27261 R=-1.14584
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=125 dUdy=23.74341 R=-1.18925
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=126 dUdy=24.19551 R=-1.23093
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=127 dUdy=24.57548 R=-1.26597
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=128 dUdy=24.92086 R=-1.29781
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=129 dUdy=25.17203 R=-1.32097
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=130 dUdy=25.36341 R=-1.33862
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=131 dUdy=25.46128 R=-1.34764
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=132 dUdy=25.50388 R=-1.35157
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=133 dUdy=25.46122 R=-1.34764
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=134 dUdy=25.37121 R=-1.33934
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=135 dUdy=25.23787 R=-1.32704
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=136 dUdy=25.09077 R=-1.31348
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=137 dUdy=24.95190 R=-1.30067
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=138 dUdy=24.85254 R=-1.29151
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=139 dUdy=24.80807 R=-1.28741
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=140 dUdy=24.86586 R=-1.29274
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=141 dUdy=25.01901 R=-1.30686
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=142 dUdy=25.29427 R=-1.33224
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=143 dUdy=25.62392 R=-1.36264
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=144 dUdy=25.94847 R=-1.39256
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=145 dUdy=26.21508 R=-1.41715
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=146 dUdy=26.52067 R=-1.44532
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=147 dUdy=27.01017 R=-1.49046
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=148 dUdy=27.77567 R=-1.56104
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=149 dUdy=28.74324 R=-1.65025
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=150 dUdy=29.78184 R=-1.74602
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=151 dUdy=30.77357 R=-1.83746
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=152 dUdy=31.64950 R=-1.91822
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=153 dUdy=32.36861 R=-1.98453
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=154 dUdy=32.99694 R=-2.04246
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=155 dUdy=33.53715 R=-2.09227
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=156 dUdy=34.03221 R=-2.13792
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=157 dUdy=34.50625 R=-2.18163
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=158 dUdy=34.88350 R=-2.21641
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=159 dUdy=34.88455 R=-2.21651
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=160 dUdy=34.44220 R=-2.17572
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=161 dUdy=33.69100 R=-2.10646
+[NEK] STATE RECV
+[ZNMF] DONE BY NEK5000
+[NEK] ACTION for 576 Actuators
+[LOGGER] act_index=162 dUdy=33.13693 R=-2.05537
