@@ -1,0 +1,43 @@
+c
+c     Restart parameters and variables
+c
+      integer         max_rst
+      common /crst_i/ max_rst            ! for full restart
+
+      integer nxr,nyr,nzr,nelr,nelgr,istpr,ifiler,nfiler
+     $       ,nxo,nyo,nzo,nrg
+     $       ,wdsizr,wdsizo
+     $       ,nfileo,nproc_o,nfldr
+     $       ,er(lelr),nelB,nelBr
+      common /cmfi_i/ nxr,nyr,nzr,nelr,nelgr,istpr,ifiler,nfiler
+     $              , nxo,nyo,nzo,nrg
+     $              , wdsizr,wdsizo
+     $              , nfileo,nproc_o,nfldr
+     $              , er,nelB,nelBr
+
+      integer iHeaderSize
+      parameter(iHeaderSize=132)
+
+      real timer
+      common /cmfi_r/ timer
+
+      character*3  ihdr
+      character*10 rdcode
+      character*80 mfi_fname
+      common /cmfi_c/ ihdr,rdcode,mfi_fname
+
+      character*1  rdcode1(10)
+      equivalence (rdcode,rdcode1)
+
+      logical ifgetx ,ifgetu ,ifgetp ,ifgett ,ifgtps (ldimt1),ifgtim
+     $       ,ifgetxr,ifgetur,ifgetpr,ifgettr,ifgtpsr(ldimt1),ifgtimr
+     $       ,if_byte_sw,ifgetz,ifgetw,ifdiro
+      common /cmfi_l/ ifgetx,ifgetu,ifgetp,ifgett,ifgtps,ifgtim
+     $       ,ifgetxr,ifgetur,ifgetpr,ifgettr,ifgtpsr,ifgtimr
+     $       ,if_byte_sw,ifgetz,ifgetw,ifdiro
+
+      integer         fid0,fid0r,pid0,pid1,pid0r,pid1r,pid00
+      common /cmfi_p/ fid0,fid0r,pid0,pid1,pid0r,pid1r,pid00 
+
+      integer          ifh_mbyte
+      common /i4mpiio/ ifh_mbyte

@@ -1,0 +1,65 @@
+
+
+      INTEGER IEACT, IFLDMHD,
+     $     IGROUP, IPSCAL, NGEOM,
+     $     NUMSTS, NUMFLU, NUMOTH, NUMBCS,
+     $     MATINDX, MATIDS, IMATIE, IBCSTS, NIO
+
+c Data common to functions in moab.f. Do #include instead of include or
+c it won't work (because we're using preproc macros here)
+#ifdef PTRSIZE8
+#define POINTER_SIZE 8
+#else
+#define POINTER_SIZE 4
+#endif
+#ifdef MPI
+#include "iMeshP_f.h"
+#else
+#include "iMesh_f.h"
+#endif
+
+      include 'SIZE'
+      include 'INPUT'
+c      include 'TOTAL'
+
+c	  Removing the unused variables from MOABCORE interface
+c      integer*4 hexesSize, partsSize
+c      IBASE_HANDLE_T rpHexes, rpParts
+c      iBase_EntityHandle hHexes(*), hParts(*)
+c      pointer (rpHexes, hHexes), (rpParts, hParts)
+
+      IBASE_HANDLE_T imeshh, fileset, hPartn
+      integer iCreatedImesh, iCreatedPartn, iCreatedFileset
+
+      iBase_EntitySetHandle matsets
+      iBase_EntityArrIterator ieiter
+      iBase_TagHandle xm1Tag, ym1Tag, zm1Tag, vxTag, vyTag, vzTag, tTag,
+     $     pTag, dTag, powTag, vtTag, vpTag, vdTag, vpowTag,
+     $     globalIdTag, matsetTag, neusetTag, senseTag
+
+      integer iestart, iecount
+
+c	  Removing more unused variables from MOABCORE interface
+c      pointer (rpxm1, xm1l(lx1, ly1, lz1, lelt))
+c      pointer (rpym1, ym1l(lx1, ly1, lz1, lelt))
+c      pointer (rpzm1, zm1l(lx1, ly1, lz1, lelt))
+c      pointer (rpvx, vxl(lx1, ly1, lz1, lelt))
+c      pointer (rpvy, vyl(lx1, ly1, lz1, lelt))
+c      pointer (rpvz, vzl(lx1, ly1, lz1, lelt))
+c      pointer (rpt, tl(lx1, ly1, lz1, lelt, *))
+c      pointer (rpp, prl(lx2, ly2, lz2, lelt))
+
+      common /nekmoab/ imeshh, hPartn, fileset,
+c	  Removing more unused variables from MOABCORE common block
+c     $     rpParts, rpHexes, rpxm1, rpym1, rpzm1,
+c     $     rpvx, rpvy, rpvz, rpt, rpp,
+     $     globalIdTag, matsetTag, neusetTag,
+     $     matsets(numsts), ieiter(numsts),
+     $     xm1Tag, ym1Tag, zm1Tag, vxTag, vyTag, vzTag, tTag,
+     $     pTag, dTag, powTag, vtTag, vpTag, vdTag, vpowTag,
+     $     senseTag,
+     $     iCreatedImesh, iCreatedPartn, iCreatedFileset,
+     $     iestart(numsts), iecount(numsts)
+c	  Removing more unused variables from MOABCORE common block
+c     $     partsSize, hexesSize
+

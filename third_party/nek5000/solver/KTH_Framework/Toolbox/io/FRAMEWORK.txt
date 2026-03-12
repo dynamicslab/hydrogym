@@ -1,0 +1,35 @@
+#Configuration file for Nek5000 framework developed at KTH
+# Place for short description; doxygen style
+/**
+@defgroup io  Input/output module
+@ingroup toolbox
+
+@brief I/O routines for toolboxes
+
+@details 
+This directory contains number of I/O tools used by toolboxes.
+
+
+*/
+#List of existing submodules
+SUBMODULES io_tools \
+           checkpoint
+
+#List of conflicting submodules
+EXCLUSIVE
+
+#Default submodules
+DEFAULT
+
+#List of conflicting modules
+CONFLICTS
+
+#List of required modules
+REQUIRED
+
+#List of object files
+OBJECT
+
+#List of include files
+INCLUDE
+ 

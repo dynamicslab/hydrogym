@@ -1,0 +1,111 @@
+!> @file ARN_ARPD
+!! @ingroup arn_arp
+!! @brief Include file for Arnoldi method using ARPACK library
+!! @author Adam Peplinski
+!! @date Mar 7, 2016
+!=======================================================================
+!     module id and name
+      integer arna_id
+      character*(*) arna_name
+      parameter(arna_name='ARN_ARP')
+
+!     timer id
+      integer arna_tmr_ini_id   ! initialisation itme
+      integer arna_tmr_evl_id   ! evolution time
+
+!     initialisation flag
+      logical arna_ifinit
+
+!     runtime parameter part
+!     section id
+      integer arna_sec_id
+
+!     parameter section
+      integer arna_nkrl                  !< @var Krylov space size (ncv in ARPCK notation)
+      integer arna_nkrl_id
+      integer arna_negv                  !< @var number of eigenvalues to calculate (nev in ARPCK notation)
+      integer arna_negv_id
+
+!     array sizes; static allocation
+!     max size of Krylov space (maxncv in ARPCK notation)
+      integer arna_lkrl
+      parameter (arna_lkrl = 250)
+
+!     single vector sizes
+      integer arna_lv, arna_lt
+      parameter (arna_lv = LPX1*LPY1*LPZ1*LPELV) ! velocity mesh
+      parameter (arna_lt = LPX1*LPY1*LPZ1*LPELT) ! temperature mesh
+
+!     one vector for all velocity components (maxn in ARPACK notation)
+!     be careful about including temperature
+      integer arna_ls
+      parameter (arna_ls = arna_lv*LDIM + arna_lt*min(1,LDIMT)*0) !!! ???? should it be ultiplied by 0
+
+      ! length of the vector transferred to arpack 
+      ! (combining velocity and temperature)
+      integer arna_ns
+      
+      ! restart options; restart flag and file number
+      logical arna_ifrst
+      integer arna_fnum
+
+!     common block section
+      common /arnai/ arna_id, arna_tmr_ini_id, arna_tmr_evl_id, 
+     $     arna_sec_id, arna_nkrl, arna_nkrl_id, arna_negv, 
+     $     arna_negv_id, arna_ns, arna_fnum
+      
+      common /arnal/ arna_ifinit, arna_ifrst
+
+!     Parameters for ARPACK; names kept for consistency with ARPACK naming
+!     work array sizes for arpack
+      integer wddima, wldima, wedima
+      parameter (wddima = 3*arna_ls)
+      parameter (wldima = 3*arna_lkrl*arna_lkrl+6*arna_lkrl)
+      parameter (wedima = 3*arna_lkrl)
+
+!     arrays
+      real workda(wddima), workla(wldima), workea(wedima),
+     $     vbasea(arna_ls,arna_lkrl), resida(arna_ls), 
+     $     driarp(arna_lkrl,4)
+
+!     integer parameters
+      integer idoarp, iparp(11), ipntarp(14), nwlarp, infarp, ierrarp
+
+!     real parameters
+      real sigarp(2)
+
+!     logical parameters
+      logical rvarp, selarp(arna_lkrl)
+
+!     character parametres
+      character bmatarp*1, whicharp*2, howarp*1
+
+!     parameters for parpack with checkpointing
+      integer nparp, ncarp
+
+      real rnmarp
+
+      integer idoarp0, arna_ns0, arna_negv0, arna_nkrl0, iparp0(11),
+     $     ipntarp0(14), nwlarp0, infarp0, nparp0, ncarp0,
+     $     tst_step0, tst_mode0
+
+      character bmatarp0*1, whicharp0*2
+
+      real tst_tol0, rnmarp0, dtarp0
+
+!     common blocks
+!     integer variables
+      common /parpi/ idoarp, iparp, ipntarp, nwlarp, infarp, ierrarp,
+     $     nparp, ncarp, idoarp0, arna_ns0, arna_negv0, arna_nkrl0, 
+     $     iparp0, ipntarp0, nwlarp0, infarp0, nparp0, ncarp0, 
+     $     tst_step0, tst_mode0
+
+!     real variables
+      common /parpr/ sigarp, workda, workla, workea,
+     $     vbasea, resida, driarp, rnmarp, tst_tol0, rnmarp0, dtarp0
+
+!     logical variables
+      common /parpl/ rvarp, selarp
+
+!     character variables
+      common /parpch/ bmatarp, whicharp, howarp, bmatarp0, whicharp0

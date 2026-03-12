@@ -1,0 +1,90 @@
+!> @file RPRMD
+!! @ingroup runparam
+!! @brief Include file for runtime parameter module 
+!! @author Adam Peplinski
+!! @date Sep 28, 2017
+!=======================================================================
+!     module id and name
+      integer rprm_id
+      character*(*) rprm_name
+      parameter(rprm_name='RUNPAR')
+
+!     initialisation flag
+      logical rprm_ifinit
+
+!     runtime parameter part
+!     this section id
+      integer rprm_lsec_id
+
+!     write .par file + parameter id
+      logical rprm_ifparf
+      integer rprm_ifparf_id
+      
+!     .par file name (without .par)
+      character*20 rprm_parfnm
+      integer rprm_parfnm_id
+
+!     master node for runtime parameter reading
+      integer rprm_pid0
+
+!     string sizes and blank parameters (for rprm_block.f)
+      integer rprm_lstl_mnm    ! length of section/parameter name and string
+      parameter (rprm_lstl_mnm = 20)
+      character*(*) rprm_blname  ! balnk section/parameter name
+      parameter (rprm_blname='                    ')
+      integer rprm_lstl_mds    ! length of section/parameter description string
+      parameter (rprm_lstl_mds = 132)
+
+!     runtime parameter section registration
+      integer rprm_sec_id_max  ! max number of parameter sections to register
+      parameter (rprm_sec_id_max=300)
+      integer rprm_sec_num  ! number of registered sectionss
+      integer rprm_sec_mpos ! max position of registered section
+      integer rprm_sec_id(rprm_sec_id_max) ! list of sections; occupied slot + registering module
+      logical rprm_sec_act(rprm_sec_id_max) ! section activation mark
+
+      character*20 rprm_sec_name(rprm_sec_id_max) ! names of registered parameters
+      character*132 rprm_sec_dscr(rprm_sec_id_max) ! descriptions of registered parameters
+      
+!     runtime parameter registration     
+      integer rprm_par_id_max  ! max number of parameters to register
+      parameter (rprm_par_id_max=300)
+      integer rprm_par_num  ! number of registered parameters
+      integer rprm_par_mpos ! max position of registered parameter
+      integer rprm_par_nf ! number of fields in prm_par_id
+      parameter (rprm_par_nf=2)
+      integer rprm_par_id_size ! total size of rprm_par_id; requred by rprm_block.f
+      parameter (rprm_par_id_size=rprm_par_nf*rprm_par_id_max) 
+      integer rprm_par_mark ! occupied slot marker and number of parameter section
+      parameter (rprm_par_mark=1)
+      integer rprm_par_type ! parameter type
+      parameter (rprm_par_type=2)
+      integer rprm_par_id(rprm_par_nf,rprm_par_id_max) ! list of parameters; occupied slot + parameter section; parameter typ
+
+      character*20 rprm_par_name(rprm_par_id_max) ! names of registered parameters
+      character*132 rprm_par_dscr(rprm_par_id_max) ! descriptions of registered parameters
+
+!     vectors of parameter values
+      integer rprm_parv_int(rprm_par_id_max)
+      real rprm_parv_real(rprm_par_id_max)
+      logical rprm_parv_log(rprm_par_id_max)
+      character*20 rprm_parv_str(rprm_par_id_max)
+
+!     common blocks
+!     integer variables
+      common /RPRMI/ rprm_id, rprm_lsec_id, rprm_ifparf_id, 
+     $      rprm_parfnm_id, rprm_pid0, rprm_sec_num, rprm_sec_mpos, 
+     $      rprm_sec_id, rprm_par_num, rprm_par_mpos, rprm_par_id, 
+     $      rprm_parv_int
+
+!     real variables
+      common /RPRMR/ rprm_parv_real
+      
+!     logical variables
+      common /RPRML/ rprm_ifinit, rprm_ifparf, rprm_sec_act, 
+     $       rprm_parv_log
+      
+!     string variables
+      common /RPRMC/ rprm_parfnm, rprm_sec_name, rprm_sec_dscr, 
+     $       rprm_par_name, rprm_par_dscr, rprm_parv_str
+ 

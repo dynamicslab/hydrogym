@@ -1,0 +1,1 @@
+tar -zcvf tarfile.gz make* *.f *.c *.inc *.h cpdir icon mktar

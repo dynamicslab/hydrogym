@@ -1,0 +1,8 @@
+[GENERAL]
+dt = 1E-3
+writeinterval = 1000
+numsteps = 1000
+
+[VELOCITY]
+density = 1.205
+viscosity = 1.8E-5

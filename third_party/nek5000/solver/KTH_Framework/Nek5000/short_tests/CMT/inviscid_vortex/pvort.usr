@@ -1,0 +1,322 @@
+      subroutine userchk
+      include 'SIZE'
+      include 'TOTAL'
+      ifxyo = .true.
+      if (istep.gt.1) ifxyo=.false.
+      return
+      end
+
+!-----------------------------------------------------------------------
+
+      subroutine cmtchk
+      include 'SIZE'
+      include 'TOTAL'
+      include 'CMTDATA'
+      
+      scale = 1.
+      nxyz=nx1*ny1*nz1
+      if (istep.gt.0)then
+      if (mod(istep,1000).eq.0)
+     >   call l2norm_2d_vortex
+      endif
+
+! sigh. need settime to bend to my will
+      time=time_cmt
+
+      return
+      end
+
+!-----------------------------------------------------------------------
+
+      subroutine cmt_userEOS(ix,iy,iz,eg)
+      include 'SIZE'
+      include 'NEKUSE'
+      include 'PARALLEL'
+      include 'CMTDATA'
+      include 'PERFECTGAS'
+
+      integer e,eg
+      e=gllel(eg)
+
+      cp=cpgref
+      cv=cvgref
+      temp=e_internal/cv
+      asnd=MixtPerf_C_GRT(gmaref,rgasref,temp)
+      pres=MixtPerf_P_DRT(rho,rgasref,temp)
+
+      return
+      end
+
+c-----------------------------------------------------------------------
+
+      subroutine uservp (ix,iy,iz,eg)
+      include 'SIZE'
+      include 'TOTAL'
+      include 'NEKUSE'
+      include 'CMTDATA'
+
+      integer e,f,eg
+c     e = gllel(eg)
+
+      mu=0.0
+      lambda=-2.0/3.0*mu
+      udiff =0.
+      utrans=0.
+      nu_s=0.0
+      return
+      end
+
+c-----------------------------------------------------------------------
+
+      subroutine userf  (ix,iy,iz,eg)
+      include 'SIZE'
+      include 'TOTAL'
+      include 'NEKUSE'
+
+      integer e,f,eg
+c     e = gllel(eg)
+c     Note: this is an acceleration term, NOT a force!
+c     Thus, ffx will subsequently be multiplied by rho(x,t).
+      ffx = 0.0
+      ffy = 0.0
+      ffz = 0.0
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine userq  (ix,iy,iz,eg)
+      include 'SIZE'
+      include 'TOTAL'
+      include 'NEKUSE'
+
+      integer e,f,eg
+c     e = gllel(eg)
+      qvol   = 0.0
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine userbc (ix,iy,iz,iside,ieg)
+      include 'SIZE'
+      include 'NEKUSE'
+      include 'CMTDATA'
+     
+      integer f,e,eg
+      flux=0.0
+      molarmass=molmass
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine useric (ix,iy,iz,ieg)
+      include 'SIZE'
+      include 'TOTAL'
+      include 'NEKUSE'
+      include 'CMTDATA'
+      include 'PERFECTGAS'
+
+      integer e,eg, eqnum
+      real r2
+      real bvort,uxinf,uyinf,tempinf
+      common /VORTXSTRN/ bvort,uxinf,uyinf,tempinf
+
+      xctr = 5.0!22.50
+      yctr = 0.0!2.5
+      x=x-xctr
+      y=y-yctr
+      r2=(x**2+y**2)
+      bvort = 5.0
+      pi = 4.0*atan(1.0)
+      phi= 1.0
+      uxinf = 1.0
+      uyinf = 0.0
+      Tempinf = 1.0
+      rho = (Tempinf-(gmaref-1.0)*bvort**2/(16.0*gmaref
+     >           *pi**2)* exp(2.0*(1.0-r2)))**(1.0/(gmaref-1.0))
+      ux = uxinf-bvort*exp((1.0-r2))*y/(2.0*pi)
+      uy = uyinf+bvort*exp((1.0-r2))*x/(2.0*pi)
+      uz = 0.0
+      temp=Tempinf-(gmaref-1.0)*bvort**2/(16.0*gmaref*pi**2)*
+     >           exp(2.0*(1.0-r2))
+      pres=MixtPerf_P_DRT(rho,rgasref,temp)
+      cp=cpgref
+      cv=cvgref
+      e_internal=cvgref*temp
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine usrdat
+      include 'SIZE'
+      include 'TOTAL'
+      include 'CMTBCDATA'
+      include 'CMTDATA'
+      include 'CMTTIMERS'
+      include 'PERFECTGAS'
+
+      molmass    = 8314.3
+      muref      = 0.0
+      coeflambda = -2.0/3.0
+      suthcoef   = 1.0
+      reftemp    = 1.0
+      prlam      = 0.72
+      pinfty     = 1.0
+      gmaref     = 1.4
+      rgasref    = MixtPerf_R_M(molmass,dum)
+      cvgref     = rgasref/(gmaref-1.0)
+      cpgref     = MixtPerf_Cp_CvR(cvgref,rgasref)
+      gmaref     = MixtPerf_G_CpR(cpgref,rgasref) 
+
+      res_freq  = 5000000
+      flio_freq = 10000
+
+      nbc=0
+      do i=1,2 ! get density output
+         call add_temp(f2tbc,nbc,1)
+      enddo
+      igeom=2
+      call setup_topo
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine usrdat2
+      include 'SIZE'
+      include 'TOTAL'
+      include 'CMTBCDATA'
+      include 'CMTDATA'
+
+      call fix_geom
+
+      outflsub=.true.
+      IFRESTART=.false.
+      IFCNTFILT=.false.
+
+! Avoid overstepping bx bounds in nekuic with ldimt>3, lbelt=1
+      ifldmhd=9999
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine usrdat3
+      include 'SIZE'
+      include 'TOTAL'
+c
+      return
+      end
+!-----------------------------------------------------------------------
+      subroutine cmt_usrflt(rmult)
+      include 'SIZE'
+      real rmult(nx1)
+      real alpfilt
+      integer sfilt, kut
+      real eta, etac
+
+      call rone(rmult,nx1)
+
+      alpfilt=36.0 ! H&W 5.3
+
+      kut=max((nx1/2),nx1-2)
+      kut=nx1/2
+
+      sfilt=8
+      etac=real(kut)/real(nx1)
+      do i=kut,nx1
+         eta=real(i)/real(nx1)
+         rmult(i)=exp(-alpfilt*((eta-etac)/(1.0-etac))**sfilt)
+      enddo
+      return
+      end
+!-----------------------------------------------------------------------
+      subroutine l2norm_2d_vortex
+      include 'SIZE'
+      include 'MASS'
+      include 'GEOM'
+      include 'TSTEP'
+      include 'CMTDATA'
+
+      real  sumcvars_l2(5), l2_normscvars(5),varsic(5)
+      integer e,eq
+      integer nloop
+      real bvort,uxinf,uyinf,tempinf
+      common /VORTXSTRN/ bvort,uxinf,uyinf,tempinf
+
+      xctr = 5.0!22.50
+      yctr = 0.0!2.5
+      do eq=1,toteq
+      sumcvars_l2(eq) = 0.
+      l2_normscvars(eq) = 0.
+      enddo
+      pi = 4.0*atan(1.0)
+      phigic = 1.0
+      num_steps = int(1.0/dt)
+      xctrnew = xctr + uxinf*time_cmt
+      yctrnew = yctr + uyinf*time_cmt
+      nloop = int(int(uxinf*time_cmt)/10) + 1
+      if(xctrnew.gt.10.0)then
+         xctrnew = (xctrnew - nloop*10.0)
+      endif
+      do e=1,nelv
+         do iz=1,nz1
+         do iy=1,ny1
+         do ix=1,nx1
+           
+            x=xm1(ix,iy,iz,e)-xctrnew
+            y=ym1(ix,iy,iz,e)-yctrnew
+            if(x.gt.5.0)
+     >         x = -5.0 + (x-5.0)
+            if(x.lt.-5.0)
+     >         x = 5.0 - (abs(x) - 5.0)
+            r2=(x)**2+(y)**2
+            
+            temp = Tempinf-(gmaref-1.0)*bvort**2/(16.0*gmaref
+     >             *pi**2)* exp(2.0*(1.0-r2))
+            ux = uxinf-bvort*exp((1.0-r2))*y/(2.0*pi)
+            uy = uyinf+bvort*exp((1.0-r2))*x/(2.0*pi)
+            uz = 0.0
+            rhognbc = (temp)**(1.0/(gmaref-1.0))
+            prsnbc= rhognbc**gmaref
+            phignbc = 1.0
+
+            varsic(1) = rhognbc*phignbc
+            varsic(2) = ux*varsic(1)
+            varsic(3) = uy*varsic(1)
+            varsic(4) = uz*varsic(1)
+            varsic(5) = varsic(1)**gmaref/(gmaref-1.) +
+     >            0.5*(varsic(2)**2+varsic(3)**2+varsic(4)**2)/varsic(1)
+            do eq=1,toteq 
+               sumcvars_l2(eq) = sumcvars_l2(eq) + bm1(ix,iy,iz,e)*
+     >                          (varsic(eq) - U(ix,iy,iz,eq,e))**2
+               l2_normscvars(eq) = l2_normscvars(eq) + bm1(ix,iy,iz,e)*
+     >                          (varsic(eq) )**2
+            enddo
+         enddo
+         enddo
+         enddo
+      enddo
+      do eq=1,toteq
+         sumcvars_l2(eq) = glsum(sumcvars_l2(eq),1)
+      enddo
+      if(nio.eq.0) then
+         open(unit=22,file="l2norms.dat",form="formatted",
+     >        access="append")
+         write(22,'(a12,6e17.8)')
+     >          'L2err_norms ',time_cmt,(sqrt(sumcvars_l2(i)),i=1,5)
+         close(22)
+      endif
+      if(nio.eq.0) write(6,*)'center location ',time_cmt,xctrnew,yctrnew
+      return
+      end
+!--------------------------------------------------------------------   
+      subroutine my_full_restart
+      include 'SIZE'
+      include 'TOTAL'
+      character*80 s80(2)
+
+      call blank(s80,2*80)
+      s80(1) ='rs6pvort0.f00001'
+      s80(2) ='rs6pvort0.f00001'
+      call full_restart(s80,2) 
+
+      iosave = iostep           ! Trigger save based on iostep
+      call full_restart_save(iosave)
+
+      return
+      end
+c-----------------------------------------------------------------------

@@ -1,0 +1,15 @@
+      integer ktott, laxtt
+      parameter (ktott = lx1*ly1*lz1*lelt)
+      parameter (laxtt = mxprev)
+c
+c     parameter (ktott = 1)
+c     parameter (laxtt = 1)
+c
+      integer         napproxt(2,ldimt_proj)
+      common /trthoi/ napproxt
+
+      real            approxt(ktott,0:laxtt,ldimt_proj)
+      common /trthov/ approxt
+
+      character*4     name4t
+      common /trthoc/ name4t

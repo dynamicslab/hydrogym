@@ -1,0 +1,6 @@
+[_SFD]
+runsfd = yes
+filtwdth = 1.05
+controlcff = 0.5
+residualtol = 0.1E-06
+loginterval = 50

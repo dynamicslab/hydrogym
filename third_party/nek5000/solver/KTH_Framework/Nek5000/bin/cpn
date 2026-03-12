@@ -1,0 +1,8 @@
+cp $1.rea $2.rea
+cp $1.par $2.par
+cp $1.usr $2.usr
+cp $1.his $2.his
+cp $1.map $2.map
+cp $1.ma2 $2.ma2
+cp $1.box $2.box
+cp $1.re2 $2.re2

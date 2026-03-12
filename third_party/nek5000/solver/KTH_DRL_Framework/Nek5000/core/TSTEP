@@ -1,0 +1,46 @@
+c 
+c     Variables related to time integration
+c
+      real time,timef,fintim,timeio,timeioe
+     $    ,dt,dtlag(10),dtinit,dtinvm,courno,ctarg
+     $    ,ab(10),bd(10),abmsh(10)
+     $    ,avdiff(ldimt1),avtran(ldimt1),volfld(0:ldimt1)
+     $    ,tolrel,tolabs,tolhdf,tolpdf,tolev,tolnl,prelax
+     $    ,tolps,tolhs,tolhr,tolhv,tolht(ldimt1),tolhe
+     $    ,vnrmh1,vnrmsm,vnrml2,vnrml8,vmean
+     $    ,tnrmh1(ldimt),tnrmsm(ldimt),tnrml2(ldimt)
+     $    ,tnrml8(ldimt),tmean(ldimt)
+      common /tstep1/ time,timef,fintim,timeio,timeioe
+     $               ,dt,dtlag,dtinit,dtinvm,courno,ctarg
+     $               ,ab,bd,abmsh
+     $               ,avdiff,avtran,volfld
+     $               ,tolrel,tolabs,tolhdf,tolpdf,tolev,tolnl,prelax
+     $               ,tolps,tolhs,tolhr,tolhv,tolht,tolhe
+     $               ,vnrmh1,vnrmsm,vnrml2,vnrml8,vmean
+     $               ,tnrmh1,tnrmsm,tnrml2
+     $               ,tnrml8,tmean
+
+      integer ifield,imesh,istep,nsteps,iostep,lastep,iocomm
+     $       ,instep
+     $       ,nab,nabmsh,nbd,nbdinp,ntaubd 
+     $       ,nmxt(ldimt),nmxh,nmxv,nmxp,nmxe,nmxnl,ninter
+     $       ,nelfld(0:ldimt1)
+     $       ,nconv,nconv_max
+     $       ,ioinfodmp
+      common /istep2/ ifield,imesh,istep,nsteps,iostep,lastep,iocomm
+     $               ,instep
+     $               ,nab,nabmsh,nbd,nbdinp,ntaubd 
+     $               ,nmxt,nmxh,nmxv,nmxp,nmxe,nmxnl,ninter
+     $               ,nelfld
+     $               ,nconv,nconv_max
+     $               ,ioinfodmp
+
+      real pi
+      common /tstep3/ pi
+      
+      logical ifprnt,if_full_pres,ifoutfld
+      common /tstep4/ ifprnt,if_full_pres,ifoutfld
+      
+
+      real lyap(3,lpert)
+      common /tstep5/ lyap  !  lyapunov simulation history

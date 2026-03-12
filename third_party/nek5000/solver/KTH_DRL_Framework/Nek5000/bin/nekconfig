@@ -1,0 +1,6 @@
+#!/bin/bash
+set -e
+: ${VERMAKENEK:="19.0.1"}
+: ${NEK_SOURCE_ROOT:=$(cd `dirname $0`/.. && pwd)}
+source $NEK_SOURCE_ROOT/core/makenek.inc
+config_nek $@

@@ -1,0 +1,12 @@
+base.rea
+3              spatial dimension (use e.g. -3 to dump ASCII .rea file)
+1              number of fields
+#
+#=======================================================================
+#
+box_1
+-4  -4  -4                nelx,nely,nelz (negative --> uniform spacing)
+-0.5   0.5  1.            x_0  x_1 ratio
+-0.5   0.5  1.            y_0  y_1 ratio  
+-0.5   0.5  1.            z_0  z_1 ratio  
+W  ,W  ,W  ,W  ,W  ,W     bc's  ! west,east,south,north,bottom,top 

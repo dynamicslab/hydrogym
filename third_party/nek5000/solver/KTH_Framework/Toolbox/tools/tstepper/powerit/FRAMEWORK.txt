@@ -1,0 +1,62 @@
+#Configuration file for Nek5000 modules developped at KTH
+# Place for short description; doxygen style
+/**
+@defgroup powerit Power itertion routines
+@ingroup tstepper
+
+@brief Power iteration submodule
+
+@warning This module is not upgraded to stable Nek5000 relese yet
+
+@details 
+
+@mod_interface
+@interface_list Interface provided to tstepper:
++ stepper_param_in
++ stepper_param_out
++ stepper_vinit
++ stepper_solve
+
+@mod_param
+@param_list Parameters provided by power iteration submodule (include file - \a POWERITD):
++ PWIL2NORM : (real) initial L2 norm of the evolved vector for every cycle
+
+@par
+@param_reqr Parameters required by power iteration submodule:
+-# [CHKPOINTD] (@ref chkpoint):
+   + IFCHKPTRST : if restart
+   + CHKPTSTEP - checkpiont dump frequency (number of time steps)
+-# CONHT (for conjugated heat transfer):
+   + CHCST_SC, CHCFF_V, CHCFF_T : velocity and temperature scaling factors
+   + CHGRX, CHGRY, CHGRZ : gravitational acceleration
+   + CHRA, CHPR : Rayleight and Prandtl numbers
+
+@mod_param_example
+@code{.f90}
+&POWERIT
+ PWIL2NORM=  1.0000000000000000     ,
+ /
+@endcode
+
+*/
+#List of existing submodules
+SUBMODULES
+
+#List of conflicting submodules
+EXCLUSIVE
+
+#Default submodules
+DEFAULT
+
+#List of conflicting modules
+CONFLICTS tools/tstepper/arn_arp
+
+#List of required modules
+REQUIRED io/io_tools \
+         io/checkpoint/mstep
+
+#List of object files
+OBJECT powerit.o
+
+#List of include files
+INCLUDE POWERITD

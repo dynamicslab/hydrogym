@@ -1,0 +1,18 @@
+#!/bin/bash
+
+# first do some checks ...
+if [ $# -eq 0 -o "$1" == "-h" ]; then
+  echo "creates a new branch based on our MASTER and updates files in the current working copy"
+  echo "usage: nekgit_co <your branch name>"
+  echo "       e.g. nekgit_co fix123"
+  echo ""
+  exit 1
+fi
+
+rbr=master
+
+git fetch origin
+git checkout -b $1 --track origin/$rbr
+if [ $? -eq 0 ]; then
+  git pull;
+fi

@@ -1,0 +1,92 @@
+!> @file MNTRLOGD
+!! @ingroup monitor
+!! @brief Include file for monitor module containing module database 
+!! @author Adam Peplinski
+!! @date Sep 28, 2017
+!=======================================================================
+!     frame and monitor names and mids
+!     they are the first and the second registered modules respectively
+      integer mntr_frame_id
+      character*(*) mntr_frame_name
+      parameter(mntr_frame_name='FRAME')
+      integer mntr_id
+      character*(*) mntr_name
+      parameter(mntr_name='MONITOR')
+
+!     framework timer
+      integer mntr_frame_tmr_id
+      real mntr_frame_tmini
+
+!     initialisation flag
+      logical mntr_ifinit
+
+!     runtime parameter part
+!     section id
+      integer mntr_sec_id
+
+!     default log threshold + parameter id
+      integer mntr_lp_def, mntr_lp_def_id
+
+!     do we write timer descriptions
+      integer mntr_iftdsc_id
+      logical mntr_iftdsc
+
+!     simulation wall time + parameter id
+      real mntr_wtime
+      character*20 mntr_wtimes
+      integer mntr_wtime_id
+
+!     module variable section
+!     wall clock timing
+!     current and max delay in number of steps; 
+!     this is a number of steps simulation requires to write proper checkpoint for restarting
+      integer mntr_stdl, mntr_stdl_max
+      parameter (mntr_stdl_max=50)
+!     wall time of given step      
+      real mntr_wtstep(2*mntr_stdl_max+1)
+
+!     reached convergence flag
+      logical mntr_ifconv
+
+!     logging and module registration
+!     master node for logging
+      integer mntr_pid0
+
+!     string sizes and blank parameters (for mntrlog_block.f and mntrtmr_block.f)
+      integer mntr_lstl_mnm    ! length of module name string
+      parameter (mntr_lstl_mnm = 10)
+      character*(*) mntr_blname  ! balnk module name
+      parameter (mntr_blname='          ')
+      integer mntr_lstl_mds    ! length of module description string
+      parameter (mntr_lstl_mds = 132)
+
+!     this stuff should be in other place as it is quite general, but for now it is here
+      integer mntr_lstl_log !< length of comment string
+      parameter (mntr_lstl_log = 200)
+
+!     module registration      
+      integer mntr_id_max  ! max number of modules to register
+      parameter (mntr_id_max=99)
+      integer mntr_mod_num  ! number of registered modules
+      integer mntr_mod_mpos ! max position of registered module
+      integer mntr_mod_id(mntr_id_max)  ! occupied slot marker and number of parent module (if not specified 0)
+
+      character*10 mntr_mod_name(mntr_id_max) ! names of registered modules
+      character*132 mntr_mod_dscr(mntr_id_max) ! descriptions of registered modules
+
+!     common blocks
+!     integer variables
+      common /MNTRLOGI/ mntr_frame_id, mntr_id, mntr_frame_tmr_id, 
+     $      mntr_sec_id, mntr_lp_def, mntr_lp_def_id, mntr_iftdsc_id,  
+     $      mntr_wtime_id, mntr_stdl, mntr_pid0, mntr_mod_num, 
+     $      mntr_mod_mpos, mntr_mod_id
+
+!     real variables
+      common /MNTRLOGR/ mntr_wtime, mntr_wtstep, mntr_frame_tmini
+ 
+!     logical variables
+      common /MNTRLOGL/ mntr_ifinit, mntr_iftdsc, mntr_ifconv
+      
+!     string variables
+      common /MNTRLOGC/ mntr_wtimes, mntr_mod_name, mntr_mod_dscr
+ 

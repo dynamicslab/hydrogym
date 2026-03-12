@@ -1,0 +1,86 @@
+!=======================================================================
+!> @brief Provide velocity, deriv. and vort. in required coordinates and normalise pressure
+!! @param[out]   lvel             velocity
+!! @param[out]   dudx,dvdx,dwdx   velocity derivatives
+!! @param[out]   vort             vorticity
+!! @param[inout] pres             pressure
+      subroutine user_stat_trnsv(lvel,dudx,dvdx,dwdx,vort,pres)
+      implicit none
+
+      include 'SIZE'
+      include 'SOLN'
+      include 'INPUT'               ! if3d
+      include 'GEOM'
+
+      ! argument list
+      real lvel(LX1,LY1,LZ1,LELT,3) ! velocity array
+      real dudx(LX1,LY1,LZ1,LELT,3) ! velocity derivatives; U
+      real dvdx(LX1,LY1,LZ1,LELT,3) ! V
+      real dwdx(LX1,LY1,LZ1,LELT,3) ! W
+      real vort(LX1,LY1,LZ1,LELT,3) ! vorticity
+      real pres(LX1,LY1,LZ1,LELT)   ! pressure
+
+      ! local variables
+      integer itmp              ! dummy variable
+      integer il, jl            ! loop index
+      integer ifll              ! field number for object definition
+      real vrtmp(lx1*lz1)       ! work array for face
+      real vrtmp2(2)            ! work array
+      
+      ! functions
+      real vlsum
+!-----------------------------------------------------------------------
+      ! Velocity transformation; simple copy
+      itmp = NX1*NY1*NZ1*NELV
+      call copy(lvel(1,1,1,1,1),VX,itmp)
+      call copy(lvel(1,1,1,1,2),VY,itmp)
+      call copy(lvel(1,1,1,1,3),VZ,itmp)
+
+      ! Derivative transformation
+      ! No transformation
+      call gradm1(dudx(1,1,1,1,1),dudx(1,1,1,1,2),dudx(1,1,1,1,3),
+     $      lvel(1,1,1,1,1))
+      call gradm1(dvdx(1,1,1,1,1),dvdx(1,1,1,1,2),dvdx(1,1,1,1,3),
+     $      lvel(1,1,1,1,2))
+      call gradm1(dwdx(1,1,1,1,1),dwdx(1,1,1,1,2),dwdx(1,1,1,1,3),
+     $      lvel(1,1,1,1,3))
+
+      ! get vorticity
+      if (IF3D) then
+         ! curlx
+         call sub3(vort(1,1,1,1,1),dwdx(1,1,1,1,2),
+     $        dvdx(1,1,1,1,3),itmp)
+         ! curly
+         call sub3(vort(1,1,1,1,2),dudx(1,1,1,1,3),
+     $        dwdx(1,1,1,1,1),itmp)
+      endif
+      ! curlz
+      call sub3(vort(1,1,1,1,3),dvdx(1,1,1,1,1),dudx(1,1,1,1,2),itmp)
+
+      ! normalise pressure
+      ! in this example I integrate pressure over all faces marked "W"
+      ifll = 1     ! I'm interested in velocity bc
+      call rzero(vrtmp2,2)  ! zero work array
+      obj_srfl = 0.0 ! initialise object surface
+      pmeanl = 0.0  ! initialise pressure mean
+      itmp = LX1*LZ1
+      do il=1,nelv   ! element loop
+         do jl=1,2*ldim   ! face loop
+            if (cbc(jl,il,ifll).eq.'W  ') then
+               vrtmp2(1) = vrtmp2(1) + vlsum(area(1,1,jl,il),itmp)
+               call ftovec(vrtmp,pres,il,jl,lx1,ly1,lz1)
+               call col2(vrtmp,area(1,1,jl,il),itmp)
+               vrtmp2(2) = vrtmp2(2) + vlsum(vrtmp,itmp)
+         enddo
+      enddo
+      ! global communication
+      call gop(vrtmp2,vrtmp,'+  ',2)
+      ! missing error check vrtmp2(1) == 0
+      vrtmp2(2) = -vrtmp2(2)/vrtmp2(1)
+      ! remove mean pressure
+      itmp = NX1*NY1*NZ1*NELV
+      call cadd(pres,vrtmp2(2),itmp)
+      
+      return
+      end subroutine
+!======================================================================

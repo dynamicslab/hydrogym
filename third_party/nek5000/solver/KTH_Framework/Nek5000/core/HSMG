@@ -1,0 +1,86 @@
+c
+c     Variables for the Hybrid Schwarz Multigrid
+c
+c     Allocate MHD memory only if lbx1==lx1
+c
+      integer lmg_mhd,lmgs,lmgn,lmgx,lxm,lym,lzm,lmg_rwt,lmg_fasts,
+     $        lmg_fastd,lmg_swt,lmg_g,lmg_solve
+
+      parameter (lmg_mhd=1-(lx1-lbx1)/(lx1-1))!1 if MHD is true, 0 otherwise
+      parameter (lmgs=1 + lmg_mhd)         ! max number of multigrid solvers
+      parameter (lmgn=3)                   ! max number of multigrid levels
+      parameter (lmgx=lmgn+1)              ! max number of mg index levels
+      parameter (lxm=lx2+2,lym=lxm,lzm=lz2+2*(ldim-2)) ! mgrid sizes
+      parameter (lmg_rwt=2*lxm*lzm)        ! restriction weight max size
+      parameter (lmg_fasts=2*lxm*lxm)      ! FDM S max size
+      parameter (lmg_fastd=2*lxm*lym*lzm)  ! FDM D max size
+      parameter (lmg_swt=2*lxm*lzm)        ! schwarz weight max size
+      parameter (lmg_g=2*lx2*ly2*lz2)      ! metrics max size
+      parameter (lmg_solve=2*lxm*lym*lzm)  ! solver r,e max size
+c
+      integer mg_lmax                     !number of multigrid levels
+     $      , mg_nx(lmgn)                 !level poly. order (for GLL pts)
+     $      , mg_ny(lmgn), mg_nz (lmgn)
+     $      , mg_nh(lmgn), mg_nhz(lmgn)   !number of 1d nodes
+     $      , mg_gsh_schwarz_handle(lmgn,lmgs) !dssum schwarz handles
+     $      , mg_gsh_handle        (lmgn,lmgs) !dssum handle
+     $      , mg_rstr_wt_index     (lmgx,0:lmgs)
+     $      , mg_mask_index        (lmgx,0:lmgs)
+     $      , mg_solve_index       (lmgx,0:lmgs)
+     $      , mg_fast_s_index      (lmgx,0:lmgs)
+     $      , mg_fast_d_index      (lmgx,0:lmgs)
+     $      , mg_schwarz_wt_index  (lmgx,0:lmgs)
+     $      , mg_g_index           (lmgx,0:lmgs)
+     $      , mg_fld                           !active mg field
+c
+      common /mghs/ mg_lmax, mg_nx, mg_ny, mg_nz, mg_nh, mg_nhz
+     $            , mg_gsh_schwarz_handle, mg_gsh_handle
+     $            , mg_rstr_wt_index, mg_mask_index,mg_solve_index
+     $            , mg_fast_s_index, mg_fast_d_index
+     $            , mg_schwarz_wt_index, mg_g_index, mg_fld
+c
+      real mg_jh(lxm*lxm,lmgn)      !c-to-f interpolation matrices
+     $   , mg_jht(lxm*lxm,lmgn)     !transpose of mg_jh
+     $   , mg_jhfc (lxm*lxm,lmgn)   !f-to-c interpolation
+     $   , mg_jhfct(lxm*lxm,lmgn)   !transpose of mg_jhfc
+     $   , mg_ah(lxm*lxm,lmgn)      !A hat matrices
+     $   , mg_bh(lxm,lmgn)          !B hat matrices
+     $   , mg_dh(lxm*lxm,lmgn)      !D hat matrices
+     $   , mg_dht(lxm*lxm,lmgn)     !D hat transpose matrices
+     $   , mg_zh(lxm,lmgn)          !Nodal coordinates
+c
+     $   , mg_rstr_wt   (0:lmgs*lmg_rwt*2*ldim*lelt-1) !restriction wt
+     $   , mg_mask      (0:lmgs*lmg_rwt*4*ldim*lelt-1)   !b.c. mask
+     $   , mg_fast_s    (0:lmgs*lmg_fasts*2*ldim*lelt-1)
+     $   , mg_fast_d    (0:lmgs*lmg_fastd*lelt-1)
+     $   , mg_schwarz_wt(0:lmgs*lmg_swt*4*ldim*lelt-1)
+     $   , mg_solve_e   (0:lmg_solve*lelt-1)
+     $   , mg_solve_r   (0:lmg_solve*lelt-1)
+c
+     $   , mg_h1        (0:lmg_g*lelt-1)
+     $   , mg_h2        (0:lmg_g*lelt-1)
+     $   , mg_b         (0:lmg_g*lelt-1)
+     $   , mg_g         (0:lmg_g*((ldim-1)*3)*lelt-1) !metrics matrices
+c
+     $   , mg_work      (2*lxm*lym*lzm*lelt) ! must be able to hold 
+     $   , mg_work2     (lxm*lym*lzm*lelt)   ! two lower level extended
+     $   , mg_worke     (lxm*lym*lzm,6)      ! schwarz arrays
+
+      common /mghr/ mg_jh,mg_jht,mg_ah,mg_bh,mg_dh,mg_dht,mg_zh
+     $            , mg_jhfc,mg_jhfct, mg_rstr_wt, mg_mask
+     $            , mg_fast_s, mg_fast_d, mg_schwarz_wt
+     $            , mg_solve_e,mg_solve_r, mg_h1,mg_h2,mg_b,mg_g
+     $            , mg_work,mg_work2,mg_worke
+
+      integer mg_imask(0:lmgs*lmg_rwt*4*ldim*lelt-1) ! For h1mg, mask is a ptr
+      equivalence(mg_imask,mg_mask)
+
+c     Specific to h1 multigrid:
+
+      integer mg_h1_lmax
+     $      , mg_h1_n  (lmgx,ldimt1)
+     $      , p_mg_h1  (lmgx,ldimt1), p_mg_h2(lmgx,ldimt1)
+     $      , p_mg_b   (lmgx,ldimt1), p_mg_g (lmgx,ldimt1)
+     $      , p_mg_msk (lmgx,ldimt1)
+      common /mgh1i/ mg_h1_lmax, mg_h1_n, p_mg_h1, p_mg_h2, p_mg_b
+     $              , p_mg_g, p_mg_msk

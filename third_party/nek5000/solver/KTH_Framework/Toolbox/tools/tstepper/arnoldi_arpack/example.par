@@ -1,0 +1,3 @@
+[_ARN_ARP]              # Runtime paramere section for Arnoldi ARPACK module
+NKRL                 = 50                     # Krylov space size
+NEGV                 = 10                     # Number of eigenvalues

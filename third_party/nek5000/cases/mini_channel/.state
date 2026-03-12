@@ -1,0 +1,9 @@
+NEK_SOURCE_ROOT=/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/KTH_DRL_Framework/Nek5000
+FC=mpif77  -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/KTH_DRL_Framework/Toolbox/driver/comm -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/KTH_DRL_Framework/Toolbox/driver/frame -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/KTH_DRL_Framework/Toolbox/driver/frame/monitor -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/KTH_DRL_Framework/Toolbox/driver/frame/runparam -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/KTH_DRL_Framework/Toolbox/io/checkpoint -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/KTH_DRL_Framework/Toolbox/io/checkpoint/mstep -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/KTH_DRL_Framework/Toolbox/io/io_tools -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/KTH_DRL_Framework/Toolbox/tools/tstepper -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/KTH_DRL_Framework/Toolbox/tools/baseflow/sfd -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/KTH_DRL_Framework/Toolbox/tools/tstepper/powerit -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/KTH_DRL_Framework/Toolbox/utility/conht -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/KTH_DRL_Framework/Toolbox/utility/math -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/KTH_DRL_Framework/Toolbox/utility/forcing/noise_box -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/KTH_DRL_Framework/Toolbox/utility/forcing/sponge_box -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/KTH_DRL_Framework/Toolbox/utility/grid/map2D
+FFLAGS=
+FCPP=-cpp
+FR8=-fdefault-real-8 -fdefault-double-8
+FF77=-std=legacy
+CC=mpicc
+CFLAGS=
+PPLIST=MPIIO DRL YWDEBUG TSRS MPI UNDERSCORE GLOBAL_LONG_LONG TIMER

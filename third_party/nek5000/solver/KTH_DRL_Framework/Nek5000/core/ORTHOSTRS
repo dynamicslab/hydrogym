@@ -1,0 +1,15 @@
+      integer ktotstrs
+      parameter (ktotstrs = lx1m*ly1m*lz1m*lelt)
+
+      real            xstrs(ldim*ktotstrs*(1+mxprev))
+     $               ,bstrs(ldim*ktotstrs*(1+mxprev))
+
+      common /wrthov/ xstrs  ! OVERLAPS WITH VPROJ
+     $               ,bstrs  ! OVERLAPS WITH VPROJ
+
+
+      integer         napproxstrs(2)
+      common /srthoi/ napproxstrs
+
+      character*4     name4strs
+      common /srthoc/ name4strs

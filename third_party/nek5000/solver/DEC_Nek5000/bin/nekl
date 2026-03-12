@@ -1,0 +1,15 @@
+echo $1        >  SESSION.NAME
+echo `pwd`'/' >>  SESSION.NAME
+touch $1.rea
+rm ioinfo
+mv $1.log $1.log1 2>/dev/null
+mv $1.fld $1.fld1 2>/dev/null
+mv $1.his $1.his1 2>/dev/null
+mv $1.sch $1.sch1 2>/dev/null
+mv $1.out $1.out1 2>/dev/null
+mv $1.ore $1.ore1 2>/dev/null
+mv $1.nre $1.nre1 2>/dev/null
+time nek5000 > $1.log
+sleep 1
+rm logfile
+ln $1.log logfile

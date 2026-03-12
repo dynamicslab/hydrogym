@@ -1,0 +1,35 @@
+c
+c     Variables for the method of characteristics
+c
+      integer cv_lysize
+      parameter (cv_lysize=lcvx1*lcvy1*lcvz1*lcvelt*ldimt)
+
+      integer         cv_nfld, cv_iatol
+      integer         cv_maxl, cv_itask, cv_ipretype
+      common /icvode/ cv_nfld, cv_iatol,
+     &                cv_maxl, cv_itask, cv_ipretype
+
+      integer*8        cv_nlocal, cv_nglobal
+      common /ilcvode/ cv_nlocal, cv_nglobal
+
+      logical         ifcvodeinit, ifdqj, ifcvfun
+      common /lcvode/ ifcvodeinit, ifdqj, ifcvfun
+
+      real cv_atol(cv_lysize)
+      real cv_dtlag(3),cv_abmsh(3),cv_ab(3),cv_bd(4)
+      real cv_rtol, cv_sigs, cv_delt
+      real cv_time,cv_timel,cv_dtnek,cv_dtmax
+      common /rcvode/ cv_atol, cv_dtlag, cv_abmsh, cv_ab, cv_bd,
+     &                cv_rtol, cv_sigs, cv_delt, 
+     &                cv_time, cv_timel, cv_dtnek, cv_dtmax
+
+      real nfe_avg, nli_nni_avg
+      common /cvrstat/ nfe_avg,nli_nni_avg 
+      integer*8 cv_istep, iout_save(21)
+      common /cvistat/ cv_istep, iout_save 
+
+      integer igstype,itmeth
+      parameter(
+     &     itmeth  = 2,         ! newton iter
+     &     igstype = 1          ! gs 1: modified 2: classical
+     &         )

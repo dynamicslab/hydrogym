@@ -1,0 +1,8 @@
+echo $1        >  SESSION.NAME
+echo `pwd`'/' >>  SESSION.NAME
+rm -f ioinfo
+echo -1000 >ioinfo
+rm -f logfile
+mv -f $1.log.1 $1.log1.1 2>/dev/null
+time ./nek5000 > $1.log.1 
+ln $1.log.1 logfile

@@ -1,0 +1,147 @@
+The nomenclature of the interpolating fields saved by Nek into the binary file int_fld is here explained.
+u,v,w,p are instantaneous quantities averaged in time and the homogeneous direction 
+Please note that there is no abuse of notation in the names of the quantities,
+ e.g. <uu> actually means <uu> and not <u'u'>.
+
+% 1.  <u>           % F1
+% 2.  <v>           % F2
+% 3.  <w>           % F3
+% 4.  <p>           % F4
+
+% 5.  <uu>          % F5
+% 6.  <vv>          % F6
+% 7.  <ww>          % F7
+% 8.  <pp>          % F8
+
+% 9.  <uv>          % F9
+% 10. <vw>          % F10
+% 11. <uw>          % F11
+
+% 12. <pu>          % F12
+% 13. <pv>          % F13
+% 14. <pw>          % F14
+
+% 15. <pdudx>       % F15
+% 16. <pdudy>       % F16
+% 17. <pdudz>       % F17
+
+% 18. <pdvdx>       % F18
+% 19. <pdvdy>       % F19
+% 20. <pdvdz>       % F20
+
+% 21. <pdwdx>       % F21
+% 22. <pdwdy>       % F22
+% 23. <pdwdz>       % F23
+
+% 24. <uuu>         % F24
+% 25. <vvv>         % F25
+% 26. <www>         % F26
+% 27. <ppp>         % F27          
+
+% 28. <uuv>         % F28          
+% 29. <uuw>         % F29          
+% 30. <vvu>         % F30          
+% 31. <vvw>  	     % F31             
+% 32. <wwu>         % F32          
+% 33. <wwv>         % F33          
+% 34. <uvw>         % F34          
+
+% 35. <uuuu>        % F35          
+% 36. <vvvv>        % F36          
+% 37. <wwww>        % F37          
+% 38. <pppp>        % F38          
+
+% 39. e11: <((du/dx)^2+(du/dy)^2+(du/dz)^2)>                % F39
+% 40. e22: <((dv/dx)^2+(dv/dy)^2+(dv/dz)^2)>                % F40 
+% 41. e33: <((dw/dx)^2+(dw/dy)^2+(dw/dz)^2)>                % F41 
+% 42. e12: <(du/dx*dv/dx+du/dy*dv/dy+du/dz*dv/dz)>          % F42  
+% 43. e13: <(du/dx*dw/dx+du/dy*dw/dy+du/dz*dw/dz)>          % F43 
+% 44. e23: <(dv/dx*dw/dx+dv/dy*dw/dy+dv/dz*dw/dz)>          % F44 
+
+%Derivative fields
+% 1. dU/dx           % D1
+% 2. dU/dy           % D2
+% 3. dV/dx           % D3
+% 4. dV/dy           % D4
+
+% 5. dW/dx           % D5
+% 6. dW/dy           % D6
+% 7. dP/dx           % D7
+% 8. dP/dy           % D8
+
+% 9.  d<uu>/dx       % D9
+% 10. d<uu>/dy       % D10
+% 11. d<vv>/dx       % D11
+% 12. d<vv>/dy       % D12
+
+% 13. d<ww>/dx       % D13
+% 14. d<ww>/dy       % D14
+% 15. d<pp>/dx       % D15
+% 16. d<pp>/dy       % D16
+
+% 17. d<uv>/dx       % D17
+% 18. d<uv>/dy       % D18
+% 19. d<vw>/dx       % D19
+% 20. d<vw>/dy       % D20
+
+% 21. d<uw>/dx       % D21
+% 22. d<uw>/dy       % D22
+% 23. d<uuu>/dx      % D23
+% 24. d<uuu>/dy      % D24
+
+% 25. d<vvv>/dx      % D25
+% 26. d<vvv>/dy      % D26
+% 27. d<www>/dx      % D27
+% 28. d<www>/dy      % D28
+
+% 29. d<ppp>/dx      % D29
+% 30. d<ppp>/dy      % D30
+% 31. d<uuv>/dx      % D31
+% 32. d<uuv>/dy      % D32
+
+% 33. d<uuw>/dx      % D33
+% 34. d<uuw>/dy      % D34
+% 35. d<vvu>/dx      % D35
+% 36. d<vvu>/dy      % D36
+
+% 37. d<vvw>/dx      % D37
+% 38. d<vvw>/dy      % D38
+% 39. d<wwu>/dx      % D39
+% 40. d<wwu>/dy      % D40
+
+% 41. d<wwv>/dx      % D41
+% 42. d<wwv>/dy      % D42
+% 43. d<uvw>/dx      % D43
+% 44. d<uvw>/dy      % D44
+
+% 45. d2U/dx2        % D45
+% 46. d2U/dy2        % D46
+% 47. d2V/dx2        % D47
+% 48. d2V/dy2        % D48
+
+% 49. d2W/dx2        % D49
+% 50. d2W/dy2        % D50
+% 51. d2<uu>/dx2     % D51
+% 52. d2<uu>/dy2     % D52
+
+% 53. d2<vv>/dx2     % D53
+% 54. d2<vv>/dy2     % D54
+% 55. d2<ww>/dx2     % D55
+% 56. d2<ww>/dy2     % D56
+
+% 57. d2<uv>/dx2     % D57
+% 58. d2<uv>/dy2     % D58
+% 59. d2<uw>/dx2     % D59
+% 60. d2<uw>/dy2     % D60
+
+% 61. d2<vw>/dx2     % D61
+% 62. d2<vw>/dy2     % D62
+
+% 63. d<pu>/dx       % D63
+% 64. d<pu>/dy       % D64
+% 65. d<pv>/dx       % D65
+% 66. d<pv>/dy       % D66
+
+% 67. d<pw>/dx       % D67
+% 68. d<pw>/dy       % D68
+

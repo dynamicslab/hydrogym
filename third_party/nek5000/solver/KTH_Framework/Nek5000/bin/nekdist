@@ -1,0 +1,70 @@
+#!/bin/bash
+set -xe
+
+if [ $# -eq 0 ]; then
+  echo ""
+  echo "usage: nekdist [version tag] [branch]"
+  echo ""
+  exit 1
+fi
+
+VER=$1
+NEKBR=master
+
+if [ $# -eq 2 ]; then
+  NEKBR=$2
+fi
+
+mkdir Nek5000-$VER
+cd Nek5000-$VER
+
+git clone --depth 1 -b $NEKBR https://github.com/Nek5000/Nek5000.git
+cd ./Nek5000
+git clone --depth 1 -b master https://github.com/Nek5000/NekExamples
+rm -rf examples core/cmt
+mv NekExamples examples
+rm -rf examples/*.py
+find . -name ".git*" -exec rm -rf {} \; || true
+rm -rf .travis.yml
+
+VER=`printf "$VER %-45s"`
+sed -e "s/Version:.*/Version:  $VER/g" core/HEADER >.tmp; mv .tmp core/HEADER
+sed "13s/./\|\'/68" core/HEADER >.tmp; mv .tmp core/HEADER
+sed -e "s/# Release.*/# Release $VER/g" RELEASE.md >.tmp; mv .tmp RELEASE.md 
+
+#cd examples
+#rm -rf *.py lib
+#cd ..
+
+
+cd 3rd_party/gslib
+wget -O v1.0.5.tar.gz https://github.com/gslib/gslib/archive/v1.0.5.tar.gz
+cd ../../
+
+cd 3rd_party/parRSB
+wget -O v0.2.tar.gz https://github.com/Nek5000/parRSB/archive/v0.2.tar.gz
+cd ../../
+
+cd 3rd_party/hypre
+wget -O v2.15.1.tar.gz https://github.com/LLNL/hypre/archive/v2.15.1.tar.gz
+cd ../../
+
+cd 3rd_party/cvode
+wget -O v2.7.0.tar.gz https://github.com/LLNL/sundials/releases/download/v2.7.0/sundials-2.7.0.tar.gz 
+cd ../../
+
+cd tools/exo2nek/3rd_party
+wget -O netcdf-4.6.1.tar.gz ftp://ftp.unidata.ucar.edu/pub/netcdf/netcdf-4.6.1.tar.gz
+git clone --depth 1 -b master https://github.com/gsjaardema/seacas.git seacas-exodus 
+rm -rf seacas-exodus/docs
+cd seacas-exodus
+git archive HEAD --format=tgz -o ../exodus.tgz
+cd ..
+rm -rf seacas-exodus
+cd ../../../
+
+cd ..
+
+VER=$1
+tar -zcf ../Nek5000-$VER.tar.gz Nek5000
+du -h ../Nek5000-$VER.tar.gz

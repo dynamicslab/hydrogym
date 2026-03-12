@@ -1,0 +1,30 @@
+!> @file FRAMELP
+!! @ingroup monitor
+!! @brief Include file for monitor module including log priorities and parameter types
+!! @author Adam Peplinski
+!! @date Oct 4, 2017
+!=======================================================================
+!     log priorities based on sc.h
+      integer lp_alw, lp_trc, lp_deb, lp_vrb, 
+     $        lp_inf, lp_stt, lp_prd, lp_ess, 
+     $        lp_err, lp_sln
+      parameter (lp_alw=0)  ! always; this will log everything
+      parameter (lp_trc=1)  ! trace; this will prefix file and line number
+      parameter (lp_deb=2)  ! debug; any information on the internal state
+      parameter (lp_vrb=3)  ! verbose; information on conditions, decisions
+      parameter (lp_inf=4)  ! info; the main things a function is doing
+      parameter (lp_stt=5)  ! statistics; important for consistency or performance
+      parameter (lp_prd=6)  ! production; a few lines for a major api function
+      parameter (lp_ess=7)  ! essential; this logs a few lines max per program
+      parameter (lp_err=8)  ! error; this logs errors only
+      parameter (lp_sln=9)  ! silent; this never logs anything
+      
+!     runtime parameter types
+      integer rpar_int ! integer vriable
+      parameter (rpar_int=1)
+      integer rpar_real ! real vriable
+      parameter (rpar_real=2)
+      integer rpar_log ! logical vriable
+      parameter (rpar_log=3)
+      integer rpar_str ! string vriable
+      parameter (rpar_str=4)

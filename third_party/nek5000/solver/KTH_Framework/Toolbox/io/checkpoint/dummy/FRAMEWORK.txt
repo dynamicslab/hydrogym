@@ -1,0 +1,40 @@
+#Configuration file for Nek5000 framework developed at KTH
+# Place for short description; doxygen style
+/**
+@defgroup chkptdummy Dummy checkpointing
+@ingroup chkpoint
+
+@brief Dummy routines for checkpointing.
+
+@details 
+Dummy replacemnt for checkpointing routines. Some toolboxes would have their own restarting routines, but would need
+e.g. checkpointing runtime parameters. In this cas dummy @a chkpt_init, @a chkpt_read and @a chkpt_write can be used.
+
+@mod_interface
+@interface_list Interface provided to [checkpoint] (@ref chkpoint):
+-# chkpts_register
+-# chkpts_init
+-# chkpts_read
+-# chkpts_write
+
+*/
+#List of existing submodules
+SUBMODULES
+
+#List of conflicting submodules
+EXCLUSIVE
+
+#Default submodules
+DEFAULT
+
+#List of conflicting modules
+CONFLICTS io/checkpoint/mstep
+
+#List of required modules
+REQUIRED io/checkpoint
+
+#List of object files
+OBJECT chkptd.o
+
+#List of include files
+INCLUDE 

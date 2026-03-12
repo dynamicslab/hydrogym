@@ -1,0 +1,34 @@
+!=======================================================================
+!     Adam Peplinski; 2015.10.27
+!     This is input file for CHECKPOINT for Nek5000
+!=======================================================================
+!     Do we restart form the checkpoint
+      logical ifchkptrst
+
+!     checkpoint frequency
+      integer chkptstep
+
+!     number of snapshots to save
+      integer chkptnrsf
+      parameter  (chkptnrsf=4)
+
+!     number of files in snapshot
+      integer chkptnfile, chkptnfmax
+      parameter (chkptnfmax=5)
+
+!     filenames
+      character*80 chkptfname(CHKPTNRSF,chkptnfmax), chkptrstf
+
+!     write and read reastart file set number. 
+!     Keep it in common block, so other subroutines can access it.
+!     Important!!! Do not modify it elswere!!!
+      integer chkptset_o, chkptset_i
+
+!     common blocks
+      common /CHKPNTI/ chkptstep, chkptnfile
+
+      common /CHKPNTL/ ifchkptrst
+
+      common /CHKPNTC/ chkptfname, chkptrstf
+
+      common /RST_SET/ chkptset_o, chkptset_i

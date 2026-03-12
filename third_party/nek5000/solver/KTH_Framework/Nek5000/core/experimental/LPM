@@ -1,0 +1,78 @@
+c Computational particles
+      COMMON /LPM_COMP_PART_R/  LPM_Y
+     >                         ,LPM_YDOT
+     >                         ,LPM_YDOTC
+     >                         ,LPM_RPROP
+     >                         ,LPM_RPROP2
+      REAL  LPM_Y     (LPM_LRS ,LPM_LPART)  ! Solution
+     >     ,LPM_YDOT  (LPM_LRS ,LPM_LPART)  ! Total solution RHS
+     >     ,LPM_YDOTC (LPM_LRS ,LPM_LPART)  ! Coupled solution RHS
+     >     ,LPM_RPROP (LPM_LRP ,LPM_LPART)  ! Real particle properties
+     >     ,LPM_RPROP2(LPM_LRP2,LPM_LPART)  ! Secondary real particle properties
+
+c Previous time step solutions, may grow later
+      COMMON /LPM_SLN_PREV/  LPM_Y1
+      REAL  LPM_Y1(LPM_LRS*LPM_LPART)
+
+      COMMON /LPM_COMP_PART_I/  LPM_IPROP
+      INTEGER  LPM_IPROP(LPM_LIP,LPM_LPART) ! Integer particle properties
+
+      COMMON /LPM_COMP_NUMBER_I/ LPM_NPART
+      INTEGER  LPM_NPART
+
+c Particle options
+      PARAMETER(LPM_NPARAM = 100)
+      COMMON /LPM_PARAM_R/  LPM_RPARAM
+      REAL  LPM_RPARAM(LPM_NPARAM)     ! Specified particle parameters
+      COMMON /LPM_PARAM_L/  LPM_RESTART
+      LOGICAL LPM_RESTART
+      DATA LPM_RESTART /.false./
+
+c Domain size
+      COMMON /LPM_DOMAIN/ LPM_XDRANGE
+      REAL  LPM_XDRANGE(2,3)
+
+c Findpts and crystal-router handles
+      COMMON /LPM_CR_FP_HANDLE/ I_FP_HNDL,I_FP_HNDL1, I_CR_HNDL
+      INTEGER  I_FP_HNDL,I_FP_HNDL1, I_CR_HNDL
+
+c Ghost particle connection map
+      INTEGER              LPM_NDXGP,LPM_NDYGP,LPM_NDZGP
+      COMMON /LPM_GP_MAP/  LPM_NDXGP,LPM_NDYGP,LPM_NDZGP
+
+      REAL            LPM_RDXGP, LPM_RDYGP, LPM_RDZGP, LPM_D2CHK(3),
+     >                LPM_BINB(6)
+      COMMON /LPM_GP/ LPM_RDXGP, LPM_RDYGP, LPM_RDZGP, LPM_D2CHK   ,
+     >                LPM_BINB
+
+C Ghost particles
+      COMMON /LPM_GHOST_PART_R/  LPM_RPROP_GP
+      REAL LPM_RPROP_GP(LPM_LRP_GP,LPM_LPART_GP)  
+
+      COMMON /LPM_PRO_FLD_MAP/ LPM_CP_MAP
+      REAL  LPM_CP_MAP(LPM_LRP_GP,LPM_LPART)
+
+      PARAMETER(LPM_LBMAX = 50*LELT)
+      COMMON /LPM_PRO_FLD_CR/ LPM_PRO_FLD,LPM_PRO_FLDB,LPM_XM1B
+      REAL LPM_PRO_FLD (LX1,LY1,LZ1,LELT,LPM_LRP_PRO),
+     >     LPM_PRO_FLDB(LX1,LY1,LZ1,LPM_LRP_PRO,LPM_LBMAX),
+     >     LPM_XM1B    (LX1,LY1,LZ1,3,LPM_LBMAX)
+
+      PARAMETER(LPM_LRMAX = 6)
+      COMMON /LPM_PRO_FLD_CI/ LPM_ER_MAP,LPM_ER_MAPC,LPM_ER_MAPS,
+     >                        LPM_EL_MAP,LPM_MODGP,LPM_NELTB,LPM_NELTBB
+      INTEGER LPM_ER_MAP (LPM_LRMAX,LPM_LBMAX),
+     >        LPM_ER_MAPC(LPM_LRMAX,LPM_LBMAX),
+     >        LPM_ER_MAPS(LPM_LRMAX,LPM_LBMAX),
+     >        LPM_MODGP  (LX1,LY1,LZ1,LPM_LBMAX,4),
+     >        LPM_EL_MAP (8,LPM_LBMAX), LPM_NELTB, LPM_NELTBB
+
+      PARAMETER(LPM_LIP_GP = 5)
+      COMMON /LPM_GHOST_PART_I/  LPM_IPROP_GP
+      INTEGER  LPM_IPROP_GP(LPM_LIP_GP,LPM_LPART_GP)
+
+      COMMON /LPM_GHOST_NUMBER_I/ LPM_NPART_GP
+      INTEGER  LPM_NPART_GP
+
+      COMMON /LPM_T/ LPM_TIMEF
+      REAL     LPM_TIMEF 

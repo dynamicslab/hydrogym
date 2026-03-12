@@ -1,0 +1,30 @@
+c
+c     Multimesh variables
+c
+      integer intflag(2*ldim,lelt)
+      common /intflag/ intflag
+
+      integer imask(lx1,ly1,lz1,lelt)
+      common /intmask/ imask 
+
+      real             valint(lx1,ly1,lz1,lelt,nfldmax_nn)
+      common /valmask/ valint
+
+      integer igeom
+      common /cgeom/ igeom
+
+      integer nfld_neknek
+      common /inbc/ nfld_neknek
+ 
+      real bdrylg(lx1*ly1*lz1*lelt,nfldmax_nn,0:2)
+      common /mybd/ bdrylg
+
+      real    rst(nmaxl_nn*ldim)
+      common /multipts_r/ rst
+
+      integer rcode(nmaxl_nn),elid(nmaxl_nn)
+     $    ,proc(nmaxl_nn),ilist(1,nmaxl_nn),npoints_nn
+      common /multipts_i/ rcode,elid,proc,ilist,npoints_nn
+
+      integer inth_multi2
+      common /intp_h_nn/ inth_multi2

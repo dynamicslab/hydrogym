@@ -1,0 +1,98 @@
+#Configuration file for Nek5000 modules developped at KTH
+# Place for short description; doxygen style
+/**
+@defgroup arn_arp Arnoldi algorithm using parpack
+@ingroup tstepper
+
+@brief Arnoldi algorithm with PARPACK
+
+@warning This module is not upgraded to stable Nek5000 relese yet
+
+@details 
+Description of the method can be found in @cite Peplinski2014 @cite Peplinski2015
+
+@mod_interface
+@interface_list Interface provided to tstepper:
+   + stepper_param_in
+   + stepper_param_out
+   + stepper_vinit
+   + stepper_solve
+
+@mod_param
+@param_list Parameters provided by arn_arp submodule (include file - \a ARN_ARPD):
++ ARNKRYLOV : (integer) size of Krylov space
++ ARNEGV : (integer) number of calculated eigenvalues
++ ARNISTART : (integer) checkpoint file number for restart (reading)
++ ARNISTOP : (integer) checkpoint file number for saving data
+
+@par
+@param_reqr Parameters required by arn_arp submodule:
+-# [CHKPOINTD] (@ref chkpoint):
+   + IFCHKPTRST : if restart
+   + CHKPTSTEP - checkpiont dump frequency (number of time steps)
+-# [TIME_STEPPERD] (@ref tstepper):
+   + tst_mode :
+     - 0 : no arnoldi
+     - 1 : direct mode
+     - 2 : adjoint mode
+     - 3 : initial optimal condition
+   + tst_step : frequency of calling arn_vsolve (number of time steps)
+   + tst_cmax : maximal number of arnoldi cycles
+   + tst_tol : PARPACK tolerance for Ritz values
+-# CONHT (for conjugated heat transfer):
+   + CHCST_SC, CHCFF_V, CHCFF_T : velocity and temperature scaling factors
+   + CHGRX, CHGRY, CHGRZ : gravitational acceleration
+   + CHRA, CHPR : Rayleight and Prandtl numbers
+-# Nek5000 \a PARAM array
+   + PARAM(66) - write format
+   + PARAM(67) - read format
+
+@mod_param_example
+@code{.f90}
+&ARPACK
+ ARNKRYLOV=        100,
+ ARNEGV=         10,
+ ARNISTART=          1,
+ ARNISTOP=          2,
+ /
+@endcode
+
+Two possible modes are supported:
+  + direct: A*x = lambda*x
+  + inverse: A*x = lambda*M*x, M-mass matrix defining inner product
+
+Inverse mode is preferred as it takes into account inner product
+Simulation with temperature or passive scalars has to be performed
+in inverse mode due to speciffic inner product.
+
+\a ARPACK_DIRECT preprocessing switch between direct and inverse mode.
+
+@attention This submodule has its own checkpointing routines.
+
+@todo This submodule contains binary tar file with modified (restart added) version of PARPACK.
+This binary file in git is not good idea. Repalce with separate repository for Parpack added
+by sub.module.
+
+*/
+#List of existing submodules
+SUBMODULES
+
+#List of conflicting submodules
+EXCLUSIVE
+
+#Default submodules
+DEFAULT
+
+#List of conflicting modules
+CONFLICTS tools/tstepper/powerit
+
+#List of required modules
+REQUIRED io/io_tools \
+         io/checkpoint/dummy
+
+#List of object files
+OBJECT arn_arp.o \
+       arn_arp_io.o
+
+#List of include files
+INCLUDE ARN_ARPD

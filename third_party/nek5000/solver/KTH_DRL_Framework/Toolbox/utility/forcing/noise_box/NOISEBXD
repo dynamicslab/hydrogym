@@ -1,0 +1,37 @@
+!> @file NOISEBXD
+!! @ingroup noise_box
+!! @brief Include file with parameter and common block definitions for 
+!! noise_box
+!! @author Adam Peplinski
+!! @date Feb 2, 2017
+!=======================================================================
+!     module id and name
+      integer nseb_id
+      character*(*) nseb_name
+      parameter(nseb_name='NOISEBX')
+
+!     timer id
+      integer nseb_tmr_id
+
+!     initialisation flag
+      logical nseb_ifinit
+
+!     runtime parameter part
+!     section id
+      integer nseb_sec_id
+
+!     parameter section
+      real nseb_tim              !< @var time to add noise
+      integer nseb_tim_id
+      real nseb_amp              !< @var noise magnitude (0.0 do not add noise)
+      integer nseb_amp_id
+      real nseb_bmin(LDIM)       !< @var min box bound
+      integer nseb_bmin_id(LDIM)
+      real nseb_bmax(LDIM)       !< @var max box bound
+      integer nseb_bmax_id(LDIM)
+
+!     common block section
+      common /NOISEBXI/ nseb_id, nseb_tmr_id, nseb_sec_id, 
+     $ nseb_tim_id, nseb_amp_id, nseb_bmin_id, nseb_bmax_id
+
+      common /NOISEBXR/ nseb_tim, nseb_amp, nseb_bmin, nseb_bmax

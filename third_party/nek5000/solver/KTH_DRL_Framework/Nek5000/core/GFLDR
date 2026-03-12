@@ -1,0 +1,43 @@
+      real             tol, bb_t
+      parameter(tol=5e-13, bb_t=0.01)
+      integer          ltots
+      parameter(ltots=4*lx1*ly1*lz1*lelt) ! max source mesh size
+
+      integer                fldh_gfldr,inth_gfldr
+      common /gfldr_handles/ fldh_gfldr,inth_gfldr
+
+      logical ifbswp
+      common /gfldr_log/     ifbswp
+
+      integer*8              noff0_b,ntots_b,rankoff_b,nSizeFld_b
+      common /gfldr_byte/    noff0_b,ntots_b,rankoff_b,nSizeFld_b
+
+      integer                nelgs,nels,nxyzs
+      common /gfldr_meshs/   nelgs,nels,nxyzs
+
+      real             buffld(ltots)  ! one source field
+      common /scruz/   buffld
+
+      real             xm1s  (ltots)  ! source x coord
+      common /scrmg/   xm1s
+
+      real             ym1s  (ltots)  ! source y coord
+      common /ctmp1/   ym1s
+
+      real             zm1s  (ltots)  ! source z coord
+      common /scrsf/   zm1s
+
+      real*4           bufr  (2*ldim*ltots) ! read buffer
+      common /vrthov/  bufr 
+
+      ! interpolation working arrays 
+      real             grst   (  ldim*ltots)  
+      common /ctmp0/   grst   ! use ctmp0 as no other big CBs are left
+
+      real             gdist  (       ltots)
+      common /scrvh/   gdist 
+
+      integer          grcode (ltots)
+      integer          gelid  (ltots)
+      integer          gproc  (ltots)
+      common /scrns/   grcode,gelid,gproc

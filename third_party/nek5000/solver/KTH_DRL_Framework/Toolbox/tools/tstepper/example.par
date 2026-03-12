@@ -1,0 +1,5 @@
+[_TSTEPPER]             # Runtime paramere section for time stepper module
+MODE                 = DIR                    # Simulation mode
+STEPS                = 40                     # Length of stepper phase
+MAXCYC               = 10                     # Max number of stepper cycles
+TOL                  = 0.10000000E-05         # Convergence threshold

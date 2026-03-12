@@ -1,0 +1,133 @@
+#Configuration file for Nek5000 modules developped at KTH
+# Place for short description; doxygen style
+/**
+@defgroup chkpoint  Checkpointing routines
+@ingroup io
+
+@brief Checkpointing routines for toolbox
+
+@details This is the main interface to I/O checkpointing.
+
+@mod_interface
+@interface_list Interface provided:
+-# @ref chkpt_register
+-# @ref chkpt_init
+-# @ref chkpt_main
+-# @ref chkpt_get_fset
+
+@par
+@interface_reqr Interface required:
+-# chkpts_register
+-# chkpts_init
+-# chkpts_read
+-# chkpts_write
+
+@mod_interface_example
+@code{.f}
+!======================================================================
+      subroutine userchk
+      include 'TSTEP'
+      
+       if (ISTEP.eq.0) then
+!     start framework
+         call frame_start
+      endif
+
+!     monitor simulation
+      call frame_monitor
+
+!     save/load files for full-restart
+      call chkpt_main
+
+!     finalise framework
+      if (ISTEP.eq.NSTEPS.or.LASTEP.eq.1) then
+         call frame_end
+      endif
+ 
+      return
+      end
+!======================================================================
+!> @brief Register user specified modules
+      subroutine frame_usr_register
+      implicit none
+
+      include 'SIZE'
+      include 'FRAMELP'
+!-----------------------------------------------------------------------
+!     register modules
+      call io_register
+      call chkpt_register
+
+      return
+      end subroutine
+!======================================================================
+!> @brief Initialise user specified modules
+      subroutine frame_usr_init
+      implicit none
+
+      include 'SIZE'
+      include 'FRAMELP'
+!-----------------------------------------------------------------------
+!     initialise modules
+      call chkpt_init
+
+      return
+      end subroutine
+!======================================================================
+!> @brief Finalise user specified modules
+      subroutine frame_usr_end
+      implicit none
+
+      include 'SIZE'
+      include 'FRAMELP'
+!-----------------------------------------------------------------------
+
+      
+      return
+      end subroutine
+!======================================================================
+@endcode
+
+@mod_param
+@param_list Parameters provided by checkpoint module (include file - \a CHKPOINTD):
+|Varaible | Type | Runtime parameter | Description |
+|---------|------|-------------------|-------------|
+| chpt_ifrst | logical | _chkpoint:readchkpt | start simulation form checkpoint |
+| chpt_fnum | integer | _chkpoint:chkpFnumber | restart file number |
+| chpt_step | integer | _chkpoint:chkpInterval | checkpiont dump frequency (number of time steps) |
+
+@mod_param_example
+@code{.txt}
+[_CHKPOINT]
+chkpInterval = 10
+readchkpt = no
+chkpFnumber = 1
+@endcode
+
+*/
+#List of existing submodules
+SUBMODULES mstep \
+           sstep \
+           dummy
+
+#List of conflicting submodules
+EXCLUSIVE  mstep \
+           sstep \
+           dummy
+
+#Default submodules
+DEFAULT mstep
+
+#List of conflicting modules
+CONFLICTS
+
+#List of required modules
+REQUIRED driver/monitor  \
+         driver/runparam \
+         io/io_tools
+
+#List of object files
+OBJECT chkpoint.o
+
+#List of include files
+INCLUDE CHKPOINTD

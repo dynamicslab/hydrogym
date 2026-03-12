@@ -1,0 +1,77 @@
+#Configuration file for Nek5000 modules developped at KTH
+# Place for short description; doxygen style
+/**
+@defgroup chkpoint_mstep Multistep checkpointing
+@ingroup chkpoint
+
+@brief Multistep checkpointing for DNS, MHD and linear simulations
+
+@details
+In the case of multistep restart one needs data from NBDINP timestep, 
+where NBDINP is time integration order. I adapt @ref full_restart and
+@ref full_restart_save subroutines for DNS, MHD and perturbation
+simulations. There are three possible sets of restart files generated
+by this module: 
+-# 'rsX...' storing DNS data,
+-# 'rbX...' storing MHD data,
+-# 'rpX...' storing perturbation data,
+
+where X is equal to 2*NBDINP and gives a max number of restart files. 
+Only NBDINP files is requiered for restart and there are two file sets 
+to avoid overwritting. Checkpoints are saved in double precission in 
+binary ###.f format. 
+
+The possible combinations of files are:
+-# 'rsX...' alone for DNS mode,
+-# 'rsX...' and 'rbX...' for MHD mode,
+-# 'rsX...' and 'rpX...' for perturbation mode.
+
+In the perturbation mode only the first perturbation is written to 
+the checkpoint file. To save disc space the mesh data is written only to 
+the 'rsX...' file. For not moving boundaries (IFMVBD=FALSE) only the 
+first 'rsX...' file in the set contains mehs data. 
+In the similar way in the perturbation mode with fixed base flow
+(IFBASE=FALSE) only single 'rsX...' file is generated.
+
+Notice for multistep checkpointing runtime parameter @a chkpFnumber gives
+the fiel set number, so it can be equal 1 or 2 only.
+
+
+@mod_interface
+@interface_list Interface provided to [checkpoint] (@ref chkpoint):
+-# chkpts_register
+-# chkpts_init
+-# chkpts_read
+-# chkpts_write
+
+@mod_param
+@param_reqr Parameters required by multistep module:
+-# [CHKPOINTD] (@ref chkpoint):
+   + chpt_step - checkpiont dump frequency (number of time steps)
+   + chpt_ifrst - if restart
+   + chpt_fnum - restart set number
+-# Nek5000 \a PARAM array
+   + PARAM(27) - if negative number of files is equal NBDINP otherwise chpm_snmax
+
+*/
+#List of existing submodules
+SUBMODULES 
+
+#List of conflicting submodules
+EXCLUSIVE
+
+#Default submodules
+DEFAULT
+
+#List of conflicting modules
+CONFLICTS io/checkpoint/dummy
+
+#List of required modules
+REQUIRED io/checkpoint \
+         io/io_tools
+
+#List of object files
+OBJECT chkpt_mstp.o
+
+#List of include files
+INCLUDE CHKPTMSTPD

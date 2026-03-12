@@ -1,0 +1,229 @@
+#!/usr/bin/env python3
+
+import os, sys
+import configparser
+import re
+
+def dictCompare(d1, d2):
+    d1_keys = set(d1.keys())
+    d2_keys = set(d2.keys())
+    intersect_keys = d1_keys.intersection(d2_keys)
+    added = d1_keys - d2_keys
+    removed = d2_keys - d1_keys
+    modified = {o : (d1[o], d2[o]) for o in intersect_keys if d1[o] != d2[o]}
+    same = set(o for o in intersect_keys if d1[o] == d2[o])
+    return added, removed, modified, same
+
+def writeSize(params, infile, outfile):
+    with open(infile, 'r') as f:
+        lines = f.readlines()
+
+    # Substitute all the variables
+    for key, value in params.items():
+        if value:
+            lines = [
+                re.sub(
+                    r'(.*\bparameter\b.*\b{0} *= *)\S+?( *[),])'.format(key),
+                    r'\g<1>{0}\g<2>'.format(value), l, flags=re.I)
+                for l in lines]
+
+    with open(outfile, 'w') as f:
+        f.writelines(lines) 
+
+def getSizeParams(infile):
+    params = {}
+    with open(infile, 'r') as f:
+        lines = f.readlines()
+
+    for line in lines:
+        if not line.startswith(('c', 'C')):
+            for m in re.finditer(r'\b(?P<name>\w+)\b *= *(?P<value>(?:[a-z0-9\+\-\*/ \t]+|\([a-z0-9\+\-\*/ \t]+\))+)', line, re.I):
+                params[m.group('name').lower().strip()] = m.group('value').lower().strip()
+    return params
+
+###########################################3
+
+if len(sys.argv) == 2:
+  casename = sys.argv[1]
+else:
+  print("Usage mkSIZE <casename>.par")
+  sys.exit(1)
+
+err = 0
+size_params = {}
+nekSourceRoot = os.path.dirname(os.path.abspath(__file__)) + '/../'
+size_template = nekSourceRoot + 'core/SIZE.template'
+
+print('Scanning {0}.par and {0}.re2 ...'.format(casename))
+par = configparser.ConfigParser(inline_comment_prefixes=('#',';'))
+par.read(casename + '.par')
+par.sections()
+re2hdr = open(casename + ".re2","rb").read(80)
+
+# lelg ###
+if par.has_option('GENERAL', 'maxNumElements'):
+  lelg = int(par['GENERAL']['maxNumElements'])
+else:
+  lelg = int(re2hdr.split()[1])
+
+size_params['lelg']=str(lelg)
+
+# ldim ###
+ldim = int(re2hdr.split()[2])
+size_params['ldim']=str(ldim)
+
+# lx1 ###
+lx1 = 0
+try:
+  lx1 = int(par['GENERAL']['polynomialOrder']) + 1
+  size_params['lx1']=str(lx1)
+except:
+  err = 1
+  print("<ERROR> GENERAL:polynomialOrder not found")
+
+# lx2 ###
+if par['GENERAL'].getboolean('PnPnFormulation'):
+  size_params['lx2']='lx1'
+else:
+  size_params['lx2']='lx1-2'
+
+# lx1m ###
+try:
+  if par['PROBLEMTYPE'].getboolean('stressFormulation') or \
+     par['PROBLEMTYPE'].getboolean('variableProperties') and \
+     par['GENERAL'].getboolean('PnPnFormulation') :
+       size_params['lx1m']='lx1'
+except:
+  pass
+
+try:
+  if par['MESH']['motion'].lower() == 'user' or \
+  par['MESH']['motion'].lower() == 'elasticity':
+    size_params['lx1m']='lx1'
+except:
+  pass
+
+# lxd ###
+
+
+if par.has_option('GENERAL', 'dealiasing'):
+  lxd = 1
+  if par['GENERAL'].getboolean('dealiasing'): 
+    lxd = int(1.5*lx1)
+else:
+  lxd = int(1.5*lx1)
+
+try:
+  if par['GENERAL']['extrapolation'].lower() == 'oifs':
+    lxd = max(lxd,lx1)
+except:
+  pass
+
+try:
+  lxd = int(par['GENERAL']['polynomialOrderDealias']) + 1
+except:
+  pass
+
+size_params['lxd']=str(lxd)
+
+# lpmin/lpmax ###
+lpmin = 1
+try:
+  lpmin = int(par['GENERAL']['minNumProcesses'])
+except:
+  err = 1
+  print("<ERROR> GENERAL:minNumProcesses not found")
+
+size_params['lpmin']=str(lpmin)
+
+# ldimt ###
+ldimt  = 1
+for sections in par.sections():
+  if sections.lower().find("scalar") >= 0:
+    ldimt = ldimt + 1
+
+size_params['ldimt']=str(ldimt)
+
+# lcvelt ###
+lcvelt = 1
+for sections in par.sections():
+    try:
+      if par[sections]['solver'].lower() == 'cvode':
+        lcvelt = 'lelt'
+        size_params['lcvelt']=str(lcvelt)
+    except:
+      pass
+
+# lpelt ###
+try:
+  if par['PROBLEMTYPE']['equation'].lower().find("lin") >=0:
+    lpelt = 'lelt'
+    size_params['lpelt']=str(lpelt)
+    lpert = int(par['PROBLEMTYPE']['numberOfPerturbations'])
+    size_params['lpert']=str(lpert)
+except:
+  pass
+
+# lhis ###
+try:
+  lhis = int(par['GENERAL']['maxNumHistoryPoints'])
+  size_params['lhis']=str(lhis)
+except:
+  pass
+
+# nsessmax ###
+try:
+  nsessmax = int(par['GENERAL']['maxNumSessions'])
+  size_params['nsessmax']=str(nsessmax)
+except:
+  pass
+
+# maxobj ###
+try: 
+  maxobj = int(par['GENERAL']['maxNumObjects'])
+  size_params['maxobj']=str(maxobj)
+except:
+  pass
+
+# sanity check ###
+try:
+  if par['PROBLEMTYPE']['equation'].lower().find("lowmach") >= 0 \
+     and size_params['lx2'] == 'lx1-2':
+     print("<ERROR> Equation type requires PnPnFormulation")
+     err = 1
+except:
+  pass
+
+try:
+  if par['PROBLEMTYPE']['equation'].lower().find("lin") >= 0 \
+     and size_params['lx2'] == 'lx1':
+     print("<ERROR> Equation type not supported with PnPnFormulation")
+     err = 1
+except:
+  pass
+
+if (lelg*lx1**ldim)/lpmin > 2**19:
+     print("<INFO> You may have to increase GENERAL:minNumProcesses to reduce memory usage")
+
+# generate SIZE file ###
+if os.path.exists('./SIZE'):
+  size_params_old = getSizeParams('./SIZE') 
+  added, removed, modified, same = dictCompare(size_params_old, size_params)
+
+  if modified == {} and err == 0:
+    print("<Info> Do not overwrite existing SIZE as no changes are required")
+    sys.exit(0)
+
+if not os.path.exists(size_template):
+  print('<ERROR> Cannot find {0}'.format(size_template))
+  err = 1
+else:
+  print('Found {0}'.format(size_template))
+
+if err == 0:
+  print("Generating SIZE ...")
+  writeSize(size_params,size_template,'./SIZE')
+  sys.exit(0)
+else:
+  print("An error occured. Unable to generate SIZE file!")
+  sys.exit(1)

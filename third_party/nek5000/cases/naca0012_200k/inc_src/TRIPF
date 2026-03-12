@@ -1,0 +1,32 @@
+C
+C     Arrays and parameters needed for tripf.f
+C
+      Integer maxwalls, maxwallpar, maxpwallpar
+      parameter (maxwalls = 3)
+      parameter (maxwallpar = 5, maxpwallpar = 1)
+
+      Integer maxlxyz
+      parameter (maxlxyz=max0(lx1,ly1,lz1))
+ 
+      COMMON /TARR/ fzt1, fzt2, fzt3, fzt4,
+     $              nwalls, nwallpar, npwallpar,
+     $              nnelx1x2, kpts
+      COMMON /TPRR/ znek, tripx, tripy, tripz,
+     $              wallpar, pwallpar,direction
+      COMMON /TPAR/ seed,ntdt,trip
+
+      COMMON /FPRA/ xup,xlo,yup,ylo,radiusx,radiusy,
+     $              alpha_elipse
+      real*8 xup,xlo,yup,ylo,radiusx,radiusy,alpha_elipse
+
+      integer seed,ntdt,trip
+      Integer  nwalls,nnelx1x2(maxwallpar),kpts(maxwallpar),
+     $         nwallpar,npwallpar
+      REAL wallpar(maxwallpar), pwallpar(3,maxpwallpar,maxwalls)
+      REAL znek(lelv*maxlxyz,maxwalls)
+      REAL fzt1(lelv*maxlxyz,maxwalls)
+      REAL fzt2(lelv*maxlxyz,maxwalls)
+      REAL fzt3(lelv*maxlxyz,maxwalls)
+      REAL fzt4(lelv*maxlxyz,maxwalls)
+      REAL tripx(maxwalls),tripy(maxwalls),tripz(maxwalls)
+      character*1 direction(maxwalls)

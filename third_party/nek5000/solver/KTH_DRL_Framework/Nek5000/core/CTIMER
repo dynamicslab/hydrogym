@@ -1,0 +1,65 @@
+c
+c     Timer variables
+c
+      real*8          tmxmf,tmxms,tdsum,taxhm,tcopy,tinvc,tinv3
+     $               ,tinit,tadc3,tcol3,ta2s2,tcol2,tadd2
+      common /ctimer/ tmxmf,tmxms,tdsum,taxhm,tcopy,tinvc,tinv3
+     $               ,tinit,tadc3,tcol3,ta2s2,tcol2,tadd2
+c
+      real*8          tsolv,tgsum,tdsnd,tdadd,tcdtp,tmltd,tprep
+     $               ,tpres,thmhz,tgop ,tgop1,tdott,tbsol,tbso2
+     $               ,tsett,tslvb,tusbc,tddsl,tcrsl,tdsmx,tdsmn
+     $               ,tgsmn,tgsmx,teslv,tbbbb,tcccc,tdddd,teeee
+     $               ,tvdss,tschw,tadvc,tspro,tgop_sync,tsyc
+     $               ,twal,tgp2,tcvf,tproj,tusfq,tuchk
+     $               ,tmakf,tmakq
+      common /ctime2/ tsolv,tgsum,tdsnd,tdadd,tcdtp,tmltd,tprep
+     $               ,tpres,thmhz,tgop ,tgop1,tdott,tbsol,tbso2
+     $               ,tsett,tslvb,tusbc,tddsl,tcrsl,tdsmx,tdsmn
+     $               ,tgsmn,tgsmx,teslv,tbbbb,tcccc,tdddd,teeee
+     $               ,tvdss,tschw,tadvc,tspro,tgop_sync,tsyc
+     $               ,twal,tgp2,tcvf,tproj,tusfq,tuchk
+     $               ,tmakf,tmakq
+c
+      integer nmxmf,nmxms,ndsum,naxhm,ncopy,ninvc,ninv3
+      common /itimer/ nmxmf,nmxms,ndsum,naxhm,ncopy,ninvc,ninv3
+c
+      integer         nsolv,ngsum,ndsnd,ndadd,ncdtp,nmltd,nprep
+     $               ,npres,nhmhz,ngop ,ngop1,ndott,nbsol,nbso2
+     $               ,nsett,nslvb,nusbc,nddsl,ncrsl,ndsmx,ndsmn
+     $               ,ngsmn,ngsmx,neslv,nbbbb,ncccc,ndddd,neeee
+     $               ,nvdss,nadvc,nspro,ngop_sync,nsyc,nwal,ngp2
+     $               ,ncvf
+      common /itime2/ nsolv,ngsum,ndsnd,ndadd,ncdtp,nmltd,nprep
+     $               ,npres,nhmhz,ngop ,ngop1,ndott,nbsol,nbso2
+     $               ,nsett,nslvb,nusbc,nddsl,ncrsl,ndsmx,ndsmn
+     $               ,ngsmn,ngsmx,neslv,nbbbb,ncccc,ndddd,neeee
+     $               ,nvdss,nadvc,nspro,ngop_sync,nsyc,nwal,ngp2
+     $               ,ncvf
+c   
+      real*8          pmxmf,pmxms,pdsum,paxhm,pcopy,pinvc,pinv3
+     $               ,psolv,pgsum,pdsnd,pdadd,pcdtp,pmltd,pprep
+     $               ,ppres,phmhz,pgop ,pgop1,pdott,pbsol,pbso2
+     $               ,psett,pslvb,pusbc,pddsl,pcrsl,pdsmx,pdsmn
+     $               ,pgsmn,pgsmx,peslv,pbbbb,pcccc,pdddd,peeee
+     $               ,pvdss,pspro,pgop_sync,psyc,pwal,pgp2
+      common /ptimer/ pmxmf,pmxms,pdsum,paxhm,pcopy,pinvc,pinv3
+     $               ,psolv,pgsum,pdsnd,pdadd,pcdtp,pmltd,pprep
+     $               ,ppres,phmhz,pgop ,pgop1,pdott,pbsol,pbso2
+     $               ,psett,pslvb,pusbc,pddsl,pcrsl,pdsmx,pdsmn
+     $               ,pgsmn,pgsmx,peslv,pbbbb,pcccc,pdddd,peeee
+     $               ,pvdss,pspro,pgop_sync,psyc,pwal,pgp2
+
+c
+      real*8 etime1,etime2,etime0,gtime1,tscrtch
+      real*8 dnekclock,dnekclock_sync
+c
+      real*8          etimes,ttotal,tttstp,etims0,ttime
+      common /ctime3/ etimes,ttotal,tttstp,etims0,ttime
+c
+      integer icalld
+      save    icalld
+      data    icalld /0/
+
+      logical         ifsync
+      common /ctimel/ ifsync

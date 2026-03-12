@@ -1,0 +1,6 @@
+[_PSTAT3D]                # Runtime paramere section for pstat module
+STS_NFILE            = 2                      # Number of collected s01-s11 files
+STS_STIME            = 0.69968783E+02         # Statistics starting time
+STS_NSTEP            = 10                     # Number of steps between averaging in collected s01-s11 files 
+
+

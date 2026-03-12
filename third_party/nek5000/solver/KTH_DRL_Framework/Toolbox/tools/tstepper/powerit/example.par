@@ -1,0 +1,2 @@
+[_POWERIT]              # Runtime paramere section for power iteration module
+L2N                  = 0.10000000E+01         # Vector initial norm

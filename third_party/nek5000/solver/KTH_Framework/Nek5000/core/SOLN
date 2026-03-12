@@ -1,0 +1,139 @@
+c
+c     Main storage of simulation variables
+c
+      integer lvt1,lvt2,lbt1,lbt2,lorder2
+      parameter (lvt1  = lx1*ly1*lz1*lelv)
+      parameter (lvt2  = lx2*ly2*lz2*lelv)
+      parameter (lbt1  = lbx1*lby1*lbz1*lbelv)
+      parameter (lbt2  = lbx2*lby2*lbz2*lbelv)
+
+      parameter (lorder2 = max(1,lorder-2) )
+c
+c     Solution and data
+c
+      real bq(lx1,ly1,lz1,lelt,ldimt)
+      common /bqcb/ bq
+
+c     Can be used for post-processing runs (SIZE .gt. 10+3*LDIMT flds)
+      real vxlag  (lx1,ly1,lz1,lelv,2)
+     $    ,vylag  (lx1,ly1,lz1,lelv,2)
+     $    ,vzlag  (lx1,ly1,lz1,lelv,2)
+     $    ,tlag   (lx1,ly1,lz1,lelt,lorder-1,ldimt)
+     $    ,vgradt1(lx1,ly1,lz1,lelt,ldimt)
+     $    ,vgradt2(lx1,ly1,lz1,lelt,ldimt)
+     $    ,abx1   (lx1,ly1,lz1,lelv)
+     $    ,aby1   (lx1,ly1,lz1,lelv)
+     $    ,abz1   (lx1,ly1,lz1,lelv)
+     $    ,abx2   (lx1,ly1,lz1,lelv)
+     $    ,aby2   (lx1,ly1,lz1,lelv)
+     $    ,abz2   (lx1,ly1,lz1,lelv)
+     $    ,vdiff_e(lx1,ly1,lz1,lelt)
+
+c     Solution data
+      real vx     (lx1,ly1,lz1,lelv)
+     $    ,vy     (lx1,ly1,lz1,lelv)
+     $    ,vz     (lx1,ly1,lz1,lelv)
+     $    ,vx_e   (lx1,ly1,lz1,lelv)
+     $    ,vy_e   (lx1,ly1,lz1,lelv)
+     $    ,vz_e   (lx1,ly1,lz1,lelv)
+     $    ,t      (lx1,ly1,lz1,lelt,ldimt)
+     $    ,vtrans (lx1,ly1,lz1,lelt,ldimt1)
+     $    ,vdiff  (lx1,ly1,lz1,lelt,ldimt1)
+     $    ,bfx    (lx1,ly1,lz1,lelv)
+     $    ,bfy    (lx1,ly1,lz1,lelv)
+     $    ,bfz    (lx1,ly1,lz1,lelv)
+     $    ,cflf   (lx1,ly1,lz1,lelv)
+     $    ,bmnv   (lx1*ly1*lz1*lelv*ldim,lorder+1) ! binv*mask
+     $    ,bmass  (lx1*ly1*lz1*lelv*ldim,lorder+1) ! bmass
+     $    ,bdivw  (lx1*ly1*lz1*lelv*ldim,lorder+1) ! bdivw*mask
+     $    ,c_vx   (lxd*lyd*lzd*lelv*ldim,lorder+1) ! characteristics
+     $    ,fw     (2*ldim,lelt)                    ! face weights for DG
+
+      common /vptsol/ vxlag, vylag, vzlag, tlag, vgradt1, vgradt2,
+     $     abx1, aby1, abz1, abx2, aby2, abz2, vdiff_e,
+     $     vx, vy, vz, t, vtrans, vdiff, bfx, bfy, bfz, cflf, c_vx,fw,
+     $     bmnv, bmass, bdivw,
+     $     vx_e,vy_e,vz_e
+
+c     Solution data for magnetic field
+      real bx     (lbx1,lby1,lbz1,lbelv)
+     $    ,by     (lbx1,lby1,lbz1,lbelv)
+     $    ,bz     (lbx1,lby1,lbz1,lbelv)
+     $    ,pm     (lbx2,lby2,lbz2,lbelv)
+     $    ,bmx    (lbx1,lby1,lbz1,lbelv)  ! magnetic field rhs
+     $    ,bmy    (lbx1,lby1,lbz1,lbelv)
+     $    ,bmz    (lbx1,lby1,lbz1,lbelv)
+     $    ,bbx1   (lbx1,lby1,lbz1,lbelv) ! extrapolation terms for
+     $    ,bby1   (lbx1,lby1,lbz1,lbelv) ! magnetic field rhs
+     $    ,bbz1   (lbx1,lby1,lbz1,lbelv)
+     $    ,bbx2   (lbx1,lby1,lbz1,lbelv)
+     $    ,bby2   (lbx1,lby1,lbz1,lbelv)
+     $    ,bbz2   (lbx1,lby1,lbz1,lbelv)
+     $    ,bxlag  (lbx1*lby1*lbz1*lbelv,lorder-1)
+     $    ,bylag  (lbx1*lby1*lbz1*lbelv,lorder-1)
+     $    ,bzlag  (lbx1*lby1*lbz1*lbelv,lorder-1)
+     $    ,pmlag  (lbx2*lby2*lbz2*lbelv,lorder2)
+
+      common /vptsolm/
+     $     bx, by, bz, pm, bmx, bmy, bmz,
+     $     bbx1, bby1, bbz1, bbx2, bby2, bbz2, bxlag, bylag, bzlag,
+     $     pmlag
+
+      real nu_star
+      common /expvis/ nu_star
+
+      real pr(lx2,ly2,lz2,lelv), prlag(lx2,ly2,lz2,lelv,lorder2)
+      common /cbm2/ pr, prlag
+
+      real qtl(lx2,ly2,lz2,lelt), usrdiv(lx2,ly2,lz2,lelt)
+      common /diverg/ qtl, usrdiv
+
+      real p0th, dp0thdt, gamma0, p0thn, p0thlag(2)
+      common /p0therm/ p0th, dp0thdt, gamma0, p0thn, p0thlag
+
+      real  v1mask (lx1,ly1,lz1,lelv)
+     $     ,v2mask (lx1,ly1,lz1,lelv)
+     $     ,v3mask (lx1,ly1,lz1,lelv)
+     $     ,pmask  (lx1,ly1,lz1,lelv)
+     $     ,tmask  (lx1,ly1,lz1,lelt,ldimt)
+     $     ,omask  (lx1,ly1,lz1,lelt)
+     $     ,vmult  (lx1,ly1,lz1,lelv)
+     $     ,tmult  (lx1,ly1,lz1,lelt,ldimt)
+     $     ,b1mask (lbx1,lby1,lbz1,lbelv)  ! masks for mag. field
+     $     ,b2mask (lbx1,lby1,lbz1,lbelv)
+     $     ,b3mask (lbx1,lby1,lbz1,lbelv)
+     $     ,bpmask (lbx1,lby1,lbz1,lbelv)  ! magnetic pressure
+      common /vptmsk/ v1mask,v2mask,v3mask,pmask,tmask,omask,vmult,
+     $     tmult,b1mask,b2mask,b3mask,bpmask
+c
+c     Solution and data for perturbation fields
+c
+       real vxp    (lpx1*lpy1*lpz1*lpelv,lpert)
+     $     ,vyp    (lpx1*lpy1*lpz1*lpelv,lpert)
+     $     ,vzp    (lpx1*lpy1*lpz1*lpelv,lpert)
+     $     ,prp    (lpx2*lpy2*lpz2*lpelv,lpert)
+     $     ,tp     (lpx1*lpy1*lpz1*lpelt,ldimt,lpert)
+     $     ,bqp    (lpx1*lpy1*lpz1*lpelt,ldimt,lpert)
+     $     ,bfxp   (lpx1*lpy1*lpz1*lpelv,lpert)  ! perturbation field rhs
+     $     ,bfyp   (lpx1*lpy1*lpz1*lpelv,lpert)
+     $     ,bfzp   (lpx1*lpy1*lpz1*lpelv,lpert)
+     $     ,vxlagp (lpx1*lpy1*lpz1*lpelv,lorder-1,lpert)
+     $     ,vylagp (lpx1*lpy1*lpz1*lpelv,lorder-1,lpert)
+     $     ,vzlagp (lpx1*lpy1*lpz1*lpelv,lorder-1,lpert)
+     $     ,prlagp (lpx2*lpy2*lpz2*lpelv,lorder2,lpert)
+     $     ,tlagp  (lpx1*lpy1*lpz1*lpelt,ldimt,lorder-1,lpert)
+     $     ,exx1p  (lpx1*lpy1*lpz1*lpelv,lpert) ! extrapolation terms for
+     $     ,exy1p  (lpx1*lpy1*lpz1*lpelv,lpert) ! perturbation field rhs
+     $     ,exz1p  (lpx1*lpy1*lpz1*lpelv,lpert)
+     $     ,exx2p  (lpx1*lpy1*lpz1*lpelv,lpert)
+     $     ,exy2p  (lpx1*lpy1*lpz1*lpelv,lpert)
+     $     ,exz2p  (lpx1*lpy1*lpz1*lpelv,lpert)
+     $     ,vgradt1p(lpx1*lpy1*lpz1*lpelt,ldimt,lpert)
+     $     ,vgradt2p(lpx1*lpy1*lpz1*lpelt,ldimt,lpert)
+      common /pvptsl/ vxp, vyp, vzp, prp, tp, bqp, bfxp, bfyp, bfzp,
+     $     vxlagp, vylagp, vzlagp, prlagp, tlagp,
+     $     exx1p, exy1p, exz1p, exx2p, exy2p, exz2p,
+     $     vgradt1p, vgradt2p
+
+      integer jp
+      common /ppointr/ jp

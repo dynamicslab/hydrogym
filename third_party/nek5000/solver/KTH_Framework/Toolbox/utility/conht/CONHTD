@@ -1,0 +1,45 @@
+!> @file CONHTD
+!! @ingroup conht
+!! @brief Include file for utilities related to conjugated heat transfer
+!! @author Clio Saglietti, Adam Peplinski
+!! @date Mar 4, 2019
+!=======================================================================
+!     module id and name
+      integer cht_id
+      character*(*) cht_name
+      parameter(cht_name='CONJHT')
+      
+!     this is set of simple utilities, sot there are no timers
+      
+!     initialisation flag
+      logical cht_ifinit
+
+!     runtime parameter part
+!     section id
+      integer cht_sec_id
+
+!     parameter section
+      real cht_sc                !< @var scaling factors for the norm --> m2/(s2K2)
+      integer cht_sc_id
+      real cht_sv                !< @var scaling factors for velocity for the Pareto curve
+      integer cht_sv_id
+      real cht_st                !< @var scaling factors for temperature for the Pareto curve
+      integer cht_st_id
+      real cht_gx                !< @var x component of gravitational field
+      integer cht_gx_id
+      real cht_gy                !< @var y component of gravitational field
+      integer cht_gy_id
+      real cht_gz                !< @var z component of gravitational field
+      integer cht_gz_id
+      
+!     Rayleight and Prandtl numbers
+      real cht_Ra, cht_Pr
+
+!     common block section
+      common /chti/ cht_id, cht_sec_id, cht_sc_id, cht_sv_id, 
+     $              cht_st_id, cht_gx_id, cht_gy_id, cht_gz_id
+
+      common /chtr/ cht_sc, cht_sv, cht_st, cht_gx, cht_gy, cht_gz,
+     $              cht_Ra, cht_Pr
+      
+      common /chtl/ cht_ifinit

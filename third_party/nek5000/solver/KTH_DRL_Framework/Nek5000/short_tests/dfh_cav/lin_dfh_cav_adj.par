@@ -1,0 +1,29 @@
+[GENERAL]
+startFrom = baseflow.restart
+numsteps = 1000
+
+userparam02 = 0.01500 # PRANDTL number
+userparam03 = 45000.0 # RAYLEIGH number
+
+dt = -5.0e-03
+writeinterval = 90000
+
+[PROBLEMTYPE]
+equation = incompLinAdjNS # incompLinNS
+solveBaseflow = no
+variableProperties = yes
+
+[PRESSURE]
+residualtol = 1e-08
+residualproj = no
+
+[VELOCITY]
+residualtol = 1e-08
+residualproj = no
+density = 1
+viscosity = 1.0
+
+[TEMPERATURE] # temperature with Hmholtz 
+rhoCp = 1.0
+conductivity = 0.5
+residualTol = 1e-08

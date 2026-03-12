@@ -1,0 +1,16 @@
+c
+c     Mass matrix
+c
+      real bm1(lx1,ly1,lz1,lelt),bm2(lx2,ly2,lz2,lelv)
+     $    ,binvm1(lx1,ly1,lz1,lelv),bintm1(lx1,ly1,lz1,lelt)
+     $    ,bm2inv(lx2,ly2,lz2,lelt),baxm1(lx1,ly1,lz1,lelt)
+     $    ,bm1lag(lx1,ly1,lz1,lelt,lorder-1)
+     $    ,volvm1,volvm2,voltm1,voltm2
+     $    ,yinvm1(lx1,ly1,lz1,lelt)
+     $    ,binvdg(lx1*ly1*lz1,lelt)
+     $    ,bm1ms(lx1,ly1,lz1,lelt)  !weighted mass matrix 
+     $    ,upf(lx1,ly1,lz1,lelt)    !unity partition function
+     $    ,volvm1ms
+      common /mass/ bm1,bm2,binvm1,bintm1,bm2inv,baxm1,bm1lag
+     $      ,volvm1,volvm2,voltm1,voltm2,yinvm1,binvdg
+     $      ,bm1ms,upf,volvm1ms

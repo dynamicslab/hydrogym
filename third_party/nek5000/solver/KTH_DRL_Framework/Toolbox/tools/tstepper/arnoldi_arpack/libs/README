@@ -1,0 +1,25 @@
+This directory contains PARPACK library required by nek5000 for spectra calculation. This version of PARPACK was modified to allow for restart. All changes are described in ARPACK/CHKPOINT/. This source code is self-contained and the only external software or library required are compiler and MPI libraries. All requred BLAS or LAPACK subroutines are part of the code. Notice that only parallel MPI version was modified for checkpointing.
+
+Two static (.a) libraries are required: a serial and parallle one. To compile them execute:
+tar -zxf parpack96_chk.tar.gz
+cd ARPACK
+
+Next ARmake.inc file has to be adapted for given platform; required fields:
+home  - source position
+PLAT  - platform identifier (used for naming the libraries)
+FC    - serial fortran compiler (can be parallel one)
+FFLAGS - compiler flags
+PFC   - parallel fortran compiler
+PFFLAGS - compiler flags
+CPP - C preprocessor (usually /lib/cpp)
+MAKE - make system (usually /usr/bin/make)
+SHELL - shell (usually /bin/sh)
+
+Example files for gnu-MPI (ARmake.inc_mpi_gcc), lindgren (ARmake.inc_lindgren_pgi) and triolith (ARmake.inc_triolith_intel) are given in current directory. After modifying ARmake.inc run:
+make lib
+make plib
+
+Two static libraries will be created:
+libarpack_PLAT.a - serial
+libparpack_MPI-PLAT.a - paralle
+Copy them to setup directory.

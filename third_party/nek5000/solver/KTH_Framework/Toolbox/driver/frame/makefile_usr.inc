@@ -1,0 +1,1 @@
+$(OBJDIR)/frame.o           :frame.f FRAMELP;                        $(F77) -c $(FL2) -I./ $< -o $@

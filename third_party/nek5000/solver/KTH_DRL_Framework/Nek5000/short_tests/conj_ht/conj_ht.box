@@ -1,0 +1,27 @@
+cht0.rea
+-2                         (spatial dimension)
+3                         (number of fields)
+#
+#   This is a comment
+#
+Box fluid
+-8  4                     (nelx,nely,nelz for Box 1)
+0.0   8.0   1.0
+0.0   0.1   0.5   0.9   1.0
+v  ,O  ,W  ,W             velocity bc's: Xleft Xright Ybottom Ytop)
+t  ,O  ,E  ,E             temperature BCs
+t  ,O  ,E  ,E             temperature BCs
+Box lower wall
+-8  2
+ 0.0  8.0   1.0
+-0.5  -0.1   0.0
+   ,   ,   ,              no velocity bc's
+I  ,I  ,I  ,E             temperature BCs
+I  ,I  ,I  ,E             temperature BCs
+Box upper wall
+-8  2
+0.0   8.0   1.0
+1.0   1.1   1.5
+   ,   ,   ,              no velocity bc's
+I  ,I  ,E  ,I             temperature BCs
+I  ,I  ,E  ,I             temperature BCs

@@ -1,0 +1,18 @@
+!> @file IOTOOLD
+!! @ingroup io_tools
+!! @brief Include file for io tools
+!! @author Adam Peplinski
+!! @date Feb 6, 2017
+!=======================================================================
+!     module id and name
+      integer io_id
+      character*(*) io_name
+      parameter(io_name='IOTOOL')
+
+      ! keeep track of max iunit generated
+      integer io_iunit_min, io_iunit_max
+
+      !     common blocks
+      common /iotooli/ io_id
+      
+      common /io_iunit/ io_iunit_min, io_iunit_max

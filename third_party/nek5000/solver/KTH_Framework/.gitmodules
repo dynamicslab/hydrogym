@@ -1,0 +1,12 @@
+[submodule "Nek5000"]
+	path = Nek5000
+	url = https://github.com/Nek5000/nek5000.git
+	branch = master
+[submodule "Toolbox"]
+	path = Toolbox
+	url = https://github.com/adampep/KTH_Toolbox.git
+	branch = master
+[submodule "Examples"]
+	path = Examples
+	url = https://github.com/adampep/KTH_Examples.git
+	branch = master

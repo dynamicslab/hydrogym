@@ -1,0 +1,57 @@
+#!/bin/bash
+
+nfld=0
+
+if [ $# -eq 0 ]; then
+    if [ -f SESSION.NAME ]; then
+        base=$(head -1 SESSION.NAME)	# case name
+    else
+       nfld=-1				# exit
+       echo
+       echo '  No SESSION.NAME file found -- use "visnek case_name"'
+       echo
+    fi
+else
+    base="$1"
+fi
+
+
+if [ $nfld -ne -1 ]; then
+
+    if [ -e "$base.fld01" ]; then
+        nfld=$(ls -1 "$base".fld[0-9][0-9]* | wc -l)
+        echo "filetemplate: ${base}.fld%02d" > "$base.nek5000"
+    elif [ -e "A0/${base}0.f00001" ]; then
+        nfld=$(ls -1 A0/"${base}"0.f[0-9][0-9][0-9][0-9][0-9] | wc -l)
+        echo "filetemplate: A%01d/${base}%01d.f%05d" > "$base.nek5000"
+    elif [ -e "${base}00.f00001" ]; then
+        nfld=$(ls -1 "${base}"00.f[0-9][0-9][0-9][0-9][0-9] | wc -l)
+        echo "filetemplate: ${base}%02d.f%05d" > "$base.nek5000"
+    elif [ -e "A00/${base}00.f00001" ]; then
+        nfld=$(ls -1 A00/"${base}"00.f[0-9][0-9][0-9][0-9][0-9] | wc -l)
+        echo "filetemplate: A%02d/${base}%02d.f%05d" > "$base.nek5000"
+    elif [ -e "${base}000.f00001" ]; then
+        nfld=$(ls -1 "${base}"000.f[0-9][0-9][0-9][0-9][0-9] | wc -l)
+        echo "filetemplate: ${base}%03d.f%05d" > "$base.nek5000"
+    elif [ -e "A000/${base}000.f00001" ]; then
+        nfld=$(ls -1 A000/"${base}"000.f[0-9][0-9][0-9][0-9][0-9] | wc -l)
+        echo "filetemplate: A%03d/${base}%03d.f%05d" > "$base.nek5000"
+    elif [ -e "A0000/${base}0000.f00001" ]; then
+        nfld=$(ls -1 A0000/"${base}"0000.f[0-9][0-9][0-9][0-9][0-9] | wc -l)
+        echo "filetemplate: A%04d/${base}%04d.f%05d" > "$base.nek5000"
+    else
+        nfld=$(ls -1 "${base}"0.f[0-9][0-9][0-9][0-9][0-9] | wc -l)
+        echo "filetemplate: ${base}%01d.f%05d" > "$base.nek5000"
+    fi
+fi
+
+echo " Found $nfld field file(s)"
+echo " Generating metadata file $base.nek5000 ..."
+
+echo 'firsttimestep: 1'    >> "$base.nek5000"
+echo "numtimesteps: $nfld" >> "$base.nek5000"
+#echo 'meshcoords: 1'      >> "$base.nek5000"
+
+echo
+echo " Now run visit -o $base.nek5000 or paraview --data=$base.nek5000"
+echo

@@ -1,0 +1,31 @@
+#Configuration file for Nek5000 framework developed at KTH
+# Place for short description; doxygen style
+/**
+@defgroup baseflow  Base flow calculation
+@ingroup tools
+
+@brief Set of tools for base flow calculation
+
+@details 
+
+*/
+#List of existing submodules
+SUBMODULES sfd
+
+#List of conflicting submodules
+EXCLUSIVE
+
+#Default submodules
+DEFAULT
+
+#List of conflicting modules
+CONFLICTS
+
+#List of required modules
+REQUIRED
+
+#List of object files
+OBJECT
+
+#List of include files
+INCLUDE

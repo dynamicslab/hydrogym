@@ -1,0 +1,170 @@
+#Configuration file for Nek5000 framework developed at KTH
+# Place for short description; doxygen style
+/**
+@defgroup sfd   SFD module
+@ingroup baseflow
+
+@brief Set of rutine for Selective Frequency Damping
+
+@details 
+The base flow is computed using Selective Frequency Damping (SFD) method @cite Akervik2006, which damps 
+the oscillations of the unsteady part of the solution using a temporal low-pass filter by setting 
+the forcing term to 
+\f$\vec{f} = - \chi (\vec{u} - \vec{\bar{u}}),\f$
+where \f$\vec{u}\f$ is the solution of the non--linear Navier-Stokes equations, and \f$\vec{\bar{u}}\f$ is 
+a temporally low--pass--filtered state given by the differential exponential filter 
+\f$\dot{\vec{\bar{u}}} = (\vec{u} - \vec{\bar{u}})/\Delta.\f$
+The filter parameters \f$\chi\f$ and \f$\Delta\f$ (control coefficient and filter width) can be determined 
+based on the DNS simulations of the studied case. During the calculations we control the magnitude of 
+the forcing term \f$\epsilon=\|(\vec{u} - \vec{\bar{u}})\|\f$ in \f$\Omega\f$, which is a good indicator of convergence.
+Description of the implementation and performed tests can be found in @cite Peplinski2014.
+
+@mod_interface
+@interface_list Interface provided:
+-# @ref sfd_register
+-# @ref sfd_init
+-# @ref sfd_forcing
+-# @ref sfd_main
+
+@mod_interface_example
+@code{.f}
+!======================================================================
+      subroutine userf  (ix,iy,iz,ieg)
+      include 'SIZE'
+      include 'NEKUSE'          ! FF[XYZ]
+      include 'SOLN'            ! V[XYZ]
+
+      FFX = 0.0
+      FFY = 0.0
+      FFZ = 0.0
+
+!     add sfd forcing
+      call sfd_forcing(FFX,FFY,FFZ,ix,iy,iz,ieg)
+
+      return
+      end
+!======================================================================
+      subroutine userchk
+      include 'TSTEP'
+      
+       if (ISTEP.eq.0) then
+!     start framework
+         call frame_start
+      endif
+
+!     monitor simulation
+      call frame_monitor
+
+!     save/load files for full-restart
+      call chkpt_main
+
+!     SFD evolution      
+      call sfd_main
+
+!     finalise framework
+      if (ISTEP.eq.NSTEPS.or.LASTEP.eq.1) then
+         call frame_end
+      endif
+ 
+      return
+      end
+!======================================================================
+!> @brief Register user specified modules
+      subroutine frame_usr_register
+      implicit none
+
+      include 'SIZE'
+      include 'FRAMELP'
+!-----------------------------------------------------------------------
+      ! register modules
+      call io_register
+      call chkpt_register
+      call sfd_register
+
+      return
+      end subroutine
+!======================================================================
+!> @brief Initialise user specified modules
+      subroutine frame_usr_init
+      implicit none
+
+      include 'SIZE'
+      include 'FRAMELP'
+!-----------------------------------------------------------------------
+      ! initialise modules
+      call chkpt_init
+      call sfd_init
+
+      return
+      end subroutine
+!======================================================================
+!> @brief Finalise user specified modules
+      subroutine frame_usr_end
+      implicit none
+
+      include 'SIZE'
+      include 'FRAMELP'
+!-----------------------------------------------------------------------
+      ! finlise modules
+      call sfd_end
+      
+      return
+      end subroutine
+!======================================================================
+@endcode
+
+@warning This module's restart prosedure depends on multistep checkpointing. As multisetep checpointeing sets
+the number of the restart file set \a chkpt_main must be called before \a sfd_main.
+
+@mod_param
+@param_list Parameters provided by sfd module (include file - \a SFDD):
+|Varaible | Type |Runtime parameter | Description|
+|---------|------|------------------|------------|
+| sfd_dlt | real | _sfd:FilterWdth | filter width |
+| sfd_chi | real | _sfd:ControlCff | control coefficient |
+| sfd_tol | real | _sfd:ResidualTol | tolerance for residual |
+| sfd_cnv | integer | _sfd:LogInterval | frequency for logging convegence data |
+| sfd_ifrst | logical | _sfd:SFDReadChkpt | SFD; restat from checkpoint |
+
+@mod_param
+@param_reqr Parameters required by sfd module:
+-# [CHKPOINTD] (@ref chkpoint):
+   + chpt_step - checkpiont dump frequency (number of time steps)
+   + chpt_ifrst - if restart
+   + chpt_fnum - restart set number
+   + chpt_set_o
+
+
+@mod_param_example
+@code{.txt}
+[_SFD]
+filterwdth = 1.05
+controlcff = 0.5
+residualtol = 0.1E-06
+loginterval = 50
+sfdreadchkpt = no
+@endcode
+
+*/
+#List of existing submodules
+SUBMODULES
+
+#List of conflicting submodules
+EXCLUSIVE
+
+#Default submodules
+DEFAULT
+
+#List of conflicting modules
+CONFLICTS
+
+#List of required modules
+REQUIRED driver/runparam \
+         io/io_tools
+         io/checkpoint/chkpt_mstep
+
+#List of object files
+OBJECT sfd.o
+
+#List of include files
+INCLUDE SFDD

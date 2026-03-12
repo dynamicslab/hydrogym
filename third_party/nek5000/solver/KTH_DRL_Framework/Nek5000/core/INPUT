@@ -1,0 +1,133 @@
+c
+c     Input parameters from preprocessors.
+c
+c     Note that in parallel implementations, we distinguish between
+c     distributed data (LELT) and uniformly distributed data.
+c
+c     Input common block structure:
+c
+c     INPUT1:  REAL            INPUT5: REAL      with LELT entries
+c     INPUT2:  INTEGER         INPUT6: INTEGER   with LELT entries
+c     INPUT3:  LOGICAL         INPUT7: LOGICAL   with LELT entries
+c     INPUT4:  CHARACTER       INPUT8: CHARACTER with LELT entries
+c
+      real param(200),rstim,vnekton
+     $    ,cpfld(ldimt1,3)
+     $    ,cpgrp(-5:10,ldimt1,3)
+     $    ,qinteg(ldimt3,maxobj)
+     $    ,uparam(20)
+     $    ,atol(0:ldimt1)
+     $    ,restol(0:ldimt1)
+     $    ,fem_amg_param(15)
+     $    ,crs_param(15)
+     $    ,filterType
+
+      common /input1/ param,rstim,vnekton,cpfld,cpgrp,qinteg,uparam,
+     $                atol,restol,fem_amg_param,crs_param,
+     $                filterType
+
+      integer matype(-5:10,ldimt1)
+     $       ,nktonv,nhis,lochis(4,lhis+maxobj)
+     $       ,ipscal,npscal,ipsco, ifldmhd
+     $       ,irstv,irstt,irstim,nmember(maxobj),nobj
+     $       ,ngeom,idpss(ldimt),meshPartitioner
+      common /input2/ matype,nktonv,nhis,lochis,ipscal,npscal,ipsco
+     $               ,ifldmhd,irstv,irstt,irstim,nmember,nobj
+     $               ,ngeom,idpss,meshPartitioner
+
+      logical         if3d,ifflow,ifheat,iftran,ifaxis,ifstrs,ifsplit
+     $               ,ifmgrid
+     $               ,ifadvc(ldimt1),ifdiff(ldimt1),ifdeal(ldimt1)
+     $               ,iffilter(ldimt1),ifprojfld(0:ldimt1)
+     $               ,iftmsh(0:ldimt1),ifdgfld(0:ldimt1),ifdg
+     $               ,ifmvbd,ifchar,ifnonl(ldimt1)
+     $               ,ifvarp(ldimt1),ifpsco(ldimt1),ifvps
+     $               ,ifmodel,ifkeps,ifintq,ifcons
+     $               ,ifxyo,ifpo,ifvo,ifto,iftgo,ifpso(ldimt1),iffmtin
+     $               ,ifbo,ifanls,ifanl2,ifmhd,ifessr,ifpert,ifbase
+     $               ,ifcvode,iflomach,ifexplvis,ifschclob,ifuservp
+     $               ,ifcyclic,ifmoab,ifcoup, ifvcoup, ifusermv,ifreguo
+     $               ,ifxyo_,ifaziv,ifneknek,ifneknekm,ifneknekc
+     $               ,ifcvfld(ldimt1),ifdp0dt
+     $               ,ifmpiio,ifrich,ifvvisp
+
+      common /input3/ if3d,ifflow,ifheat,iftran,ifaxis,ifstrs,ifsplit
+     $               ,ifmgrid 
+     $               ,ifadvc,ifdiff,ifdeal
+     $               ,iffilter, ifprojfld
+     $               ,iftmsh,ifdgfld,ifdg
+     $               ,ifmvbd,ifchar,ifnonl
+     $               ,ifvarp        ,ifpsco        ,ifvps
+     $               ,ifmodel,ifkeps,ifintq,ifcons
+     $               ,ifxyo,ifpo,ifvo,ifto,iftgo,ifpso        ,iffmtin
+     $               ,ifbo,ifanls,ifanl2,ifmhd,ifessr,ifpert,ifbase
+     $               ,ifcvode,iflomach,ifexplvis,ifschclob,ifuservp
+     $               ,ifcyclic,ifmoab,ifcoup, ifvcoup, ifusermv,ifreguo
+     $               ,ifxyo_,ifaziv,ifneknek,ifneknekm,ifneknekc
+     $               ,ifcvfld,ifdp0dt
+     $               ,ifmpiio,ifrich,ifvvisp
+
+      logical         ifnav
+      equivalence    (ifnav, ifadvc(1))
+
+      character*1     hcode(11,lhis+maxobj)
+      character*2     ocode(8)
+      character*10    drivc(5)
+      character*14    rstv,rstt
+      character*40    textsw(100,2)
+      character*132   initc(15)
+      common /input4/ hcode,ocode,rstv,rstt,drivc,initc,textsw
+
+      character*40    turbmod
+      equivalence    (turbmod,textsw(1,1))
+
+      character*132   reafle,fldfle,dmpfle,hisfle,schfle,orefle,nrefle
+      common /cfiles/ reafle,fldfle,dmpfle,hisfle,schfle,orefle,nrefle
+
+      character*132   session,path,re2fle,parfle,amgfile
+      common /cfile2/ session,path,re2fle,parfle,amgfile
+
+      integer cr_re2,fh_re2
+      common /handles_re2/ cr_re2,fh_re2
+
+      integer*8 re2off_b
+      common /off_re2/ re2off_b
+c
+c proportional to LELT
+c
+      real xc(8,lelt),yc(8,lelt),zc(8,lelt)
+     $    ,bc(5,6,lelt,0:ldimt1)
+     $    ,curve(6,12,lelt)
+     $    ,cerror(lelt)
+      common /input5/ xc,yc,zc,bc,curve,cerror
+
+      integer igroup(lelt),object(maxobj,maxmbr,2)
+      common /input6/ igroup,object
+
+      integer lbid
+      parameter(lbid = 100)
+
+      character*1     ccurve(12,lelt),cdof(6,lelt)
+      character*3     cbc(6,lelt,0:ldimt1)
+      character*3     cbc_bmap(lbid,ldimt1)
+      common /input8/ cbc,ccurve,cdof,cbc_bmap
+
+      integer ieact(lelt),neact
+      common /input9/ ieact,neact
+c
+c material set ids, BC set ids, materials (f=fluid, s=solid), bc types
+c
+      integer numsts
+      parameter (numsts=50)
+      
+      integer numflu,numoth,numbcs 
+     $       ,matindx(numsts),matids(numsts),imatie(lelt)
+     $       ,ibcsts(numsts)
+      common /inputmi/ numflu,numoth,numbcs,matindx,matids,imatie
+     $                ,ibcsts
+      
+      integer bcf(numsts)
+      common /inputmr/ bcf
+
+      character*3 bctyps(numsts)
+      common /inputmc/ bctyps

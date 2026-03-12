@@ -1,0 +1,103 @@
+#Configuration file for Nek5000 framework developed at KTH
+# Place for short description; doxygen style
+/**
+@defgroup tstepper Time stepper routines
+@ingroup tools
+
+@brief Time stepper for Nek5000
+
+@details
+This module implements time stepper method for linear solver in Nek5000 using the userchk interface. 
+It allows to perform a number of constant length cycles providing the result vector to 
+the submodule. There are two possible submodules: power iteration and spectra calculation
+using the Arnoldi algorithm implemented in \a PARPACK. The initial condition for the next stepping
+cycle is provided by the submodule. Three stepper modes are supported: direct, adjoint, direct+adjoint.
+
+@mod_interface
+@interface_list Interface provided:
+-# @ref tstpr_param_get
+-# @ref tstpr_main
+
+@par
+@interface_reqr Interface required:
+-# stepper_param_get
+-# stepper_vinit
+-# stepper_solve
+
+@mod_interface_example
+@code{.f}
+      subroutine userchk
+      include 'TSTEP'
+      
+      if (ISTEP.eq.0) then
+!     initialise runtime parameters
+         call chkpt_param_get
+         call tstpr_param_get
+      endif
+
+!     main time stepper interface
+      call tstpr_main
+
+      end
+@endcode
+
+@mod_param
+@param_list Parameters provided by time stepper module (include file - \a TIME_STEPPERD):
+|Varaible | Type | Runtime parameter | Description |
+|---------|------|-------------------|-------------|
+| tst_mode | integer | _time_stepper:mode | simulation mode (1-direct, 2-adjoint, 3-direct+adjoint) |
+| tst_step | integer | _time_stepper:steps | frequency of calling stepper_vsolve (number of time steps) |
+| tst_cmax | integer | _time_stepper:maxcycles | maximal number of stepper cycles |
+| tst_tol  | real    | _time_stepper:tol  | convergence tolerance (e.g. PARPACK tolerance for Ritz values) |
+| tst_ifuz | logical | _time_stepper:ifuzawa | first step run with UZAWA |
+
++ tst_mode: (integer)
+  - 0 : no time stepper
+  - 1 : direct mode
+  - 2 : adjoint mode
+  - 3 : direct+adjoint mode (initial optimal condition)
+
+@mod_param
+@param_reqr Parameters required by time stepper module:
+-# CONHT (for conjugated heat transfer):
+   + CHCST_SC, CHCFF_V, CHCFF_T : velocity and temperature scaling factors
+   + CHGRX, CHGRY, CHGRZ : gravitational acceleration
+   + CHRA, CHPR : Rayleight and Prandtl numbers
+-# Nek5000 \a PARAM array
+   + PARAM(12) - time step dt
+
+@todo Finish temperature
+
+@mod_param_example
+@code{.txt}
+[_TIME_STEPPER]
+mode = 1
+steps =  40
+maxCycles = 200
+tol =  1.0E-06
+ifuzawa = T
+@endcode
+
+*/
+#List of existing submodules
+SUBMODULES arnildi_arpack \
+           powerit
+
+#List of conflicting submodules
+EXCLUSIVE arn_arp \
+          powerit
+
+#Default submodules
+DEFAULT arn_arp
+
+#List of conflicting modules
+CONFLICTS
+
+#List of required modules
+REQUIRED driver/runparam
+                   
+#List of object files
+OBJECT time_stepper.o
+
+#List of include files
+INCLUDE TIME_STEPPERD

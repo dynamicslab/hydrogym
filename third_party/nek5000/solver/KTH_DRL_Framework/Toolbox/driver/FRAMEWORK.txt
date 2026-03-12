@@ -1,0 +1,34 @@
+#Configuration file for Nek5000 framework developed at KTH
+# Place for short description; doxygen style
+/**
+@defgroup driver  Driver module
+@ingroup toolbox
+
+@brief Driver routines for toolboxes
+
+@details 
+Driver module provides most fundamental services that can be shared by a number of tools related e.g. 
+to runtime parameters or global communication.
+
+*/
+#List of existing submodules
+SUBMODULES comm \
+           frame
+
+#List of conflicting submodules
+EXCLUSIVE
+
+#Default submodules
+DEFAULT
+
+#List of conflicting modules
+CONFLICTS
+
+#List of required modules
+REQUIRED
+
+#List of object files
+OBJECT
+
+#List of include files
+INCLUDE

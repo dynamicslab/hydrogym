@@ -1,0 +1,31 @@
+[GENERAL]
+numsteps = 0
+writeInterval = 0
+#writeDoublePrecision = yes
+#writeNFiles = 2
+
+[PRESSURE]
+residualtol = 1e-08
+residualproj = no
+
+[VELOCITY]
+residualtol = 1e-08
+residualproj = no
+density = 1
+viscosity = 1.0
+
+[TEMPERATURE]
+rhoCp = 1.0
+conductivity = 0.5
+residualTol = 1e-08
+#writetofieldfile = yes
+
+[SCALAR01]
+residualTol = 1e-08
+density = 1.0
+diffusivity = 0.1
+
+[SCALAR02]
+residualTol = 1e-08
+density = 1.0
+diffusivity = 0.1

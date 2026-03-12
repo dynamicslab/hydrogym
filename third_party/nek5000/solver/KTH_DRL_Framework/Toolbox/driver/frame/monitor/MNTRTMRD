@@ -1,0 +1,41 @@
+!> @file MNTRTMRD
+!! @ingroup monitor
+!! @brief Include file for monitor module containing timer database
+!! @author Adam Peplinski
+!! @date Oct 13, 2017
+!=======================================================================
+!     timer registration      
+      integer mntr_tmr_id_max  ! max number of timers to register
+      parameter (mntr_tmr_id_max=300)
+      integer mntr_tmr_num  ! number of registered timers
+      integer mntr_tmr_mpos ! max position of registered timer
+      integer mntr_tmr_nf ! number of fields in mntr_tmr_id
+      parameter (mntr_tmr_nf=2)
+      integer mntr_tmr_id_size ! total size of mntr_tmr_id; requred by mntrtmr_block.f
+      parameter (mntr_tmr_id_size=mntr_tmr_nf*mntr_tmr_id_max) 
+      integer mntr_tmr_mark ! occupied slot marker and number of timer parent
+      parameter (mntr_tmr_mark=1)
+      integer mntr_tmr_mod ! registering module id
+      parameter (mntr_tmr_mod=2)
+      integer mntr_tmr_id(mntr_tmr_nf,mntr_tmr_id_max)
+      logical mntr_tmr_sum(mntr_tmr_id_max)  ! add timer to parent
+
+      integer mntr_tmr_count ! call counter mark
+      parameter (mntr_tmr_count=1)
+      integer mntr_tmr_time ! time mark
+      parameter (mntr_tmr_time=2)
+      real mntr_tmrv_timer(mntr_tmr_nf,mntr_tmr_id_max)
+      
+      character*10 mntr_tmr_name(mntr_tmr_id_max) ! names of registered modules
+      character*132 mntr_tmr_dscr(mntr_tmr_id_max) ! descriptions of registered modules
+
+!     common blocks
+      common /MNTRTMRI/ mntr_tmr_id, mntr_tmr_num, 
+     $      mntr_tmr_mpos
+       
+      common /MNTRTMRR/ mntr_tmrv_timer
+      
+      common /MNTRTMRL/ mntr_tmr_sum
+
+      common /MNTRTMRC/ mntr_tmr_name, mntr_tmr_dscr
+ 

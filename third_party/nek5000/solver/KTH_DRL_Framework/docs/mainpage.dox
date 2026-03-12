@@ -1,0 +1,266 @@
+/**
+@brief Documentation file to be used in Doxygen pages.
+@author Adam Peplinski
+@file
+
+@mainpage Framework for toolboxes developed for Nek5000
+
+@section intro Introduction
+This framework provides platform for development and shearing the tools based on [Nek5000] 
+(https://nek5000.mcs.anl.gov/) code. It contains number of utilities that allow Nek5000 users to perform 
+additional tasks. The main objective is to allow different users to exchange their code that is not 
+part of Nek5000 core but operates through standard user interface (mainly through \a userchk). 
+
+@section structure Framework structure
+To make this platform easy to expand and reuse existing code we introduce specific directory structure
+representing different tasks. All files are grouped by taks and placed in a tree structure, where 
+the parent directories (modules in Doxygen nomenclature) perform some operations and can define tasks 
+and interfaces that have to be provided by their subdirectories (submodules). This structure can be repeated 
+recursively with submodules becoming parent modules for next level structures. A backbone of the whole framework
+is module called [frame] (@ref frame) that provides dynamical databases for all tools (modules), runtimes parameters
+and timers introduced by framework. This module should be started first and all the remaining tools should 
+be registered with it. For more information check [Toolbox page] (@ref toolbox).
+
+@section download Download 
+The top level direcotries in the framework point to stable release of three main github repositories (using 
+[git submodules] (https://git-scm.com/book/en/v2/Git-Tools-Submodules)): 
+- [Nek5000] (https://github.com/Nek5000/Nek5000),
+- [toolbox] (https://github.com/KTH-Nek5000/KTH_Toolbox),
+- [tool examples] (https://github.com/KTH-Nek5000/KTH_Examples).
+
+Each ot these repositories can be downloaded separately by executing
+@verbatim
+git clone https://github.com/Nek5000/Nek5000.git -b master
+git clone https://github.com/KTH-Nek5000/KTH_Toolbox -b master
+git clone https://github.com/KTH-Nek5000/KTH_Examples -b master
+@endverbatim
+or as a single framework by
+@verbatim
+git clone --recursive https://github.com/KTH-Nek5000/KTH_Framework
+@endverbatim 
+
+The second method is preferred as Nek5000 repository has neither development nor stable branches and all the 
+development goes directly to master branch. As stable releases are marked by tags the user has to be careful 
+to clone Nek5000 version compatible with current tool version. On the other hand the submodule within 
+KTH_Framework points to the speciffic commit in Nek5000 repository forcing consistency between tools and 
+Nek5000 versions. For the same reason user has to be careful using
+@verbatim
+git submodule update --remote Nek5000
+@endverbatim
+as it would load all the new commits. The proper way of upgrading KTH_Fremwork is running from the main 
+framework directory
+@verbatim
+git fetch
+git merge origin/master
+git submodule update --recursive
+@endverbatim 
+
+@section documentation Documentation
+To make this platform easy to use we pay attention to [Doxygen](http://www.stack.nl/~dimitri/doxygen/) 
+based documentation of every tool. It has to provide detailed description of the tool itsef, 
+the routine interfaces, runtime parameters and possible dependencies between modules. The general 
+description of every tool is given in [FRAMEWORK.txt] (@ref toolbox), which is present in almost every 
+directory. This documentation is available online as GitHub Pages (gh-pages bfranch) and can be generated 
+locally by executing at the top level of the local copy of KTH_Framework repository:
+@verbatim
+mkdir html
+doxygen ./docs/Doxyfile
+rm doxygen.warning
+@endverbatim
+It requires doxygen 1.8.11 or newer and the dot tool from [Graphviz] (http://www.graphviz.org/). 
+All files required by doxygen are located under ./docs/. It includes configuration file (Doxyfile), bibliography
+(doxy.bib) and web pages contents (mainpage.dox). 
+
+@todo Add possibility to generate documentation in KTH_Toolbox separately.
+
+
+
+
+@page runtime_parameters_page Runtime parameters for KTH framework.
+
+@section rparam_file Runtime parameter file.
+An important issue for our framework is organised structure of runtime parameters that would allow for 
+simple modiffication of parameter list without introducing conflicts between different code parts.
+As old \a setup.rea file does not provide sufficent flexibility, all tool developers are obligated to use 
+new  \a setup.par file instead, as it organises runtime parameters by sections and in addition to 20 user
+parameters in \a [GENERAl] section allows to introduce user defined sections.
+Every section starting with underscore is treated as user section and its consistency is not checked by Nek5000
+core code. Following examples shows two native  Nek5000 sections and three user sections:
+@code{.txt}
+#
+# nek parameter file
+#
+[GENERAL] 
+#startFrom = rst_lid.1
+stopAt = numSteps #endTime
+#endTime = 1.0
+numSteps = 100
+
+dt = -1.0e-03
+timeStepper = bdf3 #char #steady
+variableDt = no
+targetCFL = 0.3
+
+writeControl = timeStep #runTime
+writeInterval = 50  
+
+dealiasing = yes
+filtering = hpfrt
+filterWeight = 10.0
+filterCutoffRatio = 0.84
+
+userParam01 =-3     # param(54) fixed flow rate dir.
+userParam02 = 1     # param(55) vol. flow rate
+
+[PROBLEMTYPE]
+stressFormulation = no
+#dp0dt = yes
+variableProperties = no
+
+[PRESSURE]
+#preconditioner = # Schwarz is default for Nekp4est - this line should be commented0
+residualTol = 1e-8
+residualProj = yes
+
+[VELOCITY]
+residualTol = 1e-8
+residualProj = yes
+density = 1.0
+viscosity = -2.5E+03
+advection = yes
+
+#
+[_RUNPAR]               # Runtime parameter section for rprm module
+PARFWRITE            = no                     # Do we write runtime parameter file
+PARFNAME             = outparfile             # Runtime parameter file name for output (without .par)
+#
+[_MONITOR]              # Runtime parameter section for monitor module
+LOGLEVEL             = 4                      # Logging threshold for toolboxes
+WALLTIME             = 23:45                  # Simulation wall time
+#
+[_STAT]             # Runtime paramere section for statistics module
+AVSTEP               = 10
+IOSTEP               = 50
+@endcode
+
+@section rparam_module Module's runtime parameters.
+We utilize user defined sections in \a setup.par to set values of runtime parametes defined in different modules. 
+To simplify interaction between different tools the [frame] (@ref frame) module provides dynamical database of 
+all available runtime parameters in the framework. To provide requred information to the framework we introduce 
+the module registration phase and split if from the module intialistation. All these steps are performed by 
+[frame_start](@ref frame_start), which initialises the framework itself and next calls a user interface \a frame_usr_register. 
+This routine shoud be placed in \a setup.usr and contain calls to the module registration routines. The registration 
+of the module consists of signing up the module in the database followed by the runtime parameters definitions 
+(name, type, description and default value) and finalised with timers definitions. This information is used to check 
+consistency of the \a setup.par file and to fill in runtime parameter database. Next user defined \a frame_usr_init 
+is called by [frame_start](@ref frame_start). It initilises all the modules by calling their initialisation routines. 
+This operation consists of taking back updated values of runtime parameters from the database and performing requred 
+by the module addtional operations.  
+
+Following example shows the way a statistics module is initialised:
+@code{.f90}
+!======================================================================
+      subroutine userchk
+      implicit none
+      include 'SIZE'            !
+      include 'TSTEP'           ! ISTEP, lastep, time
+      INCLUDE 'INPUT'           ! IF3D, PARAM
+
+      if (ISTEP.eq.0) then
+!     start framework
+         call frame_start
+
+!     set volume flow parameters
+         param(54) = uparam(1)
+         param(55) = uparam(2)
+      endif
+
+!     monitor simulation
+      call frame_monitor
+
+!     for statistics
+      call stat_avg
+
+!     finalise framework
+      if (ISTEP.eq.NSTEPS.or.LASTEP.eq.1) then
+         call frame_end
+      endif
+     
+      return
+      end
+!======================================================================
+!> @brief Register user specified modules; called by frame_start
+      subroutine frame_usr_register
+      implicit none
+
+      include 'SIZE'
+      include 'FRAMELP'
+!-----------------------------------------------------------------------
+      call stat_register
+
+      return
+      end subroutine
+!======================================================================
+!> @brief Initialise user specified modules; called by frame_start
+      subroutine frame_usr_init
+      implicit none
+
+      include 'SIZE'
+      include 'FRAMELP'
+!-----------------------------------------------------------------------
+      call stat_init
+
+      return
+      end subroutine
+!======================================================================
+!> @brief Finalise user specified modules; called by frame_start
+      subroutine frame_usr_end
+      implicit none
+
+      include 'SIZE'
+      include 'FRAMELP'
+!-----------------------------------------------------------------------
+      call stat_end
+      
+      return
+      end subroutine
+!======================================================================
+@endcode
+
+Each tool has to provide routines for registration, intialisation and finalisation of the given module. 
+[chkpt_register] (@ref chkpt_register) and [chkpt_init] (@ref chkpt_init) are good example of them.
+
+Dependencies between different modules can be expressed as a tree structure, which we would like to follow
+in our database. That is why each module during registration has to specify its parent, which can be its real
+parent module (for submodules) or FRAME module (the first module registered by frame). In a similar way we 
+specify parents for timers.
+
+The list of all defined parameters, their dafault values and dependency between different modules are described in 
+following pages:
+- @subpage parameter_list_page
+- @subpage parameter_required_page
+
+
+@page parameter_list_page List of runtime parameters provided by modules.
+
+@page parameter_required_page List of runtime parameters required by modules.
+
+This page gives information about module dependencies.
+
+
+
+
+@page compilation_page Setting up the case.
+
+@todo Add content
+
+
+@page developmnet_page Tool development workflow.
+
+@todo Describe code development workflow.
+
+@page interface_list_page List of interfaces provided by modules.
+
+@page interface_required_page List of interfaces required by modules.
+
+*/

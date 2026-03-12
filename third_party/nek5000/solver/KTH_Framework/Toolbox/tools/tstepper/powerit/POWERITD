@@ -1,0 +1,46 @@
+!> @file POWERITD
+!! @ingroup powerit
+!! @brief Include file for power iteration modue
+!! @author Adam Peplinski
+!! @date Mar 7, 2016
+!=======================================================================
+!     module id and name
+      integer pwi_id
+      character*(*) pwi_name
+      parameter(pwi_name='POWERIT')
+
+!     timer id
+      integer pwi_tmr_ini_id   ! initialisation itme
+      integer pwi_tmr_evl_id   ! evolution time
+
+!     initialisation flag
+      logical pwi_ifinit
+
+!     runtime parameter part
+!     section id
+      integer pwi_sec_id
+
+!     parameter section
+      real pwi_l2n                  !< initial L2 norm of the vector
+      integer pwi_l2n_id
+
+      ! restart options; restart flag and file number
+      logical pwi_ifrst
+      integer pwi_fnum
+      
+      ! growth rate
+      real pwi_grw
+
+!     reference vector
+      real pwi_vx(LPX1*LPY1*LPZ1*LPELV),pwi_vy(LPX1*LPY1*LPZ1*LPELV),
+     $     pwi_vz(LPX1*LPY1*LPZ1*LPELV),pwi_t(LPX1*LPY1*LPZ1*LPELT)
+
+!     common block section
+      common /powiti/ pwi_id, pwi_tmr_ini_id, pwi_tmr_evl_id, 
+     $     pwi_sec_id, pwi_l2n_id, pwi_fnum
+      
+      common /powitr/ pwi_l2n, pwi_grw
+      
+      common /powitrv/ pwi_vx, pwi_vy, pwi_vz, pwi_t
+      
+      common /powitl/ pwi_ifinit, pwi_ifrst

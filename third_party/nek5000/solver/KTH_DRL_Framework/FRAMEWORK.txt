@@ -1,0 +1,8 @@
+#Configuration file for Nek5000 framework developed at KTH
+# Place for short description; doxygen style
+/**
+@defgroup framework  Framework for Nek5000 toolboxes
+
+@brief Framework for KHT toolboxes
+
+*/

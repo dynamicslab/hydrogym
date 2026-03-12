@@ -1,0 +1,159 @@
+#!/bin/bash
+
+# binary path
+bin_nek_tools=`cd ../bin && pwd`
+
+# specify your compilers here
+F77="gfortran"
+CC="gcc"
+
+# linking flags
+#USR_LFLAGS="-L$HOME/lib"
+
+# enable BIG MEMORY suuport
+#BIGMEM="true"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+### don't touch this section ###############################
+
+if [ $# -eq 0 ]; then
+   echo "Usage: maketools [clean|all|tool(s)]"
+   exit 1
+fi
+
+if [ "$F77" == "" ]; then
+  echo "FATAL ERROR: Specify your Fortran compiler in maketools!"
+  exit 1
+fi
+
+if [ "$CC" == "" ]; then
+  echo "FATAL ERROR: Specify your C compiler in maketools!"
+  exit 1
+fi
+
+# overwrite source path with optional 2nd argument
+if [ $# -eq 2 ]; then
+  bin_nek_tools="$2"
+fi
+
+
+
+
+which `echo $F77 | awk '{print $1}'` 1>/dev/null
+if [ $? -ne 0 ]; then
+  echo "FATAL ERROR: Cannot find $F77!"
+  exit 1
+fi
+
+which `echo $CC | awk '{print $1}'` 1>/dev/null
+if [ $? -ne 0 ]; then
+  echo "FATAL ERROR: Cannot find $CC!"
+  exit 1
+fi
+
+if [ ! -d $bin_nek_tools  ]; then
+  echo "FATAL ERROR: install path $bin_nek_tools does not exist!"
+  exit 1
+fi
+
+
+case $F77 in
+  *pgf*)       R8="-r8"
+               BIGMEM_FLAG="-mcmodel=medium"
+               ;;
+  *gfortran*)  R8="-fdefault-real-8"
+               BIGMEM_FLAG="-mcmodel=medium"
+               ;;
+  *ifort*)     R8="-r8"
+               BIGMEM_FLAG="-mcmodel=medium -shared-intel"
+               ;;
+  *pathf*)     R8="-r8"
+               ;;
+  *xlf*)       R8="-qrealsize=8"
+               BIGMEM_FLAG="-q64"
+               ;;
+  *ftn*)       R8="-r8"
+               BIGMEM_FLAG="-mcmodel=medium"
+               ;;
+  *)           echo "Error: Unable to detect compiler!"
+               exit 1
+               ;;
+esac
+
+# Check if the compiler adds an underscore to external functions
+cat > test_underscore.f << _ACEOF
+      subroutine underscore_test
+        call byte_write
+      end
+_ACEOF
+
+$F77 -c test_underscore.f 2>&1 >/dev/null 
+nm test_underscore.o | grep byte_write_ 1>/dev/null
+if [ $? -eq 0 ]; then 
+  US="-DUNDERSCORE"
+fi
+\rm test_underscore.* 2>/dev/null
+
+
+F77="$F77" 
+CC="$CC" 
+if [ "$BIGMEM" == "true" ] || [ "$BIGMEM" == "TRUE" ]; then
+  F77="$F77 $BIGMEM_FLAG" 
+  CC="$CC $BIGMEM_FLAG" 
+fi
+
+export F77
+export CC
+export bin_nek_tools
+export US
+export R8
+LFLAGS_IN=$USR_LFLAGS 
+export LFLAGS_IN  
+
+LIST=`ls -Cd */ | sed 's:\/::g'`
+MODULES=`echo $LIST`
+export MODULES
+
+if [ "$1" == "clean" ]; then
+   make clean
+else
+   export DOALL=''
+   if [ "$1" == "all" ]; then
+      export DOALL=1
+   fi
+   if [ "$1" != "all" ]; then
+      LIST=`echo $* | sed 's:\/::g'`
+      MODULES=$LIST
+   fi
+   export MODULES
+   make 
+fi
+

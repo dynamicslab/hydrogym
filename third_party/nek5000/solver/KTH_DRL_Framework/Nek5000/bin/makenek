@@ -1,0 +1,61 @@
+#!/bin/bash
+set -a
+#-------------------------------------------------------------------------------
+# Nek5000 config
+#-------------------------------------------------------------------------------
+
+# source path 
+#NEK_SOURCE_ROOT="$HOME/Nek5000" 
+
+# Fortran/C compiler
+#FC="mpif77"
+#CC="mpicc"
+
+# config options (set to "?" to get a list)
+#PPLIST="" 
+
+#-------------------------------------------------------------------------------
+# WHAT FOLLOWS ARE OPTIONAL SETTINGS
+#-------------------------------------------------------------------------------
+
+# optional compiler flags
+#FFLAGS=""
+#CFLAGS=""
+
+# optional linking flags
+#USR_LFLAGS+=" -L/usr/lib -lfoo"
+
+# auxilliary files to compile
+# NOTE: source files have to located in the same directory as makenek
+#       a makefile_usr.inc has to be provided containing the build rules 
+#USR="foo.o"
+
+# MPI (default 1) 
+#MPI=0
+
+# profiling (default 1)
+#PROFILING=0
+
+# VisIt in situ (default 0)
+#VISIT=1
+#  Note: you can override the lib and include paths. VISIT_LIB and VISIT_INC
+#  If VISIT_STOP is set the simulation will stop after first step and wait
+#  for VisIt to connect.
+#VISIT_INSTALL="/path/to/visit/current/linux-x86_64/"
+#VISIT_STOP=true
+
+
+###############################################################################
+# DONT'T TOUCH WHAT FOLLOWS !!!
+###############################################################################
+: ${NEK_SOURCE_ROOT:="$HOME/Nek5000"}
+echo "using source path: $NEK_SOURCE_ROOT"
+VERMAKENEK="19.0.1"
+set +a -e
+$NEK_SOURCE_ROOT/bin/nekconfig $@
+if [[ $1 != "clean" ]]; then
+ $NEK_SOURCE_ROOT/bin/nekconfig -build-dep
+ set -o pipefail
+ make -j4 2>&1 | tee -a build.log
+ set +o pipefail
+fi

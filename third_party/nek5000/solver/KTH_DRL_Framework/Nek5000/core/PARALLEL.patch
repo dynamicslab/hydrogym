@@ -1,0 +1,18 @@
+diff --git a/core/PARALLEL b/core/PARALLEL
+index 212b297..1b6d207 100644
+--- a/core/PARALLEL
++++ b/core/PARALLEL
+@@ -9,13 +9,13 @@ c     Maximum number of elements (limited to 2**31/12, at least for now)
+       integer nelgt_max
+       parameter(nelgt_max = 178956970)
+ 
++      integer gllnid, gllel
++
+       integer*8 nvtot
+       integer nelg(0:ldimt1)
+      $       ,lglel(lelt)
+-     $       ,gllel(lelg)
+-     $       ,gllnid(lelg)
+      $       ,nelgv,nelgt
+-      common /hcglb/ nvtot,nelg,lglel,gllel,gllnid,nelgv,nelgt
++      common /hcglb/ nvtot,nelg,lglel,nelgv,nelgt

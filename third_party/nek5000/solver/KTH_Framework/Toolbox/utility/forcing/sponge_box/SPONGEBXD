@@ -1,0 +1,49 @@
+!> @file SPONGEBXD
+!! @ingroup sponge_box
+!! @brief Include file for sponge_box module
+!! @author Adam Peplinski
+!! @date Feb 1, 2017
+!=======================================================================
+!     module id and name
+      integer spng_id
+      character*(*) spng_name
+      parameter(spng_name='SPONGEBX')
+
+!     timer id
+      integer spng_tmr_id
+
+!     initialisation flag
+      logical spng_ifinit
+
+!     runtime parameter part
+!     section id
+      integer spng_sec_id
+
+
+!     parameter section
+      real spng_str      !<  @var sponge strength
+      integer spng_str_id
+      real spng_wl(LDIM) !<  @var sponge width (left section; every dmension separately)
+      integer spng_wl_id(LDIM)
+      real spng_wr(LDIM) !<  @var sponge width (right section)
+      integer spng_wr_id(LDIM)
+      real spng_dl(LDIM) !<  @var sponge drop/rise width (left section)
+      integer spng_dl_id(LDIM)
+      real spng_dr(LDIM) !<  @var sponge drop/rise width (right section)
+      integer spng_dr_id(LDIM)
+      
+!     sponge function
+      real spng_fun(LX1*LY1*LZ1*LELV)
+
+!     reference velocity field
+      real spng_vr(LX1*LY1*LZ1*LELV,LDIM)
+
+!     common block section
+      common /SPONGEI/ spng_id, spng_tmr_id, spng_sec_id, spng_str_id, 
+     $ spng_wl_id, spng_wr_id, spng_dl_id, spng_dr_id
+      
+      common /SPONGEL/ spng_ifinit
+
+      common /SPONGER/ spng_str, spng_wl, spng_wr, spng_dl, spng_dr
+
+      common /SPONGEV/ spng_fun, spng_vr

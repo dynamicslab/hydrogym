@@ -1,0 +1,2087 @@
+#!/usr/bin/env python
+# vim: set fileencoding=utf-8 :
+
+# Git command line interface to GitHub.
+#
+# Written by Leandro Lucarella <leandro.lucarella@sociomantic.com>
+#
+# Copyright (c) 2013 by Sociomantic Labs GmbH
+#
+# This program is written as a single file for practical reasons, this way
+# users can download just one file and use it, while if it's spread across
+# multiple modules, a setup procedure must be provided. This might change in
+# the future though, if the program keeps growing.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+
+"""\
+Git command line interface to GitHub.
+
+This program integrates Git and GitHub as a Git extension command (hub).
+It enabling most useful GitHub tasks (like creating and listing pull request or
+issues) to be accessed directly through the git command line.
+"""
+
+VERSION = "git-hub devel"
+
+import re
+import sys
+import json
+import base64
+import urllib
+import pprint
+import urllib2
+import getpass
+import os.path
+import urlparse
+import argparse
+import subprocess
+
+# Output levels according to user selected verbosity
+DEBUG = 3
+INFO  = 2
+WARN  = 1
+ERR   = 0
+
+
+# Output functions, all use the str.format() function for formatting
+########################################################################
+
+def localeprintf(stream, fmt='', *args, **kwargs):
+	encoding = sys.getfilesystemencoding()
+	msg = fmt.decode(encoding, 'replace').format(*args, **kwargs) + '\n'
+	stream.write(msg.encode(encoding, 'replace'))
+
+def pformat(obj):
+	return pprint.pformat(obj, indent=4)
+
+def debugf(fmt='', *args, **kwargs):
+	if verbose < DEBUG:
+		return
+	localeprintf(sys.stdout, fmt, *args, **kwargs)
+
+def infof(fmt='', *args, **kwargs):
+	if verbose < INFO:
+		return
+	localeprintf(sys.stdout, fmt, *args, **kwargs)
+
+def warnf(fmt='', *args, **kwargs):
+	if verbose < WARN:
+		return
+	msg = ''
+	if sys.stderr.isatty():
+		msg += '\033[33m'
+	msg += 'Warning: ' + fmt.format(*args, **kwargs)
+	if sys.stderr.isatty():
+		msg += '\033[0m'
+	localeprintf(sys.stderr, '{}', msg)
+	sys.stderr.flush()
+
+def errf(fmt='', *args, **kwargs):
+	if verbose < ERR:
+		return
+	msg = ''
+	if sys.stderr.isatty():
+		msg += '\033[31m'
+	msg += 'Error: ' + fmt.format(*args, **kwargs)
+	if sys.stderr.isatty():
+		msg += '\033[0m'
+	localeprintf(sys.stderr, '{}', msg)
+	sys.stderr.flush()
+
+def die(fmt='', *args, **kwargs):
+	errf(fmt, *args, **kwargs)
+	sys.exit(1)
+
+# This is very similar to die() but used to exit the program normally having
+# full stack unwinding. The message is printed with infof() and the exit status
+# is 0 (normal termination). The exception is handled by the regular exception
+# handling code after calling main()
+def interrupt(fmt='', *args, **kwargs):
+	raise InterruptException(fmt.format(*args, **kwargs))
+class InterruptException (Exception):
+	def __init__(self, msg):
+		super(InterruptException, self).__init__(msg)
+
+# Wrapper for raw_input to treat EOF as an empty input
+def user_input(*args, **kwargs):
+	try:
+		return raw_input(*args, **kwargs)
+	except EOFError:
+		sys.stdout.write('\n')
+		return ''
+
+# Ask the user a question
+#
+# `question` is the text to display (information with the available options
+# will be automatically appended). `options` must be an array of strings, and
+# `default` a string inside that list, or None. If default is None, if the user
+# press ENTER without giving an actual answer, it will be asked again,
+# otherwise this function returns the `default` option.
+#
+# Returns the item selected by the user (one of the strings in `options`)
+# unless stdin is not a tty, in which case no question is asked and this
+# function returns None.
+def ask(question, default=None, options=["yes", "no"]):
+	if not sys.stdin.isatty():
+		return None
+
+	if default not in options and default is not None:
+		raise ValueError("invalid default answer: '%s'" % default)
+
+	valid_answers = dict()
+	opts_strings = list()
+	for opt in options:
+		if opt is None:
+			raise ValueError("options can't be None")
+		valid_answers[opt.lower()] = opt
+		valid_answers[opt[0].lower()] = opt
+		opt_str = opt.capitalize()
+		if default == opt:
+			# default in bold
+			opt_str = '\033[1m' + opt.upper() + '\033[21m'
+		opts_strings.append(opt_str)
+
+	# options in dark
+	question += ' \033[2m[' + '/'.join(opts_strings) + '] '
+
+	while True:
+		# question in yellow
+		sys.stderr.write('\033[33m' + question + '\033[0m')
+		choice = user_input().lower().strip()
+		if default is not None and choice == '':
+			return default
+		elif choice in valid_answers:
+			return valid_answers[choice]
+		else:
+			errf("Invalid answer, valid options: {}",
+				', '.join(options))
+
+
+# Git manipulation functions and constants
+########################################################################
+
+GIT_CONFIG_PREFIX = 'hub.'
+
+# This error is thrown when a git command fails (if git prints something in
+# stderr, this is considered an error even if the return code is 0). The
+# `output` argument is really the stderr output only, the `output` name is
+# preserved because that's how is it called in the parent class.
+class GitError (subprocess.CalledProcessError):
+
+	def __init__(self, returncode, cmd, output):
+		super(GitError, self).__init__(returncode, cmd, output)
+
+	def __str__(self):
+		return '%s failed (return code: %s)\n%s' % (' '.join(self.cmd),
+				self.returncode, self.output)
+
+# Convert a variable arguments tuple to an argument list
+#
+# If args as only one element, the element is expected to be a string and the
+# new argument list is populated by splitting the string using spaces as
+# separator. If it has multiple arguments, is just converted to a list.
+def args_to_list(args):
+	if len(args) == 1:
+		return args[0].split()
+	return list(args)
+
+# Run a git command returning its output (throws GitError on error)
+#
+# `args` should be strings. If only one string is found in the list, is split
+# by spaces and the resulting list is used as `args`. kwargs are extra
+# arguments you might want to pass to subprocess.Popen().
+#
+# Returns the text printed to stdout by the git command without the EOL.
+def git(*args, **kwargs):
+	args = args_to_list(args)
+	args.insert(0, 'git')
+	kwargs['stdout'] = subprocess.PIPE
+	kwargs['stderr'] = subprocess.PIPE
+	debugf('git command: {} {}', args, kwargs)
+	proc = subprocess.Popen(args, **kwargs)
+	(stdout, stderr) = proc.communicate()
+	if proc.returncode != 0:
+		raise GitError(proc.returncode, args, stderr.rstrip('\n'))
+	return stdout.rstrip('\n')
+
+# Check if the git version is at least min_version
+# Returns a tuple with the current version and True/False depending on how the
+# check went (True if it passed, False otherwise)
+def git_check_version(min_version):
+	cur_ver_str = git('--version').split()[2]
+	cur_ver = cur_ver_str.split('.')
+	min_ver = min_version.split('.')
+	for i in range(len(min_ver)):
+		if cur_ver[i] < min_ver[i]:
+			return (cur_ver_str, False)
+		if cur_ver[i] > min_ver[i]:
+			return (cur_ver_str, True)
+	return (cur_ver_str, True)
+
+# Same as git() but inserts --quiet at quiet_index if verbose is less than DEBUG
+def git_quiet(quiet_index, *args, **kwargs):
+	args = args_to_list(args)
+	if verbose < DEBUG:
+		args.insert(quiet_index, '--quiet')
+	return git(*args, **kwargs)
+
+# Specialized version of git_quiet() for `push`ing that accepts an extra
+# keyword argument named 'force'. If present, '--force' is passed to git push.
+def git_push(*args, **kwargs):
+	cmd = ['push']
+	if kwargs.pop('force', False):
+		cmd.append('--force')
+	cmd += args_to_list(args)
+	git_quiet(1, *cmd, **kwargs)
+
+# Dummy class to indicate a value is required by git_config
+class NO_DEFAULT:
+	pass
+
+# Specialized version of git() to get/set git config variables.
+#
+# `name` is the name of the git variable to get/set. `default` is the value
+# that should be returned if variable is not defined (None will return None in
+# that case, use NO_DEFAULT to make this function exit with an error if the
+# variable is undefined). `prefix` is a text to prefix to the variable `name`.
+# If `value` is present, then the variable is set instead. `opts` is an
+# optional list of extra arguments to pass to git config.
+#
+# Returns the variable value (or the default if not present) if `value` is
+# None, otherwise it just sets the variable.
+def git_config(name, default=None, prefix=GIT_CONFIG_PREFIX, value=None, opts=()):
+	name = prefix + name
+	cmd = ['config'] + list(opts) + [name]
+	try:
+		if value is not None:
+			cmd.append(value)
+		return git(*cmd)
+	except subprocess.CalledProcessError as e:
+		if e.returncode == 1:
+			if default is not NO_DEFAULT:
+				return default
+			die("Can't find '{}' config key in git config. "
+					"Read the man page for details.",
+					name)
+		raise e
+
+# Returns the .git directory location
+def git_dir():
+	return git('rev-parse', '--git-dir')
+
+
+# Invokes the editor defined by git var GIT_EDITOR.
+#
+# The editor is invoked to edit the file .git/HUB_EDITMSG, the default content
+# of that file will be the `msg` (if any) followed by the `help_msg`, used to
+# hint the user about the file format.
+#
+# The contents of .git/HUB_EDITMSG are returned by the function (after the
+# editor is closed). The text is not filtered at all at this stage (so if the
+# user left the `help_msg`, it will be part of the returned string too.
+def editor(help_msg, msg=None):
+	prog = git('var', 'GIT_EDITOR')
+	fname = os.path.join(git_dir(), 'HUB_EDITMSG')
+	with file(fname, 'w') as f:
+		f.write(msg or '')
+		f.write(help_msg)
+	status = subprocess.call([prog + ' "$@"', prog, fname], shell=True)
+	if status != 0:
+		die("Editor returned {}, aborting...", status)
+	with file(fname) as f:
+		msg = f.read()
+	return msg
+
+
+# git-hub specific configuration container
+#
+# These variables are described in the manual page.
+class Config:
+
+	def __init__(self):
+		self.username = git_config('username', getpass.getuser())
+		self.oauthtoken = git_config('oauthtoken')
+		self.upstream = git_config('upstream')
+		if self.upstream and '/' not in self.upstream:
+			die("Invalid hub.upstream configuration, '/' not found")
+		self.forkrepo = git_config('forkrepo')
+		if not self.forkrepo and self.upstream:
+			upstream = self.upstream.split('/')
+			self.forkrepo = self.username + '/' + upstream[1]
+		self.forkremote = git_config('forkremote', 'origin')
+		self.pullbase = git_config('pullbase', 'master')
+		self.urltype = git_config('urltype', 'ssh_url')
+		self.baseurl = self.sanitize_url('baseurl',
+			git_config('baseurl', 'https://api.github.com'))
+		self.forcerebase = git_config('forcerebase', "true",
+				opts=['--bool']) == "true"
+		self.triangular = git_config('triangular', "false",
+				opts=['--bool']) == "true"
+
+	def sanitize_url(self, name, url):
+		u = urlparse.urlsplit(url)
+		name = GIT_CONFIG_PREFIX + name
+		# interpret www.github.com/api/v4 as www.github.com, /api/v4
+		if not u.hostname or not u.scheme:
+			die("Please provide a full URL for '{}' (e.g. "
+					"https://api.github.com), got {}",
+					name, url)
+		if u.username or u.password:
+			warnf("Username and password in '{}' ({}) will be "
+					"ignored, use the 'setup' command "
+					"for authentication", name, url)
+		netloc = u.hostname
+		if u.port:
+			netloc += ':' + u.port
+		return urlparse.urlunsplit((u.scheme, netloc,
+				u.path.rstrip('/'), u.query, u.fragment))
+
+	def check(self, name):
+		if getattr(self, name) is None:
+			die("Can't find '{}{}' config key in git config. "
+					"Read the man page for details.",
+					GIT_CONFIG_PREFIX, name)
+
+
+# Manages GitHub request handling authentication and content headers.
+#
+# The real interesting methods are created after the class declaration, for
+# each type of request: head(), get(), post(), patch(), put() and delete().
+#
+# All these methods take an URL (relative to the config.baseurl) and optionally
+# an arbitrarily number of positional or keyword arguments (but not both at the
+# same time). The extra arguments, if present, are serialized as json and sent
+# as the request body.
+# All these methods return None if the response is empty, or the deserialized
+# json data received in the body of the response.
+#
+# Example:
+#
+#    r = req.post('/repos/sociomantic/test/labels/', name=name, color=color)
+#
+# The basic auth has priority over oauthtoken for authentication. If you want
+# to use OAuth just leave `basic_auth` and set `oauthtoken`. To fill the
+# `basic_auth` member, the `set_basic_auth()` convenient method is provided).
+#
+# See https://developer.github.com/ for more details on the GitHub API
+class RequestManager:
+
+	basic_auth = None
+	oauthtoken = None
+	links_re = re.compile(r'<([^>]+)>;.*rel=[\'"]?([^"]+)[\'"]?', re.M)
+
+	def __init__(self, base_url, oauthtoken=None,
+			username=None, password=None):
+		self.base_url = base_url
+		if oauthtoken is not None:
+			self.oauthtoken = oauthtoken
+		elif username is not None:
+			self.set_basic_auth(username, password)
+
+	# Configure the class to use basic authentication instead of OAuth
+	def set_basic_auth(self, username, password):
+		self.basic_auth = "Basic " + base64.urlsafe_b64encode("%s:%s" %
+			(username, password))
+
+	# Open an URL in an authenticated manner using the specified HTTP
+	# method. It also add other convenience headers, like Content-Type,
+	# Accept (both to json) and Content-Length).
+	def auth_urlopen(self, url, method, body):
+		req = urllib2.Request(url, body)
+		if self.basic_auth:
+			req.add_header("Authorization", self.basic_auth)
+		elif self.oauthtoken:
+			req.add_header("Authorization", "bearer " +
+					self.oauthtoken)
+		req.add_header("Content-Type", "application/json")
+		req.add_header("Accept", "application/vnd.github.v3+json")
+		req.add_header("Content-Length", str(len(body) if body else 0))
+		req.get_method = lambda: method.upper()
+		debugf('{}', req.get_full_url())
+		# Hide sensitive information from DEBUG output
+		if verbose >= DEBUG:
+			for h in req.header_items():
+				if h[0].lower() == 'authorization':
+					debugf('{}: {}', h[0], '<hidden>')
+				else:
+					debugf('{}: {}', *h)
+		debugf('{}', req.get_data())
+		return urllib2.urlopen(req)
+
+	# Serialize args OR kwargs (they are mutually exclusive) as json.
+	def dump(self, *args, **kwargs):
+		if args and kwargs:
+			raise ValueError('args and kwargs are mutually '
+				'exclusive')
+		if args:
+			return json.dumps(args)
+		if kwargs:
+			return json.dumps(kwargs)
+		return None
+
+	# Get the next URL from the Link: header, if any
+	def get_next_url(self, response):
+		links = list()
+		for l in response.headers.get("Link", "").split(','):
+			links.extend(self.links_re.findall(l))
+		links = dict((rel, url) for url, rel in links)
+		return links.get("next", None)
+
+	# This is the real method used to do the work of the head(), get() and
+	# other high-level methods. `url` should be a relative URL for the
+	# GitHub API, `method` is the HTTP method to be used (must be in
+	# uppercase), and args/kwargs are data to be sent to the client. Only
+	# one can be specified at a time and they are serialized as json (args
+	# as a json list and kwargs as a json dictionary/object).
+	def json_req(self, url, method, *args, **kwargs):
+		url = self.base_url + url
+		if method.upper() in ('POST', 'PATCH', 'PUT'):
+			body = self.dump(*args, **kwargs)
+		else:
+			body = None
+			url += '?' + urllib.urlencode(kwargs)
+		data = None
+		prev_data = None
+		while url:
+			debugf("Request: {} {}\n{}", method, url, body)
+			res = self.auth_urlopen(url, method, body)
+			data = res.read()
+			debugf("Response:\n{}", data.decode('UTF8'))
+			if data:
+				data = json.loads(data)
+				if isinstance(data, list):
+					if prev_data is None:
+						prev_data = list()
+					prev_data.extend(data)
+					data = None
+			url = self.get_next_url(res)
+		assert not (prev_data and data)
+		if prev_data is not None:
+			data = prev_data
+		debugf("Parsed data:\n{}", pformat(data))
+		return data
+
+# Create RequestManager.head(), get(), ... methods
+# We need the make_method() function to make Python bind the method variable
+# (from the loop) early (in the loop) instead of when is called. Otherwise all
+# methods get bind with the last value of method ('delete') in this case, which
+# is not only what we want, is also very dangerous.
+def make_method(method):
+	return lambda self, url, *args, **kwargs: \
+		self.json_req(url, method, *args, **kwargs)
+for method in ('OPTIONS', 'HEAD', 'GET', 'POST', 'PATCH', 'PUT', 'DELETE'):
+	setattr(RequestManager, method.lower(), make_method(method))
+
+
+# Message cleaning and parsing functions
+# (used to clean the text returned by editor())
+########################################################################
+
+def check_empty_message(msg):
+	if not msg.strip():
+		die("Message is empty, aborting...")
+	return msg
+
+message_markdown_help = '''\
+# Remember GitHub will parse comments and descriptions as GitHub
+# Flavored Markdown.
+# For details see:
+# https://help.github.com/articles/github-flavored-markdown/
+#
+# Lines starting with '# ' (note the space after the hash!) will be
+# ignored, and an empty message aborts the command. The space after the
+# hash is required by comments to avoid accidentally commenting out a
+# line starting with a reference to an issue (#4 for example). If you
+# want to include Markdown headers in your message, use the Setext-style
+# headers, which consist on underlining titles with '=' for first-level
+# or '-' for second-level headers.
+'''
+
+# For now it only removes comment lines
+def clean_message(msg):
+	lines = msg.splitlines()
+	# Remove comment lines
+	lines = [l for l in lines if not l.startswith('# ') and l != '#']
+	return '\n'.join(lines)
+
+# For messages expecting a title, split the first line as the title and the
+# rest as the message body (but expects the title and message to be separated
+# by an empty line).
+#
+# Returns the tuple (title, body) where body might be an empty string.
+def split_titled_message(msg):
+	lines = check_empty_message(clean_message(msg)).splitlines()
+	title = lines[0]
+	body = ''
+	if len(lines) > 1:
+		if lines[1].strip():
+			die("Wrong message format, leave an "
+				"empty line between the title "
+				"and the body")
+		body = '\n'.join(lines[2:])
+	return (title, body)
+
+
+# Command-line commands helper classes
+########################################################################
+
+# Base class for commands that just group other subcommands
+#
+# The subcommands are inspected automatically from the derived class by
+# matching the names to the `subcommand_suffix`. For each sub-command, the
+#  method will be called to add options to the command-line
+# parser..
+#
+# Each sub-command is expected to have a certain structure (some methods and/or
+# attributes):
+#
+# `run(parser, args)`
+#   Required method that actually does the command work.
+#   `parser` is the command-line parser instance, and `args` are the parsed
+#   arguments (only the ones specific to that sub-command).
+#
+# `setup_parser(parser)`
+#   Will be called to setup the command-line parser. This is where new
+#   subcommands or specific options can be added to the parser. If it returns
+#   True, then parse_known_args() will be used instead, so you can collect
+#   unknown arguments (stored in args.unknown_args).
+#
+# `cmd_name`
+#   Command name, if not present the name of the class (with the
+#   `subcommand_suffix` removed and all in lowercase) is used as the name.
+#
+# `cmd_title`
+#   A string shown in the help message when listing the group of subcommands
+#   (not required but strongly recommended) for the current class.
+#
+# `cmd_help`
+#   A string describing what this command is for (shown in the help text when
+#   listing subcommands). If not present, the class __doc__ will be used.
+#
+# `cmd_usage`
+#   A usage string to be passed to the parser. If it's not defined, is
+#   generated from the options as usual. %(prog)s can be used to name the
+#   current program (and subcommand).
+#
+# `cmd_required_config`
+#   An optional list of configuration variables that this command needs to work
+#   (if any of the configuration variables in this list is not defined, the
+#   program exists with an error).
+#
+# All methods are expected to be `classmethod`s really.
+class CmdGroup (object):
+
+	subcommand_suffix = 'Cmd'
+
+	@classmethod
+	def setup_parser(cls, parser):
+		partial = False
+		suffix = cls.subcommand_suffix
+		subcommands = [getattr(cls, a) for a in dir(cls)
+				if a.endswith(suffix)]
+		if not subcommands:
+			return
+		title = None
+		if hasattr(cls, 'cmd_title'):
+			title = cls.cmd_title
+		subparsers = parser.add_subparsers(title=title)
+		for cmd in subcommands:
+			name = cmd.__name__.lower()[:-len(suffix)]
+			if hasattr(cmd, 'cmd_name'):
+				name = cmd.cmd_name
+			help = cmd.__doc__
+			if hasattr(cmd, 'cmd_help'):
+				help = cmd.cmd_help
+			kwargs = dict(help=help)
+			if hasattr(cmd, 'cmd_usage'):
+				kwargs['usage'] = cmd.cmd_usage
+			p = subparsers.add_parser(name, **kwargs)
+			partial = cmd.setup_parser(p) or partial
+			if not hasattr(cmd, 'run'):
+				continue
+			if hasattr(cmd, 'cmd_required_config'):
+				def make_closure(cmd):
+					def check_config_and_run(parser, args):
+						for c in cmd.cmd_required_config:
+							config.check(c)
+						cmd.run(parser, args)
+					return check_config_and_run
+				p.set_defaults(run=make_closure(cmd))
+			else:
+				p.set_defaults(run=cmd.run)
+		return partial
+
+# `git hub setup` command implementation
+class SetupCmd (object):
+
+	cmd_help = 'perform an initial setup to connect to GitHub'
+
+	@classmethod
+	def setup_parser(cls, parser):
+		parser.add_argument('-u', '--username',
+			help="GitHub's username (login name). If an e-mail is "
+			"provided instead, a username matching that e-mail "
+			"will be searched and used instead, if found (for "
+			"this to work the e-mail must be part of the public "
+			"profile)")
+		parser.add_argument('-p', '--password',
+			help="GitHub's password (will not be stored)")
+		parser.add_argument('-b', '--baseurl', metavar='URL',
+			help="GitHub's base URL to use to access the API "
+			"(Enterprise servers usually use https://host/api/v3)")
+		group = parser.add_mutually_exclusive_group()
+		group.add_argument('--global',
+			dest='opts', action='store_const', const=['--global'],
+			help="store settings in the global configuration "
+			"(see git config --global for details)")
+		group.add_argument('--system',
+			dest='opts', action='store_const', const=['--system'],
+			help="store settings in the system configuration "
+			"(see git config --system for details)")
+		parser.set_defaults(opts=[])
+
+	@classmethod
+	def run(cls, parser, args):
+		is_global = ('--system' in args.opts or
+				'--global' in args.opts)
+		try:
+			if not is_global:
+				git('rev-parse --git-dir')
+		except GitError as error:
+			errf(error.output)
+			die("Maybe you want to use --global or --system?")
+
+		username = args.username
+		password = args.password
+		if (username is None or password is None) and \
+				not sys.stdin.isatty():
+			die("Can't perform an interactive setup outside a tty")
+		if username is None:
+			username = config.username or getpass.getuser()
+			reply = user_input('GitHub username [%s]: ' % username)
+			if reply:
+				username = reply
+		if password is None:
+			try:
+				password = getpass.getpass('GitHub '
+					'password (will not be stored): ')
+			except EOFError:
+				sys.stdout.write('\n')
+				password = ''
+		if '@' in username:
+			infof("E-mail used to authenticate, trying to "
+					"retrieve the GitHub username...")
+			username = cls.find_username(username)
+			infof("Found: {}", username)
+
+		req.set_basic_auth(username, password)
+
+		note = 'git-hub'
+		if not is_global and config.forkrepo:
+			proj = config.forkrepo.split('/', 1)[1]
+			note += ' (%s)' % proj
+
+		while True:
+			infof("Looking for GitHub authorization token...")
+			auths = dict([(a['note'], a)
+				for a in req.get('/authorizations')])
+
+			if note not in auths:
+				break
+
+			errf("The OAuth token with name '{}' already exists.",
+				note)
+			infof("If you want to create a new one, enter a "
+				"name for it. Otherwise you can go to "
+				"https://github.com/settings/tokens to "
+				"regenerate or delete the token '{}'", note)
+			note = user_input("Enter a new token name (an empty "
+				"name cancels the setup): ")
+
+			if not note:
+				sys.exit(0)
+
+		infof("Creating auth token '{}'", note)
+		auth = req.post('/authorizations', note=note,
+				scopes=['user', 'repo'])
+
+		set_config = lambda k, v: git_config(k, value=v, opts=args.opts)
+
+		set_config('username', username)
+		set_config('oauthtoken', auth['token'])
+		if args.baseurl is not None:
+			set_config('baseurl', args.baseurl)
+
+	@classmethod
+	def find_username(cls, name):
+		users = req.get('/search/users', q=name)['items']
+		users = [u['login'] for u in users]
+		if not users:
+			die("No users found when searching for '{}'", name)
+		if len(users) > 1:
+			die("More than one username found ({}), please try "
+					"again using your username instead",
+					', '.join(users))
+		return users[0].encode('UTF8')
+
+
+# `git hub clone` command implementation
+class CloneCmd (object):
+
+	cmd_required_config = ['username', 'oauthtoken']
+	cmd_help = 'clone a GitHub repository (and fork as needed)'
+	cmd_usage = '%(prog)s [OPTIONS] [GIT CLONE OPTIONS] REPO [DEST]'
+
+	@classmethod
+	def setup_parser(cls, parser):
+		parser.add_argument('repository', metavar='REPO',
+			help="name of the repository to fork; in "
+			"<owner>/<project> format is the upstream repository, "
+			"if only <project> is specified, the <owner> part is "
+			"taken from hub.username")
+		parser.add_argument('dest', metavar='DEST', nargs='?',
+			help="destination directory where to put the new "
+			"cloned repository")
+		parser.add_argument('-r', '--remote', metavar='NAME',
+			help="use NAME as the upstream remote repository name "
+			"instead of the default 'upstream' (for a conventional "
+			"clone) or 'fork' (for a --triangular clone)")
+		parser.add_argument('-t', '--triangular', action="store_true",
+			help="use Git 'triangular workflow' setup, so you can "
+			"push by default to your fork but pull by default "
+			"from 'upstream'")
+		return True # we need to get unknown arguments
+
+	@classmethod
+	def run(cls, parser, args):
+		(urltype, proj) = cls.parse_repo(args.repository)
+		(repo, upstream) = cls.setup_repo(proj)
+		dest = args.dest or repo['name']
+		triangular = cls.check_triangular(config.triangular or
+				args.triangular)
+		if triangular and not upstream:
+			parser.error("Can't use triangular workflow without "
+					"an upstream repo")
+		url = repo['parent'][urltype] if triangular else repo[urltype]
+		infof('Cloning {} to {}', url, dest)
+		git_quiet(1, 'clone', *(args.unknown_args + [url, dest]))
+		if not upstream:
+			# Not a forked repository, nothing else to do
+			return
+		# Complete the repository setup
+		os.chdir(dest)
+		remote = args.remote or ('fork' if triangular else 'upstream')
+		remote_url = repo['parent'][urltype]
+		if triangular:
+			remote_url = repo[urltype]
+			git_config('remote.pushdefault', prefix='', value=remote)
+			git_config('forkremote', value=remote)
+		git_config('urltype', value=urltype)
+		git_config('upstream', value=upstream)
+		git('remote', 'add', remote, remote_url)
+		infof('Fetching from {} ({})', remote, remote_url)
+		git_quiet(1, 'fetch', remote)
+
+	@classmethod
+	def parse_repo(cls, repo):
+		# None means the URL was specified as just 'owner/repo' or
+		# plain 'repo'
+		urltype = config.urltype
+		if repo.endswith('.git'):
+			repo = repo[:-4] # remove suffix
+		if repo.startswith('https://'):
+			urltype = 'clone_url' # how GitHub calls HTTP
+		elif repo.startswith('git:'):
+			urltype = 'git_url'
+		elif ':' in repo:
+			urltype = 'ssh_url'
+		# At this point we need to have an urltype
+		if urltype is None:
+			die("Can't infer a urltype and can't find the config "
+					"key '{}{}' config key in git config. "
+					"Read the man page for details.")
+		# If no / was found, then we assume the owner is the user
+		if '/' not in repo:
+			repo = config.username + '/' + repo
+		# Get just the owner/repo form from the full URL
+		url = urlparse.urlsplit(repo)
+		proj = '/'.join(url.path.split(':')[-1:][0].split('/')[-2:])
+		return (urltype, proj)
+
+	@classmethod
+	def setup_repo(cls, proj):
+		# Own repo
+		if proj.split('/')[0] == config.username:
+			repo = req.get('/repos/' + proj)
+			if repo['fork']:
+				upstream = repo['parent']['full_name']
+			else:
+				upstream = None
+				warnf('Repository {} is not a fork, just '
+					'cloning, upstream will not be set',
+					repo['full_name'])
+		else:
+			upstream = proj
+			for repo in req.get('/repos/' + proj + '/forks'):
+				if repo['owner']['login'] == config.username:
+					break
+			else: # Fork not found
+				infof('Forking {} to {}', upstream,
+					config.username)
+				repo = req.post('/repos/' + upstream + '/forks')
+				infof('New fork at {}', repo['html_url'])
+			repo = req.get('/repos/' + repo['full_name'])
+		return (repo, upstream)
+
+	@classmethod
+	def check_triangular(cls, triangular):
+		if not triangular:
+			return False
+		min_ver = '1.8.3'
+		(cur_ver, ver_ok) = git_check_version(min_ver)
+		if not ver_ok:
+			warnf("Current git version ({}) is too old to support "
+				"--triangular, at least {} is needed. Ignoring "
+				"the --triangular option...", cur_ver, min_ver)
+			return False
+		min_ver = '1.8.4'
+		(cur_ver, ver_ok) = git_check_version(min_ver)
+		pd = git_config('push.default', prefix='', default=None)
+		if not ver_ok and pd == 'simple':
+			warnf("Current git version ({}) has an issue when "
+				"using the option push.default=simple and "
+				"using the --triangular workflow. Please "
+				"use Git {} or newer, or change push.default "
+				"to 'current' for example. Ignoring the "
+				"--triangular option...", cur_ver, min_ver)
+			return False
+		return True
+
+
+# Utility class that group common functionality used by the multiple `git hub
+# issue` (and `git hub pull`) subcommands.
+class IssueUtil (object):
+
+	cmd_required_config = ['upstream', 'oauthtoken']
+	# Since this class is reused by the CmdPull subcommands, we use several
+	# variables to customize the out and help message to adjust to both
+	# issues and pull requests.
+	name = 'issue'
+	gh_path = 'issues'
+	id_var = 'ISSUE'
+	help_msg = '''
+# Please enter the title and description below.
+#
+# The first line is interpreted as the title. An optional description
+# can follow after and empty line.
+#
+# Example:
+#
+#   Some title
+#
+#   Some description that can span several
+#   lines.
+#
+''' + message_markdown_help
+	comment_help_msg = '''
+# Please enter your comment below.
+#
+''' + message_markdown_help
+
+	@classmethod
+	def print_issue_summary(cls, issue):
+		infof(u'[{number}] {title} ({user[login]})\n{}{html_url}',
+				u' ' * (len(str(issue['number'])) + 3),
+				**issue)
+
+	@classmethod
+	def print_issue_header(cls, issue):
+		issue['labels'] = ' '.join(['['+l['name']+']'
+				for l in issue.get('labels', [])])
+		if issue['labels']:
+			issue['labels'] += '\n'
+		infof(u"""
+#{number}: {title}
+================================================================================
+{name} is {state}, was reported by {user[login]} and has {comments} comment(s).
+{labels}<{html_url}>
+
+{body}
+
+""",
+				**issue)
+		if issue['comments'] > 0:
+			infof(u'Comments:')
+
+	@classmethod
+	def print_issue_comment(cls, comment, indent=u''):
+		body = comment['body']
+		body = '\n'.join([indent+'    '+l for l in body.splitlines()])
+		infof(u'{0}On {created_at}, {user[login]}, commented:\n'
+			u'{0}<{html_url}>\n\n{1}\n', indent, body, **comment)
+
+	@classmethod
+	def merge_issue_comments(cls, comments, review_comments):
+		prev_commit_pos = None
+		prev_created = None
+		hunks = dict()
+		new_review_comments = list()
+		for c in review_comments:
+			hunk_id = (c['commit_id'], c['original_commit_id'],
+					c['position'], c['original_position'])
+			if hunk_id in hunks:
+				hunks[hunk_id]['_comments'].append(c)
+			else:
+				c['_comments'] = list()
+				hunks[hunk_id] = c
+				new_review_comments.append(c)
+		comments = comments + new_review_comments
+		comments.sort(key=lambda c: c['created_at'])
+		return comments
+
+	@classmethod
+	def print_issue(cls, issue, comments, review_comments=()):
+		review_comments = list(review_comments)
+		issue = dict(issue)
+		issue['name'] = cls.name.capitalize()
+		issue['comments'] += len(comments) + len(review_comments)
+		cls.print_issue_header(issue)
+		for c in cls.merge_issue_comments(comments, review_comments):
+			infof(u'{}\n', u'-' * 80)
+			if 'diff_hunk' in c:
+				hunk = '\n'.join(c['diff_hunk'].splitlines()[-5:])
+				infof(u'diff --git a/{path} b/{path}\n'
+					u'index {original_commit_id}..{commit_id}\n'
+					u'--- a/{path}\n'
+					u'+++ b/{path}\n'
+					u'{0}\n',
+					hunk, **c)
+				indent = '    '
+				cls.print_issue_comment(c, indent)
+				for cc in c['_comments']:
+					cls.print_issue_comment(cc, indent)
+			else:
+				cls.print_issue_comment(c)
+
+	@classmethod
+	def print_comment(cls, comment):
+		body = comment['body']
+		infof(u'[{id}] {}{} ({user[login]})', body[:60],
+				u'…' if len(body) > 60 else u'',
+				u' ' * (len(str(comment['id'])) + 3),
+				**comment)
+
+	@classmethod
+	def url(cls, number=None):
+		s = '/repos/%s/%s' % (config.upstream, cls.gh_path)
+		if number:
+			s += '/' + number
+		return s
+
+	@classmethod
+	def editor(cls, msg=None):
+		return editor(cls.help_msg, msg)
+
+	@classmethod
+	def comment_editor(cls, msg=None):
+		return editor(cls.comment_help_msg, msg)
+
+	@classmethod
+	def clean_and_post_comment(cls, issue_num, body):
+		# URL fixed to issues, pull requests comments are made through
+		# issues
+		url = '/repos/%s/issues/%s/comments' % (config.upstream,
+				issue_num)
+		body = check_empty_message(clean_message(body))
+		comment = req.post(url, body=body)
+		cls.print_comment(comment)
+
+# `git hub issue` command implementation
+class IssueCmd (CmdGroup):
+
+	cmd_title = 'subcommands to manage issues'
+	cmd_help = 'manage issues'
+
+	class ListCmd (IssueUtil):
+		cmd_help = "show a list of open issues"
+		@classmethod
+		def setup_parser(cls, parser):
+			parser.add_argument('-c', '--closed',
+				action='store_true', default=False,
+				help="show only closed pull requests")
+			parser.add_argument('-C', '--created-by-me',
+				action='store_true',
+				help=("show only %ss created by me" %
+						cls.name))
+			parser.add_argument('-A', '--assigned-to-me',
+				action='store_true',
+				help=("show only %ss assigned to me" %
+						cls.name))
+		@classmethod
+		def run(cls, parser, args):
+			def filter(issue, name):
+				a = issue[name]
+				if a and a['login'] == config.username:
+					return True
+			state = 'closed' if args.closed else 'open'
+			issues = req.get(cls.url(), state=state)
+			if not issues:
+				return
+			if args.created_by_me and args.assigned_to_me:
+				issues = [i for i in issues
+					if filter(i, 'assignee') or
+							filter(i, 'user')]
+			elif args.created_by_me:
+				issues = [i for i in issues
+						if filter(i, 'user')]
+			elif args.assigned_to_me:
+				issues = [i for i in issues
+					if filter(i, 'assignee')]
+			for issue in issues:
+				cls.print_issue_summary(issue)
+
+	class ShowCmd (IssueUtil):
+		cmd_help = "show details for existing issues"
+		@classmethod
+		def setup_parser(cls, parser):
+			parser.add_argument('issues',
+				nargs='+', metavar=cls.id_var,
+				help="number identifying the %s to show"
+						% cls.name)
+			parser.add_argument('--summary',
+				default=False, action='store_true',
+				help="print just a summary of the issue, not "
+				"the full details with comments")
+		@classmethod
+		def run(cls, parser, args):
+			for n in args.issues:
+				issue = req.get(cls.url(n))
+				if args.summary:
+					cls.print_issue_summary(issue)
+					continue
+				c = []
+				if issue['comments'] > 0:
+					c = req.get(cls.url(n) + "/comments")
+				cls.print_issue(issue, c)
+
+	class NewCmd (IssueUtil):
+		cmd_help = "create a new issue"
+		@classmethod
+		def setup_parser(cls, parser):
+			parser.add_argument('-m', '--message', metavar='MSG',
+				help="%s's title (and description); the "
+				"first line is used as the title and "
+				"any text after an empty line is used as "
+				"the optional body" % cls.name)
+			parser.add_argument('-l', '--label', dest='labels',
+				metavar='LABEL', action='append', default=[],
+				help="attach LABEL to the %s (can be "
+				"specified multiple times to set multiple "
+				"labels)" % cls.name)
+			parser.add_argument('-a', '--assign', dest='assignee',
+				metavar='USER',
+				help="assign a user to the %s; must be a "
+				"valid GitHub login name" % cls.name)
+			parser.add_argument('-M', '--milestone', metavar='ID',
+				help="assign the milestone identified by the "
+				"number ID to the %s" % cls.name)
+		@classmethod
+		def run(cls, parser, args):
+			msg = args.message or cls.editor()
+			(title, body) = split_titled_message(msg)
+			issue = req.post(cls.url(), title=title, body=body,
+				assignee=args.assignee, labels=args.labels,
+				milestone=args.milestone)
+			cls.print_issue_summary(issue)
+
+	class UpdateCmd (IssueUtil):
+		cmd_help = "update an existing issue"
+		@classmethod
+		def setup_parser(cls, parser):
+			parser.add_argument('issue', metavar=cls.id_var,
+				help="number identifying the %s to update"
+						% cls.name)
+			parser.add_argument('-m', '--message', metavar='MSG',
+				help="new %s title (and description); the "
+				"first line is used as the title and "
+				"any text after an empty line is used as "
+				"the optional body" % cls.name)
+			parser.add_argument('-e', '--edit-message',
+				action='store_true', default=False,
+				help="open the default $GIT_EDITOR to edit the "
+				"current title (and description) of the %s"
+						% cls.name)
+			group = parser.add_mutually_exclusive_group()
+			group.add_argument('-o', '--open', dest='state',
+				action='store_const', const='open',
+				help="reopen the %s" % cls.name)
+			group.add_argument('-c', '--close', dest='state',
+				action='store_const', const='closed',
+				help="close the %s" % cls.name)
+			parser.add_argument('-l', '--label', dest='labels',
+				metavar='LABEL', action='append',
+				help="if one or more labels are specified, "
+				"they will replace the current %s labels; "
+				"otherwise the labels are unchanged. If one of "
+				"the labels is empty, the labels will be "
+				"cleared (so you can use -l'' to clear the "
+				"labels)" % cls.name)
+			parser.add_argument('-a', '--assign', dest='assignee',
+				metavar='USER',
+				help="assign a user to the %s; must be a "
+				"valid GitHub login name" % cls.name)
+			parser.add_argument('-M', '--milestone', metavar='ID',
+				help="assign the milestone identified by the "
+				"number ID to the %s" % cls.name)
+		@classmethod
+		def run(cls, parser, args):
+			# URL fixed to issues, pull requests updates are made
+			# through issues to allow changing labels, assignee and
+			# milestone (even when GitHub itself doesn't support it
+			# :D)
+			url = '/repos/%s/issues/%s' % (config.upstream,
+					args.issue)
+			params = dict()
+			# Should labels be cleared?
+			if (args.labels and len(args.labels) == 1 and
+					not args.labels[0]):
+				params['labels'] = []
+			elif args.labels:
+				params['labels'] = args.labels
+			if args.state:
+				params['state'] = args.state
+			if args.assignee is not None:
+				params['assignee'] = args.assignee
+			if args.milestone is not None:
+				params['milestone'] = args.milestone
+			msg = args.message
+			if args.edit_message:
+				if not msg:
+					issue = req.get(url)
+					msg = issue['title']
+					if issue['body']:
+						msg += '\n\n' + issue['body']
+				msg = cls.editor(msg)
+			if msg:
+				(title, body) = split_titled_message(msg)
+				params['title'] = title
+				params['body'] = body
+			issue = req.patch(url, **params)
+			cls.print_issue_summary(issue)
+
+	class CommentCmd (IssueUtil):
+		cmd_help = "add a comment to an existing issue"
+		@classmethod
+		def setup_parser(cls, parser):
+			parser.add_argument('issue', metavar=cls.id_var,
+				help="number identifying the %s to comment on"
+						% cls.name)
+			parser.add_argument('-m', '--message', metavar='MSG',
+				help="comment to be added to the %s; if "
+				"this option is not used, the default "
+				"$GIT_EDITOR is opened to write the comment"
+						% cls.name)
+		@classmethod
+		def run(cls, parser, args):
+			body = args.message or cls.comment_editor()
+			cls.clean_and_post_comment(args.issue, body)
+
+	class CloseCmd (IssueUtil):
+		cmd_help = "close an opened issue"
+		@classmethod
+		def setup_parser(cls, parser):
+			parser.add_argument('issue', metavar=cls.id_var,
+				help="number identifying the %s to close"
+						% cls.name)
+			parser.add_argument('-m', '--message', metavar='MSG',
+				help="add a comment to the %s before "
+				"closing it" % cls.name)
+			parser.add_argument('-e', '--edit-message',
+				action='store_true', default=False,
+				help="open the default $GIT_EDITOR to write "
+				"a comment to be added to the %s before "
+				"closing it" % cls.name)
+		@classmethod
+		def run(cls, parser, args):
+			msg = args.message
+			if args.edit_message:
+				msg = cls.comment_editor(msg)
+			if msg:
+				cls.clean_and_post_comment(args.issue, msg)
+			issue = req.patch(cls.url(args.issue), state='closed')
+			cls.print_issue_summary(issue)
+
+
+# Utility class that group common functionality used by the multiple `git hub
+# pull`) subcommands specifically.
+class PullUtil (IssueUtil):
+
+	name = 'pull request'
+	gh_path = 'pulls'
+	id_var = 'PULL'
+	rebase_msg = 'This pull request has been rebased via ' \
+			'`git hub pull rebase`. Original pull request HEAD ' \
+			'was {}, new (rebased) HEAD is {}'
+
+	@classmethod
+	def get_ref(cls, ref='HEAD'):
+		ref_hash = git('rev-parse ' + ref)
+		ref_name = git('rev-parse --abbrev-ref ' + ref)
+		if not ref_name or ref_name == 'HEAD' or ref_hash == ref_name:
+			ref_name = None
+		return ref_hash, ref_name
+
+	@classmethod
+	def tracking_branch(cls, head):
+		if head is None:
+			return None
+		ref = git_config('branch.%s.merge' % head, prefix='')
+		if ref is None:
+			return None
+		# the format is usually a full reference specification, like
+		# "refs/heads/<branch>", we just assume the user is always
+		# using a branch
+		return ref.split('/')[-1]
+
+	# push head to remote_head only if is necessary
+	@classmethod
+	def push(cls, head, remote_head, force):
+		local_hash = git('rev-parse', head)
+		remote_hash = 'x' # dummy variable that doesn't match any git hash
+		remote_branch = '%s/%s' % (config.forkremote, head)
+		if cls.branch_exists(remote_branch):
+			remote_hash = git('rev-parse', remote_branch)
+		if local_hash != remote_hash:
+			infof('Pushing {} to {} in {}', head, remote_head,
+					config.forkremote)
+			git_push(config.forkremote,
+					head+':refs/heads/'+remote_head,
+					force=force)
+
+	@classmethod
+	def branch_exists(cls, branch):
+		status = subprocess.call('git rev-parse --verify --quiet ' +
+				'refs/heads/' + branch + ' > /dev/null',
+				shell=True)
+		return status == 0
+
+	@classmethod
+	def get_default_branch_msg(cls, branch_ref, branch_name):
+		if branch_name is not None:
+			msg = git_config('branch.%s.description' % branch_name,
+					'', '')
+			if msg:
+				return msg
+		return git('log -1 --pretty=format:%s%n%n%b ' + branch_ref)
+
+	@classmethod
+	def get_local_remote_heads(cls, parser, args):
+		head_ref, head_name = cls.get_ref(args.head or 'HEAD')
+		remote_head = args.create_branch or head_name
+		if not remote_head:
+			die("Can't guess remote branch name, please "
+				"use --create-branch to specify one")
+		base = args.base or cls.tracking_branch(head_name) or \
+				config.pullbase
+		gh_head = config.forkrepo.split('/')[0] + ':' + remote_head
+		return head_ref, head_name, remote_head, base, gh_head
+
+# `git hub pull` command implementation
+class PullCmd (IssueCmd):
+
+	cmd_title = 'subcommands to manage pull requests'
+	cmd_help = 'manage pull requests'
+
+	# Most of the commands are just aliases to the git hub issue commands.
+	# We derive from the PullUtil first to get the pull specific variables
+	# (name, gh_path, id_var) with higher priority than the ones in the
+	# IssueCmd subcommands.
+	class ListCmd (PullUtil, IssueCmd.ListCmd):
+		cmd_help = "show a list of open pull requests"
+		pass
+
+	class ShowCmd (PullUtil, IssueCmd.ShowCmd):
+		cmd_help = "show details for existing pull requests"
+		@classmethod
+		def run(cls, parser, args):
+			for n in args.issues:
+				pull = req.get(cls.url(n))
+				if args.summary:
+					cls.print_issue_summary(pull)
+					continue
+				# Damn GitHub doesn't provide labels for
+				# pull request objects
+				issue_url = '/repos/%s/issues/%s' % (
+						config.upstream, n)
+				issue = req.get(issue_url)
+				pull['labels'] = issue.get('labels', [])
+				c = []
+				if pull['comments'] > 0:
+					c = req.get(issue_url + '/comments')
+				ic = []
+				if pull['review_comments'] > 0:
+					ic = req.get(cls.url(n) + "/comments")
+				cls.print_issue(pull, c, ic)
+
+	class UpdateCmd (PullUtil, IssueCmd.UpdateCmd):
+		cmd_help = "update an existing pull request"
+		pass
+
+	class CommentCmd (PullUtil, IssueCmd.CommentCmd):
+		cmd_help = "add a comment to an existing pull request"
+		pass
+
+	class CloseCmd (PullUtil, IssueCmd.CloseCmd):
+		cmd_help = "close an opened pull request"
+		pass
+
+	class NewCmd (PullUtil):
+		cmd_help = "create a new pull request"
+		@classmethod
+		def setup_parser(cls, parser):
+			parser.add_argument('head', metavar='HEAD', nargs='?',
+				help="branch (or git ref) where your changes "
+				"are implemented")
+			parser.add_argument('-m', '--message', metavar='MSG',
+				help="pull request title (and description); "
+				"the first line is used as the pull request "
+				"title and any text after an empty line is "
+				"used as the optional body")
+			parser.add_argument('-b', '--base', metavar='BASE',
+				help="branch (or git ref) you want your "
+				"changes pulled into (uses the tracking "
+				"branch by default, or hub.pullbase if "
+				"there is none, or 'master' as a fallback)")
+			parser.add_argument('-c', '--create-branch',
+				metavar='NAME',
+				help="create a new remote branch with NAME "
+				"as the real head for the pull request instead "
+				"of using the HEAD name passed as 'head'")
+			parser.add_argument('-f', '--force-push',
+				action='store_true', default=False,
+				help="force the push git operation (use with "
+				"care!)")
+		@classmethod
+		def run(cls, parser, args):
+			head_ref, head_name, remote_head, base, gh_head = \
+					cls.get_local_remote_heads(parser, args)
+			msg = args.message
+			if not msg:
+				msg = cls.editor(cls.get_default_branch_msg(
+						head_ref, head_name))
+			(title, body) = split_titled_message(msg)
+			cls.push(head_name or head_ref, remote_head,
+					force=args.force_push)
+			infof("Creating pull request from branch {} to {}:{}",
+					remote_head, config.upstream, base)
+			pull = req.post(cls.url(), head=gh_head, base=base,
+					title=title, body=body)
+			cls.print_issue_summary(pull)
+
+	class AttachCmd (PullUtil):
+		cmd_help = "attach code to an existing issue (convert it " \
+				"to a pull request)"
+		@classmethod
+		def setup_parser(cls, parser):
+			parser.add_argument('issue', metavar='ISSUE',
+				help="pull request ID to attach code to")
+			parser.add_argument('head', metavar='HEAD', nargs='?',
+				help="branch (or git ref) where your changes "
+				"are implemented")
+			parser.add_argument('-m', '--message', metavar='MSG',
+				help="add a comment to the new pull request")
+			parser.add_argument('-e', '--edit-message',
+				action='store_true', default=False,
+				help="open the default $GIT_EDITOR to write "
+				"a comment to be added to the pull request "
+				"after attaching the code to it")
+			parser.add_argument('-b', '--base', metavar='BASE',
+				help="branch (or git ref) you want your "
+				"changes pulled into (uses the tracking "
+				"branch by default, or hub.pullbase if "
+				"there is none, or 'master' as a fallback)")
+			parser.add_argument('-c', '--create-branch',
+				metavar='NAME',
+				help="create a new remote branch with NAME "
+				"as the real head for the pull request instead "
+				"of using the HEAD name passed as 'head'")
+			parser.add_argument('-f', '--force-push',
+				action='store_true', default=False,
+				help="force the push git operation (use with "
+				"care!)")
+		@classmethod
+		def run(cls, parser, args):
+			head_ref, head_name, remote_head, base, gh_head = \
+					cls.get_local_remote_heads(parser, args)
+			msg = args.message
+			if args.edit_message:
+				if not msg:
+					msg = cls.get_default_branch_msg(
+							head_ref, head_name)
+				msg = cls.comment_editor(msg)
+			cls.push(head_name or head_ref, remote_head,
+					force=args.force_push)
+			infof("Attaching commits in branch {} to issue #{} "
+					"(to be merged to {}:{})", remote_head,
+					args.issue, config.upstream, base)
+			pull = req.post(cls.url(), issue=args.issue, base=base,
+					head=gh_head)
+			cls.print_issue_summary(pull)
+			if msg:
+				cls.clean_and_post_comment(args.issue, msg)
+
+	class CheckoutCmd (PullUtil):
+		cmd_help = "checkout the remote branch (head) of the pull request"
+		@classmethod
+		def setup_parser(cls, parser):
+			parser.add_argument('pull',
+				help="number identifying the pull request to checkout")
+			parser.add_argument("args",
+				nargs=argparse.REMAINDER,
+				help="any extra arguments to pass to `git checkout`")
+		@classmethod
+		def run(cls, parser, args):
+			pull = req.get(cls.url(args.pull))
+
+			if pull['state'] == 'closed':
+				warnf('Checking out a closed pull request '
+					'(closed at {closed_at})!', **pull)
+
+			remote_url = pull['head']['repo'][config.urltype]
+			remote_branch = pull['head']['ref']
+
+			infof('Fetching {} from {}', remote_branch, remote_url)
+
+			git_quiet(1, 'fetch', remote_url, remote_branch)
+			git_quiet(1, 'checkout', 'FETCH_HEAD', *args.args)
+
+# This class is top-level just for convenience, because is too big. Is added to
+# PullCmd after is completely defined!
+#
+# This command is by far the most complex part of this program. Since a rebase
+# can fail (because of conflicts) and the user gets a prompt back, there are
+# millions of possible situations when we try to resume the rebase. For this
+# reason this command is divided in several small methods that are reused as
+# much as possible (usually by using the command-line option `action` to figure
+# out what to do next).
+#
+# Error (exception) handling in these methods is EXTREMELY important too. If
+# anything fails badly, we need to restore the user repo to its original state,
+# but if the failure is because of conflicts, we only have to do partial
+# cleanup (or no cleanup at all). For this reason is the class variable
+# `in_conflict` defined. When we are recovering from a conflict, this flag is
+# set to true so the normal cleanup is not done (or done partially).
+class RebaseCmd (PullUtil):
+	cmd_help = "close a pull request by rebasing its base branch"
+
+	stash_msg_base = "stashed by git hub pull rebase"
+
+	in_conflict = False
+
+	# These variables are stored in the .git/HUB_PULL_REBASING file if the
+	# rebasing was interrupted due to conflicts. When the rebasing is
+	# resumed (via --continue or --skip) these variables are loaded from
+	# that file.
+	saved_old_ref = None
+	saved_message = None
+	saved_edit_msg = None
+	saved_pause = None
+	saved_delete_branch = None
+	# this variable is a bit different, as is read/write by
+	# read_rebasing_file()/create_rebasing_file() directly. This is not
+	# ideal and should be addressed when #35 is fixed.
+	in_pause = False
+
+	@classmethod
+	def setup_parser(cls, parser):
+		group = parser.add_mutually_exclusive_group(required=True)
+		group.add_argument('pull',
+			metavar=cls.id_var, nargs='?',
+			help="number identifying the pull request to rebase")
+		group.add_argument('--continue', dest='action',
+			action='store_const', const='--continue',
+			help="continue an ongoing rebase")
+		group.add_argument('--abort', dest='action',
+			action='store_const', const='--abort',
+			help="abort an ongoing rebase")
+		group.add_argument('--skip', dest='action',
+			action='store_const', const='--skip',
+			help="skip current patch and continue")
+		parser.add_argument('-m', '--message', metavar='MSG',
+			help="add a comment to the pull request before closing "
+			"it; if not specified a default comment is added (to "
+			"avoid adding a comment at all use -m'')")
+		parser.add_argument('-e', '--edit-message',
+			action='store_true', default=False,
+			help="open the default $GIT_EDITOR to edit the comment "
+			"to be added to the pull request before closing it")
+		parser.add_argument('--force-push',
+			action='store_true', default=False,
+			help="force the push git operation (use with care!)")
+		parser.add_argument('-p', '--pause',
+			action='store_true', default=False,
+			help="pause the rebase just before the results are "
+			"pushed (useful for testing)")
+		parser.add_argument('-u', '--stash-include-untracked',
+			action='store_true', default=False,
+			help="uses git stash save --include-untracked when "
+			"stashing local changes")
+		parser.add_argument('-a', '--stash-all',
+			action='store_true', default=False,
+			help="uses git stash save --all when stashing local "
+			"changes")
+		parser.add_argument('-D', '--delete-branch',
+			action='store_true', default=False,
+			help="removes the PR branch, like the Delete "
+			"Branch button (TM)")
+
+	@classmethod
+	def run(cls, parser, args):
+		ongoing_rebase_pull_id = cls.read_rebasing_file()
+		if args.pull is not None and ongoing_rebase_pull_id is not None:
+			die("Another pull rebase is in progress, can't start "
+				"a new one")
+		if (args.pull is None and ongoing_rebase_pull_id is None and
+					args.action != '--abort'):
+			die("Can't {}, no pull rebase is in progress",
+				args.action)
+
+		if args.pull is not None:
+			if cls.rebasing():
+				die("Can't start a pull rebase while a "
+					"regular rebase is in progress")
+			cls.start_rebase(args)
+		else:
+			args.pull = ongoing_rebase_pull_id
+			if args.message is None:
+				args.message = cls.saved_message
+			if not args.edit_message:
+				args.edit_message = cls.saved_edit_msg
+			if not args.pause:
+				args.pause = cls.saved_pause
+			if not args.delete_branch:
+				args.delete_branch = cls.saved_delete_branch
+
+			if args.action == '--abort':
+				cls.abort_rebase(args)
+			else:
+				cls.check_continue_rebasing(args)
+				cls.start_rebase(args)
+
+	# Check if we are able to continue an ongoing rebase (if we can't for
+	# any reason, we quit, this function only returns on success). On some
+	# conditions the user is asked about what to do.
+	@classmethod
+	def check_continue_rebasing(cls, args):
+		if cls.rebasing():
+			return
+		head_ref, head_name = cls.get_ref()
+		if args.action == '--continue' and \
+				cls.get_tmp_ref(args.pull) == head_name:
+			return
+		answer = ask("No rebase in progress found for this pull "
+			"rebase, do you want to continue as if the rebase was "
+			"successfully finished, abort the rebasing cancelling "
+			"the whole rebase or just quit?", default="quit",
+			options=['continue', 'abort', 'quit'])
+		if answer is None:
+			die("No rebase in progress found for this "
+				"pull rebase, don't know how to proceed")
+		if answer == 'abort':
+			cls.abort_rebase(args)
+			sys.exit(0)
+
+	# Abort an ongoing rebase by trying to return to the state the repo was
+	# before the rebasing started (reset to the previous head, remove
+	# temporary branches, restore the stashed changes, etc.).
+	@classmethod
+	def abort_rebase(cls, args):
+		aborted = cls.force_rebase_abort()
+		if args.pull is not None and cls.saved_old_ref is not None:
+			cls.clean_ongoing_rebase(args.pull, cls.saved_old_ref,
+					warnf)
+			aborted = True
+		aborted = cls.remove_rebasing_file() or aborted
+		aborted = cls.pop_stashed() or aborted
+		if not aborted:
+			die("Nothing done, maybe there isn't an ongoing rebase "
+				"of a pull request?")
+
+	# Tries to (restart a rebase (or continue it, depending on the
+	# args.action). If is starting a new rebase, it stash any local changes
+	# and creates a branch, rebase, etc.
+	@classmethod
+	def start_rebase(cls, args):
+		starting = args.action is None
+		pull = cls.get_pull(args.pull, starting)
+		if starting:
+			cls.stash(pull, args)
+		try:
+			pushed_sha = cls.fetch_rebase_push(args, pull)
+		finally:
+			if not cls.in_conflict and not cls.in_pause:
+				cls.pop_stashed()
+		try:
+			pull = cls.update_github(args, pull, pushed_sha)
+		except (OSError, IOError) as e:
+			errf("GitHub information couldn't be updated "
+				"correctly, but the pull request was "
+				"successfully rebased ({}).", e)
+			raise e
+		finally:
+			cls.print_issue_summary(pull)
+
+	# Get the pull request object from GitHub performing some sanity checks
+	# (if it's already merged, or closed or in a mergeable state). If
+	# the state is not the ideal, it asks the user how to proceed.
+	#
+	# If `check_all` is False, the only check performed is if it is already
+	# merged).
+	#
+	# If the pull request can't be merged (or the user decided to cancel),
+	# this function terminates the program (it returns only on success).
+	@classmethod
+	def get_pull(cls, pull_id, check_all):
+		pull = req.get(cls.url(pull_id))
+		if pull['merged']:
+			infof("Nothing to do, already merged (--abort to get "
+					"back to normal)")
+			sys.exit(0)
+		if not check_all:
+			return pull
+		if pull['state'] == 'closed':
+			answer = ask("The pull request is closed, are you sure "
+				"you want to rebase it?", default="no")
+			if answer is None:
+				die("Can't rebase/merge, pull request is closed")
+			elif answer == 'no':
+				sys.exit(0)
+		if not pull['mergeable']:
+			answer = ask("The pull request is not in a mergeable "
+				"state (there are probably conflicts to "
+				"resolve), do you want to continue anyway?",
+				default="no")
+			if answer is None:
+				die("Can't continue, the pull request isn't "
+					"in a mergeable state")
+			elif answer == 'no':
+				sys.exit(0)
+		# Check status
+		status = req.get('/repos/%s/commits/%s/status' %
+				(config.upstream, pull['head']['sha']))
+		state = status['state']
+		statuses = status['statuses']
+		if len(statuses) > 0 and state != 'success':
+			url = statuses[0]['target_url']
+			answer = ask("The current pull request status is '%s' "
+				"(take a look at %s for more information), "
+				"do you want to continue anyway?" %
+				(state, url), default="no")
+			if answer is None:
+				die("Can't continue, the pull request status "
+					"is '{}' (take a look at {} for more "
+					"information)", state, url)
+			elif answer == 'no':
+				sys.exit(0)
+		return pull
+
+	# Returns the name of the temporary branch to work on while doing the
+	# rebase
+	@classmethod
+	def get_tmp_ref(cls, pull_id):
+		return 'git-hub-pull-rebase-%s' % pull_id
+
+	# Pop stashed changes (if any). Warns (but doesn't pop the stashed
+	# changes) if they are present in the stash, but not in the top.
+	#
+	# Returns True if it was successfully popped, False otherwise.
+	@classmethod
+	def pop_stashed(cls):
+		stashed_index = cls.get_stashed_state()
+		if stashed_index == 0:
+			git_quiet(2, 'stash', 'pop')
+			return True
+		elif stashed_index > 0:
+			warnf("Stash produced by this command found "
+				"(stash@{{}}) but not as the last stashed "
+				"changes, leaving the stashed as it is",
+				stashed_index)
+		return False
+
+	# Returns the index of the stash created by this program in the stash
+	# in the stack, or None if not present at all. 0 means is the latest
+	# stash in the stash stack.
+	@classmethod
+	def get_stashed_state(cls):
+		stash_msg_re = re.compile(r'.*' + cls.stash_msg_base + r' \d+')
+		stashs = git('stash', 'list').splitlines()
+		for i, stash in enumerate(stashs):
+			if stash_msg_re.match(stash):
+				return i
+		return None
+
+	# Returns a string with the message to use when stashing local changes.
+	@classmethod
+	def stash_msg(cls, pull):
+		return '%s %s' % (cls.stash_msg_base, pull['number'])
+
+	# Do a git stash using the required options
+	@classmethod
+	def stash(cls, pull, args):
+		git_args = [2, 'stash', 'save']
+		if args.stash_include_untracked:
+			git_args.append('--include-untracked')
+		if args.stash_all:
+			git_args.append('--all')
+		git_args.append(cls.stash_msg(pull))
+		try:
+			git_quiet(*git_args)
+		except GitError as e:
+			errf("Couldn't stash current changes, try with "
+				"--stash-include-untracked or --stash-all "
+				"if you had conflicts")
+			raise e
+
+	# Performs the whole rebasing procedure, including fetching the branch
+	# to be rebased, creating a temporary branch for it, fetching the base
+	# branch, rebasing to the base branch and pushing the results.
+	#
+	# The number of operations performed can vary depending on the
+	# `args.action` (i.e. if we are --continue'ing or --skip'ping
+	# a rebase). If the rebase is being continued, only the steps starting
+	# with the rebasing itself are performed.
+	#
+	# Returns the new HEAD hash after the rebase is completed.
+	@classmethod
+	def fetch_rebase_push(cls, args, pull):
+		if pull['head']['repo'] is None:
+			die("It seems like the repository referenced by "
+				"this pull request has been deleted")
+		starting = args.action is None
+		head_url = pull['head']['repo'][config.urltype]
+		head_ref = pull['head']['ref']
+		base_url = pull['base']['repo'][config.urltype]
+		base_ref = pull['base']['ref']
+		tmp_ref = cls.get_tmp_ref(pull['number'])
+		old_ref = cls.saved_old_ref
+		if old_ref is None:
+			old_ref_ref, old_ref_name = cls.get_ref()
+			old_ref = old_ref_name or old_ref_ref
+
+		if starting:
+			infof('Fetching {} from {}', head_ref, head_url)
+			git_quiet(1, 'fetch', head_url, head_ref)
+			git_quiet(1, 'checkout', '-b', tmp_ref,
+				'FETCH_HEAD')
+		try:
+			if starting:
+				infof('Rebasing to {} in {}',
+						base_ref, base_url)
+				git_quiet(1, 'fetch', base_url, base_ref)
+				cls.create_rebasing_file(pull, args, old_ref)
+			# Only run the rebase if we are not continuing with
+			# a pull rebase that the user finished rebasing using
+			# a plain git rebase --continue
+			if starting or cls.rebasing():
+				cls.rebase(args, pull)
+			if args.pause and not cls.in_pause:
+				cls.in_pause = True
+				# Re-create the rebasing file as we are going
+				# to pause
+				cls.remove_rebasing_file()
+				cls.create_rebasing_file(pull, args, old_ref)
+				interrupt("Rebase done, now --pause'ing. "
+					'Use --continue {}when done.',
+					'' if starting else 'once more ')
+			# If we were paused, remove the rebasing file that we
+			# just re-created
+			if cls.in_pause:
+				cls.in_pause = False
+				cls.remove_rebasing_file()
+			infof('Pushing results to {} in {}',
+					base_ref, base_url)
+			git_push(base_url, 'HEAD:' + base_ref,
+					force=args.force_push)
+			if args.delete_branch:
+				infof('Removing pull request branch {} in {}',
+						head_ref, head_url)
+				try:
+					git_push(head_url, ':' + head_ref,
+							force=args.force_push)
+				except GitError as e:
+					warnf('Error removing branch: {}', e)
+			return git('rev-parse HEAD')
+		finally:
+			if not cls.in_conflict and not cls.in_pause:
+				cls.clean_ongoing_rebase(pull['number'], old_ref)
+
+	# Reverts the operations done by fetch_rebase_push().
+	@classmethod
+	def clean_ongoing_rebase(cls, pull_id, old_ref, errfunc=die):
+		tmp_ref = cls.get_tmp_ref(pull_id)
+		git_quiet(1, 'reset', '--hard')
+		try:
+			git_quiet(1, 'checkout', old_ref)
+		except subprocess.CalledProcessError as e:
+			errfunc("Can't checkout '{}', maybe it was removed "
+				"during the rebase? {}",  old_ref, e)
+		if cls.branch_exists(tmp_ref):
+			git('branch', '-D', tmp_ref)
+
+	# Performs the rebasing itself. Sets the `in_conflict` flag if
+	# a conflict is detected.
+	@classmethod
+	def rebase(cls, args, pull):
+		starting = args.action is None
+		try:
+			if starting:
+				a = []
+				if config.forcerebase:
+					a.append('--force')
+				a.append('FETCH_HEAD')
+				git_quiet(1, 'rebase', *a)
+			else:
+				git('rebase', args.action)
+		except subprocess.CalledProcessError as e:
+			if e.returncode == 1 and cls.rebasing():
+				cls.in_conflict = True
+				die("Conflict detected, resolve "
+					"conflicts and run git hub "
+					"pull rebase --continue to "
+					"proceed")
+			raise e
+		finally:
+			if not cls.in_conflict:
+				# Always try to abort the rebasing, in case
+				# there was an error
+				cls.remove_rebasing_file()
+				cls.force_rebase_abort()
+
+	# Run git rebase --abort without complaining if it fails.
+	@classmethod
+	def force_rebase_abort(cls):
+		try:
+			git('rebase', '--abort', stderr=subprocess.STDOUT)
+		except subprocess.CalledProcessError:
+			return False
+		return True
+
+	# Do all the GitHub part of the rebasing (closing the rebase, adding
+	# a comment including opening the editor if needed to get the message).
+	@classmethod
+	def update_github(cls, args, pull, pushed_sha):
+		pull_sha = pull['head']['sha']
+		msg = args.message
+		if msg is None and pull_sha != pushed_sha:
+			msg = cls.rebase_msg.format(pull_sha, pushed_sha)
+		if args.edit_message:
+			msg = cls.comment_editor(msg)
+		if msg:
+			cls.clean_and_post_comment(args.pull, msg)
+		pull = req.get(cls.url(args.pull))
+		if pull['state'] == 'open' and pull_sha != pushed_sha:
+			pull = req.patch(cls.url(args.pull),
+					state='closed')
+		return pull
+
+	# Returns True if there is a (pure) `git rebase` going on (not
+	# necessarily a `git hub pull rebase`).
+	@classmethod
+	def rebasing(cls):
+		return os.path.exists(git_dir()+'/rebase-apply/rebasing')
+
+	# Returns the file name used to store `git hub pull rebase` metadata
+	# (the sole presence of this file indicates there is a `git hub pull
+	# rebase` going on).
+	@classmethod
+	def rebasing_file_name(cls):
+		return os.path.join(git_dir(), 'HUB_PULL_REBASING')
+
+	# Reads and parses the contents of the `rebasing_file`, returning them
+	# as variables, if the file exists.
+	#
+	# If the file exists, the class variables `saved_old_ref`,
+	# `saved_edit_msg` and `saved_message` are filled with the file
+	# contents and the pull request ID that's being rebased is returned.
+	# Otherwise it just returns None and leaves the class variables alone.
+	@classmethod
+	def read_rebasing_file(cls):
+		fname = cls.rebasing_file_name()
+		if os.path.exists(fname):
+			try:
+				with file(fname) as f:
+					# id read as string
+					pull_id = f.readline()[:-1] # strip \n
+					cls.saved_old_ref = f.readline()[:-1]
+					assert cls.saved_old_ref
+					pause = f.readline()[:-1]
+					cls.saved_pause = (pause == "True")
+					delete_branch = f.readline()[:-1]
+					cls.saved_delete_branch = (delete_branch == "True")
+					in_pause = f.readline()[:-1]
+					cls.in_pause = (in_pause == "True")
+					edit_msg = f.readline()[:-1]
+					cls.saved_edit_msg = (edit_msg == "True")
+					msg = f.read()
+					if msg == '\n':
+						msg = ''
+					elif not msg:
+						msg = None
+					cls.saved_message = msg
+					return pull_id
+			except EnvironmentError as e:
+				die("Error reading pull rebase information "
+					"file '{}': {}", fname, e)
+		return None
+
+	# Creates the `rebasing_file` storing: the `pull` ID, the `old_ref`
+	# (the hash of the HEAD commit before the rebase was started),
+	# the `args.edit_message` flag and the `args.message` text. It fails
+	# (and exits) if the file was already present.
+	@classmethod
+	def create_rebasing_file(cls, pull, args, old_ref):
+		fname = cls.rebasing_file_name()
+		try:
+			fd = os.open(cls.rebasing_file_name(),
+					os.O_WRONLY | os.O_CREAT | os.O_EXCL,
+					0o777)
+			with os.fdopen(fd, 'w') as f:
+				# id written as string
+				f.write(str(pull['number']) + '\n')
+				f.write(old_ref + '\n')
+				f.write(repr(args.pause) + '\n')
+				f.write(repr(args.delete_branch) + '\n')
+				f.write(repr(cls.in_pause) + '\n')
+				f.write(repr(args.edit_message) + '\n')
+				if (args.message is not None):
+					f.write(args.message + '\n')
+		except EnvironmentError as e:
+			die("Error writing pull rebase information "
+				"file '{}': {}", fname, e)
+
+	# Removes the `rebasing_file` from the filesystem.
+	#
+	# Returns True if it was successfully removed, False if it didn't exist
+	# and terminates the program if there is another I/O error.
+	@classmethod
+	def remove_rebasing_file(cls):
+		fname = cls.rebasing_file_name()
+		if not os.path.exists(fname):
+			return False
+		try:
+			os.unlink(fname)
+		except EnvironmentError as e:
+			die("Error removing pull rebase information "
+				"file '{}': {}", fname, e)
+		return True
+# and we finally add it to the PullCmd class as a member
+PullCmd.RebaseCmd = RebaseCmd
+
+
+# `git hub` command implementation
+class HubCmd (CmdGroup):
+	cmd_title = "subcommands"
+	cmd_help = "git command line interface to GitHub"
+	SetupCmd = SetupCmd
+	CloneCmd = CloneCmd
+	IssueCmd = IssueCmd
+	PullCmd = PullCmd
+
+
+def main():
+	global args, config, req, verbose
+
+	parser = argparse.ArgumentParser(
+			description='Git command line interface to GitHub')
+	parser.add_argument('--version', action='version', version=VERSION)
+	parser.add_argument('-v', '--verbose', action='count', default=INFO,
+		help="be more verbose (can be specified multiple times to get "
+		"extra verbosity)")
+	parser.add_argument('-s', '--silent', action='count', default=0,
+		help="be less verbose (can be specified multiple times to get "
+		"less verbosity)")
+	partial = HubCmd.setup_parser(parser)
+	if partial:
+		args, unknown_args = parser.parse_known_args()
+		args.unknown_args = unknown_args
+	else:
+		args = parser.parse_args()
+	verbose = args.verbose - args.silent
+
+	config = Config()
+
+	req = RequestManager(config.baseurl, config.oauthtoken)
+
+	# Temporary warning to note the configuration variable changes
+	if git_config('password') is not None:
+		warnf('It looks like your {0}password configuration '
+			'variable is set.\nThis variable is not used '
+			'anymore, you might want to delete it.\nFor example: '
+			'git config --global --unset {0}password',
+			GIT_CONFIG_PREFIX)
+
+	args.run(parser, args)
+
+
+# Entry point of the program, just calls main() and handles errors.
+if __name__ == '__main__':
+	try:
+		main()
+	except urllib2.HTTPError as error:
+		try:
+			body = error.read()
+			err = json.loads(body)
+			prefix = 'GitHub error: '
+			error_printed = False
+			if 'message' in err:
+				errf('{}{message}', prefix, **err)
+				error_printed = True
+			if 'errors' in err:
+				for e in err['errors']:
+					if 'message' in err:
+						errf('{}{message}',
+							' ' * len(prefix), **e)
+						error_printed = True
+			if not error_printed:
+				errf('{} for {}: {}', error, error.geturl(), body)
+			else:
+				debugf('{}', error)
+			debugf('{}', error.geturl())
+			debugf('{}', pformat(error.headers))
+			debugf('{}', error.read())
+		except:
+			errf('{}', error)
+			errf('{}', error.geturl())
+			errf('{}', pformat(error.headers))
+			errf('{}', body)
+			sys.exit(3)
+		sys.exit(4)
+	except urllib2.URLError as error:
+		errf('Network error: {}', error)
+		sys.exit(5)
+	except KeyboardInterrupt:
+		sys.exit(6)
+	except GitError as error:
+		errf('{} failed (return code: {})',
+			' '.join(error.cmd), error.returncode)
+		if verbose >= ERR:
+			sys.stderr.write(error.output + '\n')
+		sys.exit(7)
+	except InterruptException as error:
+		infof('{}', error)
+		sys.exit(0)
+
+

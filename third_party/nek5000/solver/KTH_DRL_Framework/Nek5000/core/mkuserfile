@@ -1,0 +1,224 @@
+#!/bin/bash
+# tweak .usr (actually, .f ) file
+if echo $PPS | grep -q 'CVODE' ; then
+   CVODE=1
+else
+   CVODE=0
+fi
+
+if echo $PPS | grep -q 'CMT' ; then
+   CMT=1
+else
+   CMT=0
+fi
+
+rm -f $CASENAME.f
+cp -pv $CASENAME.usr $CASENAME.f
+
+if ! cat $CASENAME.f | grep -qi "subroutine.*uservp" ; then
+cat >> $CASENAME.f << _ACEOF
+
+c automatically added by makenek
+      subroutine uservp(ix,iy,iz,eg)
+
+      return
+      end
+_ACEOF
+fi
+
+if ! cat $CASENAME.f | grep -qi "subroutine.*userf" ; then
+cat >> $CASENAME.f << _ACEOF
+
+c automatically added by makenek
+      subroutine userf(ix,iy,iz,eg)
+
+      return
+      end
+_ACEOF
+fi
+
+if ! cat $CASENAME.f | grep -qi "subroutine.*userq" ; then
+cat >> $CASENAME.f << _ACEOF
+
+c automatically added by makenek
+      subroutine userq(ix,iy,iz,eg)
+
+      return
+      end
+_ACEOF
+fi
+
+if ! cat $CASENAME.f | grep -qi "subroutine.*useric" ; then
+cat >> $CASENAME.f << _ACEOF
+
+c automatically added by makenek
+      subroutine useric(ix,iy,iz,eg) 
+
+      return
+      end
+_ACEOF
+fi
+
+if ! cat $CASENAME.f | grep -qi "subroutine.*userbc" ; then
+cat >> $CASENAME.f << _ACEOF
+
+c automatically added by makenek
+      subroutine userbc(ix,iy,iz,iside,eg)
+
+      return
+      end
+_ACEOF
+fi
+
+if ! cat $CASENAME.f | grep -qi "subroutine.*userchk" ; then
+cat >> $CASENAME.f << _ACEOF
+
+c automatically added by makenek
+      subroutine userchk() 
+
+      return
+      end
+_ACEOF
+fi
+
+if ! cat $CASENAME.f | grep -qi "subroutine.*usrdat0" ; then
+cat >> $CASENAME.f << _ACEOF
+
+c automatically added by makenek
+      subroutine usrdat0() 
+
+      return
+      end
+_ACEOF
+fi
+
+if ! cat $CASENAME.f | grep -qi "subroutine.*usrdat" ; then
+cat >> $CASENAME.f << _ACEOF
+
+c automatically added by makenek
+      subroutine usrdat() 
+
+      return
+      end
+_ACEOF
+fi
+
+if ! cat $CASENAME.f | grep -qi "subroutine.*usrdat2" ; then
+cat >> $CASENAME.f << _ACEOF
+
+c automatically added by makenek
+      subroutine usrdat2() 
+
+      return
+      end
+_ACEOF
+fi
+
+if ! cat $CASENAME.f | grep -qi "subroutine.*usrdat3" ; then
+cat >> $CASENAME.f << _ACEOF
+
+c automatically added by makenek
+      subroutine usrdat3 
+
+      return
+      end
+_ACEOF
+fi
+
+if ! cat $CASENAME.f | grep -qi "subroutine.*usrsetvert" ; then
+cat >> $CASENAME.f << _ACEOF
+
+c automatically added by makenek
+      subroutine usrsetvert(glo_num,nel,nx,ny,nz) ! to modify glo_num
+      integer*8 glo_num(1)
+
+      return
+      end
+_ACEOF
+fi
+
+if ! cat $CASENAME.f | grep -qi "subroutine.*userqtl" ; then
+cat >> $CASENAME.f << _ACEOF
+
+c automatically added by makenek
+      subroutine userqtl
+
+      call userqtl_scig
+
+      return
+      end
+_ACEOF
+fi
+
+if [ $CVODE -ne 0 ]; then
+
+if ! cat $CASENAME.f | grep -qi "^#include.*cvode_aux.*\.h" ; then
+cat >> $CASENAME.f << _ACEOF
+
+c automatically added by makenek
+#include "cvode_aux.h"
+_ACEOF
+fi
+
+if ! cat $CASENAME.f | grep -qi "^#include.*cvode_jtimes.*\.h" ; then
+cat >> $CASENAME.f << _ACEOF
+
+c automatically added by makenek
+#include "cvode_jtimes.h"
+_ACEOF
+fi
+
+if ! cat $CASENAME.f | grep -qi "^#include.*cvode_preco.*\.h" ; then
+cat >> $CASENAME.f << _ACEOF
+
+c automatically added by makenek
+#include "cvode_preco_dummy.h"
+_ACEOF
+fi
+
+fi
+
+if [ $CMT -ne 0 ]; then
+
+if ! cat $CASENAME.f | grep -qi "subroutine.*cmt_usrflt" ; then
+cat >> $CASENAME.f << _ACEOF
+
+c automatically added by makenek
+      subroutine cmt_usrflt(rmult) ! user defined filter
+      include 'SIZE'
+      real rmult(lx1)
+      call rone(rmult,lx1)
+      return
+      end
+_ACEOF
+fi
+
+if ! cat $CASENAME.f | grep -qi "subroutine.*cmt_userEOS" ; then
+cat >> $CASENAME.f << _ACEOF
+
+c automatically added by makenek
+      subroutine cmt_userEOS ! user defined EOS 
+
+      return
+      end
+_ACEOF
+fi
+
+if ! cat $CASENAME.f | grep -qi "subroutine.*cmtchk" ; then
+cat >> $CASENAME.f << _ACEOF
+
+c automatically added by makenek
+      subroutine cmtchk
+      include 'SIZE'
+      include 'TOTAL'
+      include 'CMTDATA'
+
+      ifxyo=.true.
+      if (istep.gt.1) ifxyo=.false.
+
+      return
+      end
+_ACEOF
+fi
+
+fi

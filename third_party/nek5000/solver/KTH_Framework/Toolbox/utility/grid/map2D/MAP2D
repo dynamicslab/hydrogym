@@ -1,0 +1,40 @@
+!> @file MAP2D
+!! @ingroup map2d
+!! @brief Include file with parameter and common block definitions for
+!!  2D mapping
+!! @author Adam Peplinski
+!! @date May 29, 2018
+!=======================================================================
+!     module id and name
+      integer map2d_id
+      character*(*) map2d_name
+      parameter(map2d_name='MAP2D')
+
+!     timer id
+      integer map2d_tmr_id
+
+!     initialisation flag
+      logical map2d_ifinit
+
+!     element mapping
+      integer map2d_idir        ! uniform direction
+      integer map2d_lnum        ! number of locally unique 2D elements
+      integer map2d_gnum        ! number of globally unique 2D elements
+      integer map2d_lown        ! number of elements owned by NID
+      integer map2d_lmap(LELT)  ! local map of elements 3D => 2D
+      integer map2d_gmap(LELT)  ! local => global map
+      integer map2d_own(LELT)   ! global ownership
+
+!     2D coordinates
+      real map2d_xm1(lx1,lz1,lelt) ! coordinates of 2D owned elements
+      real map2d_ym1(lx1,lz1,lelt)
+      
+      
+!     common block section
+      common /map2di/ map2d_id, map2d_tmr_id,
+     $     map2d_idir, map2d_lnum, map2d_gnum, map2d_lown, 
+     $     map2d_lmap, map2d_gmap, map2d_own
+
+      common /map2dr/ map2d_xm1, map2d_ym1
+      
+      common /map2dl/ map2d_ifinit

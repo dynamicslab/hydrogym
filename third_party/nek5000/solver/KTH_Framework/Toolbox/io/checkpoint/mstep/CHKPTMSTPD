@@ -1,0 +1,42 @@
+!> @file CHKPTMSTPD
+!! @ingroup chkpoint_mstep
+!! @brief Include file for multistep checkpointing
+!! @author Adam Peplinski
+!! @date Feb 6, 2017
+!=======================================================================
+!     module id and name
+      integer chpm_id
+      character*(*) chpm_name
+      parameter(chpm_name='MSTEP')
+
+!     timer id
+      integer chpm_tread_id, chpm_twrite_id
+
+!     initialisation flag
+      logical chpm_ifinit
+
+!     module variable section
+!     max number of snapshots in a single set
+      integer chpm_snmax
+      parameter  (chpm_snmax=3)
+
+!     current number of snapshots in a single set
+      integer chpm_nsnap
+
+!     time step for old simulation (used during restart)
+      real chpm_dtstep(chpm_snmax)
+
+!     marker of the pressure mesh      
+      logical chpm_if_pmesh
+
+!     max number of files in a snapshot (DNS, perturbation, mhd..)
+      integer chkptnfmax
+      parameter (chkptnfmax=2)
+
+!     common blocks
+      common /CHKPTMFI/ chpm_id, chpm_tread_id, chpm_twrite_id, 
+     $   chpm_nsnap
+
+      common /CHKPTMFR/ chpm_dtstep
+
+      common /CHKPTMFL/ chpm_ifinit, chpm_if_pmesh

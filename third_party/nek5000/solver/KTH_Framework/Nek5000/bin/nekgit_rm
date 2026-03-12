@@ -1,0 +1,15 @@
+#!/bin/bash
+
+# first do some checks ...
+if [ $# -ne 1 ]; then
+  echo "deletes local and remote branch"
+  echo "usage: nekgit_rm <branch name>"
+  echo "       e.g. nekgit_rm fix123"
+  echo ""
+  exit 1
+fi
+
+git branch -D $1
+if [ $? -eq 0 ]; then
+  git push myfork :$1
+fi

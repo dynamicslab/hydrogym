@@ -1,0 +1,62 @@
+The nomenclature of the fields gathered by the stats module.
+The number on the left gives corresponds to the field number in the
+sts file when 2D stats are used.
+The grouping of the fields across the s01*-s11* files when the 3D stats
+are used is given on the right.
+Please note that there is no abuse of notation in the names of the quantities,
+ e.g. <uu> actually means <uu> and not <u'u'>.
+
+% 1.  <u>           # s01 file for 3D stats
+% 2.  <v>           
+% 3.  <w>           
+% 4.  <p>           
+
+% 5.  <uu>          # s02 file for 3D stats
+% 6.  <vv>          
+% 7.  <ww>          
+% 8.  <pp>          
+
+% 9.  <uv>          # s03 file for 3D stats 
+% 10. <vw>          
+% 11. <uw>          
+% 12. <pu>          
+
+% 13. <pv>          # s04 file for 3D stats 
+% 14. <pw>          
+% 15. <pdudx>       
+% 16. <pdudy>       
+
+% 17. <pdudz>       # s05 file for 3D stats 
+% 18. <pdvdx>       
+% 19. <pdvdy>       
+% 20. <pdvdz>       
+
+% 21. <pdwdx>       # s06 file for 3D stats 
+% 22. <pdwdy>       
+% 23. <pdwdz>       
+% 24. <uuu>         
+
+% 25. <vvv>         # s07 file for 3D stats 
+% 26. <www>         
+% 27. <uuv>         
+% 28. <uuw>         
+
+% 29. <vvu>         # s08 file for 3D stats 
+% 30. <vvw>  	    
+% 31. <wwu>         
+% 32. <wwv>         
+
+% 33. <ppp>         # s09 file for 3D stats 
+% 34. <pppp>        
+% 35. <uvw>         
+% 36. <uuuu>        
+
+% 37. <vvvv>        # s10 file for 3D stats 
+% 38. <wwww>        
+% 39. e11: <((du/dx)^2+(du/dy)^2+(du/dz)^2)>      
+% 40. e22: <((dv/dx)^2+(dv/dy)^2+(dv/dz)^2)>      
+
+% 41. e33: <((dw/dx)^2+(dw/dy)^2+(dw/dz)^2)>      # s11 file for 3D stats 
+% 42. e12: <(du/dx*dv/dx+du/dy*dv/dy+du/dz*dv/dz)>
+% 43. e13: <(du/dx*dw/dx+du/dy*dw/dy+du/dz*dw/dz)>
+% 44. e23: <(dv/dx*dw/dx+dv/dy*dw/dy+dv/dz*dw/dz)>

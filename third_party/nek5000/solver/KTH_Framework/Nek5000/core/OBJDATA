@@ -1,0 +1,16 @@
+      real dragx, dragpx, dragvx
+      real dragy, dragpy, dragvy
+      real dragz, dragpz, dragvz
+      real torqx, torqpx, torqvx
+      real torqy, torqpy, torqvy
+      real torqz, torqpz, torqvz
+      real dpdx_mean,dpdy_mean,dpdz_mean
+      real dgtq 
+      common /ctorq/ dragx(0:maxobj),dragpx(0:maxobj),dragvx(0:maxobj)
+     $             , dragy(0:maxobj),dragpy(0:maxobj),dragvy(0:maxobj)
+     $             , dragz(0:maxobj),dragpz(0:maxobj),dragvz(0:maxobj)
+     $             , torqx(0:maxobj),torqpx(0:maxobj),torqvx(0:maxobj)
+     $             , torqy(0:maxobj),torqpy(0:maxobj),torqvy(0:maxobj)
+     $             , torqz(0:maxobj),torqpz(0:maxobj),torqvz(0:maxobj)
+     $             , dpdx_mean,dpdy_mean,dpdz_mean
+     $             , dgtq(3,4)

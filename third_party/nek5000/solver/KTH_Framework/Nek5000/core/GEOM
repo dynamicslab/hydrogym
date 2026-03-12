@@ -1,0 +1,94 @@
+c
+c     Geometry arrays
+c
+      real xm1(lx1,ly1,lz1,lelt)
+     $    ,ym1(lx1,ly1,lz1,lelt)
+     $    ,zm1(lx1,ly1,lz1,lelt)
+     $    ,xm2(lx2,ly2,lz2,lelv)
+     $    ,ym2(lx2,ly2,lz2,lelv)
+     $    ,zm2(lx2,ly2,lz2,lelv)
+      common /gxyz/ xm1,ym1,zm1,xm2,ym2,zm2
+
+      real rxm1(lx1,ly1,lz1,lelt)
+     $    ,sxm1(lx1,ly1,lz1,lelt)
+     $    ,txm1(lx1,ly1,lz1,lelt)
+     $    ,rym1(lx1,ly1,lz1,lelt)
+     $    ,sym1(lx1,ly1,lz1,lelt)
+     $    ,tym1(lx1,ly1,lz1,lelt)
+     $    ,rzm1(lx1,ly1,lz1,lelt)
+     $    ,szm1(lx1,ly1,lz1,lelt)
+     $    ,tzm1(lx1,ly1,lz1,lelt)
+     $    ,jacm1(lx1,ly1,lz1,lelt)
+     $    ,jacmi(lx1*ly1*lz1,lelt)
+      common /giso1/ rxm1,sxm1,txm1,rym1,sym1,tym1,rzm1,szm1,tzm1
+     $              ,jacm1,jacmi
+
+      real rxm2(lx2,ly2,lz2,lelv)
+     $    ,sxm2(lx2,ly2,lz2,lelv)
+     $    ,txm2(lx2,ly2,lz2,lelv)
+     $    ,rym2(lx2,ly2,lz2,lelv)
+     $    ,sym2(lx2,ly2,lz2,lelv)
+     $    ,tym2(lx2,ly2,lz2,lelv)
+     $    ,rzm2(lx2,ly2,lz2,lelv)
+     $    ,szm2(lx2,ly2,lz2,lelv)
+     $    ,tzm2(lx2,ly2,lz2,lelv)
+     $    ,jacm2(lx2,ly2,lz2,lelv)
+      common /giso2/ rxm2,sxm2,txm2,rym2,sym2,tym2,rzm2,szm2,tzm2
+     $              ,jacm2
+
+      real           rx(lxd*lyd*lzd,ldim*ldim,lelv)
+      common /gisod/ rx
+
+      real g1m1(lx1,ly1,lz1,lelt)
+     $    ,g2m1(lx1,ly1,lz1,lelt)
+     $    ,g3m1(lx1,ly1,lz1,lelt)
+     $    ,g4m1(lx1,ly1,lz1,lelt)
+     $    ,g5m1(lx1,ly1,lz1,lelt)
+     $    ,g6m1(lx1,ly1,lz1,lelt)
+      common /gmfact/ g1m1,g2m1,g3m1,g4m1,g5m1,g6m1
+
+      real unr(lx1*lz1,6,lelt)
+     $    ,uns(lx1*lz1,6,lelt)
+     $    ,unt(lx1*lz1,6,lelt)
+     $    ,unx(lx1,lz1,6,lelt)
+     $    ,uny(lx1,lz1,6,lelt)
+     $    ,unz(lx1,lz1,6,lelt)
+     $    ,t1x(lx1,lz1,6,lelt)
+     $    ,t1y(lx1,lz1,6,lelt)
+     $    ,t1z(lx1,lz1,6,lelt)
+     $    ,t2x(lx1,lz1,6,lelt)
+     $    ,t2y(lx1,lz1,6,lelt)
+     $    ,t2z(lx1,lz1,6,lelt)
+     $    ,area(lx1,lz1,6,lelt)
+     $    ,etalph(lx1*lz1,2*ldim,lelt)
+     $    ,dlam
+      common /gsurf/ unr,uns,unt,unx,uny,unz,t1x,t1y,t1z,t2x,t2y,t2z
+     $             ,area,etalph,dlam
+      
+      real vnx(lx1m,ly1m,lz1m,lelt)
+     $    ,vny(lx1m,ly1m,lz1m,lelt)
+     $    ,vnz(lx1m,ly1m,lz1m,lelt)
+     $    ,v1x(lx1m,ly1m,lz1m,lelt)
+     $    ,v1y(lx1m,ly1m,lz1m,lelt)
+     $    ,v1z(lx1m,ly1m,lz1m,lelt)
+     $    ,v2x(lx1m,ly1m,lz1m,lelt)
+     $    ,v2y(lx1m,ly1m,lz1m,lelt)
+     $    ,v2z(lx1m,ly1m,lz1m,lelt)
+      common /gvolm/ vnx,vny,vnz,v1x,v1y,v1z,v2x,v2y,v2z
+
+      logical ifgeom,ifgmsh3,ifvcor,ifsurt,ifmelt,ifwcno
+     $       ,ifrzer(lelt),ifqinp(2*ldim,lelv),ifeppm(2*ldim,lelv)
+     $       ,iflmsf(0:1),iflmse(0:1),iflmsc(0:1)
+     $       ,ifmsfc(2*ldim,lelt,0:1)
+     $       ,ifmseg(12,lelt,0:1)
+     $       ,ifmscr(8,lelt,0:1)
+     $       ,ifnskp(8,lelt)
+     $       ,ifbcor
+      common /glog/ ifgeom,ifgmsh3,ifvcor,ifsurt,ifmelt,ifwcno
+     $       ,ifrzer,ifqinp,ifeppm
+     $       ,iflmsf,iflmse,iflmsc,ifmsfc
+     $       ,ifmseg,ifmscr,ifnskp
+     $       ,ifbcor
+
+      integer boundaryID(6,lelv), boundaryIDt(6,lelt)
+      common /cbbid/ boundaryID, boundaryIDt 

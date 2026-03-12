@@ -1,0 +1,49 @@
+!=======================================================================
+! Name        : NEKP4EST_EEST
+! Author      : Adam Peplinski
+! Version     :
+! Copyright   : GPL
+! Description : include file with common block definitions for 
+!               error estimator
+!=======================================================================
+!     number of points in extrapolation
+      integer EEST_NP
+      parameter (EEST_NP = 4)
+!     exclude EEST_ELR last rows from the extrapolation
+      integer EEST_ELR
+      parameter (EEST_ELR = 0)
+
+!     parameter for small values cutoff
+!     used for values
+      real EEST_SMALL
+!     used for ratios
+      real EEST_SMALLR
+!     used for gradients
+      real EEST_SMALLG
+!     used for sigma and rtmp in error calculations
+      real EEST_SMALLS
+
+!     refinement and derefinement thresholds
+      real EEST_REFT, EEST_DREFT
+
+!     logical flags to mark variables for eest
+      logical EEST_IFESTV(LDIMT3)
+
+!     real vectors
+!     spectral coefficient map; y and z are transposed
+      real EEST_XMAP(LX1,LX1),EEST_YTMAP(LY1,LY1),EEST_ZTMAP(LZ1,LZ1),
+     $     EEST_FAC(LX1,LY1,LZ1)
+
+!     error estimate and decay rate
+      real EEST_EST(LELT), EEST_SIG(LELT)
+      
+!     common blocks
+      common /nekp4est_eest_lpar/ EEST_IFESTV
+
+      common /nekp4est_eest_rpar/ EEST_SMALL,EEST_SMALLR,EEST_SMALLG,
+     $       EEST_SMALLS, EEST_REFT, EEST_DREFT
+
+      common /nekp4est_eest_map/ EEST_XMAP, EEST_YTMAP, EEST_ZTMAP,
+     $            EEST_FAC
+
+      common /nekp4est_eest_var/ EEST_EST, EEST_SIG

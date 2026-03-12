@@ -1,0 +1,67 @@
+if [ $# -eq 0 ]; then
+  echo ""
+  echo "usage: neknekb case1 case2 np1 np2 [uncoupled] "
+  echo ""
+  exit 1
+fi
+
+NT=$#
+COUPLED="T"
+if [ "${!NT}" == "uncoupled" ]; then
+  COUPLED="F"
+  NT=$(($NT-1))
+fi
+
+if [ $(($NT%2)) -eq 1 ]; then
+  echo "please provide NP for each case"
+  echo "usage: neknekb case1 case2 np1 np2 [uncoupled] "
+  echo ""
+  exit 1
+fi
+
+if [ $(($NT/2)) -ne 2 ]; then
+   echo ""
+   echo "only 2 sessions permitted right now"
+   echo ""
+   exit 1
+fi
+
+rm -rf SESSION.NAME  2>/dev/null
+echo   $(($NT/2))      >>   SESSION.NAME
+echo  $COUPLED         >>   SESSION.NAME
+
+NP=0
+for ((i = 1; i <= $(($NT/2)); i++ )); do
+  proc="$(($NT/2+i))"
+  echo  ${!i}          >>   SESSION.NAME
+  echo `pwd`'/'        >>   SESSION.NAME
+  echo  ${!proc}       >>   SESSION.NAME
+  NP=$(($NP+${!proc}))
+done
+
+
+rm -f ioinfo
+export NEK_LOGFILE=logfile
+
+rm -rf SESSION.NAME  2>/dev/null
+echo   $(($NT/2))      >>   SESSION.NAME  2>/dev/null
+echo  $COUPLED         >>   SESSION.NAME  2>/dev/null
+
+NP=0
+for ((i = 1; i <= $(($NT/2)); i++ )); do
+  j=$(($i-1))
+  proc="$(($NT/2+i))"
+  eval "NP$i=${!proc}"
+
+  echo  ${!i}          >>   SESSION.NAME  2>/dev/null
+  echo `pwd`'/'        >>   SESSION.NAME  2>/dev/null
+  echo  ${!proc}       >>   SESSION.NAME  2>/dev/null
+
+  NP=$(($NP+${!proc}))
+  cp -f ${!i}.logfile ${!i}.logfile1  2>/dev/null
+  rm -f s0000${j}_"$NEK_LOGFILE"
+  ln -sf s0000${j}_"$NEK_LOGFILE" ${!i}.logfile
+
+done
+
+mpiexec -np $NP ./nek5000 &

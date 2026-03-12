@@ -1,0 +1,37 @@
+#Configuration file for Nek5000 framework developed at KTH
+# Place for short description; doxygen style
+/**
+@defgroup comm_mpi   Comunication routines.
+@ingroup driver
+
+@brief MPI communication wrappers.
+
+@details
+Set of subroutines to wrap MPI communication missing in Nek5000.
+
+@mod_interface
+@interface_list Interface provided:
+-# @ref ivgl_running_sum
+-# @ref ibcastn
+
+*/
+#List of existing submodules
+SUBMODULES 
+
+#List of conflicting submodules
+EXCLUSIVE 
+
+#Default submodules
+DEFAULT 
+
+#List of conflicting modules
+CONFLICTS 
+
+#List of required modules
+REQUIRED 
+
+#List of object files
+OBJECT comm_mpi_wrp.o
+
+#List of include files
+INCLUDE

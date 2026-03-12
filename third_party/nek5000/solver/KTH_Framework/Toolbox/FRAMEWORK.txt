@@ -1,0 +1,72 @@
+#Configuration file for Nek5000 framework developed at KTH
+# Place for short description; doxygen style
+/**
+@defgroup toolbox  Toolbox
+@ingroup framework
+
+@brief Toolbox for Nek5000
+
+@details 
+This directory contains a number of tools used by toolboxes developed at KTH. 
+Files are grouped by tasks and placed in a tree structure, where the parent directories (modules) 
+perform some operations and can define tasks and interfaces that have to be provided by their 
+subdirectories (submodules). This structure can be repeated recursively with submodules becoming
+parent modules for next level structures. The top level directories are related to the main services 
+that have to be provided for toolboxes. An examplary framework structure is presented in the figure.
+
+@image html framework.png Examplary framework structure.
+
+Modules can provide tools, [runtime parameters] (@ref parameter_list_page), memory structures (common blocks), 
+define interfaces and perform some tasks.
+The main goal is to simplify the development of toolboxes by defining simple tasks that could be used by a number of tools. 
+At the same time, a clear definition of the inteface alows to keep number of different implementation of the same task.
+
+Each module has to contain:
+- FRAMEWORK.txt -module description
+- makefile_usr.inc - compilation rules
+- source code
+- optionally, an example of \a setup.par including corresponding runtime parameter section
+
+Dependences between modules are described in FRAMEWORK.txt (present in almost every directory) including:
+- documentation section written in a form of doxygen C comment
+  + definition of group
+  + description of the module's purpose
+  + definition of the interface provided by the module
+  + list of required interfaces from submodules (module dependency)
+  + example of a module call
+  + list of provided runtime parameters
+  + list of requred runtime parameters (module dependency)
+  + example of a section in \a setup.par file
+- SUBMODULES - list of existing local submodules (different task implementations)
+- EXCLUSIVE - list of local submodules that cannot be used simultaneously
+- DEFAULT - default submodules
+- CONFLICTS - list of modules in conflict with current module (from other tree branches)
+- REQUIRED - list of required modules (from other tree branches)
+- OBJECT - list of object files for the USR variable in makenek
+- INCLUDE - list of include files
+
+*/
+#List of existing submodules
+SUBMODULES driver \
+           io \
+           utility \
+           tools \
+           popstprocessing
+
+#List of conflicting submodules
+EXCLUSIVE
+
+#Default submodules
+DEFAULT
+
+#List of conflicting modules
+CONFLICTS
+
+#List of required modules
+REQUIRED
+
+#List of object files
+OBJECT
+
+#List of include files
+INCLUDE

@@ -1,0 +1,296 @@
+c Maximum number of local particles
+#define LPM_LPART 300 /* make it large enough to account for load imbalance */
+
+c Number of particle equations being solved
+#define LPM_LRS 6
+
+#define LPM_JVX (LPM_JZ+1) /* particle velocity */
+#define LPM_JVY (LPM_JZ+2) 
+#define LPM_JVZ (LPM_JZ+3) 
+
+c Number of properties for a particle
+#define LPM_LRP 6
+
+#define LPM_R_JRHOP 1   /* density        */
+#define LPM_R_JDP   2   /* diameter       */
+#define LPM_R_JVOLP 3   /* volume         */
+#define LPM_R_JUX   4   /* fluid velocity */
+#define LPM_R_JUY   5
+#define LPM_R_JUZ   6
+
+#include "experimental/lpm.h"
+
+c-----------------------------------------------------------------------
+      subroutine uservp (ix,iy,iz,eg)
+      include 'SIZE'
+      include 'TOTAL'
+      include 'NEKUSE'
+      integer e,eg
+
+      e = gllel(eg)
+
+      udiff=0.0
+      utrans=0.
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine userf  (ix,iy,iz,ieg)
+      include 'SIZE'
+      include 'TOTAL'
+      include 'NEKUSE'
+
+      ffx = 0.0
+      ffy = 0.0
+      ffz = 0.0
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine userq  (ix,iy,iz,eg)
+      include 'SIZE'
+      include 'TOTAL'
+      include 'NEKUSE'
+      integer e,eg
+
+      qvol   = 0.0
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine userchk
+      include 'SIZE'
+      include 'TOTAL'
+#     include "LPM"
+
+      if (istep .eq. nsteps) then
+         ! average all particle y-velocities
+         vel_avg = 0.0
+         do i=1,lpm_npart
+            vel_avg = vel_avg + lpm_y(LPM_JVY,i)
+         enddo
+         vel_avg = glsum(vel_avg,1)
+         nptot   = iglsum(lpm_npart,1)
+         vel_avg = vel_avg/nptot
+          
+         ! particle time scale
+         vel_error = (vel_avg + 1.0)/(-1.0)
+         vel_error = abs(vel_error)
+ 
+         if (nid .eq. 0) write(6,100) vel_error 
+ 100     format('lpm error: ', E14.7)
+      endif
+
+      call lpm_solve(time)
+
+      if(mod(istep,iostep) .eq. 0) then
+         call lpm_io_write('',0)
+      endif
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine userbc (ix,iy,iz,iside,eg)
+      include 'SIZE'
+      include 'TSTEP'
+      include 'NEKUSE'
+      include 'INPUT'
+      include 'GEOM' 
+
+      ux = 0.0
+      uy = 0.0
+      uz = 0.0
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine useric (ix,iy,iz,eg)
+      include 'SIZE'
+      include 'TOTAL'
+      include 'NEKUSE'
+      integer e,eg, eqnum
+
+      ux = 0.
+      uy = 0.
+      uz = 0.
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine usrdat
+      include 'SIZE'
+      include 'TOTAL'
+
+      return
+      end
+!-----------------------------------------------------------------------
+      subroutine usrdat2
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine usrdat3
+      include 'SIZE'
+      include 'TOTAL'
+#     include "LPM"
+
+      real rparam(lpm_nparam) 
+      common /SCRNS/ yp(LPM_LPART*LPM_LRS),
+     $               pp(LPM_LPART*LPM_LRP)
+
+      ifflow = .false.
+
+      rparam(1)  = 1           ! use custom values
+      rparam(2)  = 1           ! time integration method
+      rparam(3)  = 1           ! polynomial order of mesh
+      rparam(4)  = 1           ! use 1 for tracers only
+      rparam(5)  = LPM_R_JDP   ! index of filter non-dimensionalization in rprop
+      rparam(6)  = 0           ! non-dimensional Gaussian filter width
+      rparam(7)  = 0           ! percent decay of Gaussian filter
+      rparam(8)  = 0           ! periodic in x 
+      rparam(9)  = 0           ! periodic in y 
+      rparam(10) = 0           ! periodic in z 
+
+      call init_particles(yp,pp,npart)
+      call lpm_init      (rparam,yp,LPM_LRS,pp,LPM_LRP,npart,time)
+
+      return
+      end
+!-----------------------------------------------------------------------
+      subroutine init_particles(yp,pp,npart)
+      include 'SIZE'
+      include 'TOTAL'
+#     include "LPM"
+
+      real      yp(*)
+      real      pp(*)
+
+      npart   = 100          ! particles/rank to distribute
+      dp      = 0.0001       ! particle diameter
+      rhop    = 3307.327     ! particle density
+      rdum    = ran2(-1-nid) ! initialize random number generator
+
+      do i=1,npart
+         ! set initial conditions for solution
+         j = LPM_LRS*(i-1)
+         yp(LPM_JX +j) = 0.1 + 0.8*ran2(2)
+         yp(LPM_JY +j) = 0.7 + 0.2*ran2(2)
+         yp(LPM_JZ +j) = 0.1 + 0.8*ran2(2)
+         yp(LPM_JVX+j) = 0.0
+         yp(LPM_JVY+j) = 0.0
+         yp(LPM_JVZ+j) = 0.0
+      
+         ! set initial particle properties
+         jj = LPM_LRP*(i-1)
+         pp(LPM_R_JRHOP+jj) = rhop
+         pp(LPM_R_JDP  +jj) = dp
+         pp(LPM_R_JVOLP+jj) = pi/6.0*pp(LPM_R_JDP+jj)**3
+      enddo
+
+      return
+      end
+c----------------------------------------------------------------------
+      subroutine lpm_fun(time_,y,ydot)
+      include 'SIZE'
+      include 'TOTAL'
+#     include "LPM"
+
+      real time_
+      real y(*)
+      real ydot(*)
+
+      call lpm_interpolate_setup
+
+      call lpm_interpolate_fld(LPM_R_JUX, vx)
+      call lpm_interpolate_fld(LPM_R_JUY, vy)
+      call lpm_interpolate_fld(LPM_R_JUZ, vz)
+
+      do i=1,lpm_npart
+         ! striding solution y vector
+         j = LPM_LRS*(i-1)
+
+         ! fluid viscosity
+         rmu   = param(2)
+
+         ! particle mass
+         rmass = lpm_rprop(LPM_R_JVOLP,i)*lpm_rprop(LPM_R_JRHOP,i)
+
+         ! Stokes drag force
+         rdum  = 18.0*rmu/lpm_rprop(LPM_R_JDP,i)**2
+         rdum  = rdum*lpm_rprop(LPM_R_JVOLP,i)
+         fqsx  = rdum*(lpm_rprop(LPM_R_JUX,i) - y(LPM_JVX+j))
+         fqsy  = rdum*(lpm_rprop(LPM_R_JUY,i) - y(LPM_JVY+j))
+         fqsz  = rdum*(lpm_rprop(LPM_R_JUZ,i) - y(LPM_JVZ+j))
+
+         ! Gravity
+         fbx  = 0.0
+         fby  = -9.8*rmass
+         fbz  = 0.0
+
+         ! set ydot for all LPM_SLN number of equations
+         ydot(LPM_JX +j) = y(LPM_JVX +j)
+         ydot(LPM_JY +j) = y(LPM_JVY +j)
+         if (if3d) ydot(LPM_JZ +j) = y(LPM_JVZ +j)
+         ydot(LPM_JVX+j) = (fqsx+fbx)/rmass
+         ydot(LPM_JVY+j) = (fqsy+fby)/rmass
+         if (if3d) ydot(LPM_JVZ+j) = (fqsz+fbz)/rmass
+      enddo 
+
+      call lpm_project
+
+      return
+      end
+!-----------------------------------------------------------------------
+      subroutine lpm_project_map(map,y,ydot,ydotc,rprop)
+
+      real map(*)
+      real y(*)
+      real ydot(*)
+      real ydotc(*)
+      real rprop(*)
+
+      ! do nothing for one-way case
+
+      return
+      end
+!-----------------------------------------------------------------------
+      FUNCTION ran2(idum)
+      INTEGER idum,IM1,IM2,IMM1,IA1,IA2,IQ1,IQ2,IR1,IR2,NTAB,NDIV 
+      REAL ran2,AM,EPS,RNMX
+      PARAMETER (IM1=2147483563,IM2=2147483399,AM=1./IM1,IMM1=IM1-1,
+     $        IA1=40014,IA2=40692,IQ1=53668,IQ2=52774,IR1=12211,
+     $        IR2=3791,NTAB=32,NDIV=1+IMM1/NTAB,EPS=1.2e-7,RNMX=1.-EPS)
+c Long period (> 2 ! 1018 ) random number generator of L’Ecuyer with 
+c Bays-Durham shuffle and added safeguards. Returns a uniform random deviate 
+c between 0.0 and 1.0 (exclusive of the endpoint values). 
+c Call with idum a negative integer to initialize; thereafter, do not alter 
+c idum between successive deviates in a sequence. RNMX should approximate the 
+c largest floating value that is less than 1.
+      INTEGER idum2,j,k,iv(NTAB),iy
+      SAVE iv,iy,idum2
+      DATA idum2/123456789/, iv/NTAB*0/, iy/0/
+      if (idum.le.0) then 
+         idum1=max(-idum,1) 
+         idum2=idum1
+         do j=NTAB+8,1,-1
+            k=idum1/IQ1
+            idum1=IA1*(idum1-k*IQ1)-k*IR1 
+            if (idum1.lt.0) idum1=idum1+IM1 
+            if (j.le.NTAB) iv(j)=idum1
+         enddo
+         iy=iv(1) 
+      endif
+      k=idum1/IQ1 
+      idum1=IA1*(idum1-k*IQ1)-k*IR1
+      if (idum1.lt.0) idum1=idum1+IM1 
+      k=idum2/IQ2 
+      idum2=IA2*(idum2-k*IQ2)-k*IR2 
+      if (idum2.lt.0) idum2=idum2+IM2 
+      j=1+iy/NDIV
+      iy=iv(j)-idum2
+      iv(j)=idum1 
+      if(iy.lt.1)iy=iy+IMM1 
+      ran2=min(AM*iy,RNMX)
+      return
+      END
+c----------------------------------------------------------------------

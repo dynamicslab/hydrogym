@@ -1,0 +1,72 @@
+!> @file TSRSD
+!! @ingroup tsrs
+!! @brief Include file with parameter and common block definitions for
+!!  point time series module
+!! @author Adam Peplinski
+!! @date May 24, 2021
+!=======================================================================
+!     module id and name
+      integer tsrs_id
+      character*(*) tsrs_name
+      parameter(tsrs_name='TSRS')
+
+!     timer id
+      integer tsrs_tmr_tot_id   ! total time
+      integer tsrs_tmr_ini_id   ! initialisation itme
+      integer tsrs_tmr_cvp_id   ! calculation of vorticity and pressure normalisation
+      integer tsrs_tmr_int_id   ! interpolation time
+      integer tsrs_tmr_bfr_id   ! buffering time
+      integer tsrs_tmr_io_id    ! I/O time
+
+!     initialisation flag
+      logical tsrs_ifinit
+
+!     runtime parameter part
+!     section id
+      integer tsrs_sec_id
+      
+!     parameter section
+      integer tsrs_smpstep       !< @var frequency of sampling
+      integer tsrs_smpstep_id
+
+!     array dimensions
+      integer tsrs_nfld         ! number of fileds
+      parameter(tsrs_nfld=2*LDIM+1)
+      integer tsrs_ltsnap       ! max number of time snaphots in a buffer
+      parameter(tsrs_ltsnap=100)
+
+!     module data
+      integer tsrs_handle       ! findpts handle
+
+      integer tsrs_nptot        ! total num ber of points
+      integer tsrs_npts         ! local num ber of points
+      integer tsrs_npt1         ! number of cores with number of points increased by 1
+
+      integer tsrs_ipts(lhis)   ! global point number
+      integer tsrs_rcode(lhis)  ! error code
+      integer tsrs_elid(lhis)   ! ownership element
+      integer tsrs_proc(lhis)   ! ownership processor
+
+      real tsrs_pts(ldim,lhis)  ! point position
+      real tsrs_fld(tsrs_nfld,lhis) ! interpolated averaged fields
+      real tsrs_dist(lhis)      ! distance from the nearest grid point
+      real tsrs_rst(ldim*lhis)  ! r,s,t coordinates in element
+
+!     I/O buffer
+      integer tsrs_ntsnap       ! number of time snaphots in a buffer
+      real tsrs_tmlist(tsrs_ltsnap) ! snapshot time
+      real tsrs_buff(tsrs_nfld,lhis,tsrs_ltsnap) ! snapshot buffer
+
+
+!     common block section
+      common /tsrsi/ tsrs_id, tsrs_tmr_tot_id, tsrs_tmr_ini_id,
+     $     tsrs_tmr_cvp_id, tsrs_tmr_int_id, tsrs_tmr_bfr_id,
+     $     tsrs_tmr_io_id, tsrs_sec_id, tsrs_smpstep, tsrs_smpstep_id,
+     $     tsrs_handle, tsrs_nptot, tsrs_npts, tsrs_npt1, tsrs_ntsnap
+
+      common /tsrsiv/ tsrs_ipts, tsrs_rcode, tsrs_elid, tsrs_proc
+
+      common /tsrsrv/ tsrs_pts, tsrs_fld, tsrs_dist,
+     $     tsrs_rst, tsrs_tmlist, tsrs_buff
+
+      common /tsrsl/ tsrs_ifinit
