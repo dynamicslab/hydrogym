@@ -153,7 +153,38 @@ SOLVER_PROFILES: Dict[str, dict] = {
         'workspace_dirs': {
             'restart_files': 'restart_files',  # Link restart files directly
         },
+      },
+    # [YW-MOD] Add NEK5000_small_wing profile
+    'NEK5000_small_wing': {
+        'sentinel': '.NEK5000',
+        # Runtime-only files (assumes nek5000 executable is pre-compiled)
+        'required_files': [
+            'environment_config.yaml',  # Environment configuration (REQUIRED for MAIA pattern)
+            'small_wing.re2',  # Mesh file (read at runtime)
+            'small_wing.ma2',  # Material properties (read at runtime)
+            'small_wing.rea',  # Parameter file (read at runtime, overridable)
+            'mask_small_wing0.f00002',  # NEK5000 file (read at runtime)
+        ],
+        'required_dirs': [
+            'restart_files',  # Initial condition files (read at startup)
+        ],
+        'optional_files': [
+            'config.yaml',  # Alternative config name (legacy support)
+            'README.md',  # Documentation
+        ],
+        # Workspace: runtime files symlinked to run directory
+        'workspace_files': {
+            'small_wing.re2': 'small_wing.re2',
+            'small_wing.ma2': 'small_wing.ma2',
+            'small_wing.rea': 'small_wing.rea',
+            'mask_small_wing0.f00002': 'mask_small_wing0.f00002',
+            'environment_config.yaml': 'environment_config.yaml',
+        },
+        'workspace_dirs': {
+            'restart_files': 'restart_files',  # Link restart files directly
+        },
     },
+    # [YW-MOD] End
     'FIREDRAKE': {
         'sentinel': '.FIREDRAKE',
         # Checkpoint files can be either .h5 or .ckpt - validation happens in code
