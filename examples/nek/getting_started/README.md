@@ -152,6 +152,26 @@ integrate(
 
 ---
 
+### 6. [`6_zeroshot_wing_demo/`](6_zeroshot_wing_demo/) - Zero-Shot Wing Deployment
+**Interface:** `NekEnv` + PettingZoo rollout with deployment controllers
+**Use Case:** Deploy pre-trained/legacy DRL policies on small wing without new training
+**SB3 Compatible:** ✅ For loading trained policies; demo script is rollout-only
+
+```python
+from hydrogym.nek import NekEnv
+from hydrogym.nek.pettingzoo_env import make_pettingzoo_env
+
+base_env = NekEnv.from_hf("NACA4412_3D_Re75000_AOA5", nproc=12)
+env = make_pettingzoo_env(base_env)
+```
+
+**Files:**
+- `test_nek_pettingzoo.py` - zero-shot wing rollout demo
+- `meta_policy_small_wing_template.py` - template for explicit legacy `MetaPolicy.py` usage
+- `run_pettingzoo_docker.sh` - Docker/MPI execution script
+
+---
+
 ## Quick Start
 
 ### 1. Choose Your Interface
@@ -160,6 +180,7 @@ Pick the directory that matches your use case:
 - **Multiple agents?** → Try `2_parallel_env/`
 - **Pre-packaged environments?** → Use `4_from_hf/`
 - **Deploy trained models?** → See `5_hydrogym_control/`
+- **Zero-shot wing deployment?** → See `6_zeroshot_wing_demo/`
 
 ### 2. Test the Environment
 ```bash
@@ -185,6 +206,7 @@ mpirun -np 1 python train_sb3_nek_direct.py \
 | **3_pettingzoo** | AEC | Sequential | Sequential | ⚠️ Wrapper | Turn-based agents |
 | **4_from_hf** | Any | Depends | Depends | Depends | Reproducible, versioned environments |
 | **5_hydrogym_control** | Any + `integrate()` | Any | Any | ✅ Yes | Classical + RL hybrid control |
+| **6_zeroshot_wing_demo** | PettingZoo Parallel | Dict | Dict | ✅ Deployment | Small-wing zero-shot DRL rollout |
 
 ## Requirements
 

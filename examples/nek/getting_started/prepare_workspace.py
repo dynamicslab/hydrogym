@@ -37,6 +37,7 @@ def prepare_nek_workspace(
     local_dir: str = None,
     force_download: bool = False,
     restart_index: int = 1, # [YW-MOD] Add restart index
+    profile: str = 'NEK5000_v19', # [YW-MOD] Add profile
 ):
   """
     Prepare NEK5000 workspace with runtime files.
@@ -88,7 +89,7 @@ def prepare_nek_workspace(
   # Prepare workspace with symlinks to clean cache
   print("\nStep 2: Preparing workspace with symlinks...")
   work_paths = dm.prepare_working_directory(
-      environment_path, work_dir, profile='NEK5000')
+      environment_path, work_dir, profile=profile)
 
   work_dir_resolved = work_paths['work_dir']
 
@@ -113,9 +114,15 @@ def prepare_nek_workspace(
     f.write(f'{work_dir_resolved}\n')  # Absolute path to working directory
   print(f"✓ Created SESSION.NAME: {session_file}")
 
-  # Symlink int_pos file if it exists (DRL sensor/actuator positions)
-  int_pos_src = Path(environment_path) / 'int_pos'
-  int_pos_dst = Path(work_dir_resolved) / 'int_pos'
+  # [YW-MOD] Symlink int_pos file if it exists (DRL sensor/actuator positions)
+  if profile == 'NEK5000_v19':
+    int_pos_src = Path(environment_path) / 'int_pos'
+    int_pos_dst = Path(work_dir_resolved) / 'int_pos'
+  elif profile == 'NEK5000_v17':
+    int_pos_src = Path(environment_path) / 'stat_pts.in'
+    int_pos_dst = Path(work_dir_resolved) / 'stat_pts.in'
+  else:
+    raise ValueError(f"Unsupported profile: {profile}")
   if int_pos_src.exists():
     if int_pos_dst.exists():
       int_pos_dst.unlink()
@@ -123,6 +130,22 @@ def prepare_nek_workspace(
     print(f"✓ Symlinked int_pos: {int_pos_dst}")
   else:
     print("⚠ Warning: int_pos not found (may be needed for DRL coupling)")
+  # [YW-MOD] End
+
+  # [YW-MOD] Symlink the mask files if they exist (v17 only)
+  if profile == 'NEK5000_v17':
+    mask_files = [f for f in os.listdir(environment_path) if f.startswith('mask_') and f.endswith('.f')]
+    for mask_file in mask_files:
+      mask_src = Path(environment_path) / mask_file
+      mask_dst = Path(work_dir_resolved) / mask_file
+      if mask_src.exists():
+        if mask_dst.exists():
+          mask_dst.unlink()
+      mask_dst.symlink_to(mask_src.resolve())
+      print(f"✓ Symlinked mask file: {mask_dst}")
+    else:
+      print(f"⚠ Warning: mask file not found: {mask_file}")
+  # [YW-MOD] End
 
   # [YW-MOD] Copy the restart files with from work_dir_resolved/restart_files to work_dir_resolved/
   import shutil
@@ -201,6 +224,11 @@ Examples:
       type=int,
       default=1,
       help="Restart index (default: 1)")
+  parser.add_argument(
+      "--profile",
+      type=str,
+      default='NEK5000_v19',
+      help="Profile (default: NEK5000_v19)")
   # [YW-MOD] End
 
   args = parser.parse_args()
@@ -213,6 +241,7 @@ Examples:
         local_dir=args.local_dir,
         force_download=args.force_download,
         restart_index=args.restart_index, # [YW-MOD] Add restart index
+        profile=args.profile, # [YW-MOD] Add profile
     )
 
     print("\nNext steps:")
