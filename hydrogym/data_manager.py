@@ -128,13 +128,18 @@ SOLVER_PROFILES: Dict[str, dict] = {
     'NEK5000': {
         'sentinel': '.NEK5000',
         # Runtime-only files (assumes nek5000 executable is pre-compiled)
+#[YW-MOD] Make it flexible to handle different cases
         'required_files': [
             'environment_config.yaml',  # Environment configuration (REQUIRED for MAIA pattern)
-            'phill.re2',  # Mesh file (read at runtime)
-            'phill.ma2',  # Material properties (read at runtime)
-            'phill.par',  # Parameter file (read at runtime, overridable)
             'int_pos',  # Time series probe positions (required for TSRS module)
         ],
+        # Flexible required files: allow case-by-case names
+        'required_any_files': [
+            ['*.re2'],  # Mesh file
+            ['*.ma2'],  # Material properties
+            ['*.par', '*.rea'],  # Parameter file (old versions use .rea)
+        ],
+#[YW-MOD]
         'required_dirs': [
             'restart_files',  # Initial condition files (read at startup)
         ],
@@ -143,48 +148,22 @@ SOLVER_PROFILES: Dict[str, dict] = {
             'README.md',  # Documentation
         ],
         # Workspace: runtime files symlinked to run directory
+#[YW-MOD] Flexible workspace files for NEK5000 v17 and v19
         'workspace_files': {
-            'phill.re2': 'phill.re2',
-            'phill.ma2': 'phill.ma2',
-            'phill.par': 'phill.par',
             'int_pos': 'int_pos',
             'environment_config.yaml': 'environment_config.yaml',
         },
+        # Link one set per pattern group (prefer .par over .rea when both exist)
+        'workspace_glob_groups': [
+            ['*.re2'],
+            ['*.ma2'],
+            ['*.par', '*.rea'],
+        ],
+#[YW-MOD]
         'workspace_dirs': {
             'restart_files': 'restart_files',  # Link restart files directly
         },
       },
-    # [YW-MOD] Add NEK5000_small_wing profile
-    'NEK5000_small_wing': {
-        'sentinel': '.NEK5000',
-        # Runtime-only files (assumes nek5000 executable is pre-compiled)
-        'required_files': [
-            'environment_config.yaml',  # Environment configuration (REQUIRED for MAIA pattern)
-            'small_wing.re2',  # Mesh file (read at runtime)
-            'small_wing.ma2',  # Material properties (read at runtime)
-            'small_wing.rea',  # Parameter file (read at runtime, overridable)
-            'mask_small_wing0.f00002',  # NEK5000 file (read at runtime)
-        ],
-        'required_dirs': [
-            'restart_files',  # Initial condition files (read at startup)
-        ],
-        'optional_files': [
-            'config.yaml',  # Alternative config name (legacy support)
-            'README.md',  # Documentation
-        ],
-        # Workspace: runtime files symlinked to run directory
-        'workspace_files': {
-            'small_wing.re2': 'small_wing.re2',
-            'small_wing.ma2': 'small_wing.ma2',
-            'small_wing.rea': 'small_wing.rea',
-            'mask_small_wing0.f00002': 'mask_small_wing0.f00002',
-            'environment_config.yaml': 'environment_config.yaml',
-        },
-        'workspace_dirs': {
-            'restart_files': 'restart_files',  # Link restart files directly
-        },
-    },
-    # [YW-MOD] End
     'FIREDRAKE': {
         'sentinel': '.FIREDRAKE',
         # Checkpoint files can be either .h5 or .ckpt - validation happens in code
@@ -447,6 +426,27 @@ class HFDataManager:
         self.logger.warning(
             f"Workspace source not found, skipping: {source_path}")
 
+#[YW-MOD] Flexible workspace files for NEK5000 v17 and v19
+    workspace_glob_groups = solver.get('workspace_glob_groups', [])
+    if workspace_glob_groups:
+      env_path_obj = Path(env_path)
+      for pattern_group in workspace_glob_groups:
+        matched_paths: List[Path] = []
+        for pattern in pattern_group:
+          matches = sorted(
+              [p for p in env_path_obj.glob(pattern) if p.is_file()])
+          if matches:
+            matched_paths = matches
+            break
+        if not matched_paths:
+          self.logger.warning(
+              f"Workspace glob group has no matches: {pattern_group}")
+          continue
+        for source_path in matched_paths:
+          target_path = work_path / source_path.name
+          self._link_path(source_path, target_path)
+#[YW-MOD]
+
     for source_name, target_rel in workspace_dirs.items():
       source_path = Path(env_path) / source_name
       target_path = work_path / target_rel
@@ -669,6 +669,22 @@ class HFDataManager:
       if not os.path.exists(file_path):
         self.logger.warning(f"Missing required file: {file_path}")
         return False
+
+#[YW-MOD]
+    required_any_files = solver.get('required_any_files', [])
+    if required_any_files:
+      env_path_obj = Path(env_dir)
+      for pattern_group in required_any_files:
+        group_match = False
+        for pattern in pattern_group:
+          if any(p.is_file() for p in env_path_obj.glob(pattern)):
+            group_match = True
+            break
+        if not group_match:
+          self.logger.warning(
+              f"Missing required file matching any of: {pattern_group}")
+          return False
+#[YW-MOD]
 
     for dir_name in solver['required_dirs']:
       dir_path = os.path.join(env_dir, dir_name)
