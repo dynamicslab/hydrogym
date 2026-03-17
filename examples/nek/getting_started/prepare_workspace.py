@@ -97,13 +97,15 @@ def prepare_nek_workspace(
   par_file = None
   for file in os.listdir(work_dir_resolved):
     print(f"Checking file: {file}")
-    if file.endswith('.par') or file.endswith('.rea'): # New Nek5000 format for channel flow
+    if profile == 'NEK5000_v17' and file.endswith('.rea') :
       par_file = Path(file)
       case_name = par_file.stem
       break
-  if par_file is None:
-    raise FileNotFoundError(f"*.par or *.rea file not found in {work_dir_resolved}")
-  # [YW-MOD] End 
+    elif profile == 'NEK5000_v19' and file.endswith('.par'):
+      par_file = Path(file)
+      case_name = par_file.stem
+      break
+  # [YW-MOD] End  
 
   par_file = Path(work_dir_resolved) / par_file
   # Create SESSION.NAME file (required by Nek5000)
@@ -134,7 +136,7 @@ def prepare_nek_workspace(
 
   # [YW-MOD] Symlink the mask files if they exist (v17 only)
   if profile == 'NEK5000_v17':
-    mask_files = [f for f in os.listdir(environment_path) if f.startswith('mask_') and f.endswith('.f')]
+    mask_files = [f for f in os.listdir(environment_path) if f.startswith('mask_') ]
     for mask_file in mask_files:
       mask_src = Path(environment_path) / mask_file
       mask_dst = Path(work_dir_resolved) / mask_file

@@ -126,7 +126,7 @@ SOLVER_PROFILES: Dict[str, dict] = {
         'workspace_dirs': {},
     },
 
-    'NEK5000': {
+    'NEK5000_v19': {
         'sentinel': '.NEK5000',
         # Runtime-only files (assumes nek5000 executable is pre-compiled)
 #[YW-MOD] Make it flexible to handle different cases
@@ -138,7 +138,7 @@ SOLVER_PROFILES: Dict[str, dict] = {
         'required_any_files': [
             ['*.re2'],  # Mesh file
             ['*.ma2'],  # Material properties
-            ['*.par', '*.rea'],  # Parameter file (old versions use .rea)
+            ['*.par'],  # Parameter file (old versions use .rea)
         ],
 #[YW-MOD]
         'required_dirs': [
@@ -157,7 +157,7 @@ SOLVER_PROFILES: Dict[str, dict] = {
         'workspace_glob_groups': [
             ['*.re2'],
             ['*.ma2'],
-            ['*.par', '*.rea'],
+            ['*.par'],
         ],
 #[YW-MOD]
         'workspace_dirs': {
@@ -183,8 +183,8 @@ SOLVER_PROFILES: Dict[str, dict] = {
             ['*.map'],  # Map file
             ['*.wall'],  # Wall file
             ['*.restart'],  # Restart file
-            ['mask_*.f'],  # Mask file
-            ['.sch'],  # Mask file
+            ['mask_*'],  # Mask file
+            ['*.sch'],  # Stop file 
         ],
         'required_dirs': [
             'restart_files',  # Initial condition files (read at startup)
@@ -208,14 +208,15 @@ SOLVER_PROFILES: Dict[str, dict] = {
             ['*.map'],
             ['*.wall'],
             ['*.restart'],
-            ['mask_*.f'],
-            ['.sch'],
+            ['mask_*'],
+            ['*.sch'],
         ],
         'workspace_dirs': {
             'restart_files': 'restart_files',  # Link restart files directly
         },
       },
     # [YW-MOD] End
+
     'FIREDRAKE': {
         'sentinel': '.FIREDRAKE',
         # Checkpoint files can be either .h5 or .ckpt - validation happens in code
