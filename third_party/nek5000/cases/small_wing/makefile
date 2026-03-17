@@ -1,4 +1,4 @@
-### makefile automatically created by makenek 03/12/2026 17:03:59 ###
+### makefile automatically created by makenek 03/17/2026 08:58:02 ###
 BINNAME=nek5000
 LIBNAME=libnek5000.a
 CASENAME:=small_wing
@@ -19,7 +19,7 @@ F77:=mpif77
 CC:=mpicc
 P:=-fdefault-real-8 -fdefault-double-8 -x f77-cpp-input
 PPPO=
-PPS=MPIIO DRL YWDEBUG PTRSIZE8 MPI LONGINT8 UNDERSCORE TIMER MPITIMER GLOBAL_LONG_LONG
+PPS=MPIIO DRL UTAU PTRSIZE8 MPI LONGINT8 UNDERSCORE TIMER MPITIMER GLOBAL_LONG_LONG
 G:=-I./inc_src -mcmodel=large -std=legacy
 OPT_FLAGS_STD=
 USR:=IO_tools.o chkpoint.o uparam.o statistics_2D.o statistics_2DIO.o statistics_2D_usr.o statistics_2D_debug.o time_series.o time_seriesIO.o pts_redistribute.o err_est.o rt_filter.o tripf.o misc.o drl_main.o drl_action.o drl_init.o drl_reward.o drl_state.o drl_IO.o

@@ -125,6 +125,7 @@ SOLVER_PROFILES: Dict[str, dict] = {
         'workspace_files': {},
         'workspace_dirs': {},
     },
+
     'NEK5000': {
         'sentinel': '.NEK5000',
         # Runtime-only files (assumes nek5000 executable is pre-compiled)
@@ -150,7 +151,6 @@ SOLVER_PROFILES: Dict[str, dict] = {
         # Workspace: runtime files symlinked to run directory
 #[YW-MOD] Flexible workspace files for NEK5000 v17 and v19
         'workspace_files': {
-            'int_pos': 'int_pos',
             'environment_config.yaml': 'environment_config.yaml',
         },
         # Link one set per pattern group (prefer .par over .rea when both exist)
@@ -164,6 +164,58 @@ SOLVER_PROFILES: Dict[str, dict] = {
             'restart_files': 'restart_files',  # Link restart files directly
         },
       },
+
+    # [YW-MOD] Add NEK5000_v17 profile
+    'NEK5000_v17': {
+        'sentinel': '.NEK5000_v17',
+        # Runtime-only files (assumes nek5000 executable is pre-compiled)
+#[YW-MOD] Make it flexible to handle different cases
+        'required_files': [
+            'environment_config.yaml',  # Environment configuration (REQUIRED for MAIA pattern)
+            'stat_pts.in',  # Time series probe positions (required for TSRS module)
+            'forparam.i',  # Tripping parameter file
+        ],
+        # Flexible required files: allow case-by-case names
+        'required_any_files': [
+            ['*.re2'],  # Mesh file
+            ['*.ma2'],  # Material properties
+            ['*.rea'],  # Parameter file (old versions use .rea)
+            ['*.map'],  # Map file
+            ['*.wall'],  # Wall file
+            ['*.restart'],  # Restart file
+            ['mask_*.f'],  # Mask file
+            ['.sch'],  # Mask file
+        ],
+        'required_dirs': [
+            'restart_files',  # Initial condition files (read at startup)
+        ],
+        'optional_files': [
+            'config.yaml',  # Alternative config name (legacy support)
+            'README.md',  # Documentation
+        ],
+        # Workspace: runtime files symlinked to run directory
+#[YW-MOD] Flexible workspace files for NEK5000 v17
+        'workspace_files': {
+            'environment_config.yaml': 'environment_config.yaml',
+            'stat_pts.in': 'stat_pts.in',
+            'forparam.i': 'forparam.i',
+        },
+        # Link one set per pattern group (prefer .par over .rea when both exist)
+        'workspace_glob_groups': [
+            ['*.re2'],
+            ['*.ma2'],
+            ['*.rea'],
+            ['*.map'],
+            ['*.wall'],
+            ['*.restart'],
+            ['mask_*.f'],
+            ['.sch'],
+        ],
+        'workspace_dirs': {
+            'restart_files': 'restart_files',  # Link restart files directly
+        },
+      },
+    # [YW-MOD] End
     'FIREDRAKE': {
         'sentinel': '.FIREDRAKE',
         # Checkpoint files can be either .h5 or .ckpt - validation happens in code

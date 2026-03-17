@@ -1,4 +1,4 @@
-### makefile automatically created by makenek 03/12/2026 17:04:06 ###
+### makefile automatically created by makenek 03/17/2026 08:58:09 ###
 BINNAME=nek5000
 LIBNAME=libnek5000.a
 CASENAME:=naca_wing
