@@ -159,10 +159,9 @@ class NEK_INIT():
         Re-Write parameter files for NEK version <= 17.
         For the controllable params, please see config.
         """
-    file_path = os.path.join(self.nek.compile_path, f"{self.nek.CASENAME}.rea")
     output_path = os.path.join(self.rank_folder, f'{self.nek.CASENAME}.rea')
 
-    with open(file_path, 'r') as f:
+    with open(output_path, 'r') as f:
       lines = f.readlines()
       updated_lines = []
       for line in lines:

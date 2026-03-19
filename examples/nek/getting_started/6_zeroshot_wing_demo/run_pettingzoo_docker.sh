@@ -10,7 +10,7 @@ set -e
 
 # Load Nek5000 module
 module purge
-module load Nek5000/1.0-gompi-2024a-SystemCUDA-MiniChannel
+module load Nek5000/1.0-gompi-2024a-SystemCUDA-SmallWing
 
 # Activate Python environment
 source ~/venvs/hydrogym_cpu/bin/activate
@@ -22,7 +22,7 @@ WORK_DIR="./train_run"
 LOCAL_DIR="/workspace/hydrogym/packaged_envs"
 ENV_NAME="NACA4412_3D_Re75000_AOA5"
 NPROC_NEK=12
-NUM_STEPS=3000
+NUM_STEPS=30
 POLICY_TEMPLATE="../meta_policy_small_wing_template.py"
 POLICY_ROOT=""
 
@@ -60,10 +60,12 @@ python ../prepare_workspace.py \
     --profile NEK5000_v17
 
 cd "$WORK_DIR" || exit 1
+# Remove the "sch" file in the run folder
+rm -f *.sch
 
 if [ -n "$POLICY_ROOT" ]; then
     mpirun \
-        -np 1 python ../test_nek_pettingzoo.py \
+        -np 1 python ../zero_shot_demo_pettingzoo.py \
             --env "$ENV_NAME" \
             --nproc ${NPROC_NEK} \
             --steps ${NUM_STEPS} \
@@ -74,7 +76,7 @@ if [ -n "$POLICY_ROOT" ]; then
         -np ${NPROC_NEK} nek5000
 else
     mpirun \
-        -np 1 python ../test_nek_pettingzoo.py \
+        -np 1 python ../zero_shot_demo_pettingzoo.py \
             --env "$ENV_NAME" \
             --nproc ${NPROC_NEK} \
             --steps ${NUM_STEPS} \

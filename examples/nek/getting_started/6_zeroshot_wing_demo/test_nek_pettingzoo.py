@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """
 Zero-shot multi-policy deployment demo on the small wing case.
+NOTE: Only DRL policies are supported due to the precomplied Nek5000 executable.
+NOTE: This case is ONLY used for demonstration purpose, one should not expect any physical results.
 
 This chapter demonstrates deployment (not training): multiple policy groups are
 assigned to actuator subsets, each policy can update at its own DRL interval,
@@ -66,24 +68,6 @@ class BlowingController:
     acts = np.ones((n, 1), dtype=np.float32) * self.amplitude
     return acts, None
 
-
-class OppositionController:
-  """Opposition control based on local wall-normal velocity channel."""
-
-  def __init__(self, amplitude: float):
-    self.amplitude = float(amplitude)
-
-  def predict(self, obs_batch, deterministic=True):
-    obs_batch = np.asarray(obs_batch)
-    n = int(obs_batch.shape[0])
-    acts = np.zeros((n, 1), dtype=np.float32)
-    if obs_batch.ndim == 1:
-      obs_batch = obs_batch.reshape(1, -1)
-    v_idx = 1 if obs_batch.shape[1] > 1 else 0
-    acts[:, 0] = -self.amplitude * obs_batch[:, v_idx]
-    return acts, None
-
-
 class MultiPolicyDeployer:
   """Assign and deploy multiple policies over PettingZoo actuator agents."""
 
@@ -144,8 +128,6 @@ class MultiPolicyDeployer:
       return ZeroController()
     if algo == 'BL':
       return BlowingController(spec.action_max)
-    if algo == 'OC':
-      return OppositionController(spec.action_max)
 
     if algo not in ('PPO', 'TD3', 'DDPG'):
       raise ValueError(f"Unsupported algorithm '{spec.algorithm}' in {spec.name}")
@@ -219,6 +201,19 @@ class MultiPolicyDeployer:
     return groups
 
   def compute_actions(self, obs_dict: Dict[str, np.ndarray], step: int):
+    """
+    Compute the actions for the group.
+    The action is updated when the step is 0 or the step counter is divisible by the DRL step.
+
+    NOTE: observation and actions are normalized by the u_tau on Nek5000 end. 
+    Therefore, the action/observation are NOT normalized by the u_tau on the DRL side.
+
+    Args:
+      obs_dict: The observation dictionary for the group.
+      step: The current step.
+    Returns:
+      actions: The actions for the group.
+    """
     actions = {agent: np.zeros(1, dtype=np.float32) for agent in self.agents}
 
     for group in self.groups:
@@ -227,9 +222,11 @@ class MultiPolicyDeployer:
       if n_agents == 0:
         continue
 
+      # When the step is 0 or the step counter is divisible by the DRL step, update the action
       refresh = (step == 0) or ((group['step_counter'] % max(spec.drl_step, 1)) == 0)
 
       if refresh:
+        print(f"[ACTION] Refreshing at step={step} for {spec.name} (drl_step={spec.drl_step})", flush=True)
         obs_batch = np.vstack([
             np.asarray(obs_dict[agent], dtype=np.float32).reshape(1, -1)
             for agent in group['agents']
@@ -244,6 +241,7 @@ class MultiPolicyDeployer:
           raw_actions = pred
 
         raw_actions = np.asarray(raw_actions, dtype=np.float32).reshape(n_agents, -1)
+        # [YW-MOD] clip the action to the action bounds, again note that the action is NOT normalized by the u_tau yet
         clipped = np.clip(raw_actions[:, 0], spec.action_min, spec.action_max)
         group['cached_actions'] = clipped.reshape(n_agents, 1)
 
@@ -255,12 +253,23 @@ class MultiPolicyDeployer:
     return actions
 
   def update_rewards(self, rewards_dict: Dict[str, float]):
+    """
+    Update the rewards for the groups.
+    The reward is inverted as the reward was scaled in the Environment.
+    Subsequently, the reward is scaled by the mean of the dUdy for the group.
+    Args:
+      rewards_dict: The rewards dictionary for the groups.
+    """
     for group in self.groups:
       if len(group['agents']) == 0:
         continue
-      rewards = np.array([rewards_dict[a] for a in group['agents']], dtype=np.float32)
-      mean_rew = float(np.mean(rewards))
-      scaled = 1.0 - mean_rew / max(group['spec'].baseline_dudy, 1e-12)
+      # [YW-MOD] invert the reward as the reward was scaled in the Environment
+      invert_dUdy = 1.0 - np.array([rewards_dict[a] for a in group['agents']], dtype=np.float32)
+      # Calculate the mean of the dUdy for the group
+      mean_dUdy = float(np.mean(invert_dUdy))
+      # Scale the reward by the baseline_dudy
+      scaled = 1.0 - mean_dUdy / max(group['spec'].baseline_dudy, 1e-12)
+      # Add the scaled reward to the reward sum
       group['reward_sum'] += scaled
 
   def print_reward_table(self, step: int):
@@ -381,6 +390,8 @@ def main():
       use_clean_cache=False,
       local_fallback_dir=args.local_dir,
   )
+  # Set the baseline_dudy as 1 as the reward varies with streamwise position
+  base_env.baseline_dudy = 1.0
 
   # Keep behavior aligned with existing getting_started scripts.
   from hydrogym.nek.nek_lib.nek_utils import NEK_INIT
@@ -388,7 +399,7 @@ def main():
       nek=base_env.conf.simulation,
       drl=base_env.conf.runner,
       rank_folder=base_env.run_folder)
-  nek_init.rewrite_REA_v19()
+  nek_init.rewrite_REA_v17()
 
   env = make_pettingzoo_env(base_env)
 
