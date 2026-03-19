@@ -5,6 +5,7 @@
 # Usage:
 #     ./run_pettingzoo_docker.sh                    # Test only
 #     ./run_pettingzoo_docker.sh train              # Train SB3 agent
+#     ./run_pettingzoo_docker.sh train ./configs/pettingzoo_tcfmini_re180.yml
 
 set -e
 
@@ -25,11 +26,13 @@ NPROC_NEK=10
 NUM_STEPS=100
 TOTAL_TIMESTEPS=50000
 MODE="${1:-test}"  # test or train
+CONFIG_FILE="${2:-../configs/pettingzoo_tcfmini_re180.yml}"
 
 echo "=== NEK5000 PettingZoo (SuperSuit) ==="
 echo "Mode: $MODE"
 echo "Environment: $ENV_NAME"
 echo "Nek5000 procs: $NPROC_NEK"
+echo "Config file: $CONFIG_FILE"
 echo ""
 
 if [ "$MODE" == "train" ]; then
@@ -49,6 +52,7 @@ if [ "$MODE" == "train" ]; then
             --env "$ENV_NAME" \
             --local-dir "$LOCAL_DIR" \
             --nproc ${NPROC_NEK} \
+            --config-file "$CONFIG_FILE" \
             --total-timesteps ${TOTAL_TIMESTEPS} \
             --algo PPO \
         : \
@@ -72,6 +76,7 @@ else
             --local-dir "$LOCAL_DIR" \
             --steps ${NUM_STEPS} \
             --nproc ${NPROC_NEK} \
+            --config-file "$CONFIG_FILE" \
         : \
         -np ${NPROC_NEK} nek5000
 fi
