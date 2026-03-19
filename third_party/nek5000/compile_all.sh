@@ -24,6 +24,14 @@ printf '\n' | ./compile_script --clean && ./compile_script --all > $BASE_PATH/lo
 cd $BASE_PATH
 echo "[INFO] DONE ${target_path}"
 
+case_name=large_channel 
+target_path=$BASE_PATH/cases/${case_name}
+cd ${target_path} 
+printf '\n' | ./compile_script --clean && ./compile_script --all > $BASE_PATH/log.large_channel 2>&1
+cd $BASE_PATH
+echo "[INFO] DONE ${target_path}"
+
+
 case_name=small_wing 
 target_path=$BASE_PATH/cases/${case_name}
 cd ${target_path} 

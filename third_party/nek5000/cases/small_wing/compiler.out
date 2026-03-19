@@ -176,32 +176,6 @@ Warning: Named COMMON block ‘ctmp1’ at (1) shall be of the same size as else
  1883 |       COMMON /SCRMG/ V1(LX1,LY1,LZ1,LELV)
       |                    1
 Warning: Named COMMON block ‘scrmg’ at (1) shall be of the same size as elsewhere (1792000 vs 768 bytes)
-/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/bdry.f:614:20:
-
-  614 |       COMMON /SCRMG/ TMQ1(LX1,LY1,LZ1,LELV)
-      |                    1
-Warning: Named COMMON block ‘scrmg’ at (1) shall be of the same size as elsewhere (1344000 vs 1792000 bytes)
-/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/bdry.f:611:20:
-
-  611 |       COMMON /SCRUZ/ TMP1(LX1,LY1,LZ1,LELV)
-      |                    1
-Warning: Named COMMON block ‘scruz’ at (1) shall be of the same size as elsewhere (1344000 vs 768 bytes)
-/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/bdry.f:1242:20:
-
- 1242 |       COMMON /CTMP0/ STC(LX1,LY1,LZ1)
-      |                    1
-Warning: Named COMMON block ‘ctmp0’ at (1) shall be of the same size as elsewhere (512 vs 384 bytes)
-mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DUTAU -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/cases/small_wing -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/cmt -I./ /home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/conduct.f -o obj/conduct.o
-/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/bdry.f:1239:20:
-
- 1239 |       COMMON /SCRSF/ TRX(LX1,LY1,LZ1)
-      |                    1
-Warning: Named COMMON block ‘scrsf’ at (1) shall be of the same size as elsewhere (1536 vs 1344000 bytes)
-/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/bdry.f:2025:20:
-
- 2025 |       common /scrmg/ v1(lx1,ly1,lz1,lelt)
-      |                    1
-Warning: Named COMMON block ‘scrmg’ at (1) shall be of the same size as elsewhere (1344000 vs 1792000 bytes)
 /home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/coef.f:1649:22:
 
  1649 |       call out_fld_el(x,e,'XQ')
@@ -217,6 +191,16 @@ Warning: Actual argument contains too few elements for dummy argument ‘x’ (1
  1651 |       call out_fld_el(z,e,'ZQ')
       |                      1
 Warning: Actual argument contains too few elements for dummy argument ‘x’ (1/56000) at (1)
+/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/bdry.f:614:20:
+
+  614 |       COMMON /SCRMG/ TMQ1(LX1,LY1,LZ1,LELV)
+      |                    1
+Warning: Named COMMON block ‘scrmg’ at (1) shall be of the same size as elsewhere (1344000 vs 1792000 bytes)
+/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/bdry.f:611:20:
+
+  611 |       COMMON /SCRUZ/ TMP1(LX1,LY1,LZ1,LELV)
+      |                    1
+Warning: Named COMMON block ‘scruz’ at (1) shall be of the same size as elsewhere (1344000 vs 768 bytes)
 /home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/coef.f:1209:20:
 
  1209 |       COMMON /CTMP0/ C  (LX1,LY1,LZ1,LELT)
@@ -242,11 +226,27 @@ Warning: Named COMMON block ‘scrns’ at (1) shall be of the same size as else
  1142 |       COMMON /SCRNS/ XRM1(LX1,LY1,LZ1,LELT)
       |                    1
 Warning: Named COMMON block ‘scrns’ at (1) shall be of the same size as elsewhere (1792000 vs 3136000 bytes)
+/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/bdry.f:1242:20:
+
+ 1242 |       COMMON /CTMP0/ STC(LX1,LY1,LZ1)
+      |                    1
+Warning: Named COMMON block ‘ctmp0’ at (1) shall be of the same size as elsewhere (512 vs 384 bytes)
 /home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/coef.f:603:20:
 
   603 |       COMMON /CTMP1/ ZSM1(LX1,LY1,LZ1,LELT)
       |                    1
 Warning: Named COMMON block ‘ctmp1’ at (1) shall be of the same size as elsewhere (896000 vs 1792000 bytes)
+/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/bdry.f:1239:20:
+
+ 1239 |       COMMON /SCRSF/ TRX(LX1,LY1,LZ1)
+      |                    1
+Warning: Named COMMON block ‘scrsf’ at (1) shall be of the same size as elsewhere (1536 vs 1344000 bytes)
+/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/bdry.f:2025:20:
+
+ 2025 |       common /scrmg/ v1(lx1,ly1,lz1,lelt)
+      |                    1
+Warning: Named COMMON block ‘scrmg’ at (1) shall be of the same size as elsewhere (1344000 vs 1792000 bytes)
+mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DUTAU -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/cases/small_wing -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/cmt -I./ /home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/conduct.f -o obj/conduct.o
 /home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/coef.f:1462:20:
 
  1462 |       COMMON /CTMP0/ XA(LX1,LY3,LZ3), XB(LX1,LY1,LZ3)
@@ -739,6 +739,7 @@ mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-
  1919 |          BD(IBD+1) = BD(IBD)
       |            1
 Warning: Array reference at (1) out of bounds (2 > 1) in loop beginning at (2)
+mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DUTAU -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/cases/small_wing -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/cmt -I./ /home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/navier4.f -o obj/navier4.o
 /home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/navier1.f:4792:21:
 
  4790 |       do i=1,lxyz
@@ -843,7 +844,6 @@ Warning: Array reference at (1) out of bounds (64 > 4) in loop beginning at (2)
  4800 |          u12=ur(i)*rym1(i,1,1,e)+us(i)*sym1(i,1,1,e)+ut(i)*tym1(i,1,1,e)
       |                                                                1
 Warning: Array reference at (1) out of bounds (64 > 4) in loop beginning at (2)
-mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DUTAU -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/cases/small_wing -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/cmt -I./ /home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/navier4.f -o obj/navier4.o
 /home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/navier1.f:4801:24:
 
  4790 |       do i=1,lxyz
@@ -1527,6 +1527,7 @@ Warning: Named COMMON block ‘dgradl’ at (1) shall be of the same size as els
  2127 |       COMMON /CTMP1/ WORK   (LXYZ1,LELT)
       |                    1
 Warning: Named COMMON block ‘ctmp1’ at (1) shall be of the same size as elsewhere (448000 vs 4608 bytes)
+mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DUTAU -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/cases/small_wing -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/cmt -I./ /home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/prepost.f -o obj/prepost.o
 /home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/navier1.f:3450:20:
 
  3450 |       COMMON /CTMP1/  MFI    (LX1,LY1,LZ1,LELV)
@@ -1552,7 +1553,6 @@ Warning: Named COMMON block ‘scrch’ at (1) shall be of the same size as else
  4366 |       common /ctmp0/ work (lx2,ly2,lz2,lelv)
       |                    1
 Warning: Named COMMON block ‘ctmp0’ at (1) shall be of the same size as elsewhere (56000 vs 1536 bytes)
-mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DUTAU -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/cases/small_wing -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/cmt -I./ /home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/prepost.f -o obj/prepost.o
 /home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/navier1.f:1068:21:
 
  1068 |       COMMON /CPRINT/ IFPRINT, IFHZPC
@@ -1863,12 +1863,12 @@ Warning: Named COMMON block ‘scruz’ at (1) shall be of the same size as else
   817 |       common /scruz/ ta1(lx1,ly1,lz1,lelv)
       |                    1
 Warning: Named COMMON block ‘scruz’ at (1) shall be of the same size as elsewhere (1344000 vs 448000 bytes)
-mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DUTAU -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/cases/small_wing -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/cmt -I./ /home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/speclib.f -o obj/speclib.o
 /home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/prepost.f:2288:20:
 
  2288 |       common /SCRNS/ u4(2+lxo*lxo*lxo*6*lelt)
       |                    1
 Warning: Named COMMON block ‘scrns’ at (1) shall be of the same size as elsewhere (1344008 vs 448008 bytes)
+mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DUTAU -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/cases/small_wing -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/cmt -I./ /home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/speclib.f -o obj/speclib.o
 mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DUTAU -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/cases/small_wing -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/cmt -I./ /home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/map2.f -o obj/map2.o
 /home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/map2.f:176:20:
 
@@ -1943,7 +1943,6 @@ Warning: Named COMMON block ‘scruz’ at (1) shall be of the same size as else
       |                    1
 Warning: Named COMMON block ‘scruz’ at (1) shall be of the same size as elsewhere (1344000 vs 1792000 bytes)
 mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DUTAU -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/cases/small_wing -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/cmt -I./ /home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/ic.f -o obj/ic.o
-mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DUTAU -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/cases/small_wing -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/cmt -I./ /home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/ssolv.f -o obj/ssolv.o
 /home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/ic.f:951:38:
 
   951 |      $            call copy(t(1,1,1,1,2),sdmp2(1,1),ntott)
@@ -1964,6 +1963,7 @@ Warning: Array reference at (1) out of bounds (3 > 2) in loop beginning at (2)
   228 |          psmax(i) = glamax(T(1,1,1,1,i+1),ntot)
       |                                     1
 Warning: Array reference at (1) out of bounds (2 > 1) in loop beginning at (2)
+mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DUTAU -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/cases/small_wing -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/cmt -I./ /home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/ssolv.f -o obj/ssolv.o
 /home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/ic.f:690:34:
 
   661 |                    call byte_read(hnami,20,ierr)
@@ -2404,7 +2404,6 @@ Warning: Named COMMON block ‘scruz’ at (1) shall be of the same size as else
   737 |       COMMON /SCRMG/ DIVFLD (LX2,LY2,LZ2,LELV)
       |                    1
 Warning: Named COMMON block ‘scrmg’ at (1) shall be of the same size as elsewhere (112000 vs 1400000 bytes)
-mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O3 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DUTAU -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/cases/small_wing -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core -I./ /home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/math.f -o obj/math.o
 /home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/planx.f:189:43:
 
   189 |          CALL hmzpf2 (' BX ',OT1,IN1,H1,H2,B1MASK,VMULT,
@@ -2420,6 +2419,7 @@ Warning: Actual argument contains too few elements for dummy argument ‘mask’
   194 |      $   CALL hmzpf2 (' BZ ',OT3,IN3,H1,H2,B3MASK,VMULT,
       |                                           1
 Warning: Actual argument contains too few elements for dummy argument ‘mask’ (1/64) at (1)
+mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O3 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DUTAU -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/cases/small_wing -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core -I./ /home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/math.f -o obj/math.o
 /home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/math.f:1558:21:
 
  1557 |       DO 100 I=2,N
@@ -2509,6 +2509,7 @@ Warning: Rank mismatch between actual argument at (1) and actual argument at (2)
  1872 |          call mxma(us ,nr,Ds,ns,u,ns)
       |                   1
 Warning: Rank mismatch between actual argument at (1) and actual argument at (2) (scalar and rank-3)
+mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DUTAU -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/cases/small_wing -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/cmt -I./ /home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/gfdm_op.f -o obj/gfdm_op.o
 /home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/hmholtz.f:103:20:
 
   103 |       COMMON /CTMP1/ DUDR  (LX1,LY1,LZ1)
@@ -2519,7 +2520,6 @@ Warning: Named COMMON block ‘ctmp1’ at (1) shall be of the same size as else
   953 |       common /ctmp0/ w(lx1,ly1,lz1)
       |                    1
 Warning: Named COMMON block ‘ctmp0’ at (1) shall be of the same size as elsewhere (512 vs 2688000 bytes)
-mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DUTAU -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/cases/small_wing -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/cmt -I./ /home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/gfdm_op.f -o obj/gfdm_op.o
 /home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/hmholtz.f:554:22:
 
   554 |       COMMON  /CPRINT/ IFPRINT
@@ -3060,6 +3060,26 @@ Warning: Rank mismatch between actual argument at (1) and actual argument at (2)
  1067 |       if(.not. iflomach) call col2(hmsk,vtrans,n)
       |                                        1
 Warning: Rank mismatch between actual argument at (1) and actual argument at (2) (scalar and rank-5)
+/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/convect.f:1202:20:
+
+ 1202 |       common /ctmp1/ ur(ldd),us(ldd),ut(ldd),ju(ldd),ud(ldd),tu(ldd)
+      |                    1
+Warning: Named COMMON block ‘ctmp1’ at (1) shall be of the same size as elsewhere (10368 vs 6912 bytes)
+/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/convect.f:1582:20:
+
+ 1582 |       common /scrdg/ uf(lf),uxf(lf),uyf(lf),uzf(lf),upwind_wgt(lf)
+      |                    1
+Warning: Named COMMON block ‘scrdg’ at (1) shall be of the same size as elsewhere (3361632 vs 3360000 bytes)
+/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/convect.f:997:20:
+
+  997 |       common /ctmp1/ work(lxyz1,lelt)
+      |                    1
+Warning: Named COMMON block ‘ctmp1’ at (1) shall be of the same size as elsewhere (448000 vs 10368 bytes)
+/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/convect.f:38:20:
+
+   38 |       common /scruz/ cx  (lx1*ly1*lz1*lelt)
+      |                    1
+Warning: Named COMMON block ‘scruz’ at (1) shall be of the same size as elsewhere (1792000 vs 1344000 bytes)
 /home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/induct.f:889:21:
 
   889 |       call cresvib  (besv1,besv2,besv3,h1,h2)
@@ -3101,21 +3121,31 @@ Warning: Actual argument contains too few elements for dummy argument ‘p’ (1
   469 |       call curl(lf,b1,b2,b3,.false.,w1,w2)
       |                                    1
 Warning: Rank mismatch in argument ‘work1’ at (1) (rank-1 and scalar)
-/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/convect.f:1202:20:
+/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/convect.f:830:20:
 
- 1202 |       common /ctmp1/ ur(ldd),us(ldd),ut(ldd),ju(ldd),ud(ldd),tu(ldd)
+  830 |       common /scrcv/ uf(ltd),cf(ltd),cu(ltd)
       |                    1
-Warning: Named COMMON block ‘ctmp1’ at (1) shall be of the same size as elsewhere (10368 vs 6912 bytes)
+Warning: Named COMMON block ‘scrcv’ at (1) shall be of the same size as elsewhere (10368 vs 17280 bytes)
+/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/convect.f:1046:20:
+
+ 1046 |       common /cchar/ ct_vx(0:lorder) ! time for each slice in c_vx()
+      |                    1
+Warning: Named COMMON block ‘cchar’ at (1) shall be of the same size as elsewhere (32 vs 40 bytes)
+/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/convect.f:1106:20:
+
+ 1106 |       common /cchar/ ct_vx(0:lorder) ! time for each slice in c_vx()
+      |                    1
+Warning: Named COMMON block ‘cchar’ at (1) shall be of the same size as elsewhere (32 vs 40 bytes)
+/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/convect.f:1108:20:
+
+ 1108 |       common /scruz/ phi  (lx1*ly1*lz1*lelt)
+      |                    1
+Warning: Named COMMON block ‘scruz’ at (1) shall be of the same size as elsewhere (896000 vs 1792000 bytes)
 /home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/induct.f:304:20:
 
   304 |       common /scrns/ w1    (lx1,ly1,lz1,lelv)
       |                    1
 Warning: Named COMMON block ‘scrns’ at (1) shall be of the same size as elsewhere (2744000 vs 2688000 bytes)
-/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/convect.f:1582:20:
-
- 1582 |       common /scrdg/ uf(lf),uxf(lf),uyf(lf),uzf(lf),upwind_wgt(lf)
-      |                    1
-Warning: Named COMMON block ‘scrdg’ at (1) shall be of the same size as elsewhere (3361632 vs 3360000 bytes)
 /home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/induct.f:189:20:
 
   189 |       COMMON /SCRNS/ TA1(LX1,LY1,LZ1,LELV)
@@ -3131,46 +3161,16 @@ Warning: Named COMMON block ‘scrns’ at (1) shall be of the same size as else
  1333 |       common /scrns/ wk(2*ltd)
       |                    1
 Warning: Named COMMON block ‘scrns’ at (1) shall be of the same size as elsewhere (27264 vs 3136000 bytes)
-/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/convect.f:997:20:
-
-  997 |       common /ctmp1/ work(lxyz1,lelt)
-      |                    1
-Warning: Named COMMON block ‘ctmp1’ at (1) shall be of the same size as elsewhere (448000 vs 10368 bytes)
 /home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/induct.f:24:20:
 
    24 |       common /scrns/  resv1 (lx1,ly1,lz1,lelv)
       |                    1
 Warning: Named COMMON block ‘scrns’ at (1) shall be of the same size as elsewhere (2688000 vs 3136000 bytes)
-/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/convect.f:38:20:
-
-   38 |       common /scruz/ cx  (lx1*ly1*lz1*lelt)
-      |                    1
-Warning: Named COMMON block ‘scruz’ at (1) shall be of the same size as elsewhere (1792000 vs 1344000 bytes)
-/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/convect.f:830:20:
-
-  830 |       common /scrcv/ uf(ltd),cf(ltd),cu(ltd)
-      |                    1
-Warning: Named COMMON block ‘scrcv’ at (1) shall be of the same size as elsewhere (10368 vs 17280 bytes)
-/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/convect.f:1046:20:
-
- 1046 |       common /cchar/ ct_vx(0:lorder) ! time for each slice in c_vx()
-      |                    1
-Warning: Named COMMON block ‘cchar’ at (1) shall be of the same size as elsewhere (32 vs 40 bytes)
 /home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/induct.f:1610:20:
 
  1610 |       common /scrns/ ta1 (lx1,ly1,lz1,lelv)
       |                    1
 Warning: Named COMMON block ‘scrns’ at (1) shall be of the same size as elsewhere (2688000 vs 3136000 bytes)
-/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/convect.f:1106:20:
-
- 1106 |       common /cchar/ ct_vx(0:lorder) ! time for each slice in c_vx()
-      |                    1
-Warning: Named COMMON block ‘cchar’ at (1) shall be of the same size as elsewhere (32 vs 40 bytes)
-/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/convect.f:1108:20:
-
- 1108 |       common /scruz/ phi  (lx1*ly1*lz1*lelt)
-      |                    1
-Warning: Named COMMON block ‘scruz’ at (1) shall be of the same size as elsewhere (896000 vs 1792000 bytes)
 /home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/perturb.f:843:28:
 
   842 |       DO 100 ILAG=NBDINP-1,2,-1
@@ -3248,11 +3248,6 @@ Warning: Named COMMON block ‘scrns’ at (1) shall be of the same size as else
 mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DUTAU -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/cases/small_wing -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/cmt -I./ /home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/navier5.f -o obj/navier5.o
 mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DUTAU -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/cases/small_wing -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/cmt -I./ /home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/navier6.f -o obj/navier6.o
 mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DUTAU -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/cases/small_wing -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/cmt -I./ /home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/navier7.f -o obj/navier7.o
-/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/navier6.f:93:72:
-
-   93 |                call set_fem_data_l2(nel_proc,ndom,n_o,x,y,z,tri)
-      |                                                                        1
-Warning: Type mismatch in argument ‘p’ at (1); passed INTEGER(4) to REAL(8)
 /home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/navier7.f:49:17:
 
    48 |       do i=1,n
@@ -3260,6 +3255,11 @@ Warning: Type mismatch in argument ‘p’ at (1); passed INTEGER(4) to REAL(8)
    49 |          nc = ia(i+1)-ia(i)
       |                 1
 Warning: Array reference at (1) out of bounds (2 > 1) in loop beginning at (2)
+/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/navier6.f:93:72:
+
+   93 |                call set_fem_data_l2(nel_proc,ndom,n_o,x,y,z,tri)
+      |                                                                        1
+Warning: Type mismatch in argument ‘p’ at (1); passed INTEGER(4) to REAL(8)
 /home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/navier7.f:466:17:
 
   464 |       do i=1,n
@@ -3336,35 +3336,6 @@ Warning: Named COMMON block ‘ctmp0’ at (1) shall be of the same size as else
 mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DUTAU -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/cases/small_wing -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/cmt -I./ /home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/navier8.f -o obj/navier8.o
 mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DUTAU -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/cases/small_wing -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/cmt -I./ /home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/fast3d.f -o obj/fast3d.o
 mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DUTAU -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/cases/small_wing -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/cmt -I./ /home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/fasts.f -o obj/fasts.o
-/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/fast3d.f:627:12:
-
-  626 |       do i=1,nz-1
-      |                                                                        2
-  627 |          dx(i+1) = (z(i+1)-z(i))*scale
-      |            1
-Warning: Array reference at (1) out of bounds (2 > 1) in loop beginning at (2)
-/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/fast3d.f:1006:12:
-
- 1005 |       do i=1,nz-1
-      |                                                                        2
- 1006 |          dx(i+1) = (z(i+1)-z(i))*scale
-      |            1
-Warning: Array reference at (1) out of bounds (2 > 1) in loop beginning at (2)
-/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/fast3d.f:1390:33:
-
- 1390 |       call set_up_fast_1D_sem_op(s,eb0,eb1,l,r,ll,lm,lr,bh,dgl,0)
-      |                                 1
-Warning: Actual argument contains too few elements for dummy argument ‘g’ (1/16) at (1)
-/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/fast3d.f:553:46:
-
-  553 |       call set_up_1D_geom(dx,lbc,rbc,ll,lm,lr,z,nz)
-      |                                              1
-Warning: Actual argument contains too few elements for dummy argument ‘z’ (1/2) at (1)
-/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/fast3d.f:932:49:
-
-  932 |       call set_up_1D_geom_ax(dx,lbc,rbc,ll,lm,lr,z,y,nz)
-      |                                                 1
-Warning: Actual argument contains too few elements for dummy argument ‘z’ (1/2) at (1)
 /home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/navier8.f:668:31:
 
   667 |          do i=1,40
@@ -3604,6 +3575,20 @@ Warning: Named COMMON block ‘scrmg’ at (1) shall be of the same size as else
  2023 |       common  /scrns/ ind,etuple
       |                     1
 Warning: Named COMMON block ‘scrns’ at (1) shall be of the same size as elsewhere (1680000 vs 1568000 bytes)
+/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/fast3d.f:627:12:
+
+  626 |       do i=1,nz-1
+      |                                                                        2
+  627 |          dx(i+1) = (z(i+1)-z(i))*scale
+      |            1
+Warning: Array reference at (1) out of bounds (2 > 1) in loop beginning at (2)
+/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/fast3d.f:1006:12:
+
+ 1005 |       do i=1,nz-1
+      |                                                                        2
+ 1006 |          dx(i+1) = (z(i+1)-z(i))*scale
+      |            1
+Warning: Array reference at (1) out of bounds (2 > 1) in loop beginning at (2)
 /home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/navier8.f:108:20:
 
   108 |       common /scrns/ w(7*lx1*ly1*lz1*lelv)
@@ -3614,6 +3599,21 @@ Warning: Named COMMON block ‘scrns’ at (1) shall be of the same size as else
   109 |       common /vptsol/ a(27*lx1*ly1*lz1*lelv)
       |                     1
 Warning: Named COMMON block ‘vptsol’ at (1) shall be of the same size as elsewhere (12096000 vs 48608160 bytes)
+/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/fast3d.f:1390:33:
+
+ 1390 |       call set_up_fast_1D_sem_op(s,eb0,eb1,l,r,ll,lm,lr,bh,dgl,0)
+      |                                 1
+Warning: Actual argument contains too few elements for dummy argument ‘g’ (1/16) at (1)
+/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/fast3d.f:553:46:
+
+  553 |       call set_up_1D_geom(dx,lbc,rbc,ll,lm,lr,z,nz)
+      |                                              1
+Warning: Actual argument contains too few elements for dummy argument ‘z’ (1/2) at (1)
+/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/fast3d.f:932:49:
+
+  932 |       call set_up_1D_geom_ax(dx,lbc,rbc,ll,lm,lr,z,y,nz)
+      |                                                 1
+Warning: Actual argument contains too few elements for dummy argument ‘z’ (1/2) at (1)
 /home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/navier8.f:1337:21:
 
  1337 |       common /scrpre/ uc(lcr*lelt)
@@ -4189,12 +4189,12 @@ cc1: warning: command-line option ‘-std=legacy’ is valid for Fortran but not
 mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DUTAU -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/cases/small_wing -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/cmt -I./ /home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/vprops.f -o obj/vprops.o
 mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DUTAU -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/cases/small_wing -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/cmt -I./ /home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/makeq_aux.f -o obj/makeq_aux.o
 mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DUTAU -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/cases/small_wing -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/cmt -I./ /home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/papi.f -o obj/papi.o
-mpif77 -c  -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DUTAU -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/cases/small_wing -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/cmt -I./ /home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/3rd_party/nek_in_situ.f -o obj/nek_in_situ.o
 /home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/papi.f:5:72:
 
     5 |       call getflops_papi(flops,mflops)
       |                                                                        1
 Warning: Type mismatch in argument ‘flops’ at (1); passed INTEGER(8) to REAL(8)
+mpif77 -c  -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DUTAU -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/cases/small_wing -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/cmt -I./ /home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/3rd_party/nek_in_situ.f -o obj/nek_in_situ.o
 mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DUTAU -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/cases/small_wing -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/cmt -I./ /home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/readat_new.f -o obj/readat_new.o
 mpicc -c -I./inc_src -mcmodel=large -std=legacy -O2 -DMPIIO -DDRL -DUTAU -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/jl -DPREFIX=jl_ /home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/3rd_party/finiparser.c -o obj/finiparser.o
 cc1: warning: command-line option ‘-std=legacy’ is valid for Fortran but not for C
@@ -4382,12 +4382,12 @@ stats/statistics_2D.f:626:30:
  2156 |                   msg_id1 = irecv(0,recmap,len)       ! rec mapping
       |                                    2
 Warning: Rank mismatch between actual argument at (1) and actual argument at (2) (rank-1 and scalar)
-mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DUTAU -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/cases/small_wing -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/cmt -I./ -I./inc_src stats/time_series.f -o obj/time_series.o
 stats/statistics_2D.f:464:20:
 
   464 |       common /ctmp0/ rtmp
       |                    1
 Warning: Named COMMON block ‘ctmp0’ at (1) shall be of the same size as elsewhere (224000 vs 112000 bytes)
+mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DUTAU -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/cases/small_wing -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/cmt -I./ -I./inc_src stats/time_series.f -o obj/time_series.o
 stats/time_series.f:821:30:
 
   813 |                call byte_read(hdr,10,ierr)
@@ -4504,20 +4504,21 @@ tripf.f:357:29:
 Warning: Rank mismatch between actual argument at (1) and actual argument at (2) (scalar and rank-1)
 mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DUTAU -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/cases/small_wing -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/cmt -I./ -I./inc_src drl/drl_init.f -o obj/drl_init.o
 mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DUTAU -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/cases/small_wing -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/cmt -I./ -I./inc_src drl/drl_reward.f -o obj/drl_reward.o
-drl/drl_reward.f:158:17:
-
-  158 |      &         +body_cos * body_sin * dUdy
-      |                 1
-Warning: Extension: Unary operator following arithmetic operator (use parentheses) at (1)
 mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DUTAU -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/cases/small_wing -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/cmt -I./ -I./inc_src drl/drl_state.f -o obj/drl_state.o
 drl/drl_state.f:382:0:
 
   382 | #endif YWDEBUG
       | 
 Warning: extra tokens at end of #endif directive
+drl/drl_reward.f:158:17:
+
+  158 |      &         +body_cos * body_sin * dUdy
+      |                 1
+Warning: Extension: Unary operator following arithmetic operator (use parentheses) at (1)
 mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DUTAU -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/cases/small_wing -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/cmt -I./ -I./inc_src drl/drl_IO.f -o obj/drl_IO.o
 mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DUTAU -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/cases/small_wing -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/cmt -I./ /home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/comm_mpi.f -o obj/comm_mpi.o
 mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DUTAU -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/cases/small_wing -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/cmt -I./ /home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/singlmesh.f -o obj/singlmesh.o
+mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O0      -DMPIIO -DDRL -DUTAU -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/cases/small_wing -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core -I./ /home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/3rd_party/dsygv.f -o obj/dsygv.o
 drl/drl_IO.f:53:26:
 
    41 |                   call MPI_SEND(c_cfl,1,MPI_DOUBLE,
@@ -4566,7 +4567,6 @@ drl/drl_IO.f:255:26:
   255 |             call MPI_SEND(send_r_buff, TOTCTRL, MPI_DOUBLE,
       |                          1
 Warning: Rank mismatch between actual argument at (1) and actual argument at (2) (scalar and rank-1)
-mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O0      -DMPIIO -DDRL -DUTAU -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/cases/small_wing -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core -I./ /home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/3rd_party/dsygv.f -o obj/dsygv.o
 mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O0      -DMPIIO -DDRL -DUTAU -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/cases/small_wing -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core -I./ /home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/core/3rd_party/ssygv.f -o obj/ssygv.o
 mpicc -c -I./inc_src -mcmodel=large -std=legacy -O2 -DMPIIO -DDRL -DUTAU -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/jl -DPREFIX=jl_ /home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/jl/gs.c -o obj/jl_gs.o
 cc1: warning: command-line option ‘-std=legacy’ is valid for Fortran but not for C
@@ -4595,8 +4595,8 @@ cc1: warning: command-line option ‘-std=legacy’ is valid for Fortran but not
 mpicc -c -I./inc_src -mcmodel=large -std=legacy -O2 -DMPIIO -DDRL -DUTAU -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/jl -DPREFIX=jl_ /home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/jl/obbox.c -o obj/jl_obbox.o
 cc1: warning: command-line option ‘-std=legacy’ is valid for Fortran but not for C
 mpicc -c -I./inc_src -mcmodel=large -std=legacy -O2 -DMPIIO -DDRL -DUTAU -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/jl -DPREFIX=jl_ /home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/jl/poly.c -o obj/jl_poly.o
-mpicc -c -I./inc_src -mcmodel=large -std=legacy -O2 -DMPIIO -DDRL -DUTAU -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/jl -DPREFIX=jl_ /home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/jl/lob_bnd.c -o obj/jl_lob_bnd.o
 cc1: warning: command-line option ‘-std=legacy’ is valid for Fortran but not for C
+mpicc -c -I./inc_src -mcmodel=large -std=legacy -O2 -DMPIIO -DDRL -DUTAU -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/jl -DPREFIX=jl_ /home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/jl/lob_bnd.c -o obj/jl_lob_bnd.o
 cc1: warning: command-line option ‘-std=legacy’ is valid for Fortran but not for C
 mpicc -c -I./inc_src -mcmodel=large -std=legacy -O2 -DMPIIO -DDRL -DUTAU -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/jl -DPREFIX=jl_ /home/yuninw/codes/drl/hydrogym_cl_fork/third_party/nek5000/solver/DEC_DRL_Nek5000/jl/findpts_el_3.c -o obj/jl_findpts_el_3.o
 cc1: warning: command-line option ‘-std=legacy’ is valid for Fortran but not for C
@@ -4759,6 +4759,6 @@ mpif77 -o nek5000 -I./inc_src -mcmodel=large -std=legacy obj/small_wing.o obj/dr
 #                  Compilation successful!                  #
 #############################################################
    text	   data	    bss	    dec	    hex	filename
-2982866	  15816	470764072	473762754	1c3d0bc2	nek5000
+2982922	  15832	470764072	473762826	1c3d0c0a	nek5000
 
 

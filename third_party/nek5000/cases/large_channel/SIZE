@@ -1,0 +1,57 @@
+c
+c     Include file to dimension static arrays
+c     and to set some hardwired run-time parameters
+c
+      integer ldim,lx1,lxd,lx2,lx1m,lelg,lelt,ldimt
+      integer lpelt,lbelt,toteq,lcvelt
+      integer lelx,lely,lelz,mxprev,lgmres,lorder,lhis
+      integer maxobj,lpert,nsessmax,lxo
+      integer lfdm, ldimt_proj, lelr,lp
+      integer totctrl, xnel, ynel, znel
+
+      ! BASIC
+      parameter (ldim=3)               ! domain dimension (2 or 3)      
+      
+      ! parameter (lx1=6,lxd=9)                ! p-order (avoid uneven and values <6)
+      parameter (lx1=8,lxd=12)                ! p-order (avoid uneven and values <6)
+! 11th order
+cc      parameter (lx1=12)                ! p-order (avoid uneven and values <6)
+cc      parameter (lxd=18)                ! p-order for over-integration (dealiasing) 
+      
+
+      parameter (lx2=lx1-2)            ! p-order for pressure (lx1 or lx1-2)
+      !---------------------------------
+      ! Following are CRITICAL, based on your mesh and PC!
+      parameter (lelg=720)            ! max total number of elements
+      parameter (lp=512)               ! NO. of CORES 
+      parameter (lelt=3)             ! max number of local elements per MPI rank (lelt <= lelg//lp)
+      !---------------------------------
+      parameter (ldimt=1)              ! max auxiliary fields (temperature + scalars)
+
+      ! OPTIONAL
+      parameter (ldimt_proj=1)         ! max auxiliary fields residual projection
+      parameter (lelr=lelt)            ! max number of local elements per restart file
+      parameter (lhis=100)             ! max history points
+      parameter (maxobj=4)             ! max number of objects
+      parameter (lpert=1)              ! max perturbation modes
+      parameter (toteq=1)              ! max number of conserved scalars in cmt
+      parameter (nsessmax=1)           ! max sessions
+      parameter (lxo=lx1)              ! max grid size on output (lxo>=lx1)
+      parameter (lelx=1,lely=1,lelz=1) ! global tensor mesh dimensions
+      parameter (mxprev=30,lgmres=20)  ! max dim of projection & Krylov space
+      parameter (lorder=3)             ! max order in time
+
+
+      parameter (lx1m=1)               ! polynomial order mesh solver
+      parameter (lbelt=1)              ! mhd
+      parameter (lpelt=1)              ! linear stability
+      parameter (lcvelt=1)             ! cvode
+      parameter (lfdm=0)               ! == 1 for fast diagonalization method
+
+
+      parameter (totctrl=128) ! Number of control points in the mesh (Lx-2)*(Lz-2)*lelt, here I know lelt=2 at maximum for wall points
+      parameter (xnel=10) !used for average
+      parameter (ynel=8) !used for average
+      parameter (znel=9) !used for average
+      ! INTERNALS
+      include 'SIZE.inc'
