@@ -65,7 +65,7 @@ rm -f *.sch
 
 if [ -n "$POLICY_ROOT" ]; then
     mpirun \
-        -np 1 python ../zero_shot_demo_pettingzoo.py \
+        -np 1 python ../zeroshot_demo_pettingzoo.py \
             --env "$ENV_NAME" \
             --nproc ${NPROC_NEK} \
             --steps ${NUM_STEPS} \
@@ -76,7 +76,7 @@ if [ -n "$POLICY_ROOT" ]; then
         -np ${NPROC_NEK} nek5000
 else
     mpirun \
-        -np 1 python ../zero_shot_demo_pettingzoo.py \
+        -np 1 python ../zeroshot_demo_pettingzoo.py \
             --env "$ENV_NAME" \
             --nproc ${NPROC_NEK} \
             --steps ${NUM_STEPS} \
