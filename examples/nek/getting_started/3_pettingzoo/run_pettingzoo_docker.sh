@@ -26,7 +26,9 @@ NPROC_NEK=10
 NUM_STEPS=100
 TOTAL_TIMESTEPS=50000
 MODE="${1:-test}"  # test or train
-CONFIG_FILE="${2:-../configs/pettingzoo_tcfmini_re180.yml}"
+CONFIG_FILE="${2:-pettingzoo_tcfmini_re180.yml}"
+# Convert CONFIG_FILE to absolute path
+CONFIG_FILE=$(realpath "../../configs/$CONFIG_FILE")
 
 echo "=== NEK5000 PettingZoo (SuperSuit) ==="
 echo "Mode: $MODE"

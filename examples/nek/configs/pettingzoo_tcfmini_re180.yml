@@ -5,23 +5,24 @@
 
 runner:
   # RL/interaction settings
-  nb_interactions: 2500
-  nb_episodes: 20
+  nb_interactions: 2500 # Number of interactions within one episode
+  nb_episodes: 100
   nb_warmup_episodes: 1
-  train_steps: 300
-  gradient_steps: 64
-  ckpt_int: 5
+  train_steps: 300 # Interval of training steps within one episode
+  gradient_steps: 64 # Interval of gradient steps within one episode
+  ckpt_int: 5 # Save checkpoint every 5 episodes
   RL_algorithm: "TD3"
-  rescale_actions: true
+  rescale_actions: true # Rescale actions to the range [-1, 1] then scale by u_tau
   learning_rate: 1e-3
-  batch_size: 256
-  buffer_size: 1000000
+  batch_size: 256 # Batch size for training
+  buffer_size: 1000000 # Buffer size for experience replay
   learning_starts: 100
   tau: 0.005
+  # --- For TD3 algorithm ---
   policy_delay: 2
   target_policy_noise: 0.0
   target_noise_clip: 0.0
-  action_noise: 0.1
+  action_noise: 0.1 # 10% of the action space
 
   # Reproducibility and environment coupling
   seed: 1998
@@ -32,7 +33,7 @@ runner:
   ctrl_min_amp: -0.06388353
   ctrl_max_amp: 0.06388353
   npl_state: 2
-  u_tau: 0.0638
+  u_tau: 0.06388353
   dUdy: 12.4271
 
 simulation:
@@ -51,19 +52,21 @@ simulation:
   znmf_avg: 0
   target_cfl: 2.0
   y_sensing: 15.0
-  retau: 180.0
-  ys_bdf: 20.0
-  amp_bdf: 5.0
-  ret_bdf: 207.0
+  retau: 180.0 # Friction Reynolds number
+  ys_bdf: 0.0 # Body-force method is not used in this case
+  amp_bdf: 0.0 # Body-force method is not used in this case
+  ret_bdf: 0.0 # Body-force method is not used in this case
 
   # SIZE (mesh)
-  lx1: 6
+  lx1: 6 # Polynomial order of GLL basis functions
+  # -- Size of the domain --
   Lx: 2.67
   Ly: 1.0
   Lz: 0.8
-  Nx: 4
-  Ny: 16
-  Nz: 4
+  Nx: 4 # Number of spectral elements in the x-direction
+  Ny: 16 # Number of spectral elements in the y-direction
+  Nz: 4 # Number of spectral elements in the z-direction
+  # -- Size of the actuator patch --
   nxs: 1
   nzs: 1
 
@@ -71,7 +74,7 @@ simulation:
   tmax: 100000.0
   stopAt: "numSteps"
   numSteps: 500000
-  dt: -0.01
+  dt: -0.01 # Time step size (negative value means time step)
   timeStepper: "bdf3"
   variableDt: "no"
   writeControl: "timeStep"
@@ -87,7 +90,7 @@ simulation:
   v_residualTol: 1.0e-08
   v_residualProj: "no"
   density: 1.0
-  viscosity: -2800
+  viscosity: -2800 # Reb
   advection: "yes"
 
   # Runtime parameters
@@ -95,9 +98,11 @@ simulation:
   PARFNAME: "outparfile"
   LOGLEVEL: 1
   WALLTIME: "23:45"
-  READCHKPT: "yes"
+  READCHKPT: "yes" # Read checkpoint file from the fully-developed flow field
   CHKPFNUMBER: 1
+  # --- We are not using checkpointing in this case ---
   CHKPINTERVAL: 10000000
   AVSTEP: 10
   IOSTEP: 300000000
+  # --- We are not using SMP in this case ---
   SMPSTEP: 23

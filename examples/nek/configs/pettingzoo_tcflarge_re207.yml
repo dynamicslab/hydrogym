@@ -1,0 +1,106 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# PettingZoo reproducible config for TCFmini_3D_Re180
+# Intended to be used with prepare_workspace + mpirun from work_dir.
+
+runner:
+  # RL/interaction settings
+  nb_interactions: 2500
+  nb_episodes: 100
+  nb_warmup_episodes: 1
+  train_steps: 300
+  gradient_steps: 64
+  ckpt_int: 5  # Save checkpoint every 5 episodes
+  RL_algorithm: "TD3"
+  rescale_actions: true
+  learning_rate: 1e-3
+  batch_size: 2048
+  buffer_size: 20_000_000
+  learning_starts: 100
+  tau: 0.005
+  policy_delay: 2
+  target_policy_noise: 0.2
+  target_noise_clip: 0.5
+  action_noise: 0.1 # 10% of the action space
+
+  # Reproducibility and environment coupling
+  seed: 20010603 # Fixed seed for reproducibility
+  random_init: 6
+  rank: 1
+  evaluation: false
+  normalize_input: "utau"
+  ctrl_min_amp: -0.063
+  ctrl_max_amp: 0.063
+  npl_state: 2
+  u_tau: 0.0630
+  dUdy: 13.10
+
+simulation:
+  CASENAME: "tcf"
+  solver_version: "v19"
+  exeName: "nek5000"
+  host: "localhost"
+  hostfile: ""
+  compile_path: "."
+  restart_folder: "restart_files"
+
+  # Core runtime configuration
+  nproc: 512
+  TOTCTRL: 128 # Buffer size for MPI
+  ndrl: 13 # dt+ = 0.6 
+  znmf_avg: 1 
+  target_cfl: 2.0
+  y_sensing: 15.0
+  retau: 207.0
+  # --- We are not using body-force method in this case ---
+  ys_bdf: 0.0
+  amp_bdf: 0.0
+  ret_bdf: 0.0
+
+  # SIZE (mesh)
+  lx1: 8 
+  Lx: 6.28 
+  Ly: 1.0
+  Lz: 3.14
+  Nx: 10
+  Ny: 9
+  Nz: 9
+  # -- Size of the actuator patch --
+  nxs: 1
+  nzs: 1
+
+  # .par settings
+  tmax: 100000.0
+  stopAt: "numSteps"
+  numSteps: 500000
+  dt: -4.0e-03
+  timeStepper: "bdf3"
+  variableDt: "no"
+  writeControl: "timeStep"
+  writeInterval: 100000
+  dealiasing: "yes"
+  filtering: "none"
+  filterWeight: 0.01
+  filterCutoffRatio: 0.9
+  stressFormulation: "no"
+  variableProperties: "no"
+  p_residualTol: 1.0e-08
+  p_residualProj: "no"
+  v_residualTol: 1.0e-08
+  v_residualProj: "no"
+  density: 1.0
+  viscosity: -3300 # Higher Reb
+  advection: "yes"
+
+  # Runtime parameters
+  PARFWRITE: "no"
+  PARFNAME: "outparfile"
+  LOGLEVEL: 1
+  WALLTIME: "23:45"
+  READCHKPT: "yes"
+  CHKPFNUMBER: 1
+  CHKPINTERVAL: 10000000
+  AVSTEP: 10
+  # During training we do not need write running statistics and time-series data
+  IOSTEP: 300000000
+  SMPSTEP: 1000

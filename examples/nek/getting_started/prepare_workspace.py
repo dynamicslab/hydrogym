@@ -89,7 +89,7 @@ def prepare_nek_workspace(
   # Prepare workspace with symlinks to clean cache
   print("\nStep 2: Preparing workspace with symlinks...")
   work_paths = dm.prepare_working_directory(
-      environment_path, work_dir, profile=profile)
+      env_path=environment_path, work_dir=work_dir,)
 
   work_dir_resolved = work_paths['work_dir']
 
@@ -107,6 +107,7 @@ def prepare_nek_workspace(
       break
   # [YW-MOD] End  
 
+  print(f"par_file: {par_file}")
   par_file = Path(work_dir_resolved) / par_file
   # Create SESSION.NAME file (required by Nek5000)
   print("\nStep 3: Creating Nek5000 session files...")

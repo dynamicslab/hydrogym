@@ -71,6 +71,7 @@ obs, rewards, terminations, truncations, infos = env.step(actions)
 ### 3. [`3_pettingzoo/`](3_pettingzoo/) - PettingZoo AEC Interface
 **Interface:** PettingZoo AEC (Agent Environment Cycle)
 **Use Case:** Turn-based multi-agent scenarios
+**Configuration File:**: An example of using configuration to replicate training. 
 **SB3 Compatible:** ⚠️ Requires wrapper
 
 ```python
