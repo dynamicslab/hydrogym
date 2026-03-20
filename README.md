@@ -42,6 +42,47 @@ docker pull clagemann/maia-rocm-6.3.3:latest
 # Run container
 docker run -it --gpus all clagemann/maia-cuda-12.8.1:latest
 ```
+
+## Apptainer Usage
+Note that in order to interface with a shared cluster, it is necessary to convert the available MAIA docker container to the apptainer format as docker typically isn’t allowed in these shared compute contexts due to its root access requirements. This is done simply by performing an `apptainer pull` command followed by the host of the docker container. For example:
+
+```bash
+apptainer pull docker://clagemann/maia-cuda-12.8.1:latest
+```
+
+This will convert the docker build file into the necessary .sif format for running with apptainer. To run the maia apptainer (note that the specific command may change with different versions of the container), run `apptainer run` such as below with cuda enabled and bound to the workspace in the .sif environment:
+
+```bash
+apptainer pull docker://clagemann/maia-cuda-12.8.1:latest
+```
+
+Note that the above likely should be run with the additional necessary resources allocated (i.e. in a slurm environment, running within an interactive session or one can prep an sbatch file to launch the environment and run predefined scripts in the container). In this environment, you can run HydroGym training with access to the full MAIA backend.
+
+### Port-Forwarding with Apptainer
+Another important note is that some packages will not be automatically added to the path due to the Apptainer process of generating the .sif file which doesn’t honor the docker Entrypoint setup in the same way. After launching the apptainer environment, it is important to enable the following packages to retain full functionality, particularly when attempting to view results locally by port-forwarding from a remote workstation to a local install of paraview.
+
+```bash
+module load GCC/13.3.0 gompi/2024a-SystemCUDA Python/3.12.3-GCCcore-13.3.0 HDF5/1.14.5-gompi-2024a-SystemCUDA OpenMPI/5.0.5-GCC-13.3.0-SystemCUDA FFTW.MPI/3.3.10-gompi-2024a-SystemCUDA PnetCDF/1.12.3-gompi-2024a
+-SystemCUDA mpi4py/4.0.1-gompi-2024a-SystemCUDA Eigen/3.4.0-GCCcore-13.3.0
+
+export PATH=$PATH:/home/easybuild/paraview-install/bin/
+export LD_LIBRARY_PATH=$EBROOTGCC/lib64:$EBROOTPNETCDF/lib:$EBROOTNETCDF/lib64:$EBROOTHDF5/lib:$LD_LIBRARY_PATH
+
+export PV_PLUGIN_PATH=/home/easybuild/paraview-plugins/build/lib64
+export PSP_SCHED_YIELD=1
+```
+This allows for all post-processing tools to be available when launching a pvserver on a given port (say 11111, for example), which can be run by running a script such as:
+```bash
+srun -c 24 apptainer exec --nv --bind $(pwd):/workspace  maia-cuda-12.8.1_latest.sif /home/easybuild/paraview-install/bin/pvserver --server-port=11111
+```
+
+On a slurm environment, this will give a machine port (say XXXXX) that can be connected to by ssh-ing into the remote workstation and specifying a local port (say 11111) to attach to the given remote port, such as running the below on your local desktop with an install of paraview (must be Paraview v5.13 for current container)
+```bash
+ssh USER@REMOTE.WORKSTATION.ADDRESS.EDU -L 11111:XXXXX:11111
+```
+
+You should now be able to follow the instructions to Connect from your local Paraview Client as the local port will be connected to the remote workstation port which will contain all your maia save files and run the post-processing using the remote workstation’s compute. 
+
 ## Available Environments
 
 HydroGym provides **88 environments** across 6 solver backends:
