@@ -1,5 +1,5 @@
 import tree_math
-from typing import Callable, Iterable, Tuple
+from typing import Callable, Iterable, Tuple, NamedTuple
 import jax.numpy as jnp 
 import numpy as np
 import jax
@@ -7,18 +7,117 @@ from jax import lax
 
 from hydrogym.core import CallbackBase, PDEBase, TransientSolver
 from hydrogym.jax.utils.utils import *
-from hydrogym.jax.flow import FlowConfig 
+from hydrogym.jax.flow import FlowConfig
+from hydrogym.jax.equation import * 
 
 _alpha_RK4 = [0, 0.1496590219993, 0.3704009573644, 0.6222557631345, 0.9582821306748, 1]
 _beta_RK4 = [0, -0.4178904745, -1.192151694643, -1.697784692471, -1.514183444257]
 _gammas_RK4 = [0.1496590219993, 0.3792103129999, 0.8229550293869, 0.6994504559488, 0.1530572479681]
 
+class VelocityState(NamedTuple):
+    u: jnp.ndarray   
+    v: jnp.ndarray
+    w: jnp.ndarray
+
+class RungeKuttaCrankNicolson(TransientSolver):
+  
+  def __init__(
+    self, 
+    flow: FlowConfig, 
+    dt: float, 
+    save_n: int,
+    equation: IMEXEquation,
+    **kwargs
+  ):
+    self.save_n = save_n
+    self.dt = dt
+    self.flow = flow 
+    self.equation = equation 
+    super().__init__(flow, dt)
+    
+  def RK4_CN(self):
+    
+    """ Crank-Nicolson RK4 implicit-explicit time stepping scheme
+        Low storage scheme inspired by [1]. Method described in [2]. 
+        
+        Implicit-Explicit timestepping for an ODE of the form:
+          ∂u/∂t = g(u,t) + l(u,t)
+        where g(u,t) is the nonlinear advection term and l(u,t) is the linear diffusion term.
+        
+        [1] Kochkov, D., et. al. (2021) https://doi.org/10.1073/pnas.2101784118
+        [2] PK Sweby, (1984). SIAM journal on numerical analysis 21, Appendix D.
+    """
+    g = tree_math.unwrap(self.equation.nonlinear_terms)
+    l = tree_math.unwrap(self.equation.linear_terms)
+    y = tree_math.unwrap(self.equation.implicit_timestep, vector_argnums=0)
+
+    @tree_math.wrap
+    def time_step_fn(u):
+      h = 0
+      for k in range(5):
+        h = g(u) + _beta_RK4[k] * h 
+        mu = 0.5 * self.dt * (_alpha_RK4[k + 1] - _alpha_RK4[k])
+        yn = u + _gammas_RK4[k]* self.dt * h + mu*l(u)
+        u = y(yn, mu)
+      return u
+    
+    return time_step_fn
+
+
+  def step(self, flow: FlowConfig, dt: float, save_n: int, callbacks: Callable):
+    """
+    Lax.scan to iteratively apply a function given an initial value 
+
+    Args:
+        initialization(grid array): the initial fft vorticity field
+        steps (int):  number of timesteps
+        save_n (int): save every n steps
+        ignore_intermediate_steps (bool): if saving every n steps, ignore intermediate steps.
+                                          this drastically reduces the memory requirements.
+        
+    """
+    func = self.RK4_CN()
+    
+    def inner_scan(initialization):
+      f = lambda init, inputs: (func(init), init)
+      final_state, outputs = lax.scan(f, initialization, xs=None, length=save_n)
+      return final_state
+
+    return inner_scan 
+  
+  def solve(self, dt: float, flow: FlowConfig, t_span: Tuple[float, float], callbacks: Iterable[CallbackBase] = [], controller: Callable = None, save_n: int = 1) -> PDEBase:
+
+    end_time = t_span[1]
+    
+    if end_time < 1:
+      raise ValueError("This flow configuration requires the end time to be at least 1. Please adjust your t_span value and run again.")
+    
+    initialization = flow.initialize_state()
+    step_to_save = int(save_n // dt) 
+
+    total_steps = end_time // dt 
+    outer_steps = total_steps // step_to_save 
+    
+    
+    inner_scan = self.step(flow, dt, step_to_save, callbacks)
+    
+    outer_scan = lambda init, inputs: (inner_scan(init), 
+                                       inner_scan(init))
+    
+    final_state, outputs = lax.scan(outer_scan, initialization, xs=None, length=outer_steps)
+    flow.vorticity = outputs 
+    # Dummy values for iter, t for hydrogym api callback function. 
+    # Optimized iteration through JAX (with scan) is not the same as native python, and the iterations can not easily be tracked.
+    for cb in callbacks:
+      cb(flow)
+    return final_state, outputs
+
 class PseudoSpectralNavierStokes2D:
   """ 
-  Calculates the 2D Navier-Stokes equations using the pseudo-spectral solver. We transform the 2D Navier-Stokes equation to a vorticity equation:
-    ∂/∂t ω + u·∇ω = v ∇²ω + ƒ ;
-    ω = - ∇²φ ; 
-  and solve in Fourier space
+    Calculates the 2D Navier-Stokes equations using the pseudo-spectral solver. We transform the 2D Navier-Stokes equation to a vorticity equation:
+        ∂/∂t ω + u·∇ω = v ∇²ω + ƒ ;
+        ω = - ∇²φ ; 
+    and solve in Fourier space
   
   """
 
@@ -117,95 +216,113 @@ class PseudoSpectralNavierStokes2D:
         return f_vorticity
       else:
         return None 
+      
+class RungeKutta4(TransientSolver):
+    
+    def __init__(self, flow: "FlowConfig", equation, dt: float, save_n: int, **kwargs):
+        self.save_n = int(save_n)
+        self.dt = dt
+        self.flow = flow
+        self.equation = equation
+        super().__init__(flow, dt)
 
-class RK4CNSolver(TransientSolver):
-  
-  def __init__(
-    self, 
-    flow: FlowConfig, 
-    dt: float, 
-    save_n: int,
-    **kwargs
-  ):
-    self.save_n = save_n
-    self.dt = dt
-    self.flow = flow 
-    self.equation = PseudoSpectralNavierStokes2D(self.flow)
-    super().__init__(flow, dt)
-    
-  def RK4_CN(self):
-    
-    """ Crank-Nicolson RK4 implicit-explicit time stepping scheme
-        Low storage scheme inspired by [1]. Method described in [2]. 
+    def rk4_step(self, state_hat: "VelocityState"):
+        eq = self.equation
+        dt = self.dt
+
+        def add_state(a, b, alpha=1.0):
+            
+            return VelocityState(
+                a.u + alpha * b.u,
+                a.v + alpha * b.v,
+                a.w + alpha * b.w,
+            )
+
+        k1 = eq.rhs(state_hat)
+        s2 = add_state(state_hat, k1, 0.5 * dt)
+
+        k2 = eq.rhs(s2)
+        s3 = add_state(state_hat, k2, 0.5 * dt)
+
+        k3 = eq.rhs(s3)
+        s4 = add_state(state_hat, k3, dt)
+
+        k4 = eq.rhs(s4)
+
+        u_star = VelocityState(
+            state_hat.u + (dt / 6.0) * (k1.u + 2 * k2.u + 2 * k3.u + k4.u),
+            state_hat.v + (dt / 6.0) * (k1.v + 2 * k2.v + 2 * k3.v + k4.v),
+            state_hat.w + (dt / 6.0) * (k1.w + 2 * k2.w + 2 * k3.w + k4.w),
+        )
+
+        return eq.project(u_star, dt)
+
+    def step(self, flow: "FlowConfig", dt: float, save_n: int, callbacks: Callable):
         
-        Implicit-Explicit timestepping for an ODE of the form:
-          ∂u/∂t = g(u,t) + l(u,t)
-        where g(u,t) is the nonlinear advection term and l(u,t) is the linear diffusion term.
-        
-        [1] Kochkov, D., et. al. (2021) https://doi.org/10.1073/pnas.2101784118
-        [2] PK Sweby, (1984). SIAM journal on numerical analysis 21, Appendix D.
-    """
-    g = tree_math.unwrap(self.equation.nonlinear_terms)
-    l = tree_math.unwrap(self.equation.linear_terms)
-    y = tree_math.unwrap(self.equation.implicit_timestep, vector_argnums=0)
+        save_n = int(save_n)
 
-    @tree_math.wrap
-    def time_step_fn(u):
-      h = 0
-      for k in range(5):
-        h = g(u) + _beta_RK4[k] * h 
-        mu = 0.5 * self.dt * (_alpha_RK4[k + 1] - _alpha_RK4[k])
-        yn = u + _gammas_RK4[k]* self.dt * h + mu*l(u)
-        u = y(yn, mu)
-      return u
-    
-    return time_step_fn
+        def inner_scan(initialization):
+            def f(init, _):
+                new_state = self.rk4_step(init)
+                return new_state, new_state
+
+            final_state, outputs = lax.scan(
+                f, initialization, xs=None, length=save_n
+            )
+            return final_state, outputs
+
+        return inner_scan
+
+    def solve(
+        self,
+        dt: float,
+        flow: "FlowConfig",
+        t_span: Tuple[float, float],
+        callbacks: Iterable["CallbackBase"] = (),
+        controller: Callable = None,
+        save_n: int = 1,
+    ) -> "PDEBase":
+        end_time = t_span[1]
+        if end_time < dt:
+            raise ValueError("end_time must be at least one timestep.")
+
+        # Current physical snapshot from flow
+        U0, V0, W0 = flow.initialize_state()
+        init_phys = VelocityState(U0, V0, W0)
+        initialization = self.equation.to_spectral(init_phys)
+
+        # save_n is interpreted as number of solver steps between saved outputs
+        step_to_save = max(int(save_n), 1)
+        total_steps = max(int(end_time / dt), 1)
+        outer_steps = max(total_steps // step_to_save, 1)
+
+        inner_scan = self.step(flow, dt, step_to_save, callbacks)
+
+        def outer_scan(init, _):
+            final_state, outputs = inner_scan(init)
+            return final_state, outputs
+
+        final_state, outputs = lax.scan(
+            outer_scan, initialization, xs=None, length=outer_steps
+        )
+
+        # outputs is a tree with leading shape (outer_steps, step_to_save, ...)
+        flat_outputs = jax.tree_util.tree_map(
+            lambda x: x.reshape((-1,) + x.shape[2:]),
+            outputs,
+        )
+
+        U = jax.vmap(lambda s: self.equation.to_physical(s).u)(flat_outputs)
+        V = jax.vmap(lambda s: self.equation.to_physical(s).v)(flat_outputs)
+        W = jax.vmap(lambda s: self.equation.to_physical(s).w)(flat_outputs)
+
+        flow.u = U
+        flow.v = V
+        flow.w = W
+
+        for cb in callbacks:
+            cb(flow)
+
+        return final_state, (U, V, W)
 
 
-  def step(self, flow: FlowConfig, dt: float, save_n: int, callbacks: Callable):
-    """
-    Lax.scan to iteratively apply a function given an initial value 
-
-    Args:
-        initialization(grid array): the initial fft vorticity field
-        steps (int):  number of timesteps
-        save_n (int): save every n steps
-        ignore_intermediate_steps (bool): if saving every n steps, ignore intermediate steps.
-                                          this drastically reduces the memory requirements.
-        
-    """
-    func = self.RK4_CN()
-    
-    def inner_scan(initialization):
-      f = lambda init, inputs: (func(init), init)
-      final_state, outputs = lax.scan(f, initialization, xs=None, length=save_n)
-      return final_state
-
-    return inner_scan 
-  
-  def solve(self, dt: float, flow: FlowConfig, t_span: Tuple[float, float], callbacks: Iterable[CallbackBase] = [], controller: Callable = None, save_n: int = 1) -> PDEBase:
-
-    end_time = t_span[1]
-    
-    if end_time < 1:
-      raise ValueError("This flow configuration requires the end time to be at least 1. Please adjust your t_span value and run again.")
-    
-    initialization = flow.initialize_state()
-    step_to_save = int(save_n // dt) 
-
-    total_steps = end_time // dt 
-    outer_steps = total_steps // step_to_save 
-    
-    
-    inner_scan = self.step(flow, dt, step_to_save, callbacks)
-    
-    outer_scan = lambda init, inputs: (inner_scan(init), 
-                                       inner_scan(init))
-    
-    final_state, outputs = lax.scan(outer_scan, initialization, xs=None, length=outer_steps)
-    flow.vorticity = outputs 
-    # Dummy values for iter, t for hydrogym api callback function. 
-    # Optimized iteration through JAX (with scan) is not the same as native python, and the iterations can not easily be tracked.
-    for cb in callbacks:
-      cb(flow)
-    return final_state, outputs
