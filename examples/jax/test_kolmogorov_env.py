@@ -1,5 +1,3 @@
-# test_kolmogorov_save_png.py
-
 import numpy as np
 import matplotlib.pyplot as plt
 import jax
@@ -12,13 +10,15 @@ def to_real(omega_hat):
     return np.asarray(jnp.fft.irfftn(omega_hat))
 
 
-def run_env(env, params, action, steps=50):
+def run_env(env, params, action, steps=3):
     key = jax.random.PRNGKey(0)
     obs, state = env.reset_env(key, params)
+    jax.debug.print("Initial observation shape: {shape}", shape=jnp.mean(obs))
 
     for _ in range(steps):
         key, subkey = jax.random.split(key)
         obs, state, reward, done, _ = env.step_env(subkey, state, action, params)
+        jax.debug.print("Step: {_}, Reward: {reward}", _=_, reward=reward)
 
     return state.trajectory
 
@@ -27,14 +27,8 @@ def main():
     env = KolmogorovFlow(env_config={}, flow_config={})
     params = env.default_params
 
-    params = params.replace(
-        action_time=1.0,
-        save_time=0.1,
-        max_episode_steps=5,
-    )
-
     zero_action = jnp.zeros((params.action_dim,))
-    test_action = jnp.array([-0.15, -0.03, 0.02, 0.01])
+    test_action = jnp.array([-0.25, -0.03, 0.02, 0.01])
 
     print("Running zero-action...")
     traj_zero = run_env(env, params, zero_action)

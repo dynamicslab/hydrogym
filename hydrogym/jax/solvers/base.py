@@ -15,7 +15,7 @@ _beta_RK4 = [0, -0.4178904745, -1.192151694643, -1.697784692471, -1.514183444257
 _gammas_RK4 = [0.1496590219993, 0.3792103129999, 0.8229550293869, 0.6994504559488, 0.1530572479681]
 
 class VelocityState(NamedTuple):
-    u: jnp.ndarray   
+    u: jnp.ndarray   # physical or spectral depending on usage
     v: jnp.ndarray
     w: jnp.ndarray
 
@@ -33,6 +33,7 @@ class RungeKuttaCrankNicolson(TransientSolver):
     self.dt = dt
     self.flow = flow 
     self.equation = equation 
+    #self.equation = PseudoSpectralNavierStokes2D(self.flow)
     super().__init__(flow, dt)
     
   def RK4_CN(self):
@@ -111,114 +112,9 @@ class RungeKuttaCrankNicolson(TransientSolver):
     for cb in callbacks:
       cb(flow)
     return final_state, outputs
-
-class PseudoSpectralNavierStokes2D:
-  """ 
-    Calculates the 2D Navier-Stokes equations using the pseudo-spectral solver. We transform the 2D Navier-Stokes equation to a vorticity equation:
-        ∂/∂t ω + u·∇ω = v ∇²ω + ƒ ;
-        ω = - ∇²φ ; 
-    and solve in Fourier space
+    
+class RungeKutta4():
   
-  """
-
-  def __init__(self, flow: FlowConfig): 
-      self.flow = flow 
-      self.grid = flow.load_fft_mesh()
-      self.real_grid = flow.load_mesh('name')
-      self.kx, self.ky = self.grid
-      self.x, self.y = self.real_grid
-          
-  def linear_terms(self, omega_hat):
-    """Computes the linear (viscous) term of the vorticity equation
-    """
-    return self.flow.nu *  (2j * jnp.pi)**2 * (self.kx**2 + self.ky**2) * omega_hat
-   
-  def implicit_timestep(self,omega_hat, time_step):
-    """
-    Function that computes an implicit euler timestep,
-      y_n+1 = y_n / (1-∇tλ). 
-    
-    """
-    double_derivative = (2j * jnp.pi)**2 * (self.kx**2 + self.ky**2)
-    return 1 / (1 - time_step * self.flow.nu * double_derivative) * omega_hat
-    
-  def nonlinear_terms(self, omega_hat):
-    """Computes the explicit (nonlinear) terms in the vorticity equation. 
-    Uses the stream function to compute velocity components in Fourier space.
-
-    Args:
-        omega_hat: fft of vorticity
-
-    Returns:
-        terms: Nonlinear terms of the equation.
-    """
-    
-    kx, ky = self.kx, self.ky
-    
-    double_derivative = (2 * jnp.pi * 1j) ** 2 * (abs(self.kx)**2 + abs(ky)**2)
-    double_derivative = double_derivative.at[0, 0].set(1)  # avoiding division by 0.0 in the next step
-
-    psi_hat = -1 * omega_hat / double_derivative 
-    uhat = (2 * jnp.pi * 1j) * ky * psi_hat # Get u,v from phi 
-    vhat = (-1 * 2 * jnp.pi * 1j) * kx * psi_hat
-  
-    u, v = jnp.fft.irfftn(uhat), jnp.fft.irfftn(vhat)
-
-    grad_x_hat = 2j * jnp.pi * self.kx * omega_hat
-    grad_y_hat = 2j * jnp.pi * self.ky * omega_hat
-    grad_x, grad_y = jnp.fft.irfftn(grad_x_hat), jnp.fft.irfftn(grad_y_hat)
-
-    advection = -(grad_x * u + grad_y * v)
-    advection_hat = jnp.fft.rfftn(advection)
-    
-    forcing_hat = self.forcing_term()
-    control_hat = self.control_term()
-    advection_hat = dealiasing(advection_hat) # 2/3 dealiasing rule
-
-    terms = advection_hat + forcing_hat + control_hat
-    return terms
-  
-  
-  def control_term(self):
-      """Computes the user-specified forcing term of the vorticity equation 
-      Args:
-        omega_hat: Fourier transformed vorticity term
-        forcing: Forcing function as specified by environment or user
-      """
-      cfx, cfy  = self.flow.control_function
-      if cfx is not None:
-        kx, ky = self.grid
-        cfx_hat, cfy_hat = jnp.fft.rfft2(cfx), jnp.fft.rfft2(cfy)
-        # Transform the velocity forcing into vorticity 
-        derivative_term = (2j * jnp.pi)
-        f_vorticity = derivative_term * (cfy_hat*kx - cfx_hat*ky)
-        return f_vorticity
-      else:
-        return None 
-    
-    
-  def forcing_term(self):
-      """Computes the user-specified forcing term of the vorticity equation 
-      Args:
-        omega_hat: Fourier transformed vorticity term
-        forcing: Forcing function as specified by environment or user
-      """
-      forcing_func = self.flow.forcing_function
-      if forcing_func is not None:
-        kx, ky = self.grid
-        x, y = self.real_grid
-        fx, fy = forcing_func(k=self.flow.k, x=x, y=y)
-        fx_hat, fy_hat = jnp.fft.rfft2(fx), jnp.fft.rfft2(fy)
-
-        # Transform the velocity forcing into vorticity 
-        derivative_term = (2j * jnp.pi)
-        f_vorticity = derivative_term * (fy_hat*kx - fx_hat*ky)
-        return f_vorticity
-      else:
-        return None 
-      
-class RungeKutta4(TransientSolver):
-    
     def __init__(self, flow: "FlowConfig", equation, dt: float, save_n: int, **kwargs):
         self.save_n = int(save_n)
         self.dt = dt
@@ -226,28 +122,38 @@ class RungeKutta4(TransientSolver):
         self.equation = equation
         super().__init__(flow, dt)
 
-    def rk4_step(self, state_hat: "VelocityState"):
+    def rk4_step(
+        self,
+        state_hat: "VelocityState",
+        dt: float = None,
+        action=None,
+        t: float = 0.0,
+        fx=0.0,
+        fy=0.0,
+        fz=0.0,
+        enforce_const_massflux=True,
+        target_bulk_u=8.0,
+    ):
         eq = self.equation
-        dt = self.dt
+        dt = self.dt if dt is None else dt
 
         def add_state(a, b, alpha=1.0):
-            
             return VelocityState(
                 a.u + alpha * b.u,
                 a.v + alpha * b.v,
                 a.w + alpha * b.w,
             )
 
-        k1 = eq.rhs(state_hat)
+        k1 = eq.rhs(state_hat, action=action, t=t, fx=fx, fy=fy, fz=fz)
         s2 = add_state(state_hat, k1, 0.5 * dt)
 
-        k2 = eq.rhs(s2)
+        k2 = eq.rhs(s2, action=action, t=t + 0.5 * dt, fx=fx, fy=fy, fz=fz)
         s3 = add_state(state_hat, k2, 0.5 * dt)
 
-        k3 = eq.rhs(s3)
+        k3 = eq.rhs(s3, action=action, t=t + 0.5 * dt, fx=fx, fy=fy, fz=fz)
         s4 = add_state(state_hat, k3, dt)
 
-        k4 = eq.rhs(s4)
+        k4 = eq.rhs(s4, action=action, t=t + dt, fx=fx, fy=fy, fz=fz)
 
         u_star = VelocityState(
             state_hat.u + (dt / 6.0) * (k1.u + 2 * k2.u + 2 * k3.u + k4.u),
@@ -255,74 +161,25 @@ class RungeKutta4(TransientSolver):
             state_hat.w + (dt / 6.0) * (k1.w + 2 * k2.w + 2 * k3.w + k4.w),
         )
 
-        return eq.project(u_star, dt)
+        new_state = eq.project(u_star, dt, action=action, t=t + dt)
 
-    def step(self, flow: "FlowConfig", dt: float, save_n: int, callbacks: Callable):
-        
-        save_n = int(save_n)
+        if enforce_const_massflux:
+            state_phys = eq.to_physical(new_state)
+            bulk_u = jnp.mean(state_phys.u)
+            delta = target_bulk_u - bulk_u
 
-        def inner_scan(initialization):
-            def f(init, _):
-                new_state = self.rk4_step(init)
-                return new_state, new_state
-
-            final_state, outputs = lax.scan(
-                f, initialization, xs=None, length=save_n
+            corrected_phys = VelocityState(
+                state_phys.u + delta,
+                state_phys.v,
+                state_phys.w,
             )
-            return final_state, outputs
+            u, v, w = eq.enforce_noslip(
+                corrected_phys.u,
+                corrected_phys.v,
+                corrected_phys.w,
+                action=action,
+                t=t + dt,
+            )
+            new_state = eq.to_spectral(VelocityState(u, v, w))
 
-        return inner_scan
-
-    def solve(
-        self,
-        dt: float,
-        flow: "FlowConfig",
-        t_span: Tuple[float, float],
-        callbacks: Iterable["CallbackBase"] = (),
-        controller: Callable = None,
-        save_n: int = 1,
-    ) -> "PDEBase":
-        end_time = t_span[1]
-        if end_time < dt:
-            raise ValueError("end_time must be at least one timestep.")
-
-        # Current physical snapshot from flow
-        U0, V0, W0 = flow.initialize_state()
-        init_phys = VelocityState(U0, V0, W0)
-        initialization = self.equation.to_spectral(init_phys)
-
-        # save_n is interpreted as number of solver steps between saved outputs
-        step_to_save = max(int(save_n), 1)
-        total_steps = max(int(end_time / dt), 1)
-        outer_steps = max(total_steps // step_to_save, 1)
-
-        inner_scan = self.step(flow, dt, step_to_save, callbacks)
-
-        def outer_scan(init, _):
-            final_state, outputs = inner_scan(init)
-            return final_state, outputs
-
-        final_state, outputs = lax.scan(
-            outer_scan, initialization, xs=None, length=outer_steps
-        )
-
-        # outputs is a tree with leading shape (outer_steps, step_to_save, ...)
-        flat_outputs = jax.tree_util.tree_map(
-            lambda x: x.reshape((-1,) + x.shape[2:]),
-            outputs,
-        )
-
-        U = jax.vmap(lambda s: self.equation.to_physical(s).u)(flat_outputs)
-        V = jax.vmap(lambda s: self.equation.to_physical(s).v)(flat_outputs)
-        W = jax.vmap(lambda s: self.equation.to_physical(s).w)(flat_outputs)
-
-        flow.u = U
-        flow.v = V
-        flow.w = W
-
-        for cb in callbacks:
-            cb(flow)
-
-        return final_state, (U, V, W)
-
-
+        return new_state
