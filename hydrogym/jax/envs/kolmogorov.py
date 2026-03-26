@@ -312,8 +312,8 @@ class KolmogorovFlowParams(EnvParams):
     max_obs: float = jnp.inf
 
     dt: float = 1e-3
-    action_time: float = 4.0
-    save_time: float = 1.0
+    action_time: float = 10.0
+    save_time: float = 1
 
     k1: int = 4
     k2: int = 5
@@ -324,6 +324,8 @@ class KolmogorovFlowParams(EnvParams):
     obs_dim: int = 64
     max_episode_steps: int = 1000
     reward_alpha: float = 4.0
+    
+    include_grad: bool = True
 
 
 class KolmogorovFlow(JAXFlowEnvBase):
@@ -339,7 +341,7 @@ class KolmogorovFlow(JAXFlowEnvBase):
         self.integrator_cls = RungeKuttaCrankNicolson
 
         self.n, self.m = self.flow.grid_size
-        self.x, self.y = self.flow.load_mesh("default")
+        self.x, self.y = self.flow.load_mesh("")
         self.kx, self.ky = self.flow.load_fft_mesh()
 
     @property
@@ -403,7 +405,7 @@ class KolmogorovFlow(JAXFlowEnvBase):
         """
         equation = self._make_equation(control_field)
 
-        save_n = max(int(params.save_time / params.dt), 1)
+        save_n = params.save_time
         integrator = self.integrator_cls(
             flow=self.flow,
             dt=params.dt,

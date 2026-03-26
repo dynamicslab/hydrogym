@@ -7,6 +7,49 @@ from ..flow import *
 from jax import lax
 from matplotlib.animation import PillowWriter
 
+def dealias_mask_2_3(Nx: int, Ny: int):
+    """
+    Standard 2/3 rule in x,y for modes after fftfreq ordering.
+    """
+    kx = jnp.fft.fftfreq(Nx) * Nx  # integer-like
+    ky = jnp.fft.fftfreq(Ny) * Ny
+    kx_cut = (Nx // 3)
+    ky_cut = (Ny // 3)
+    mx = (jnp.abs(kx) <= kx_cut)[:, None]
+    my = (jnp.abs(ky) <= ky_cut)[None, :]
+    mask = (mx & my).astype(jnp.float32)  # (Nx,Ny)
+    return mask
+
+def cheb_D_matrices(N: int, Lz: float):
+    """
+    Chebyshev-Gauss-Lobatto points on [-1,1], and D1/D2 scaled to physical z in [0,Lz] or [-Lz/2,Lz/2]
+    We keep points on [-1,1] and scale derivatives by (2/Lz).
+    """
+    k = jnp.arange(N)
+    x = jnp.cos(jnp.pi * k / (N - 1))  # on [1,-1]
+    x = x[::-1]                        # make ascending [-1,1]
+
+    c = jnp.ones(N)
+    c = c.at[0].set(2.0)
+    c = c.at[-1].set(2.0)
+    c = c * ((-1.0) ** jnp.arange(N))
+
+    X = x[:, None]
+    dX = X - X.T
+
+    # Off-diagonal entries
+    D = (c[:, None] / c[None, :]) / (dX + jnp.eye(N))  # add eye to avoid /0; will fix diagonal next
+    D = D - jnp.diag(jnp.sum(D, axis=1))               # set diagonal so rows sum to 0
+
+    # Scale to physical z: z = (Lz/2)*x => d/dz = (2/Lz)*d/dx
+    scale1 = (2.0 / Lz)
+    D1 = scale1 * D
+    D2 = (scale1**2) * (D @ D)
+
+    # Physical z points: map [-1,1] -> [-Lz/2, Lz/2] (or you can shift to [0,Lz] if desired)
+    z = (Lz / 2.0) * x
+    return z, D1, D2
+
 def compute_velocity_fft(omega_hat, kx, ky):
     """
     Computing the fourier velocity components (u_hat, v_hat) from the stream function (phi_hat)
@@ -158,7 +201,7 @@ def compute_reward(omega_hat, kx, ky, nu, n, actions):
         
     """
     tke = compute_tke(omega_hat, kx, ky, n)
-    actions_cost = 75*(actions[0] + actions[1] + actions[2] + actions[3])
+    actions_cost = (actions[0] + actions[1] + actions[2] + actions[3])
     return tke - actions_cost
 
 def compute_divergence(omega_hat, kx, ky):
