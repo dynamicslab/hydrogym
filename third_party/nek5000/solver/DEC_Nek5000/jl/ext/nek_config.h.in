@@ -1,8 +1,0 @@
-#ifndef NEK_CONFIG_H
-#define NEK_CONFIG_H
-
-#define NEK_FUN_PREFIX @FUN_PREFIX@
-
-typedef @NEK_UINT@ nek_uint;
-
-#endif

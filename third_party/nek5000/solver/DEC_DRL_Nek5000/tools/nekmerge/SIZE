@@ -1,5 +1,0 @@
-      parameter (lelt = 1 000 000)
-      parameter (ldim = 3, ldimt=2, ldimt1=ldimt+1,ldimt3=ldimt+1)
-      parameter (lhis = 1, maxobj=1)
-
-      common /cdim/  ndim,nel,nelv,nelt,nfld

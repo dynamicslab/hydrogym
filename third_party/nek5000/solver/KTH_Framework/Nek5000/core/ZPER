@@ -1,2 +1,0 @@
-      integer nelx,nely,nelz
-      common /gfdmic/  nelx,nely,nelz

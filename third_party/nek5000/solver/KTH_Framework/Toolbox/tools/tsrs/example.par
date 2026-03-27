@@ -1,2 +1,0 @@
-[_TSRS]                 # Runtime paramere section for time series module
-SMPSTEP              = 13                     # Frequency of sampling

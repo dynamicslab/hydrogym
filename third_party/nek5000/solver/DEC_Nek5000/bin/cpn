@@ -1,7 +1,0 @@
-cp $1.real $2.real
-cp $1.rea $2.rea
-cp $1.usr $2.usr
-cp $1.map $2.map
-cp $1.sep $2.sep
-cp $1.box $2.box
-ln $1.re2 $2.re2
