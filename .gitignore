@@ -133,5 +133,3 @@ dmypy.json
 .pyre/
 
 .DS_store
-examples/nek/getting_started/*/train_run/
-examples/nek/getting_started/*/*log*
