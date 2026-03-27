@@ -26,14 +26,19 @@ def train_with_from_hf(args):
     print("Pattern: NekEnv.from_hf()")
     print("=" * 70 + "\n")
 
-    # Create environment using from_hf() pattern
-    print("Creating environment with NekEnv.from_hf()...")
-    env = NekEnv.from_hf(
-        args.env,
-        nproc=args.nproc,
-        use_clean_cache=False,
-        local_fallback_dir=args.local_dir,
-    )
+  # Create environment using from_hf() pattern
+  print("Creating environment with NekEnv.from_hf()...")
+  env = NekEnv.from_hf(
+      args.env,
+      nproc=args.nproc,
+      use_clean_cache=False,
+      local_fallback_dir=args.local_dir,
+  )
+  # [YW-MOD] Rewrite the par file to ensure the simulation configuration is correct
+  from hydrogym.nek.nek_lib.nek_utils import NEK_INIT
+  nek_init = NEK_INIT(nek=env.conf.simulation, drl=env.conf.runner, rank_folder=env.run_folder)
+  nek_init.rewrite_REA_v19() # Rewrite the par file, v19 corresponds to the new Nek5000 format
+  # [YW-MOD] End
 
     print("\nEnvironment created:")
     print(f"  Observation space: {env.observation_space.shape}")
@@ -46,21 +51,23 @@ def train_with_from_hf(args):
         from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
         from stable_baselines3.common.callbacks import CheckpointCallback
 
-        if args.algo == "PPO":
-            from stable_baselines3 import PPO as Algorithm
-        elif args.algo == "TD3":
-            from stable_baselines3 import TD3 as Algorithm
-        elif args.algo == "SAC":
-            from stable_baselines3 import SAC as Algorithm
-    except ImportError:
-        print("✗ Stable-Baselines3 not installed!")
-        sys.exit(1)
+    if args.algo == "PPO":
+      # NOTE: PPO is not used in the literature, so it is not guaranteed to work.
+      from stable_baselines3 import PPO as Algorithm
+    elif args.algo == "TD3":
+      from stable_baselines3 import TD3 as Algorithm
+    elif args.algo == "SAC":
+      from stable_baselines3 import SAC as Algorithm
+  except ImportError:
+    print("✗ Stable-Baselines3 not installed!")
+    sys.exit(1)
 
-    # Wrap with Monitor, DummyVecEnv, VecNormalize
-    print("Wrapping with Monitor, DummyVecEnv, VecNormalize...")
-    env = Monitor(env)
-    env = DummyVecEnv([lambda: env])
-    env = VecNormalize(env, norm_obs=True, norm_reward=True, clip_obs=10.0)
+  # Wrap with Monitor, DummyVecEnv, VecNormalize
+  print("Wrapping with Monitor, DummyVecEnv, VecNormalize...")
+  env = Monitor(env)
+  env = DummyVecEnv([lambda: env])
+  # NOTE: Add VecNormalize is not used in the literature, so it is not guaranteed to work.
+  env = VecNormalize(env, norm_obs=True, norm_reward=True, clip_obs=10.0)
 
     print("Environment wrapped:")
     print(f"  Observation space: {env.observation_space}")

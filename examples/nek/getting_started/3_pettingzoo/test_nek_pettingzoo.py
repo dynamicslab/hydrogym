@@ -112,9 +112,13 @@ def main():
         #     for agent in env.agents
         # }
 
-        # Strategy 3: Cooperative strategy - all agents use same signal
-        # signal = np.sin(step * 0.1) * 0.01
-        # actions = {agent: np.array([signal], dtype=np.float32) for agent in env.agents}
+    # Strategy 3: Cooperative strategy - all agents use same signal
+    # signal = np.sin(step * 0.1) * 0.01
+    # actions = {agent: np.array([signal], dtype=np.float32) for agent in env.agents}
+
+    # [YW-MOD] Add Opposition Control Strategy, oppose to the wall-normal velocity (-1)
+    actions = {agent: -1.0 * obs_dict[agent][:-1] for agent in env.agents}
+    # [YW-MOD] End
 
         # Step environment
         obs_dict, rewards_dict, terminated_dict, truncated_dict, infos_dict = env.step(actions)

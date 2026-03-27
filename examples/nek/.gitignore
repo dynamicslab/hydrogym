@@ -1,0 +1,10 @@
+# Runtime log and output files
+log.run
+log.test
+log.train
+getting_started/*/train_run/
+*.f[0-9]*
+*.npz
+core.*
+SESSION.NAME
+configs/

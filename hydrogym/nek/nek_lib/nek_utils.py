@@ -159,22 +159,21 @@ class NEK_INIT:
         Re-Write parameter files for NEK version <= 17.
         For the controllable params, please see config.
         """
-        file_path = os.path.join(self.nek.compile_path, f"{self.nek.CASENAME}.rea")
-        output_path = os.path.join(self.rank_folder, f"{self.nek.CASENAME}.rea")
+    output_path = os.path.join(self.rank_folder, f'{self.nek.CASENAME}.rea')
 
-        with open(file_path, "r") as f:
-            lines = f.readlines()
-            updated_lines = []
-            for line in lines:
-                if "p" in line:
-                    parts = line.split()
-                    if len(parts) > 1 and parts[1] in V17_PARAM_MAPPING.values():
-                        for attr, pkey in V17_PARAM_MAPPING.items():
-                            if parts[1] == pkey:
-                                parts[0] = f"{getattr(self.nek, attr):.6E}"
-                                line = "\t".join(parts) + "\n"
-                                break
-                updated_lines.append(line)
+    with open(output_path, 'r') as f:
+      lines = f.readlines()
+      updated_lines = []
+      for line in lines:
+        if 'p' in line:
+          parts = line.split()
+          if len(parts) > 1 and parts[1] in V17_PARAM_MAPPING.values():
+            for attr, pkey in V17_PARAM_MAPPING.items():
+              if parts[1] == pkey:
+                parts[0] = f"{getattr(self.nek, attr):.6E}"
+                line = '\t'.join(parts) + '\n'
+                break
+        updated_lines.append(line)
 
         with open(output_path, "w") as f:
             f.writelines(updated_lines)
