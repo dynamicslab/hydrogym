@@ -58,7 +58,7 @@ def create_controller(env, controller_type: str, logger: logging.Logger):
     def controller(t, obs, env):
       # Oppose the velocity at sensor location (obs is flattened 1D array)
       # For opposition control, use negative of observation values
-      return -obs[:env.action_space.shape[0]]
+      return -obs[1:] # YW: Again note that we are opposing the wall-normal velocity (index = 1) 
   elif controller_type.upper() == 'BL':
     # Constant blowing
     def controller(t, obs, env):
@@ -136,6 +136,12 @@ def run_nek_test(env_name: Optional[str], nproc: int,
       raise ValueError(
           "Must provide either --env (MAIA pattern) or --config (legacy pattern)"
       )
+
+    # [YW-MOD] Rewrite the par file to ensure the simulation configuration is correct
+    from hydrogym.nek.nek_lib.nek_utils import NEK_INIT
+    nek_init = NEK_INIT(nek=env.conf.simulation, drl=env.conf.runner, rank_folder=env.run_folder)
+    nek_init.rewrite_REA_v19() # Rewrite the par file, v19 corresponds to the new Nek5000 format
+    # [YW-MOD] End
 
     logger.info("✓ Environment created successfully")
   except Exception as e:
