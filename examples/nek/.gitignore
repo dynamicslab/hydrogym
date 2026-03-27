@@ -2,7 +2,7 @@
 log.run
 log.test
 log.train
-*/train_run/
+getting_started/*/train_run/
 *.f[0-9]*
 *.npz
 core.*
