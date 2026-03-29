@@ -33,53 +33,117 @@ For development purposes it may often be preferable to deactivate this behaviour
 which switches the behaviour to look for a Firedrake installation inside of the local virtual environment. and hence
 allows for debugging on any laptop. All other dependencies are handled as usual by `pip <https://pip.pypa.io/en/stable/>`_.
 
-Firedrake (local installation)
----------
+Solver Backends
+---------------
 
-For a local installation Firedrake and Hydrogym must be installed independently into the same virtual environment.
-This could be done by either following the `Firedrake installation instructions <https://www.firedrakeproject.org/download.html>`_
-and then pip-installing Hydrogym into the Firedrake virtual environment, or by cloning the Hydrogym source and installing from there.
-These instructions describe the latter route.
+Hydrogym now supports two CFD solver backends:
 
-Hydrogym comes packaged with a tested Firedrake version, for which you have to clone the repository recursively
+- **Firedrake**: Finite element solver (traditional backend)
+- **Maia**: m-AIA solver with MPI support (new in v0.2+)
+
+You can install either or both depending on your needs.
+
+Firedrake Installation
+----------------------
+
+As of 2025, Firedrake can be installed via pip, making the installation process much simpler than before!
+
+**Method 1: Pip Installation (Recommended for 2025+)**
+
+.. code-block:: console
+
+    # Install system dependencies first
+    # Ubuntu/Debian:
+    $ sudo apt-get update
+    $ sudo apt-get install build-essential python3-dev libopenmpi-dev openmpi-bin
+
+    # macOS:
+    $ brew install open-mpi gcc
+
+    # Create a virtual environment
+    $ python3 -m venv hydrogym-env
+    $ source hydrogym-env/bin/activate
+
+    # Install Firedrake
+    $ pip install firedrake
+
+    # Configure environment variables
+    $ firedrake-configure
+
+    # Install Hydrogym with Firedrake support
+    $ pip install hydrogym
+
+**Method 2: Traditional Installation Script**
+
+For a more controlled installation or if pip method fails, use the traditional script:
 
 .. code-block:: console
 
     $ git clone --recursive https://github.com/dynamicslab/hydrogym.git
-
-or in case you already have a repository copy
-
-.. code-block:: console
-
-    $ git submodule update --init --recursive
-
-Optionally, you could get a newer version of Firedrake by running `git pull origin` within the Firedrake submodule.
-
-The next step is to install Firedrake and let it create its virtual environment into which you can install Hydrogym:
-
-.. code-block:: console
-
     $ cd third_party/firedrake/scripts
     $ python3 firedrake-install --venv-name=path/to/venv
     $ source path/to/venv/bin/activate
-
-where you should be sure that you are building with `MPI <https://www.open-mpi.org>`_ being enabled. If you do not enable MPI the
-environment scheduler will automatically utilize the spare resources and launch the requisite number of more environments,
-while each environment instance runs considerably slower.
-
-into which we can then change directories back to the Hydrogym root and install as usual
-
-.. code-block:: console
-
     $ cd ../../.. && pip install .
-
-(Or use `pip install -e .` to make the installation editable).  From then on Hydrogym works
-with the virtual environment-provided version of Firedrake.  As suggested by the Firedrake warning
-you should also run `export OMP_NUM_THREADS=1` which will considerably accelerate the solves.
 
 .. note::
 
-    Where a module system is available such as on a cluster, and the module system provides a MPI-enabled version of Firedrake this should **strictly** be preferred.
+    **Important:** After installing Firedrake, run ``export OMP_NUM_THREADS=<number-of-cores>`` to accelerate solves.
+    Where a module system is available (e.g., on a cluster), prefer using a pre-installed MPI-enabled Firedrake module.
+
+Maia Solver (Included by Default)
+----------------------------------
+
+The Maia solver backend with HuggingFace Hub integration is now included by default in HydroGym!
+
+All you need to do is install the system MPI library:
+
+.. code-block:: console
+
+    # Install system MPI library (required for mpi4py)
+    # Ubuntu/Debian:
+    $ sudo apt-get install libopenmpi-dev openmpi-bin
+
+    # macOS:
+    $ brew install open-mpi
+
+    # Install Hydrogym (Maia support included)
+    $ pip install hydrogym
+
+**Included Dependencies:**
+
+- ``gymnasium`` - Modern Gym API (replaces old gym)
+- ``mpi4py`` - MPI communication with m-AIA solver
+- ``omegaconf`` - Configuration management
+- ``einops`` - Tensor operations
+- ``huggingface-hub`` - Environment data management
+- ``pandas``, ``scipy`` - Data handling
+
+Quick Installation Guide
+------------------------
+
+**For Maia users (simplest):**
+
+.. code-block:: console
+
+    $ sudo apt-get install libopenmpi-dev  # or brew install open-mpi on macOS
+    $ pip install hydrogym
+
+**For Firedrake users:**
+
+.. code-block:: console
+
+    $ pip install firedrake
+    $ firedrake-configure
+    $ pip install hydrogym
+
+**For both Firedrake and Maia:**
+
+.. code-block:: console
+
+    $ sudo apt-get install libopenmpi-dev openmpi-bin
+    $ pip install firedrake
+    $ firedrake-configure
+    $ pip install hydrogym
 
 Development Setup
 -----------------
