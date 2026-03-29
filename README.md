@@ -5,7 +5,7 @@
 <p align="center">
 <a href="https://github.com/astral-sh/ruff"><img alt="Ruff" src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json"></a>
 <a href="https://python.org/"><img alt="Language: Python" src="https://img.shields.io/badge/language-Python-orange.svg"></a>
-<a href="https://spdx.org/licenses/MIT.html"><img alt="License WarpX" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
+<a href="https://spdx.org/licenses/MIT.html"><img alt="License HydroGym" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
 <a href="https://join.slack.com/t/hydrogym/shared_invite/zt-27u914dfn-UFq3CkaxiLs8dwZ_fDkBuA"><img alt="Slack" src="https://img.shields.io/badge/slack-hydrogym-brightgreen.svg?logo=slack"></a>
 <a href="https://github.com/google/yapf"><img alt="Code style: yapf" src="https://img.shields.io/badge/code%20style-yapf-000000.svg"></a>
 </p>
@@ -18,12 +18,12 @@ __IMPORTANT NOTE: This package is still ahead of an official public release, so 
 
 HydroGym is an open-source library of challenge problems in data-driven modeling and control of fluid dynamics.
 It is roughly designed as an abstract interface for control of PDEs that is compatible with typical reinforcement learning APIs
-(in particular Ray/RLLib and OpenAI Gym) along with specific numerical solver implementations for some canonical flow control problems.
-Currently these "environments" are all implemented using the [Firedrake](https://www.firedrakeproject.org/) finite element library.
+(in particular Ray/RLLib and Gymnasium) along with specific numerical solver implementations for some canonical flow control problems.
+Environments are implemented using two solver backends: [Firedrake](https://www.firedrakeproject.org/) (finite element) and m-AIA (MPI-based).
 
 ## Features
 * __Hierarchical:__ Designed for analysis and controller design **from a high-level black-box interface to low-level operator access**
-    - High-level: `hydrogym.env.FlowEnv` classes implement the OpenAI `gym.Env` interface
+    - High-level: `hydrogym.FlowEnv` classes implement the Gymnasium `Env` interface
     - Intermediate: Typical CFD interface with `hydrogym.FlowConfig` and `hydrogym.TransientSolver` classes
     - Low-level: Access to linearized operators and sparse scipy or PETSc CSR matrices
 * __Modeling and analysis tools:__ Global stability analysis (via SLEPc) and modal decompositions (via modred)
@@ -31,35 +31,51 @@ Currently these "environments" are all implemented using the [Firedrake](https:/
 
 # Installation
 
-By design, the core components of Hydrogym are independent of the underlying solvers in order to avoid custom or complex
-third-party library installations.
-This means that the latest release of Hydrogym can be simply installed via [PyPI](https://pypi.org/project/hydrogym/):
+HydroGym supports two CFD solver backends: **Firedrake** (finite element) and **Maia** (m-AIA with MPI). Both backends are fully integrated and ready to use.
+
+## Quick Installation
+
+### Unified Installation (Recommended)
+
+HydroGym now includes all dependencies by default. Simply install the system MPI library and HydroGym:
 
 ```bash
+# Install system MPI library
+sudo apt-get install libopenmpi-dev openmpi-bin  # Ubuntu/Debian
+# OR: brew install open-mpi  # macOS
+
+# Install HydroGym (includes Maia support)
 pip install hydrogym
 ```
 
-> BEWARE: The pip-package is currently behind the main repository, and we strongly urge users to build HydroGym
->         directly from the source code. Once we've stabilized the package, we will update the pip package in turn.
+### With Firedrake Backend
 
-However, the package assumes that the solver backend is available, so in order to run simulations locally you will
-need to _separately_ ensure the solver backend is installed (again, currently all the environments are implemented with Firedrake).
-Alternatively (and this is important for large-scale RL training), the core Hydrogym package can (or will soon be able to) launch reinforcement learning training on a Ray-cluster without an underlying Firedrake install.
-For more information and suggested approaches see the [Installation Docs](https://hydrogym.readthedocs.io/en/latest/installation.html).
+To use Firedrake environments, install Firedrake first using its native [Python installation](https://www.firedrakeproject.org/install.html#installing-firedrake-using-pip):
 
-To add HydroGym to an existing Firedrake installation, and install from the repository, run:
+```bash
+# Follow Firedrake pre-install instructions in the pip guide above
+
+# Install Firedrake
+pip install firedrake
+
+# Install HydroGym
+pip install hydrogym
+```
+
+## Development Installation
+
+To install from source:
 
 ```bash
 git clone https://github.com/dynamicslab/hydrogym.git
 cd hydrogym
-pip install .
-```
 
-As the mesh files are stored in [git large file storage](https://git-lfs.github.com/), you will need to install git-lfs
-to download the mesh files.
-
-```bash
+# Install git-lfs for mesh files
 git lfs install && git lfs fetch --all
+
+# Install HydroGym
+pip install .
+# OR for development: poetry install
 ```
 
 At which point you are ready to run HydroGym locally.
@@ -72,7 +88,7 @@ At which point you are ready to run HydroGym locally.
  python
  ```
  
- and then setting up a Hydrogym environment instance
+ and then setting up a first Hydrogym environment instance
  
 ```python
 import hydrogym.firedrake as hgym
@@ -95,13 +111,3 @@ For more detail, check out:
 * Example codes for various simulation, modeling, and control tasks in `examples`
 * The [ReadTheDocs](https://hydrogym.readthedocs.io/en/latest/)
 
-# Flow configurations
-
-There are currently a number of main flow configurations, the most prominent of which are:
-
-- Periodic cylinder wake at Re=100
-- Chaotic pinball at Re=130
-- Open cavity at Re=7500
-- Backwards-facing step at Re=600
-
-with visualizations of the flow configurations available in the [docs](docs/FlowConfigurations.md).
