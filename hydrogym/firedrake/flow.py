@@ -21,7 +21,20 @@ class ScaledDirichletBC(fd.DirichletBC):
   def __init__(self, V, g, sub_domain, method=None):
     self.unscaled_function_arg = g
     self._scale = fd.Constant(1.0)
-    super().__init__(V, self._scale * g, sub_domain, method)
+
+    # Handle Firedrake API changes across versions
+    # Newer versions: DirichletBC(V, g, sub_domain)  - no method parameter
+    # Older versions: DirichletBC(V, g, sub_domain, method=None)
+    try:
+      # Try newer API first (no method parameter)
+      super().__init__(V, self._scale * g, sub_domain)
+    except TypeError:
+      # Fall back to older API with method parameter
+      try:
+        super().__init__(V, self._scale * g, sub_domain, method=method)
+      except TypeError:
+        # Last resort: positional method argument
+        super().__init__(V, self._scale * g, sub_domain, method)
 
   def set_scale(self, c):
     self._scale.assign(c)
