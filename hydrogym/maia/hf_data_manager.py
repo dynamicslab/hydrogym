@@ -137,11 +137,11 @@ class HFDataManager:
                 print(f"Using cached environment (symlink): {local_env_link} -> {target}")
                 return local_env_link
             else:
-                print(f"Symlink target invalid, re-downloading...")
+                print("Symlink target invalid, re-downloading...")
                 os.unlink(local_env_link)
         elif os.path.exists(local_env_link):
             # It's a regular directory (maybe from old copy method), remove it
-            print(f"Replacing old cache with symlink...")
+            print("Replacing old cache with symlink...")
             if os.path.isdir(local_env_link):
                 shutil.rmtree(local_env_link)
             else:
@@ -175,7 +175,7 @@ class HFDataManager:
                         return local_env_link
                     else:
                         os.unlink(local_env_link)
-                        raise FileNotFoundError(f"Validation failed after creating symlink")
+                        raise FileNotFoundError("Validation failed after creating symlink")
                 else:
                     raise FileNotFoundError(f"Environment path not found in HF cache: {hf_env_path}")
 
@@ -209,7 +209,7 @@ class HFDataManager:
         if os.path.exists(local_env_dir) and not force_download:
             # If it's a symlink, remove it and copy instead
             if os.path.islink(local_env_dir):
-                print(f"Converting symlink to copy...")
+                print("Converting symlink to copy...")
                 target = os.readlink(local_env_dir)
                 os.unlink(local_env_dir)
                 if os.path.exists(target):
@@ -219,7 +219,7 @@ class HFDataManager:
                 print(f"Using cached environment: {local_env_dir}")
                 return local_env_dir
             else:
-                print(f"Cached environment incomplete, re-downloading...")
+                print("Cached environment incomplete, re-downloading...")
                 shutil.rmtree(local_env_dir)
 
         # Try HF Hub first
@@ -251,7 +251,7 @@ class HFDataManager:
                         print(f"Environment ready at: {local_env_dir}")
                         return local_env_dir
                     else:
-                        raise FileNotFoundError(f"Validation failed after copy")
+                        raise FileNotFoundError("Validation failed after copy")
                 else:
                     raise FileNotFoundError(f"Environment path not found in HF cache: {hf_env_path}")
 

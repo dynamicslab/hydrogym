@@ -94,7 +94,7 @@ class MaiaWorkspace:
 
         # Step 1: Get environment data from HF Hub or cache
         if verbose:
-            print(f"1. Fetching environment data...")
+            print("1. Fetching environment data...")
 
         # First check ~/.cache/maiagym/ for existing data
         cache_dir = Path.home() / ".cache" / "maiagym" / self.environment_name
@@ -123,7 +123,7 @@ class MaiaWorkspace:
 
         # Step 3: Create symbolic links for all required files
         if verbose:
-            print(f"3. Creating symbolic links...")
+            print("3. Creating symbolic links...")
 
         paths = {
             "work_dir": str(work_path.absolute()),
@@ -159,7 +159,7 @@ class MaiaWorkspace:
         self.is_setup = True
 
         if verbose:
-            print(f"=== Workspace setup complete ===")
+            print("=== Workspace setup complete ===")
             print(f"   Work directory: {paths['work_dir']}")
             print(f"   Properties file: {paths.get('properties_file', 'N/A')}")
             print()
