@@ -50,9 +50,7 @@ class NACA0012(NACA0012Base):
             env_config: Environment configuration dictionary.
         """
         super().__init__(env_config)
-        self.numJetsInSimulation = self._get_property(
-            self.runtime_property_file_data, "lbNoJets"
-        )
+        self.numJetsInSimulation = self._get_property(self.runtime_property_file_data, "lbNoJets")
 
         self.configure_observations()
         self.configure_probe_dimensions()
@@ -90,7 +88,7 @@ class NACA0012(NACA0012Base):
             forces=forces,
             density=1.0,
             referenceVelocity=self.Ma / np.sqrt(3),
-            projectionLength=self.referenceLength / self.dX * self.zLength / self.dX
+            projectionLength=self.referenceLength / self.dX * self.zLength / self.dX,
         )
 
         lift = nondim_forces[1]
@@ -102,7 +100,7 @@ class NACA0012(NACA0012Base):
         else:
             reward = lift / drag
 
-        obj_dict = {'forces': forces}
+        obj_dict = {"forces": forces}
 
         return reward, obj_dict
 
@@ -132,9 +130,7 @@ class NACA0012Gust(NACA0012Base):
         self.unperturbed_avg_drag = self.cfg.maia.unperturbed_avg_drag
         self.unperturbed_avg_lift = self.cfg.maia.unperturbed_avg_lift
 
-        self.numJetsInSimulation = self._get_property(
-            self.runtime_property_file_data, "lbNoJets"
-        )
+        self.numJetsInSimulation = self._get_property(self.runtime_property_file_data, "lbNoJets")
 
         self.configure_observations()
         self.configure_probe_dimensions()
@@ -171,21 +167,20 @@ class NACA0012Gust(NACA0012Base):
             forces=forces,
             density=1.0,
             referenceVelocity=self.Ma / np.sqrt(3),
-            projectionLength=self.referenceLength / self.dX * self.zLength / self.dX
+            projectionLength=self.referenceLength / self.dX * self.zLength / self.dX,
         )
 
-        print('nonDim forces:', nondim_forces, flush=True)
+        print("nonDim forces:", nondim_forces, flush=True)
 
-        obj_dict = {'forces': forces}
+        obj_dict = {"forces": forces}
 
-        reward = (
-            -np.abs(nondim_forces[1] - self.unperturbed_avg_lift)
-            - self.omega * np.abs(nondim_forces[0] - self.unperturbed_avg_drag)
+        reward = -np.abs(nondim_forces[1] - self.unperturbed_avg_lift) - self.omega * np.abs(
+            nondim_forces[0] - self.unperturbed_avg_drag
         )
 
         return reward, obj_dict
 
 
 # Register environment types with the factory
-register_environment('NACA0012', NACA0012)
-register_environment('NACA0012Gust', NACA0012Gust)
+register_environment("NACA0012", NACA0012)
+register_environment("NACA0012Gust", NACA0012Gust)

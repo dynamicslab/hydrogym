@@ -54,16 +54,10 @@ class SphereBase(MaiaFlowEnv):
             forces = self.maiaInterface.getForce(bc_id)
 
             # Circular cross-section: pi * D^2 / 4
-            projection_area = (
-                math.pi * self.referenceLength / self.dX
-                * self.referenceLength / self.dX
-            ) / 4
+            projection_area = (math.pi * self.referenceLength / self.dX * self.referenceLength / self.dX) / 4
 
             nondim_coefficients = self.compute_nondim_coefficients(
-                forces=forces,
-                density=1.0,
-                referenceVelocity=self.Ma / np.sqrt(3),
-                projectionLength=projection_area
+                forces=forces, density=1.0, referenceVelocity=self.Ma / np.sqrt(3), projectionLength=projection_area
             )
 
             reward = (
@@ -74,7 +68,7 @@ class SphereBase(MaiaFlowEnv):
             rewards.append(reward)
             forces_list.append(forces)
 
-        obj_dict = {'forces': forces_list}
+        obj_dict = {"forces": forces_list}
 
         return (rewards[0] if len(self.bcId) == 1 else rewards), obj_dict
 
@@ -97,9 +91,7 @@ class Sphere(SphereBase):
             env_config: Environment configuration dictionary.
         """
         super().__init__(env_config)
-        self.numJetsInSimulation = self._get_property(
-            self.runtime_property_file_data, "lbNoJets"
-        )
+        self.numJetsInSimulation = self._get_property(self.runtime_property_file_data, "lbNoJets")
 
         self.configure_observations()
         self.configure_probe_dimensions()
@@ -121,4 +113,4 @@ class Sphere(SphereBase):
 
 
 # Register environment types with the factory
-register_environment('Sphere', Sphere)
+register_environment("Sphere", Sphere)

@@ -108,15 +108,13 @@ from typing import Optional
 
 import numpy as np
 
+
 # Setup logging before importing heavy libraries
 def setup_logging(verbose: bool = False) -> logging.Logger:
     """Configure logging with appropriate level."""
     level = logging.DEBUG if verbose else logging.INFO
     logging.basicConfig(
-        level=level,
-        format='%(asctime)s [%(levelname)s] %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S',
-        stream=sys.stdout
+        level=level, format="%(asctime)s [%(levelname)s] %(message)s", datefmt="%Y-%m-%d %H:%M:%S", stream=sys.stdout
     )
     return logging.getLogger(__name__)
 
@@ -129,7 +127,7 @@ def run_firedrake_test(
     mesh_resolution: Optional[int],
     seed: Optional[int],
     logger: logging.Logger,
-    **kwargs
+    **kwargs,
 ) -> None:
     """
     Run Firedrake environment test.
@@ -160,11 +158,11 @@ def run_firedrake_test(
 
     # Map environment names to flow classes and default solvers
     env_map = {
-        'cylinder': (firedrake.Cylinder, firedrake.SemiImplicitBDF),
-        'rotary_cylinder': (firedrake.RotaryCylinder, firedrake.SemiImplicitBDF),
-        'pinball': (firedrake.Pinball, firedrake.SemiImplicitBDF),
-        'cavity': (firedrake.Cavity, firedrake.SemiImplicitBDF),
-        'step': (firedrake.Step, firedrake.SemiImplicitBDF),
+        "cylinder": (firedrake.Cylinder, firedrake.SemiImplicitBDF),
+        "rotary_cylinder": (firedrake.RotaryCylinder, firedrake.SemiImplicitBDF),
+        "pinball": (firedrake.Pinball, firedrake.SemiImplicitBDF),
+        "cavity": (firedrake.Cavity, firedrake.SemiImplicitBDF),
+        "step": (firedrake.Step, firedrake.SemiImplicitBDF),
     }
 
     if env_type not in env_map:
@@ -184,9 +182,9 @@ def run_firedrake_test(
     # Build flow configuration
     flow_config = kwargs.copy()
     if reynolds is not None:
-        flow_config['Re'] = reynolds
+        flow_config["Re"] = reynolds
     if mesh_resolution is not None:
-        flow_config['mesh'] = mesh_resolution
+        flow_config["mesh"] = mesh_resolution
 
     # --- OBSERVATION CONFIGURATION ---
     # Specify how observations are computed
@@ -196,14 +194,14 @@ def run_firedrake_test(
     # --- PROBE CONFIGURATION ---
     # Define probe locations for probe-based observations
     # Example: Wake probes for cylinder
- 
+
     wake_probes = [
         (x, y)
         for x in np.linspace(1.0, 10.0, 16)  # 16 points in x
-        for y in np.linspace(-2.0, 2.0, 4)   # 4 points in y
+        for y in np.linspace(-2.0, 2.0, 4)  # 4 points in y
     ]
-    flow_config['probes'] = wake_probes
-    flow_config['observation_type'] = 'velocity_probes'
+    flow_config["probes"] = wake_probes
+    flow_config["observation_type"] = "velocity_probes"
 
     # --- CHECKPOINT/RESTART CONFIGURATION ---
     # Single checkpoint: loads this state on initialization
@@ -237,7 +235,7 @@ def run_firedrake_test(
     # --- SOLVER CONFIGURATION ---
     # Time-stepping parameters for transient solvers
     solver_config = {
-        'dt': 1e-2,                    # Time step (REQUIRED for transient)
+        "dt": 1e-2,  # Time step (REQUIRED for transient)
         # 'order': 3,                  # BDF order: 1, 2, or 3 (default: 3)
         # 'stabilization': 'supg',     # Options: 'none', 'supg', 'gls'
         # 'rtol': 1e-6,                # Krylov solver relative tolerance
@@ -252,8 +250,8 @@ def run_firedrake_test(
     # --- ACTUATION CONFIGURATION ---
     # Multi-substep simulation with reward aggregation
     actuation_config = {
-        'num_substeps': 2,             # Number of solver steps per action (default: 1)
-        'reward_aggregation': 'mean',  # How to aggregate: 'mean', 'sum', 'median'
+        "num_substeps": 2,  # Number of solver steps per action (default: 1)
+        "reward_aggregation": "mean",  # How to aggregate: 'mean', 'sum', 'median'
     }
 
     # Example multi-substep: Run 5 simulation steps per action
@@ -295,13 +293,13 @@ def run_firedrake_test(
 
     # --- COMPLETE ENV_CONFIG ---
     env_config = {
-        'flow': flow_class,
-        'flow_config': flow_config,
-        'solver': solver_class,
-        'solver_config': solver_config,
-        'actuation_config': actuation_config,  # Multi-substep configuration
-        'callbacks': callbacks,                # Callback list
-        'max_steps': int(1e6),                 # Maximum steps per episode
+        "flow": flow_class,
+        "flow_config": flow_config,
+        "solver": solver_class,
+        "solver_config": solver_config,
+        "actuation_config": actuation_config,  # Multi-substep configuration
+        "callbacks": callbacks,  # Callback list
+        "max_steps": int(1e6),  # Maximum steps per episode
     }
 
     # =========================================================================
@@ -358,6 +356,7 @@ def run_firedrake_test(
     except Exception as e:
         logger.error(f"✗ Failed to create environment: {e}")
         import traceback
+
         logger.debug(traceback.format_exc())
         sys.exit(1)
 
@@ -367,7 +366,7 @@ def run_firedrake_test(
         logger.info("Environment Information:")
         logger.info(f"  Observation space: {env.observation_space}")
         logger.info(f"  Action space: {env.action_space}")
-        if hasattr(env, 'flow'):
+        if hasattr(env, "flow"):
             logger.info(f"  Reynolds number: {float(env.flow.Re)}")
         logger.info("-" * 70)
 
@@ -442,7 +441,7 @@ def run_firedrake_test(
         # Cleanup
         logger.info("\nClosing environment...")
         try:
-            if hasattr(env, 'close'):
+            if hasattr(env, "close"):
                 env.close()
             logger.info("✓ Environment closed successfully")
         except Exception as e:
@@ -454,50 +453,23 @@ def main():
     parser = argparse.ArgumentParser(
         description="Test Firedrake CFD environments",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog=__doc__
+        epilog=__doc__,
     )
 
     parser.add_argument(
         "--environment",
         required=True,
-        choices=['cylinder', 'rotary_cylinder', 'pinball', 'cavity', 'step'],
-        help="Environment type"
+        choices=["cylinder", "rotary_cylinder", "pinball", "cavity", "step"],
+        help="Environment type",
     )
+    parser.add_argument("--num-steps", type=int, default=10, help="Number of steps per episode (default: 10)")
+    parser.add_argument("--num-episodes", type=int, default=1, help="Number of episodes (default: 1)")
+    parser.add_argument("--reynolds", type=float, default=None, help="Reynolds number (default: environment-specific)")
     parser.add_argument(
-        "--num-steps",
-        type=int,
-        default=10,
-        help="Number of steps per episode (default: 10)"
+        "--mesh-resolution", type=int, default=None, help="Mesh resolution (default: environment-specific)"
     )
-    parser.add_argument(
-        "--num-episodes",
-        type=int,
-        default=1,
-        help="Number of episodes (default: 1)"
-    )
-    parser.add_argument(
-        "--reynolds",
-        type=float,
-        default=None,
-        help="Reynolds number (default: environment-specific)"
-    )
-    parser.add_argument(
-        "--mesh-resolution",
-        type=int,
-        default=None,
-        help="Mesh resolution (default: environment-specific)"
-    )
-    parser.add_argument(
-        "--seed",
-        type=int,
-        default=None,
-        help="Random seed for reproducibility (optional)"
-    )
-    parser.add_argument(
-        "--verbose",
-        action="store_true",
-        help="Enable verbose logging"
-    )
+    parser.add_argument("--seed", type=int, default=None, help="Random seed for reproducibility (optional)")
+    parser.add_argument("--verbose", action="store_true", help="Enable verbose logging")
 
     args = parser.parse_args()
 
@@ -513,7 +485,7 @@ def main():
             reynolds=args.reynolds,
             mesh_resolution=args.mesh_resolution,
             seed=args.seed,
-            logger=logger
+            logger=logger,
         )
         logger.info("\n✓ Test completed successfully!")
         sys.exit(0)
@@ -525,6 +497,7 @@ def main():
     except Exception as e:
         logger.error(f"\n✗ Test failed with error: {e}")
         import traceback
+
         logger.debug(traceback.format_exc())
         sys.exit(1)
 

@@ -39,7 +39,7 @@ class CavityBase(MaiaFlowEnv):
         """
         super().__init__(env_config)
 
-        self.reward_strategy = env_config.get('reward_strategy', 'baseline_mean')
+        self.reward_strategy = env_config.get("reward_strategy", "baseline_mean")
         self._env_config = env_config
         self._baseline_loaded = False
 
@@ -51,8 +51,8 @@ class CavityBase(MaiaFlowEnv):
             Path to baseline file, or None if not found.
         """
         file_names = [
-            'baseline_state.feather',
-            f'{self.environment_name}.feather',
+            "baseline_state.feather",
+            f"{self.environment_name}.feather",
         ]
 
         for name in file_names:
@@ -61,7 +61,7 @@ class CavityBase(MaiaFlowEnv):
                 print(f"Auto-detected baseline file: {name}")
                 return file_path
 
-        config_patterns = ['baseline_state.feather', 'baseline_*.feather']
+        config_patterns = ["baseline_state.feather", "baseline_*.feather"]
 
         for pattern in config_patterns:
             matches = glob.glob(os.path.join(self.env_data_path, pattern))
@@ -96,46 +96,43 @@ class CavityBase(MaiaFlowEnv):
                 "or place a baseline file in the environment data directory"
             )
 
-        if baseline_file.endswith('.feather'):
-            print(f'Loading baseline data from Feather file: {baseline_file}', flush=True)
+        if baseline_file.endswith(".feather"):
+            print(f"Loading baseline data from Feather file: {baseline_file}", flush=True)
             baseline_df = pd.read_feather(baseline_file)
-        elif baseline_file.endswith('.csv'):
-            print(f'Loading baseline data from CSV file: {baseline_file}', flush=True)
+        elif baseline_file.endswith(".csv"):
+            print(f"Loading baseline data from CSV file: {baseline_file}", flush=True)
             baseline_df = pd.read_csv(baseline_file)
         else:
             raise ValueError(f"Unsupported file format: {baseline_file}. Use .feather or .csv")
 
-        coord_cols = [
-            col for col in baseline_df.columns
-            if 'Points' in col or col in ['x', 'y', 'z']
-        ]
+        coord_cols = [col for col in baseline_df.columns if "Points" in col or col in ["x", "y", "z"]]
 
         if len(coord_cols) == 0:
-            if all(col in baseline_df.columns for col in ['Points:0', 'Points:1', 'Points:2']):
-                coord_cols = ['Points:0', 'Points:1', 'Points:2']
+            if all(col in baseline_df.columns for col in ["Points:0", "Points:1", "Points:2"]):
+                coord_cols = ["Points:0", "Points:1", "Points:2"]
             else:
                 raise ValueError(
                     f"Could not find coordinate columns in baseline file. "
                     f"Available columns: {baseline_df.columns.tolist()}"
                 )
 
-        baseline_coords = baseline_df[coord_cols[:self.nDim]].values
+        baseline_coords = baseline_df[coord_cols[: self.nDim]].values
 
-        print(f'Building KD-Tree for {len(baseline_coords)} baseline points', flush=True)
+        print(f"Building KD-Tree for {len(baseline_coords)} baseline points", flush=True)
         kdtree = cKDTree(baseline_coords)
 
         probe_coords = np.array(self.probe_locations).reshape(-1, self.nDim)
-        print(f'Finding baseline values for {len(probe_coords)} probe locations', flush=True)
+        print(f"Finding baseline values for {len(probe_coords)} probe locations", flush=True)
 
         distances, indices = kdtree.query(probe_coords)
 
         self.baseline_values = []
 
-        if 'forces' in self.observation_type:
-            print('WARNING: Forces are in observation_type but not extracted from baseline file')
+        if "forces" in self.observation_type:
+            print("WARNING: Forces are in observation_type but not extracted from baseline file")
             self.baseline_values.extend([0.0] * self.nDim)
 
-        probe_obs_types = ['u', 'v', 'w', 'rho', 'p']
+        probe_obs_types = ["u", "v", "w", "rho", "p"]
 
         for obs_var in probe_obs_types:
             if obs_var in self.observation_type:
@@ -149,19 +146,17 @@ class CavityBase(MaiaFlowEnv):
 
         self.baseline_values = np.array(self.baseline_values)
 
-        print(f'Baseline values extracted. Shape: {self.baseline_values.shape}', flush=True)
+        print(f"Baseline values extracted. Shape: {self.baseline_values.shape}", flush=True)
         print(
-            f'Expected observation shape: '
-            f'{self.num_outputs if hasattr(self, "num_outputs") else "not yet configured"}',
-            flush=True
+            f"Expected observation shape: {self.num_outputs if hasattr(self, 'num_outputs') else 'not yet configured'}",
+            flush=True,
         )
-        print(f'Max distance to nearest baseline point: {distances.max():.6f}', flush=True)
+        print(f"Max distance to nearest baseline point: {distances.max():.6f}", flush=True)
 
         if distances.max() > 0.1:
             print(
-                f'WARNING: Some probes are far from baseline data points '
-                f'(max distance: {distances.max():.6f})',
-                flush=True
+                f"WARNING: Some probes are far from baseline data points (max distance: {distances.max():.6f})",
+                flush=True,
             )
 
     def _ensure_baseline_loaded(self) -> None:
@@ -173,8 +168,8 @@ class CavityBase(MaiaFlowEnv):
         Raises:
             ValueError: If baseline values don't match observation dimensions.
         """
-        if self.reward_strategy == 'baseline_mean' and not self._baseline_loaded:
-            print('Loading baseline data for reward calculation...', flush=True)
+        if self.reward_strategy == "baseline_mean" and not self._baseline_loaded:
+            print("Loading baseline data for reward calculation...", flush=True)
             self._load_baseline_data(self._env_config)
             self._baseline_loaded = True
 
@@ -203,29 +198,26 @@ class CavityBase(MaiaFlowEnv):
         """
         obj_dict = {}
 
-        if self.reward_strategy == 'running_mean':
-            if not hasattr(self, 'running_mean'):
+        if self.reward_strategy == "running_mean":
+            if not hasattr(self, "running_mean"):
                 self.running_mean = self.obs.copy()
                 self.alpha = 0.025
 
             self.running_mean = self.alpha * self.obs + (1 - self.alpha) * self.running_mean
-            print('running mean:', self.running_mean, flush=True)
+            print("running mean:", self.running_mean, flush=True)
 
             deviation = (self.obs - self.running_mean) / self.obs_scale
             reward = np.sum(np.abs(deviation))
 
-        elif self.reward_strategy == 'baseline_mean':
+        elif self.reward_strategy == "baseline_mean":
             self._ensure_baseline_loaded()
 
             deviation = (self.obs - self.baseline_values) / self.obs_scale
             reward = np.sum(np.abs(deviation))
-            print('baseline deviation:', deviation, flush=True)
+            print("baseline deviation:", deviation, flush=True)
 
         else:
-            raise ValueError(
-                f"Unknown reward_strategy: {self.reward_strategy}. "
-                f"Use 'baseline_mean' or 'running_mean'"
-            )
+            raise ValueError(f"Unknown reward_strategy: {self.reward_strategy}. Use 'baseline_mean' or 'running_mean'")
 
         return -reward, obj_dict
 
@@ -249,9 +241,7 @@ class Cavity(CavityBase):
             env_config: Environment configuration dictionary.
         """
         super().__init__(env_config)
-        self.numJetsInSimulation = self._get_property(
-            self.runtime_property_file_data, "lbNoJets"
-        )
+        self.numJetsInSimulation = self._get_property(self.runtime_property_file_data, "lbNoJets")
 
         self.configure_observations()
         self.configure_probe_dimensions()
@@ -291,9 +281,7 @@ class Cavity3Jet(CavityBase):
             env_config: Environment configuration dictionary.
         """
         super().__init__(env_config)
-        self.numJetsInSimulation = self._get_property(
-            self.runtime_property_file_data, "lbNoJets"
-        )
+        self.numJetsInSimulation = self._get_property(self.runtime_property_file_data, "lbNoJets")
 
         self.configure_observations()
         self.configure_probe_dimensions()
@@ -315,5 +303,5 @@ class Cavity3Jet(CavityBase):
 
 
 # Register environment types with the factory
-register_environment('Cavity', Cavity)
-register_environment('Cavity3Jet', Cavity3Jet)
+register_environment("Cavity", Cavity)
+register_environment("Cavity3Jet", Cavity3Jet)

@@ -56,17 +56,14 @@ class SquareCylinderBase(MaiaFlowEnv):
                 forces=forces,
                 density=1.0,
                 referenceVelocity=self.Ma / np.sqrt(3),
-                projectionLength=self.referenceLength / self.dX * self.zLength / self.dX
+                projectionLength=self.referenceLength / self.dX * self.zLength / self.dX,
             )
 
-            reward = (
-                -np.abs(nondim_coefficients[0]).sum()
-                - self.omega * np.abs(nondim_coefficients[1]).sum()
-            )
+            reward = -np.abs(nondim_coefficients[0]).sum() - self.omega * np.abs(nondim_coefficients[1]).sum()
             rewards.append(reward)
             forces_list.append(forces)
 
-        obj_dict = {'forces': forces_list}
+        obj_dict = {"forces": forces_list}
 
         return (rewards[0] if len(self.bcId) == 1 else rewards), obj_dict
 
@@ -89,9 +86,7 @@ class SquareCylinder(SquareCylinderBase):
             env_config: Environment configuration dictionary.
         """
         super().__init__(env_config)
-        self.numJetsInSimulation = self._get_property(
-            self.runtime_property_file_data, "lbNoJets"
-        )
+        self.numJetsInSimulation = self._get_property(self.runtime_property_file_data, "lbNoJets")
 
         self.configure_observations()
         self.configure_probe_dimensions()
@@ -113,4 +108,4 @@ class SquareCylinder(SquareCylinderBase):
 
 
 # Register environment types with the factory
-register_environment('SquareCylinder', SquareCylinder)
+register_environment("SquareCylinder", SquareCylinder)

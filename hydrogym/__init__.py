@@ -2,6 +2,7 @@
 # Only import the core classes by default
 from .core import CallbackBase, FlowEnv, PDEBase, TransientSolver
 
+
 # Make submodules available via getattr for lazy loading
 def __getattr__(name):
     """Lazy import submodules to avoid MPI conflicts."""
@@ -18,5 +19,4 @@ def __getattr__(name):
 
 
 # Explicitly list what's available at top level
-__all__ = ["CallbackBase", "FlowEnv", "PDEBase", "TransientSolver",
-           "distributed", "firedrake", "maia"]
+__all__ = ["CallbackBase", "FlowEnv", "PDEBase", "TransientSolver", "distributed", "firedrake", "maia"]

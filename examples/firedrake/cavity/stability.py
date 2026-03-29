@@ -17,8 +17,7 @@ import numpy as np
 
 import hydrogym.firedrake as hgym
 
-parser = argparse.ArgumentParser(
-    description="Stability analysis of the open cavity flow.")
+parser = argparse.ArgumentParser(description="Stability analysis of the open cavity flow.")
 parser.add_argument(
     "--mesh",
     default="fine",
@@ -74,106 +73,101 @@ parser.add_argument(
     help="Directory in which output files will be stored.",
 )
 if __name__ == "__main__":
-  args = parser.parse_args()
+    args = parser.parse_args()
 
-  mesh = args.mesh
-  m = args.krylov_dim
-  sigma = args.sigma
-  tol = args.tol
-  Re = args.reynolds
+    mesh = args.mesh
+    m = args.krylov_dim
+    sigma = args.sigma
+    tol = args.tol
+    Re = args.reynolds
 
-  output_dir = args.output_dir
-  if not os.path.exists(output_dir):
-    os.makedirs(output_dir)
+    output_dir = args.output_dir
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
 
-  velocity_order = 2
-  stabilization = "none"
+    velocity_order = 2
+    stabilization = "none"
 
-  flow = hgym.Cavity(
-      Re=Re,
-      mesh=mesh,
-      velocity_order=velocity_order,
-  )
+    flow = hgym.Cavity(
+        Re=Re,
+        mesh=mesh,
+        velocity_order=velocity_order,
+    )
 
-  dof = flow.mixed_space.dim()
+    dof = flow.mixed_space.dim()
 
-  hgym.print("|--------------------------------------------------|")
-  hgym.print("| Linear stability analysis of the open cavity flow |")
-  hgym.print("|--------------------------------------------------|")
-  hgym.print(f"Reynolds number:       {Re}")
-  hgym.print(f"Krylov dimension:      {m}")
-  hgym.print(f"Spectral shift:        {sigma}")
-  hgym.print(f"Include adjoint modes: {not args.no_adjoint}")
-  hgym.print(f"Krylov-Schur restart:  {args.schur}")
-  hgym.print(f"Total dof: {dof} --- dof/rank: {int(dof/fd.COMM_WORLD.size)}")
-  hgym.print("")
+    hgym.print("|--------------------------------------------------|")
+    hgym.print("| Linear stability analysis of the open cavity flow |")
+    hgym.print("|--------------------------------------------------|")
+    hgym.print(f"Reynolds number:       {Re}")
+    hgym.print(f"Krylov dimension:      {m}")
+    hgym.print(f"Spectral shift:        {sigma}")
+    hgym.print(f"Include adjoint modes: {not args.no_adjoint}")
+    hgym.print(f"Krylov-Schur restart:  {args.schur}")
+    hgym.print(f"Total dof: {dof} --- dof/rank: {int(dof / fd.COMM_WORLD.size)}")
+    hgym.print("")
 
-  if args.base_flow:
-    hgym.print(f"Loading base flow from checkpoint {args.base_flow}...")
-    flow.load_checkpoint(args.base_flow)
+    if args.base_flow:
+        hgym.print(f"Loading base flow from checkpoint {args.base_flow}...")
+        flow.load_checkpoint(args.base_flow)
 
-  else:
+    else:
+        # Since this flow is at high Reynolds number we have to
+        #    ramp to get the steady state
+        hgym.print("Solving the steady-state problem...")
 
-    # Since this flow is at high Reynolds number we have to
-    #    ramp to get the steady state
-    hgym.print("Solving the steady-state problem...")
+        steady_solver = hgym.NewtonSolver(flow, stabilization=stabilization, solver_parameters={"snes_monitor": None})
+        Re_init = [500, 1000, 2000, 4000, Re]
 
-    steady_solver = hgym.NewtonSolver(
-        flow,
-        stabilization=stabilization,
-        solver_parameters={"snes_monitor": None})
-    Re_init = [500, 1000, 2000, 4000, Re]
+        for i, Re in enumerate(Re_init):
+            flow.Re.assign(Re)
+            hgym.print(f"Steady solve at Re={Re_init[i]}")
+            qB = steady_solver.solve()
 
-    for i, Re in enumerate(Re_init):
-      flow.Re.assign(Re)
-      hgym.print(f"Steady solve at Re={Re_init[i]}")
-      qB = steady_solver.solve()
+        flow.save_checkpoint(f"{args.output_dir}/base.h5")
 
-    flow.save_checkpoint(f"{args.output_dir}/base.h5")
-
-  hgym.print("Computing direct modes...")
-  dir_results = hgym.utils.stability_analysis(
-      flow, sigma, m, tol, schur_restart=args.schur, adjoint=False)
-  np.save(f"{output_dir}/raw_evals", dir_results.raw_evals)
-
-  # Save checkpoints
-  evals = dir_results.evals
-  eval_data = np.zeros((len(evals), 3), dtype=np.float64)
-  eval_data[:, 0] = evals.real
-  eval_data[:, 1] = evals.imag
-  eval_data[:, 2] = dir_results.residuals
-  np.save(f"{output_dir}/evals", eval_data)
-
-  with fd.CheckpointFile(f"{output_dir}/evecs.h5", "w") as chk:
-    for i in range(len(evals)):
-      chk.save_mesh(flow.mesh)
-      dir_results.evecs_real[i].rename(f"evec_{i}_re")
-      chk.save_function(dir_results.evecs_real[i])
-      dir_results.evecs_imag[i].rename(f"evec_{i}_im")
-      chk.save_function(dir_results.evecs_imag[i])
-
-  if not args.no_adjoint:
-    hgym.print("Computing adjoint modes...")
-    adj_results = hgym.utils.stability_analysis(
-        flow, sigma, m, tol, adjoint=True)
+    hgym.print("Computing direct modes...")
+    dir_results = hgym.utils.stability_analysis(flow, sigma, m, tol, schur_restart=args.schur, adjoint=False)
+    np.save(f"{output_dir}/raw_evals", dir_results.raw_evals)
 
     # Save checkpoints
-    evals = adj_results.evals
+    evals = dir_results.evals
     eval_data = np.zeros((len(evals), 3), dtype=np.float64)
     eval_data[:, 0] = evals.real
     eval_data[:, 1] = evals.imag
-    eval_data[:, 2] = adj_results.residuals
-    np.save(f"{output_dir}/adj_evals", eval_data)
+    eval_data[:, 2] = dir_results.residuals
+    np.save(f"{output_dir}/evals", eval_data)
 
-    with fd.CheckpointFile(f"{output_dir}/adj_evecs.h5", "w") as chk:
-      for i in range(len(evals)):
-        chk.save_mesh(flow.mesh)
-        adj_results.evecs_real[i].rename(f"evec_{i}_re")
-        chk.save_function(adj_results.evecs_real[i])
-        adj_results.evecs_imag[i].rename(f"evec_{i}_im")
-        chk.save_function(adj_results.evecs_imag[i])
+    with fd.CheckpointFile(f"{output_dir}/evecs.h5", "w") as chk:
+        for i in range(len(evals)):
+            chk.save_mesh(flow.mesh)
+            dir_results.evecs_real[i].rename(f"evec_{i}_re")
+            chk.save_function(dir_results.evecs_real[i])
+            dir_results.evecs_imag[i].rename(f"evec_{i}_im")
+            chk.save_function(dir_results.evecs_imag[i])
 
-  hgym.print(
-      "NOTE: If there is a warning following this, ignore it.  It is raised by PETSc "
-      "CLI argument handling and not argparse. It does not indicate that any CLI "
-      "arguments are ignored by this script.")
+    if not args.no_adjoint:
+        hgym.print("Computing adjoint modes...")
+        adj_results = hgym.utils.stability_analysis(flow, sigma, m, tol, adjoint=True)
+
+        # Save checkpoints
+        evals = adj_results.evals
+        eval_data = np.zeros((len(evals), 3), dtype=np.float64)
+        eval_data[:, 0] = evals.real
+        eval_data[:, 1] = evals.imag
+        eval_data[:, 2] = adj_results.residuals
+        np.save(f"{output_dir}/adj_evals", eval_data)
+
+        with fd.CheckpointFile(f"{output_dir}/adj_evecs.h5", "w") as chk:
+            for i in range(len(evals)):
+                chk.save_mesh(flow.mesh)
+                adj_results.evecs_real[i].rename(f"evec_{i}_re")
+                chk.save_function(adj_results.evecs_real[i])
+                adj_results.evecs_imag[i].rename(f"evec_{i}_im")
+                chk.save_function(adj_results.evecs_imag[i])
+
+    hgym.print(
+        "NOTE: If there is a warning following this, ignore it.  It is raised by PETSc "
+        "CLI argument handling and not argparse. It does not indicate that any CLI "
+        "arguments are ignored by this script."
+    )

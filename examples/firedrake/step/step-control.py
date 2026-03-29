@@ -54,9 +54,7 @@ def controller(t, obs):
         return [0.5]  # Constant actuation
 
 
-print_fmt = (
-    "t: {0:0.2f}\t\tCFL: {1:0.2f}\t\tKE: {2:0.6e}\t\tTKE: {3:0.6e}\t\tMem: {4:0.1f}"
-)
+print_fmt = "t: {0:0.2f}\t\tCFL: {1:0.2f}\t\tKE: {2:0.6e}\t\tTKE: {3:0.6e}\t\tMem: {4:0.1f}"
 callbacks = [
     hgym.io.ParaviewCallback(interval=100, filename=pvd_out, postprocess=compute_vort),
     hgym.io.CheckpointCallback(interval=500, filename=checkpoint),

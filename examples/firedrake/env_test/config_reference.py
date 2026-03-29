@@ -29,14 +29,15 @@ from hydrogym.firedrake.io import (
 # =============================================================================
 # Simplest possible configuration using all defaults
 
+
 def example_minimal():
     """Minimal configuration - uses all defaults."""
     env_config = {
-        'flow': hgym.Cylinder,
-        'flow_config': {},
-        'solver': hgym.SemiImplicitBDF,
-        'solver_config': {
-            'dt': 1e-2,  # Only required parameter
+        "flow": hgym.Cylinder,
+        "flow_config": {},
+        "solver": hgym.SemiImplicitBDF,
+        "solver_config": {
+            "dt": 1e-2,  # Only required parameter
         },
     }
     return FlowEnv(env_config)
@@ -47,30 +48,31 @@ def example_minimal():
 # =============================================================================
 # Demonstrates probe-based observations in wake region
 
+
 def example_cylinder_probes():
     """Cylinder with velocity probes in wake."""
     # Define wake probe locations (16x4 grid)
     wake_probes = [
         (x, y)
         for x in np.linspace(1.0, 10.0, 16)  # Downstream positions
-        for y in np.linspace(-2.0, 2.0, 4)   # Vertical positions
+        for y in np.linspace(-2.0, 2.0, 4)  # Vertical positions
     ]
 
     env_config = {
-        'flow': hgym.Cylinder,
-        'flow_config': {
-            'mesh': 'medium',                      # Options: 'medium', 'fine'
-            'Re': 100,                             # Reynolds number
-            'observation_type': 'velocity_probes', # Use velocity probes
-            'probes': wake_probes,                 # Probe locations
+        "flow": hgym.Cylinder,
+        "flow_config": {
+            "mesh": "medium",  # Options: 'medium', 'fine'
+            "Re": 100,  # Reynolds number
+            "observation_type": "velocity_probes",  # Use velocity probes
+            "probes": wake_probes,  # Probe locations
         },
-        'solver': hgym.SemiImplicitBDF,
-        'solver_config': {
-            'dt': 1e-2,
-            'order': 3,                            # BDF order (1, 2, or 3)
-            'stabilization': 'supg',               # SUPG stabilization
+        "solver": hgym.SemiImplicitBDF,
+        "solver_config": {
+            "dt": 1e-2,
+            "order": 3,  # BDF order (1, 2, or 3)
+            "stabilization": "supg",  # SUPG stabilization
         },
-        'max_steps': 10000,
+        "max_steps": 10000,
     }
     return FlowEnv(env_config)
 
@@ -80,21 +82,22 @@ def example_cylinder_probes():
 # =============================================================================
 # Rotary actuation with lift/drag observations
 
+
 def example_rotary_cylinder():
     """Rotary cylinder with lift/drag observations."""
     env_config = {
-        'flow': hgym.RotaryCylinder,
-        'flow_config': {
-            'mesh': 'fine',
-            'Re': 100,
-            'observation_type': 'lift_drag',  # Default: returns (CL, CD)
+        "flow": hgym.RotaryCylinder,
+        "flow_config": {
+            "mesh": "fine",
+            "Re": 100,
+            "observation_type": "lift_drag",  # Default: returns (CL, CD)
         },
-        'solver': hgym.SemiImplicitBDF,
-        'solver_config': {
-            'dt': 1e-2,
-            'order': 2,
+        "solver": hgym.SemiImplicitBDF,
+        "solver_config": {
+            "dt": 1e-2,
+            "order": 2,
         },
-        'max_steps': 50000,
+        "max_steps": 50000,
     }
     return FlowEnv(env_config)
 
@@ -104,46 +107,47 @@ def example_rotary_cylinder():
 # =============================================================================
 # Demonstrates multi-substep simulation and callback usage
 
+
 def example_cavity_multistep():
     """Cavity with multi-substep and comprehensive callbacks."""
     env_config = {
-        'flow': hgym.Cavity,
-        'flow_config': {
-            'mesh': 'fine',
-            'Re': 7500,
-            'observation_type': 'stress_sensor',  # Wall shear stress
+        "flow": hgym.Cavity,
+        "flow_config": {
+            "mesh": "fine",
+            "Re": 7500,
+            "observation_type": "stress_sensor",  # Wall shear stress
         },
-        'solver': hgym.SemiImplicitBDF,
-        'solver_config': {
-            'dt': 1e-4,  # Small timestep for stiff cavity flow
-            'order': 3,
-            'stabilization': 'gls',
+        "solver": hgym.SemiImplicitBDF,
+        "solver_config": {
+            "dt": 1e-4,  # Small timestep for stiff cavity flow
+            "order": 3,
+            "stabilization": "gls",
         },
-        'actuation_config': {
-            'num_substeps': 5,              # 5 solver steps per action
-            'reward_aggregation': 'mean',   # Average reward over substeps
+        "actuation_config": {
+            "num_substeps": 5,  # 5 solver steps per action
+            "reward_aggregation": "mean",  # Average reward over substeps
         },
-        'callbacks': [
+        "callbacks": [
             CheckpointCallback(
                 interval=1000,
-                filename='cavity_checkpoint.h5',
+                filename="cavity_checkpoint.h5",
                 write_mesh=True,
                 write_timeseries=False,
             ),
             ParaviewCallback(
                 interval=100,
-                filename='cavity_viz.pvd',
+                filename="cavity_viz.pvd",
                 postprocess=lambda flow: (flow.u, flow.p),
             ),
             LogCallback(
                 postprocess=lambda flow: flow.get_observations(),
                 nvals=1,
                 interval=10,
-                filename='cavity_log.txt',
-                print_fmt='t={:.6f} stress={:.6f}',
+                filename="cavity_log.txt",
+                print_fmt="t={:.6f} stress={:.6f}",
             ),
         ],
-        'max_steps': 50000,
+        "max_steps": 50000,
     }
     return FlowEnv(env_config)
 
@@ -153,31 +157,32 @@ def example_cavity_multistep():
 # =============================================================================
 # Demonstrates curriculum learning with multiple restart checkpoints
 
+
 def example_pinball_checkpoints():
     """Pinball with multiple checkpoints for curriculum learning."""
     env_config = {
-        'flow': hgym.Pinball,
-        'flow_config': {
-            'mesh': 'fine',
-            'Re': 30,
-            'observation_type': 'lift_drag',  # Returns 6 values (3 CL + 3 CD)
-            'restart': [
+        "flow": hgym.Pinball,
+        "flow_config": {
+            "mesh": "fine",
+            "Re": 30,
+            "observation_type": "lift_drag",  # Returns 6 values (3 CL + 3 CD)
+            "restart": [
                 # List of checkpoints - random selection on each reset()
-                'pinball_checkpoint_t0.h5',
-                'pinball_checkpoint_t100.h5',
-                'pinball_checkpoint_t200.h5',
+                "pinball_checkpoint_t0.h5",
+                "pinball_checkpoint_t100.h5",
+                "pinball_checkpoint_t200.h5",
             ],
         },
-        'solver': hgym.SemiImplicitBDF,
-        'solver_config': {
-            'dt': 1e-2,
-            'order': 3,
+        "solver": hgym.SemiImplicitBDF,
+        "solver_config": {
+            "dt": 1e-2,
+            "order": 3,
         },
-        'actuation_config': {
-            'num_substeps': 2,
-            'reward_aggregation': 'sum',  # Sum rewards over substeps
+        "actuation_config": {
+            "num_substeps": 2,
+            "reward_aggregation": "sum",  # Sum rewards over substeps
         },
-        'max_steps': 100000,
+        "max_steps": 100000,
     }
     return FlowEnv(env_config)
 
@@ -187,25 +192,26 @@ def example_pinball_checkpoints():
 # =============================================================================
 # Step flow with random forcing for exploration
 
+
 def example_step_noise():
     """Step flow with random noise forcing."""
     env_config = {
-        'flow': hgym.Step,
-        'flow_config': {
-            'mesh': 'medium',                    # Options: 'coarse', 'medium', 'fine'
-            'Re': 600,
-            'observation_type': 'stress_sensor',
-            'noise_amplitude': 1.0,              # Random forcing strength
-            'noise_time_constant': 0.05,         # Low-pass filter timescale
-            'noise_seed': 42,                    # RNG seed for reproducibility
+        "flow": hgym.Step,
+        "flow_config": {
+            "mesh": "medium",  # Options: 'coarse', 'medium', 'fine'
+            "Re": 600,
+            "observation_type": "stress_sensor",
+            "noise_amplitude": 1.0,  # Random forcing strength
+            "noise_time_constant": 0.05,  # Low-pass filter timescale
+            "noise_seed": 42,  # RNG seed for reproducibility
         },
-        'solver': hgym.SemiImplicitBDF,
-        'solver_config': {
-            'dt': 1e-2,
-            'order': 2,
-            'stabilization': 'supg',
+        "solver": hgym.SemiImplicitBDF,
+        "solver_config": {
+            "dt": 1e-2,
+            "order": 2,
+            "stabilization": "supg",
         },
-        'max_steps': 100000,
+        "max_steps": 100000,
     }
     return FlowEnv(env_config)
 
@@ -215,33 +221,34 @@ def example_step_noise():
 # =============================================================================
 # Load from checkpoint and use pressure observations
 
+
 def example_cylinder_restart():
     """Cylinder restarting from checkpoint with pressure probes."""
     # Pressure probes around cylinder surface
-    theta = np.linspace(0, 2*np.pi, 20, endpoint=False)
+    theta = np.linspace(0, 2 * np.pi, 20, endpoint=False)
     surface_probes = [(0.5 * np.cos(t), 0.5 * np.sin(t)) for t in theta]
 
     env_config = {
-        'flow': hgym.Cylinder,
-        'flow_config': {
-            'mesh': 'fine',
-            'Re': 100,
-            'observation_type': 'pressure_probes',
-            'probes': surface_probes,
-            'restart': 'cylinder_checkpoint.h5',  # Single checkpoint
+        "flow": hgym.Cylinder,
+        "flow_config": {
+            "mesh": "fine",
+            "Re": 100,
+            "observation_type": "pressure_probes",
+            "probes": surface_probes,
+            "restart": "cylinder_checkpoint.h5",  # Single checkpoint
         },
-        'solver': hgym.SemiImplicitBDF,
-        'solver_config': {
-            'dt': 1e-2,
-            'order': 3,
+        "solver": hgym.SemiImplicitBDF,
+        "solver_config": {
+            "dt": 1e-2,
+            "order": 3,
         },
-        'callbacks': [
+        "callbacks": [
             SnapshotCallback(
                 interval=50,
-                filename='cylinder_snapshots.h5',
+                filename="cylinder_snapshots.h5",
             ),
         ],
-        'max_steps': 20000,
+        "max_steps": 20000,
     }
     return FlowEnv(env_config)
 
@@ -251,43 +258,44 @@ def example_cylinder_restart():
 # =============================================================================
 # Demonstrates all multi-substep aggregation options
 
+
 def example_advanced_multistep():
     """Compare different reward aggregation strategies."""
     configs = {}
 
     # Mean aggregation (default)
-    configs['mean'] = {
-        'flow': hgym.Cylinder,
-        'flow_config': {'mesh': 'medium', 'Re': 100},
-        'solver': hgym.SemiImplicitBDF,
-        'solver_config': {'dt': 1e-2},
-        'actuation_config': {
-            'num_substeps': 10,
-            'reward_aggregation': 'mean',
+    configs["mean"] = {
+        "flow": hgym.Cylinder,
+        "flow_config": {"mesh": "medium", "Re": 100},
+        "solver": hgym.SemiImplicitBDF,
+        "solver_config": {"dt": 1e-2},
+        "actuation_config": {
+            "num_substeps": 10,
+            "reward_aggregation": "mean",
         },
     }
 
     # Sum aggregation (useful for episodic return)
-    configs['sum'] = {
-        'flow': hgym.Cylinder,
-        'flow_config': {'mesh': 'medium', 'Re': 100},
-        'solver': hgym.SemiImplicitBDF,
-        'solver_config': {'dt': 1e-2},
-        'actuation_config': {
-            'num_substeps': 10,
-            'reward_aggregation': 'sum',
+    configs["sum"] = {
+        "flow": hgym.Cylinder,
+        "flow_config": {"mesh": "medium", "Re": 100},
+        "solver": hgym.SemiImplicitBDF,
+        "solver_config": {"dt": 1e-2},
+        "actuation_config": {
+            "num_substeps": 10,
+            "reward_aggregation": "sum",
         },
     }
 
     # Median aggregation (robust to outliers)
-    configs['median'] = {
-        'flow': hgym.Cylinder,
-        'flow_config': {'mesh': 'medium', 'Re': 100},
-        'solver': hgym.SemiImplicitBDF,
-        'solver_config': {'dt': 1e-2},
-        'actuation_config': {
-            'num_substeps': 10,
-            'reward_aggregation': 'median',
+    configs["median"] = {
+        "flow": hgym.Cylinder,
+        "flow_config": {"mesh": "medium", "Re": 100},
+        "solver": hgym.SemiImplicitBDF,
+        "solver_config": {"dt": 1e-2},
+        "actuation_config": {
+            "num_substeps": 10,
+            "reward_aggregation": "median",
         },
     }
 
@@ -299,16 +307,17 @@ def example_advanced_multistep():
 # =============================================================================
 # Demonstrates all available observation types
 
+
 def example_all_observation_types():
     """Create environments with all observation types."""
     base_config = {
-        'flow': hgym.Cylinder,
-        'flow_config': {
-            'mesh': 'medium',
-            'Re': 100,
+        "flow": hgym.Cylinder,
+        "flow_config": {
+            "mesh": "medium",
+            "Re": 100,
         },
-        'solver': hgym.SemiImplicitBDF,
-        'solver_config': {'dt': 1e-2},
+        "solver": hgym.SemiImplicitBDF,
+        "solver_config": {"dt": 1e-2},
     }
 
     # Define probe locations
@@ -318,35 +327,35 @@ def example_all_observation_types():
 
     # Lift/drag forces
     cfg = base_config.copy()
-    cfg['flow_config'] = {**base_config['flow_config'], 'observation_type': 'lift_drag'}
-    configs['lift_drag'] = FlowEnv(cfg)
+    cfg["flow_config"] = {**base_config["flow_config"], "observation_type": "lift_drag"}
+    configs["lift_drag"] = FlowEnv(cfg)
 
     # Velocity probes
     cfg = base_config.copy()
-    cfg['flow_config'] = {
-        **base_config['flow_config'],
-        'observation_type': 'velocity_probes',
-        'probes': probes,
+    cfg["flow_config"] = {
+        **base_config["flow_config"],
+        "observation_type": "velocity_probes",
+        "probes": probes,
     }
-    configs['velocity'] = FlowEnv(cfg)
+    configs["velocity"] = FlowEnv(cfg)
 
     # Pressure probes
     cfg = base_config.copy()
-    cfg['flow_config'] = {
-        **base_config['flow_config'],
-        'observation_type': 'pressure_probes',
-        'probes': probes,
+    cfg["flow_config"] = {
+        **base_config["flow_config"],
+        "observation_type": "pressure_probes",
+        "probes": probes,
     }
-    configs['pressure'] = FlowEnv(cfg)
+    configs["pressure"] = FlowEnv(cfg)
 
     # Vorticity probes
     cfg = base_config.copy()
-    cfg['flow_config'] = {
-        **base_config['flow_config'],
-        'observation_type': 'vorticity_probes',
-        'probes': probes,
+    cfg["flow_config"] = {
+        **base_config["flow_config"],
+        "observation_type": "vorticity_probes",
+        "probes": probes,
     }
-    configs['vorticity'] = FlowEnv(cfg)
+    configs["vorticity"] = FlowEnv(cfg)
 
     return configs
 
@@ -356,45 +365,46 @@ def example_all_observation_types():
 # =============================================================================
 # Recommended configuration for RL training
 
+
 def example_production_rl():
     """Production-ready configuration for RL training."""
     env_config = {
-        'flow': hgym.Cylinder,
-        'flow_config': {
-            'mesh': 'medium',                    # Balance accuracy/speed
-            'Re': 100,
-            'observation_type': 'lift_drag',
-            'restart': [                         # Multiple initial conditions
-                'cylinder_ckpt_0.h5',
-                'cylinder_ckpt_100.h5',
-                'cylinder_ckpt_200.h5',
+        "flow": hgym.Cylinder,
+        "flow_config": {
+            "mesh": "medium",  # Balance accuracy/speed
+            "Re": 100,
+            "observation_type": "lift_drag",
+            "restart": [  # Multiple initial conditions
+                "cylinder_ckpt_0.h5",
+                "cylinder_ckpt_100.h5",
+                "cylinder_ckpt_200.h5",
             ],
         },
-        'solver': hgym.SemiImplicitBDF,
-        'solver_config': {
-            'dt': 1e-2,
-            'order': 3,
-            'stabilization': 'supg',
-            'rtol': 1e-6,
+        "solver": hgym.SemiImplicitBDF,
+        "solver_config": {
+            "dt": 1e-2,
+            "order": 3,
+            "stabilization": "supg",
+            "rtol": 1e-6,
         },
-        'actuation_config': {
-            'num_substeps': 5,                   # 5x sample efficiency
-            'reward_aggregation': 'mean',
+        "actuation_config": {
+            "num_substeps": 5,  # 5x sample efficiency
+            "reward_aggregation": "mean",
         },
-        'callbacks': [
+        "callbacks": [
             CheckpointCallback(
-                interval=5000,                   # Save every 5k steps
-                filename='training_checkpoint.h5',
+                interval=5000,  # Save every 5k steps
+                filename="training_checkpoint.h5",
                 write_timeseries=False,
             ),
             LogCallback(
                 postprocess=lambda flow: flow.compute_forces(),
                 nvals=2,
                 interval=100,
-                filename='training_log.txt',
+                filename="training_log.txt",
             ),
         ],
-        'max_steps': 200,                        # Episode length
+        "max_steps": 200,  # Episode length
     }
     return FlowEnv(env_config)
 
@@ -490,9 +500,9 @@ For detailed examples, see the functions in this file:
 
 if __name__ == "__main__":
     print(CONFIGURATION_SUMMARY)
-    print("\n" + "="*76)
+    print("\n" + "=" * 76)
     print("Creating example environments...")
-    print("="*76 + "\n")
+    print("=" * 76 + "\n")
 
     # Example 1: Minimal
     print("1. Creating minimal environment...")
@@ -513,6 +523,6 @@ if __name__ == "__main__":
     print(f"   ✓ Reward aggregation: {env.reward_aggregation}")
     print(f"   ✓ Number of callbacks: {len(env.callbacks)}\n")
 
-    print("="*76)
+    print("=" * 76)
     print("All examples created successfully!")
-    print("="*76)
+    print("=" * 76)

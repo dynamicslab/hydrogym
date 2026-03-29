@@ -57,34 +57,29 @@ from .envs.sphere import Sphere
 # Make the factory function available at package level
 __all__ = [
     # Core classes
-    'MaiaFlowEnv',
-    'ConfigError',
-
+    "MaiaFlowEnv",
+    "ConfigError",
     # Factory functions
-    'from_hf',
-    'list_available_environments',
-    'list_registered_types',
-
+    "from_hf",
+    "list_available_environments",
+    "list_registered_types",
     # Data management
-    'HFDataManager',
-
+    "HFDataManager",
     # MPI interface
-    'MaiaInterface',
-
+    "MaiaInterface",
     # Workspace utilities
-    'MaiaWorkspace',
-    'prepare_maia_workspace',
-
+    "MaiaWorkspace",
+    "prepare_maia_workspace",
     # HF-enabled environments
-    'Cylinder',
-    'RotaryCylinder',
-    'Cavity',
-    'Cavity3Jet',
-    'Pinball',
-    'JetPinball',
-    'NACA0012',
-    'NACA0012Gust',
-    'SquareCylinder',
-    'Cube',
-    'Sphere'
+    "Cylinder",
+    "RotaryCylinder",
+    "Cavity",
+    "Cavity3Jet",
+    "Pinball",
+    "JetPinball",
+    "NACA0012",
+    "NACA0012Gust",
+    "SquareCylinder",
+    "Cube",
+    "Sphere",
 ]

@@ -83,16 +83,14 @@ class MaiaInterface:
         self.appRootInWorld = group_world.Translate_ranks([self.appRoot], self.appGroup)[0]
 
         no_app = 2
-        buff_send = np.zeros(no_app, dtype='i')
+        buff_send = np.zeros(no_app, dtype="i")
         app_roots_in_world = np.empty_like(buff_send)
         buff_send.fill(-1)
         buff_send[self.appnum] = self.appRootInWorld
         self.worldComm.Allreduce(buff_send, app_roots_in_world, op=MPI.MAX)
         self.remoteRoot = app_roots_in_world[1 - self.appnum]
 
-    def _comm_send(
-        self, name: str, data: Union[List, np.ndarray], send_tag: bool = True
-    ) -> None:
+    def _comm_send(self, name: str, data: Union[List, np.ndarray], send_tag: bool = True) -> None:
         """
         Send double data to m-AIA root process.
 
@@ -104,11 +102,9 @@ class MaiaInterface:
         if self.appRank == self.appRoot:
             mpi_tag = COMMAND_TAGS[name]
             if send_tag:
-                send_buf = np.zeros(1, dtype='i')
+                send_buf = np.zeros(1, dtype="i")
                 send_buf[0] = mpi_tag
-                self.worldComm.Ssend(
-                    send_buf, dest=self.remoteRoot, tag=COMMAND_TAGS["lbRequest"]
-                )
+                self.worldComm.Ssend(send_buf, dest=self.remoteRoot, tag=COMMAND_TAGS["lbRequest"])
             send_buf = np.zeros(len(data), dtype=np.float64)
             for i, value in enumerate(data):
                 send_buf[i] = value
@@ -124,12 +120,10 @@ class MaiaInterface:
         """
         if self.appRank == self.appRoot:
             mpi_tag = COMMAND_TAGS[name]
-            send_buf = np.zeros(1, dtype='i')
+            send_buf = np.zeros(1, dtype="i")
             send_buf[0] = mpi_tag
-            self.worldComm.Ssend(
-                send_buf, dest=self.remoteRoot, tag=COMMAND_TAGS["lbRequest"]
-            )
-            send_buf = np.zeros(len(data), dtype='i')
+            self.worldComm.Ssend(send_buf, dest=self.remoteRoot, tag=COMMAND_TAGS["lbRequest"])
+            send_buf = np.zeros(len(data), dtype="i")
             for i, value in enumerate(data):
                 send_buf[i] = value
             self.worldComm.Ssend(send_buf, dest=self.remoteRoot, tag=mpi_tag)
@@ -164,11 +158,9 @@ class MaiaInterface:
         """
         if self.appRank == self.appRoot:
             mpi_tag = COMMAND_TAGS["lbContinue"]
-            send_buf = np.zeros(1, dtype='i')
+            send_buf = np.zeros(1, dtype="i")
             send_buf[0] = mpi_tag
-            self.worldComm.Ssend(
-                send_buf, dest=self.remoteRoot, tag=COMMAND_TAGS["lbRequest"]
-            )
+            self.worldComm.Ssend(send_buf, dest=self.remoteRoot, tag=COMMAND_TAGS["lbRequest"])
 
     def runTimeSteps(self, time_steps: int = 1) -> None:
         """
@@ -178,11 +170,9 @@ class MaiaInterface:
             time_steps: Number of time steps to advance. Use 0 to signal finish.
         """
         if self.appRank == self.appRoot:
-            send_buf = np.zeros(1, dtype='i')
+            send_buf = np.zeros(1, dtype="i")
             send_buf[0] = time_steps
-            self.worldComm.Ssend(
-                send_buf, dest=self.remoteRoot, tag=COMMAND_TAGS["timeStep"]
-            )
+            self.worldComm.Ssend(send_buf, dest=self.remoteRoot, tag=COMMAND_TAGS["timeStep"])
 
     def finishRun(self) -> None:
         """
@@ -243,8 +233,6 @@ class MaiaInterface:
         """
         if self.appRank == self.appRoot:
             mpi_tag = COMMAND_TAGS["lbReinit"]
-            send_buf = np.zeros(1, dtype='i')
+            send_buf = np.zeros(1, dtype="i")
             send_buf[0] = mpi_tag
-            self.worldComm.Ssend(
-                send_buf, dest=self.remoteRoot, tag=COMMAND_TAGS["lbRequest"]
-            )
+            self.worldComm.Ssend(send_buf, dest=self.remoteRoot, tag=COMMAND_TAGS["lbRequest"])

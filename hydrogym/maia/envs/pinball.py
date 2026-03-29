@@ -56,15 +56,12 @@ class PinballBase(MaiaFlowEnv):
             forces=forces,
             density=1.0,
             referenceVelocity=self.Ma / np.sqrt(3),
-            projectionLength=self.referenceLength / self.dX * self.zLength / self.dX
+            projectionLength=self.referenceLength / self.dX * self.zLength / self.dX,
         )
 
-        obj_dict = {'forces': nondim_coefficients}
+        obj_dict = {"forces": nondim_coefficients}
 
-        reward = (
-            -np.abs(nondim_coefficients[:, 0].sum())
-            - self.omega * np.abs(nondim_coefficients[:, 1].sum())
-        )
+        reward = -np.abs(nondim_coefficients[:, 0].sum()) - self.omega * np.abs(nondim_coefficients[:, 1].sum())
 
         return reward, obj_dict
 
@@ -124,9 +121,7 @@ class JetPinball(PinballBase):
             env_config: Environment configuration dictionary.
         """
         super().__init__(env_config)
-        self.numJetsInSimulation = self._get_property(
-            self.runtime_property_file_data, "lbNoJets"
-        )
+        self.numJetsInSimulation = self._get_property(self.runtime_property_file_data, "lbNoJets")
 
         self.configure_observations()
         self.configure_probe_dimensions()
@@ -155,5 +150,5 @@ class JetPinball(PinballBase):
 
 
 # Register environment types with the factory
-register_environment('Pinball', Pinball)
-register_environment('JetPinball', JetPinball)
+register_environment("Pinball", Pinball)
+register_environment("JetPinball", JetPinball)

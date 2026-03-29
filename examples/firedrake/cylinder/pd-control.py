@@ -10,7 +10,7 @@ import hydrogym.firedrake as hgym
 
 output_dir = "output"
 if not os.path.exists(output_dir):
-  os.makedirs(output_dir)
+    os.makedirs(output_dir)
 
 mesh_resolution = "medium"
 
@@ -24,15 +24,14 @@ checkpoint = f"{output_dir}/pd_{mesh_resolution}_{element_type}.h5"
 
 
 def compute_vort(flow):
-  return (flow.u, flow.p, flow.vorticity())
+    return (flow.u, flow.p, flow.vorticity())
 
 
 def log_postprocess(flow):
-  CL, CD = flow.get_observations()
-  mem_usage = psutil.virtual_memory().available * 100 / psutil.virtual_memory(
-  ).total
-  mem_usage = psutil.virtual_memory().percent
-  return CL, CD, mem_usage
+    CL, CD = flow.get_observations()
+    mem_usage = psutil.virtual_memory().available * 100 / psutil.virtual_memory().total
+    mem_usage = psutil.virtual_memory().percent
+    return CL, CD, mem_usage
 
 
 callbacks = [
@@ -77,10 +76,10 @@ pd_controller = PDController(
 
 
 def controller(t, obs):
-  # Turn on control halfway through
-  if t < tf / 2:
-    return 0.0
-  return pd_controller(t, obs)
+    # Turn on control halfway through
+    if t < tf / 2:
+        return 0.0
+    return pd_controller(t, obs)
 
 
 hgym.integrate(

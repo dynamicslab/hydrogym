@@ -47,11 +47,7 @@ Re_init = [40, 60, 80, Re]
 for i, Re_val in enumerate(Re_init):
     flow.Re.assign(Re_val)
     hgym.print(f"Steady solve at Re={Re_init[i]}")
-    solver = hgym.NewtonSolver(
-        flow,
-        stabilization="gls",
-        solver_parameters=solver_parameters
-    )
+    solver = hgym.NewtonSolver(flow, stabilization="gls", solver_parameters=solver_parameters)
     qB = solver.solve()
 
 # Save steady state as base flow
@@ -81,9 +77,7 @@ def compute_vort(flow):
     return (flow.u, flow.p, flow.vorticity())
 
 
-print_fmt = (
-    "t: {0:0.2f}\t\tCFL: {1:0.2f}\t\tCL: {2:0.4f}\t\tCD: {3:0.4f}\t\tMem: {4:0.1f}"
-)
+print_fmt = "t: {0:0.2f}\t\tCFL: {1:0.2f}\t\tCL: {2:0.4f}\t\tCD: {3:0.4f}\t\tMem: {4:0.1f}"
 callbacks = [
     hgym.io.ParaviewCallback(interval=100, filename=pvd_out, postprocess=compute_vort),
     hgym.io.CheckpointCallback(interval=500, filename=checkpoint),

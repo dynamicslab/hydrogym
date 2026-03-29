@@ -36,7 +36,7 @@ else:
 flow = hgym.Cylinder(Re=Re_init[0], mesh=mesh_resolution, velocity_order=2)
 
 dof = flow.mixed_space.dim()
-hgym.print(f"Total dof: {dof} --- dof/rank: {int(dof/fd.COMM_WORLD.size)}")
+hgym.print(f"Total dof: {dof} --- dof/rank: {int(dof / fd.COMM_WORLD.size)}")
 
 solver = hgym.NewtonSolver(
     flow,

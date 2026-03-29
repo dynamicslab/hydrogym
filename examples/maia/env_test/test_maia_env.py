@@ -27,8 +27,8 @@ from typing import List, Tuple, Optional
 import numpy as np
 
 # Force unbuffered output for MPMD mode
-sys.stdout = open(sys.stdout.fileno(), 'w', buffering=1)
-sys.stderr = open(sys.stderr.fileno(), 'w', buffering=1)
+sys.stdout = open(sys.stdout.fileno(), "w", buffering=1)
+sys.stderr = open(sys.stderr.fileno(), "w", buffering=1)
 
 # Import hydrogym (lazy import prevents firedrake loading in MPMD mode)
 import hydrogym.maia as maia
@@ -46,10 +46,7 @@ def setup_logging(verbose: bool = False) -> logging.Logger:
     """
     level = logging.DEBUG if verbose else logging.INFO
     logging.basicConfig(
-        level=level,
-        format='%(asctime)s [%(levelname)s] %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S',
-        stream=sys.stdout
+        level=level, format="%(asctime)s [%(levelname)s] %(message)s", datefmt="%Y-%m-%d %H:%M:%S", stream=sys.stdout
     )
     return logging.getLogger(__name__)
 
@@ -64,16 +61,14 @@ def parse_range_arg(arg_str: str) -> Tuple[float, float, int]:
     Returns:
         Tuple of (min, max, num_points)
     """
-    parts = arg_str.split(',')
+    parts = arg_str.split(",")
     if len(parts) != 3:
         raise ValueError(f"Range must be in format 'min,max,num', got: {arg_str}")
     return float(parts[0]), float(parts[1]), int(parts[2])
 
 
 def create_probe_locations(
-    x_range: Tuple[float, float, int],
-    y_range: Tuple[float, float, int],
-    logger: logging.Logger
+    x_range: Tuple[float, float, int], y_range: Tuple[float, float, int], logger: logging.Logger
 ) -> List[float]:
     """
     Create probe location grid for 2D flow field sampling.
@@ -111,7 +106,7 @@ def run_environment_test(
     probe_locations: List[float],
     obs_normalization: str,
     seed: Optional[int],
-    logger: logging.Logger
+    logger: logging.Logger,
 ) -> None:
     """
     Run MAIA environment test with specified parameters.
@@ -242,56 +237,33 @@ def main():
     parser = argparse.ArgumentParser(
         description="Test MAIA CFD environment with MPMD coupling",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog=__doc__
+        epilog=__doc__,
     )
 
-    parser.add_argument(
-        "--environment",
-        required=True,
-        help="Environment name (e.g., Cylinder_2D_Re200)"
-    )
-    parser.add_argument(
-        "--num-steps",
-        type=int,
-        default=10,
-        help="Number of steps per episode (default: 10)"
-    )
-    parser.add_argument(
-        "--num-episodes",
-        type=int,
-        default=1,
-        help="Number of episodes to run (default: 1)"
-    )
+    parser.add_argument("--environment", required=True, help="Environment name (e.g., Cylinder_2D_Re200)")
+    parser.add_argument("--num-steps", type=int, default=10, help="Number of steps per episode (default: 10)")
+    parser.add_argument("--num-episodes", type=int, default=1, help="Number of episodes to run (default: 1)")
     parser.add_argument(
         "--probe-x-range",
         type=str,
         default="1.0,8.0,8",
-        help="X-axis probe range as 'min,max,num' (default: 1.0,8.0,8)"
+        help="X-axis probe range as 'min,max,num' (default: 1.0,8.0,8)",
     )
     parser.add_argument(
         "--probe-y-range",
         type=str,
         default="-1.0,1.0,5",
-        help="Y-axis probe range as 'min,max,num' (default: -1.0,1.0,5)"
+        help="Y-axis probe range as 'min,max,num' (default: -1.0,1.0,5)",
     )
-    parser.add_argument(
-        "--seed",
-        type=int,
-        default=None,
-        help="Random seed for reproducibility (optional)"
-    )
+    parser.add_argument("--seed", type=int, default=None, help="Random seed for reproducibility (optional)")
     parser.add_argument(
         "--obs-norm",
         type=str,
         default="U_inf",
         choices=["U_inf", "probewise_mean_std", "none", "customized"],
-        help="Observation normalization strategy (default: U_inf)"
+        help="Observation normalization strategy (default: U_inf)",
     )
-    parser.add_argument(
-        "--verbose",
-        action="store_true",
-        help="Enable verbose logging"
-    )
+    parser.add_argument("--verbose", action="store_true", help="Enable verbose logging")
 
     args = parser.parse_args()
 
@@ -322,7 +294,7 @@ def main():
             probe_locations=probe_locations,
             obs_normalization=args.obs_norm,
             seed=args.seed,
-            logger=logger
+            logger=logger,
         )
         logger.info("\n✓ Test completed successfully!")
         sys.exit(0)
@@ -334,6 +306,7 @@ def main():
     except Exception as e:
         logger.error(f"\n✗ Test failed with error: {e}")
         import traceback
+
         logger.debug(traceback.format_exc())
         sys.exit(1)
 

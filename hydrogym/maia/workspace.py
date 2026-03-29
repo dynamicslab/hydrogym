@@ -25,23 +25,23 @@ class MaiaWorkspace:
 
     # Required files and their expected names in the work directory
     REQUIRED_FILES = {
-        'grid.Netcdf': 'out_lb/grid.Netcdf',
-        'restart_.Netcdf': 'out_lb/restart_.Netcdf',
-        'properties_run.toml': 'properties_run.toml',
-        'geometry.toml': 'geometry.toml',
-        'environment_config.yaml': 'environment_config.yaml',
+        "grid.Netcdf": "out_lb/grid.Netcdf",
+        "restart_.Netcdf": "out_lb/restart_.Netcdf",
+        "properties_run.toml": "properties_run.toml",
+        "geometry.toml": "geometry.toml",
+        "environment_config.yaml": "environment_config.yaml",
     }
 
     # Required directories
     REQUIRED_DIRS = {
-        'stl': 'stl',
+        "stl": "stl",
     }
 
     def __init__(
         self,
         environment_name: str,
         work_dir: Optional[str] = None,
-        hf_repo_id: str = 'dynamicslab/HydroGym-environments',
+        hf_repo_id: str = "dynamicslab/HydroGym-environments",
         local_fallback_dir: Optional[str] = None,
         use_clean_cache: bool = True,
     ):
@@ -105,8 +105,7 @@ class MaiaWorkspace:
         else:
             # Download/get from HF Hub
             self.env_data_path = self.data_manager.get_environment_path(
-                self.environment_name,
-                force_download=force_download
+                self.environment_name, force_download=force_download
             )
             if verbose:
                 print(f"   Environment data ready: {self.env_data_path}")
@@ -127,8 +126,8 @@ class MaiaWorkspace:
             print(f"3. Creating symbolic links...")
 
         paths = {
-            'work_dir': str(work_path.absolute()),
-            'env_data_path': self.env_data_path,
+            "work_dir": str(work_path.absolute()),
+            "env_data_path": self.env_data_path,
         }
 
         # Link files
@@ -140,10 +139,10 @@ class MaiaWorkspace:
                 self._create_link(source_path, target_path, verbose=verbose)
 
                 # Store important file paths
-                if source_name == 'properties_run.toml':
-                    paths['properties_file'] = str(target_path.absolute())
-                elif source_name == 'environment_config.yaml':
-                    paths['config_file'] = str(target_path.absolute())
+                if source_name == "properties_run.toml":
+                    paths["properties_file"] = str(target_path.absolute())
+                elif source_name == "environment_config.yaml":
+                    paths["config_file"] = str(target_path.absolute())
             else:
                 print(f"   WARNING: Source file not found: {source_path}")
 
@@ -235,9 +234,9 @@ class MaiaWorkspace:
 def prepare_maia_workspace(
     environment_name: str,
     work_dir: Optional[str] = None,
-    hf_repo_id: str = 'dynamicslab/HydroGym-environments',
+    hf_repo_id: str = "dynamicslab/HydroGym-environments",
     force_download: bool = False,
-    **kwargs
+    **kwargs,
 ) -> Tuple[str, str]:
     """
     Convenient function to prepare a MAIA workspace for MPMD coupling.
@@ -265,13 +264,8 @@ def prepare_maia_workspace(
         >>> # Then use work_dir and props_file in your job script:
         >>> # sbatch job.slurm  # where job.slurm references work_dir
     """
-    workspace = MaiaWorkspace(
-        environment_name=environment_name,
-        work_dir=work_dir,
-        hf_repo_id=hf_repo_id,
-        **kwargs
-    )
+    workspace = MaiaWorkspace(environment_name=environment_name, work_dir=work_dir, hf_repo_id=hf_repo_id, **kwargs)
 
     paths = workspace.setup(force_download=force_download, verbose=True)
 
-    return paths['work_dir'], paths['properties_file']
+    return paths["work_dir"], paths["properties_file"]

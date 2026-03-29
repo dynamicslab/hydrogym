@@ -16,15 +16,15 @@ from .cube import Cube
 from .sphere import Sphere
 
 __all__ = [
-    'Cylinder',
-    'RotaryCylinder',
-    'Cavity',
-    'Cavity3Jet',
-    'Pinball',
-    'JetPinball',
-    'NACA0012',
-    'NACA0012Gust',
-    'SquareCylinder',
-    'Cube',
-    'Sphere'
+    "Cylinder",
+    "RotaryCylinder",
+    "Cavity",
+    "Cavity3Jet",
+    "Pinball",
+    "JetPinball",
+    "NACA0012",
+    "NACA0012Gust",
+    "SquareCylinder",
+    "Cube",
+    "Sphere",
 ]
