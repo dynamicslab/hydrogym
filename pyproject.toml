@@ -5,9 +5,9 @@ authors = [
     "HydroGym Team"
 ]
 maintainers = [
-    "Jared Callaham <jared.callaham@gmail.com>",
+    "Christian Lagemann <clage@uw.edu>",
     "Ludger Paehler <paehlerludger@gmail.com>",
-    "Sam Ahnert <sammahnert@gmail.com",
+    "Jared Callaham <jared.callaham@gmail.com>",
 ]
 description = "A Reinforcement Learning Benchmarking Environment for Fluid Dynamics (with Firedrake and Maia solver support)"
 license = "MIT"
@@ -48,7 +48,7 @@ control = "^0.9.2"
 dmsuite = "^0.1.1"
 gmsh = "^4.11.1"
 
-# Gym environment (now using gymnasium - modern API)
+# Gymnasium environment
 gymnasium = "^0.28.0"
 
 # Maia solver dependencies (included by default)
@@ -62,7 +62,6 @@ toml = "^0.10.0"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.1.6"
-yapf = "^0.40.2"
 toml = "^0.10.2"
 tomli = "^2.0.1"
 codespell = "^2.2.6"
@@ -80,11 +79,14 @@ nbconvert = "^7.2.7"
 memory-profiler = "^0.61.0"
 seaborn = "^0.12.1"
 
-[tool.yapf]
-based_on_style = "yapf"
-
 [tool.ruff]
 line-length = 120
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
+skip-magic-trailing-comma = false
 
 [tool.ruff.lint]
 select = ["E", "F"]

@@ -1,0 +1,22 @@
+name: Linting with Ruff
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ruff-lint-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ruff-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Uses [tool.ruff] and [tool.ruff.lint] from pyproject.toml (line-length, select, ignore, etc.)
+      - name: Lint with Ruff
+        uses: astral-sh/ruff-action@v3
