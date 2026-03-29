@@ -51,7 +51,7 @@ for i, Re_val in enumerate(Re_init):
 # Save steady state as base flow
 flow.qB = flow.q.copy(deepcopy=True)
 CL1, CL2, CL3 = flow.compute_forces()
-hgym.print(f"Steady state forces:")
+hgym.print("Steady state forces:")
 hgym.print(f"  Cylinder 1: CL={CL1:.6f}")
 hgym.print(f"  Cylinder 2: CL={CL2:.6f}")
 hgym.print(f"  Cylinder 3: CL={CL3:.6f}")

@@ -381,7 +381,7 @@ def run_firedrake_test(
             # Reset environment
             try:
                 obs, _ = env.reset(seed=seed)
-                logger.info(f"✓ Environment reset")
+                logger.info("✓ Environment reset")
                 logger.info(f"  Initial observation shape: {obs.shape}")
             except Exception as e:
                 logger.error(f"✗ Reset failed: {e}")

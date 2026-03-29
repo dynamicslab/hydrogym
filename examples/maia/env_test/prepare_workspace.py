@@ -34,5 +34,5 @@ if __name__ == "__main__":
     print(f"Properties file:  {properties_file}")
     print("\nNext steps:")
     print(f"  1. Edit your job script to use work_dir: {work_dir}")
-    print(f"  2. Submit job: sbatch job.slurm (or equivalent)")
+    print("  2. Submit job: sbatch job.slurm (or equivalent)")
     print("=" * 70)

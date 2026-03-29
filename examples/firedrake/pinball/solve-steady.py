@@ -52,7 +52,7 @@ flow.save_checkpoint(f"{output_dir}/pinball_Re{Re}_steady.h5")
 
 # Compute and save force coefficients for each cylinder
 CL1, CL2, CL3 = flow.compute_forces()
-hgym.print(f"Steady state forces:")
+hgym.print("Steady state forces:")
 hgym.print(f"  Cylinder 1: CL={CL1:.6f}")
 hgym.print(f"  Cylinder 2: CL={CL2:.6f}")
 hgym.print(f"  Cylinder 3: CL={CL3:.6f}")

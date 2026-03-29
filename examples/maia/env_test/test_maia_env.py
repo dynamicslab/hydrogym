@@ -84,7 +84,7 @@ def create_probe_locations(
     x_min, x_max, num_x = x_range
     y_min, y_max, num_y = y_range
 
-    logger.info(f"Creating probe grid:")
+    logger.info("Creating probe grid:")
     logger.info(f"  X: [{x_min}, {x_max}] with {num_x} probes")
     logger.info(f"  Y: [{y_min}, {y_max}] with {num_y} probes")
     logger.info(f"  Total probes: {num_x * num_y}")
@@ -166,7 +166,7 @@ def run_environment_test(
             # Reset environment
             try:
                 obs, _ = env.reset(seed=seed)
-                logger.info(f"✓ Environment reset")
+                logger.info("✓ Environment reset")
                 logger.info(f"  Initial observation shape: {obs.shape}")
             except Exception as e:
                 logger.error(f"✗ Reset failed: {e}")
