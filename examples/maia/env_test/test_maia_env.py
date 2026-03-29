@@ -19,10 +19,10 @@ Arguments:
     --verbose: Enable verbose output (default: False)
 """
 
-import sys
 import argparse
 import logging
-from typing import List, Tuple, Optional
+import sys
+from typing import List, Optional, Tuple
 
 import numpy as np
 
@@ -31,7 +31,7 @@ sys.stdout = open(sys.stdout.fileno(), "w", buffering=1)
 sys.stderr = open(sys.stderr.fileno(), "w", buffering=1)
 
 # Import hydrogym (lazy import prevents firedrake loading in MPMD mode)
-import hydrogym.maia as maia
+import hydrogym.maia as maia  # noqa: E402
 
 
 def setup_logging(verbose: bool = False) -> logging.Logger:
@@ -46,7 +46,10 @@ def setup_logging(verbose: bool = False) -> logging.Logger:
     """
     level = logging.DEBUG if verbose else logging.INFO
     logging.basicConfig(
-        level=level, format="%(asctime)s [%(levelname)s] %(message)s", datefmt="%Y-%m-%d %H:%M:%S", stream=sys.stdout
+        level=level,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+        stream=sys.stdout,
     )
     return logging.getLogger(__name__)
 
@@ -68,7 +71,9 @@ def parse_range_arg(arg_str: str) -> Tuple[float, float, int]:
 
 
 def create_probe_locations(
-    x_range: Tuple[float, float, int], y_range: Tuple[float, float, int], logger: logging.Logger
+    x_range: Tuple[float, float, int],
+    y_range: Tuple[float, float, int],
+    logger: logging.Logger,
 ) -> List[float]:
     """
     Create probe location grid for 2D flow field sampling.
@@ -199,7 +204,9 @@ def run_environment_test(
                     # Handle episode termination
                     if terminated or truncated:
                         reason = "terminated" if terminated else "truncated"
-                        logger.info(f"  Episode ended ({reason}) after {episode_steps} steps")
+                        logger.info(
+                            f"  Episode ended ({reason}) after {episode_steps} steps"
+                        )
                         break
 
                 except Exception as e:
@@ -240,9 +247,23 @@ def main():
         epilog=__doc__,
     )
 
-    parser.add_argument("--environment", required=True, help="Environment name (e.g., Cylinder_2D_Re200)")
-    parser.add_argument("--num-steps", type=int, default=10, help="Number of steps per episode (default: 10)")
-    parser.add_argument("--num-episodes", type=int, default=1, help="Number of episodes to run (default: 1)")
+    parser.add_argument(
+        "--environment",
+        required=True,
+        help="Environment name (e.g., Cylinder_2D_Re200)",
+    )
+    parser.add_argument(
+        "--num-steps",
+        type=int,
+        default=10,
+        help="Number of steps per episode (default: 10)",
+    )
+    parser.add_argument(
+        "--num-episodes",
+        type=int,
+        default=1,
+        help="Number of episodes to run (default: 1)",
+    )
     parser.add_argument(
         "--probe-x-range",
         type=str,
@@ -255,7 +276,12 @@ def main():
         default="-1.0,1.0,5",
         help="Y-axis probe range as 'min,max,num' (default: -1.0,1.0,5)",
     )
-    parser.add_argument("--seed", type=int, default=None, help="Random seed for reproducibility (optional)")
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=None,
+        help="Random seed for reproducibility (optional)",
+    )
     parser.add_argument(
         "--obs-norm",
         type=str,
