@@ -80,5 +80,5 @@ def test_env():
 
   u = np.zeros(len(env.flow.CYLINDER))
   for _ in range(10):
-    y, reward, done, info = env.step(u)
+    y, reward, terminated, truncated, info = env.step(u)
     u = feedback_ctrl(y)
