@@ -61,7 +61,7 @@ scipy = "^1.7.0"
 toml = "^0.10.0"
 
 [tool.poetry.group.dev.dependencies]
-ruff = "^0.1.6"
+ruff = "^0.15.8"
 toml = "^0.10.2"
 tomli = "^2.0.1"
 codespell = "^2.2.6"
