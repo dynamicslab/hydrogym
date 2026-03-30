@@ -25,6 +25,7 @@ Outputs:
     - evecs.h5: Direct eigenvectors (velocity/pressure modes)
     - adj_evecs.h5: Adjoint eigenvectors (for control design)
 """
+
 import argparse
 import os
 
@@ -34,8 +35,7 @@ import numpy as np
 import hydrogym.firedrake as hgym
 
 # Parse command-line arguments for flexible configuration
-parser = argparse.ArgumentParser(
-    description="Stability analysis of the Re=100 cylinder wake.")
+parser = argparse.ArgumentParser(description="Stability analysis of the Re=100 cylinder wake.")
 parser.add_argument(
     "--mesh",
     default="medium",
@@ -90,30 +90,27 @@ parser.add_argument(
     default="eig_output",
     help="Directory in which output files will be stored.",
 )
+
 if __name__ == "__main__":
     args = parser.parse_args()
 
-  # Extract configuration from command-line arguments
-  mesh = args.mesh
-  m = args.krylov_dim  # Number of Arnoldi vectors (controls eigenvalue accuracy)
-  sigma = args.sigma  # Spectral shift for shift-invert (targets eigenvalues near sigma)
-  tol = args.tol  # Convergence tolerance for eigenvalues
-  Re = args.reynolds
+    # Extract configuration from command-line arguments
+    mesh = args.mesh
+    m = args.krylov_dim  # Number of Arnoldi vectors (controls eigenvalue accuracy)
+    sigma = args.sigma  # Spectral shift for shift-invert (targets eigenvalues near sigma)
+    tol = args.tol  # Convergence tolerance for eigenvalues
+    Re = args.reynolds
 
     output_dir = args.output_dir
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-  # Use P2-P1 Taylor-Hood elements (inf-sup stable, no stabilization needed)
-  velocity_order = 2
-  stabilization = "none"
+    # Use P2-P1 Taylor-Hood elements (inf-sup stable, no stabilization needed)
+    velocity_order = 2
+    stabilization = "none"
 
-  # Create flow configuration (mesh, boundary conditions, etc.)
-  flow = hgym.Cylinder(
-      Re=Re,
-      mesh=mesh,
-      velocity_order=velocity_order,
-  )
+    # Create flow configuration (mesh, boundary conditions, etc.)
+    flow = hgym.Cylinder(Re=Re, mesh=mesh, velocity_order=velocity_order)
 
     hgym.print("|------------------------------------------------|")
     hgym.print("| Linear stability analysis of the cylinder wake |")
@@ -125,74 +122,68 @@ if __name__ == "__main__":
     hgym.print(f"Krylov-Schur restart:  {args.schur}")
     hgym.print("")
 
-  # Option 1: Load pre-computed base flow from checkpoint
-  if args.base_flow:
-    hgym.print(f"Loading base flow from checkpoint {args.base_flow}...")
-    flow.load_checkpoint(args.base_flow)
+    # Option 1: Load pre-computed base flow from checkpoint
+    if args.base_flow:
+        hgym.print(f"Loading base flow from checkpoint {args.base_flow}...")
+        flow.load_checkpoint(args.base_flow)
 
-  # Option 2: Compute base flow using Newton solver
-  else:
-    hgym.print("Solving the steady-state problem for the cylinder base flow...")
+    # Option 2: Compute base flow using Newton solver
+    else:
+        hgym.print("Solving the steady-state problem for the cylinder base flow...")
 
-    steady_solver = hgym.NewtonSolver(
-        flow,
-        stabilization=stabilization,
-        solver_parameters={"snes_monitor": None})
+        steady_solver = hgym.NewtonSolver(flow, stabilization=stabilization, solver_parameters={"snes_monitor": None})
 
-    # Reynolds ramping: Start from lower Re for better convergence
-    if Re > 50:
-      hgym.print("Solving steady-state problem at Re=50...")
-      flow.Re.assign(50)
-      steady_solver.solve()
+        # Reynolds ramping: Start from lower Re for better convergence
+        if Re > 50:
+            hgym.print("Solving steady-state problem at Re=50...")
+            flow.Re.assign(50)
+            steady_solver.solve()
 
-    # Solve at target Reynolds number
-    hgym.print(
-        f"Solving steady-state problem at target Reynolds number Re={Re}...")
-    flow.Re.assign(Re)
-    steady_solver.solve()
-    CL, CD = flow.compute_forces()
-    hgym.print(f"Lift: {CL:0.3e}, Drag: {CD:0.3e}")
-    flow.save_checkpoint(f"{args.output_dir}/base.h5")
+        # Solve at target Reynolds number
+        hgym.print(f"Solving steady-state problem at target Reynolds number Re={Re}...")
+        flow.Re.assign(Re)
+        steady_solver.solve()
+        CL, CD = flow.compute_forces()
+        hgym.print(f"Lift: {CL:0.3e}, Drag: {CD:0.3e}")
+        flow.save_checkpoint(f"{args.output_dir}/base.h5")
 
-  # ========================================================================
-  # Compute direct modes (standard eigenvalue problem)
-  # ========================================================================
-  # Direct modes represent physical flow disturbances:
-  #   q' = q_mode * exp(lambda*t)  where lambda = eigenvalue
-  hgym.print("Computing direct modes...")
-  dir_results = hgym.utils.stability_analysis(
-      flow, sigma, m, tol, schur_restart=args.schur, adjoint=False)
-  np.save(f"{output_dir}/raw_evals", dir_results.raw_evals)
+    # ========================================================================
+    # Compute direct modes (standard eigenvalue problem)
+    # ========================================================================
+    # Direct modes represent physical flow disturbances:
+    #   q' = q_mode * exp(lambda*t)  where lambda = eigenvalue
+    hgym.print("Computing direct modes...")
+    dir_results = hgym.utils.stability_analysis(flow, sigma, m, tol, schur_restart=args.schur, adjoint=False)
+    np.save(f"{output_dir}/raw_evals", dir_results.raw_evals)
 
-  # Save converged eigenvalues with residuals
-  evals = dir_results.evals
-  eval_data = np.zeros((len(evals), 3), dtype=np.float64)
-  eval_data[:, 0] = evals.real  # Growth rate (positive = unstable)
-  eval_data[:, 1] = evals.imag  # Frequency (2*pi*f = omega)
-  eval_data[:, 2] = dir_results.residuals  # Convergence check
-  np.save(f"{output_dir}/evals", eval_data)
+    # Save converged eigenvalues with residuals
+    evals = dir_results.evals
+    eval_data = np.zeros((len(evals), 3), dtype=np.float64)
+    eval_data[:, 0] = evals.real  # Growth rate (positive = unstable)
+    eval_data[:, 1] = evals.imag  # Frequency (2*pi*f = omega)
+    eval_data[:, 2] = dir_results.residuals  # Convergence check
+    np.save(f"{output_dir}/evals", eval_data)
 
-  # Save eigenvectors (velocity/pressure modes) for visualization
-  with fd.CheckpointFile(f"{output_dir}/evecs.h5", "w") as chk:
-    for i in range(len(evals)):
-      chk.save_mesh(flow.mesh)
-      # Complex eigenvector = real part + i * imaginary part
-      dir_results.evecs_real[i].rename(f"evec_{i}_re")
-      chk.save_function(dir_results.evecs_real[i])
-      dir_results.evecs_imag[i].rename(f"evec_{i}_im")
-      chk.save_function(dir_results.evecs_imag[i])
+    # Save eigenvectors (velocity/pressure modes) for visualization
+    with fd.CheckpointFile(f"{output_dir}/evecs.h5", "w") as chk:
+        for i in range(len(evals)):
+            chk.save_mesh(flow.mesh)
+            # Complex eigenvector = real part + i * imaginary part
+            dir_results.evecs_real[i].rename(f"evec_{i}_re")
+            chk.save_function(dir_results.evecs_real[i])
+            dir_results.evecs_imag[i].rename(f"evec_{i}_im")
+            chk.save_function(dir_results.evecs_imag[i])
 
-  # ========================================================================
-  # Compute adjoint modes (transpose eigenvalue problem)
-  # ========================================================================
-  # Adjoint modes are used for:
-  #   - Optimal control design (determines sensor/actuator placement)
-  #   - Receptivity analysis (how sensitive is flow to forcing)
-  #   - Proper Orthogonal Decomposition (POD) modes
-  if not args.no_adjoint:
-    hgym.print("Computing adjoint modes...")
-    adj_results = hgym.utils.stability_analysis(
-        flow, sigma, m, tol, adjoint=True)
+    # ========================================================================
+    # Compute adjoint modes (transpose eigenvalue problem)
+    # ========================================================================
+    # Adjoint modes are used for:
+    #   - Optimal control design (determines sensor/actuator placement)
+    #   - Receptivity analysis (how sensitive is flow to forcing)
+    #   - Proper Orthogonal Decomposition (POD) modes
+    if not args.no_adjoint:
+        hgym.print("Computing adjoint modes...")
+        adj_results = hgym.utils.stability_analysis(flow, sigma, m, tol, adjoint=True)
 
     # Save adjoint eigenvalues (same as direct, but computed independently)
     evals = adj_results.evals
@@ -202,14 +193,13 @@ if __name__ == "__main__":
     eval_data[:, 2] = adj_results.residuals
     np.save(f"{output_dir}/adj_evals", eval_data)
 
-    # Save adjoint eigenvectors
     with fd.CheckpointFile(f"{output_dir}/adj_evecs.h5", "w") as chk:
-      for i in range(len(evals)):
-        chk.save_mesh(flow.mesh)
-        adj_results.evecs_real[i].rename(f"evec_{i}_re")
-        chk.save_function(adj_results.evecs_real[i])
-        adj_results.evecs_imag[i].rename(f"evec_{i}_im")
-        chk.save_function(adj_results.evecs_imag[i])
+        for i in range(len(evals)):
+            chk.save_mesh(flow.mesh)
+            adj_results.evecs_real[i].rename(f"evec_{i}_re")
+            chk.save_function(adj_results.evecs_real[i])
+            adj_results.evecs_imag[i].rename(f"evec_{i}_im")
+            chk.save_function(adj_results.evecs_imag[i])
 
     hgym.print(
         "NOTE: If there is a warning following this, ignore it.  It is raised by PETSc "

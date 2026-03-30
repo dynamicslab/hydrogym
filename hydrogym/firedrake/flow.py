@@ -74,167 +74,163 @@ class FlowConfig(PDEBase):
             "vorticity_probes": ObservationFunction(partial(self.vorticity_probe, probes), num_outputs=len(probes)),
         }
 
-    self.obs_fun = self.configure_observations(
-        obs_type=config.pop("observation_type", None),
-        probe_obs_types=probe_obs_types,
-    )
+        self.obs_fun = self.configure_observations(
+            obs_type=config.pop("observation_type", None),
+            probe_obs_types=probe_obs_types,
+        )
 
-    # Process restart parameter - resolve environment names to checkpoint paths
-    # or auto-infer from flow configuration
-    mesh = config.get('mesh', self.DEFAULT_MESH)
-    cache_dir = config.pop('cache_dir', None)  # Custom cache directory (optional)
-    local_dir = config.pop('local_dir', None)  # Local fallback directory (optional)
+        # Process restart parameter - resolve environment names to checkpoint paths
+        # or auto-infer from flow configuration
+        mesh = config.get('mesh', self.DEFAULT_MESH)
+        cache_dir = config.pop('cache_dir', None)  # Custom cache directory (optional)
+        local_dir = config.pop('local_dir', None)  # Local fallback directory (optional)
 
-    # Extract numeric Reynolds number from Firedrake Constant
-    Re_value = int(float(self.Re))
+        # Extract numeric Reynolds number from Firedrake Constant
+        Re_value = int(float(self.Re))
 
-    resolved_restart = self._resolve_checkpoint(
-        restart=config.get('restart'),
-        Re=Re_value,
-        mesh=mesh,
-        cache_dir=cache_dir,
-        local_dir=local_dir,
-    )
+        resolved_restart = self._resolve_checkpoint(
+            restart=config.get('restart'),
+            Re=Re_value,
+            mesh=mesh,
+            cache_dir=cache_dir,
+            local_dir=local_dir,
+        )
 
-    # Store resolved checkpoint path for verification/debugging
-    self.checkpoint_path = resolved_restart
+        # Store resolved checkpoint path for verification/debugging
+        self.checkpoint_path = resolved_restart
 
-    config['restart'] = resolved_restart
+        config['restart'] = resolved_restart
 
         super().__init__(**config)
 
-  def _resolve_checkpoint(self, restart, Re, mesh, cache_dir=None, local_dir=None):
-    """Resolve checkpoint parameter to actual file path(s).
+    def _resolve_checkpoint(self, restart, Re, mesh, cache_dir=None, local_dir=None):
+        """Resolve checkpoint parameter to actual file path(s).
 
-    Handles four cases:
-    1. None - auto-infer environment name from config and try to download
-    2. Explicit path (str starting with / or ./) - use directly
-    3. Environment name (str like 'Cylinder_2D_Re100_medium_FD') - download from HF Hub
-    4. List of paths/names - process each one
+        Handles four cases:
+        1. None - auto-infer environment name from config and try to download
+        2. Explicit path (str starting with / or ./) - use directly
+        3. Environment name (str like 'Cylinder_2D_Re100_medium_FD') - download from HF Hub
+        4. List of paths/names - process each one
 
-    Args:
-        restart: None, str (path or env name), or list of str
-        Re: Reynolds number (for auto-inference)
-        mesh: Mesh resolution (for auto-inference)
-        cache_dir: Custom cache directory (optional)
+        Args:
+            restart: None, str (path or env name), or list of str
+            Re: Reynolds number (for auto-inference)
+            mesh: Mesh resolution (for auto-inference)
+            cache_dir: Custom cache directory (optional)
 
-    Returns:
-        None, str (resolved path), or list of str (resolved paths)
-    """
-    if restart is None:
-      # Auto-infer environment name from flow configuration
-      flow_name = self.__class__.__name__
-      env_name = f"{flow_name}_2D_Re{Re}_{mesh}_FD"
+        Returns:
+            None, str (resolved path), or list of str (resolved paths)
+        """
+        if restart is None:
+            # Auto-infer environment name from flow configuration
+            flow_name = self.__class__.__name__
+            env_name = f"{flow_name}_2D_Re{Re}_{mesh}_FD"
 
-      logging.log(
-          logging.INFO,
-          f"No checkpoint specified, attempting to auto-load: {env_name}"
-      )
+            logging.log(
+                logging.INFO,
+                f"No checkpoint specified, attempting to auto-load: {env_name}"
+            )
 
-      resolved = self._resolve_single_checkpoint(env_name, cache_dir, local_dir, silent=True)
-      if resolved is None:
-        logging.log(
-            logging.INFO,
-            f"No checkpoint found for {env_name}, starting from zeros"
-        )
-      return resolved
+            resolved = self._resolve_single_checkpoint(env_name, cache_dir, local_dir, silent=True)
+            if resolved is None:
+              logging.log(
+                  logging.INFO,
+                  f"No checkpoint found for {env_name}, starting from zeros"
+              )
+            return resolved
 
-    if isinstance(restart, str):
-      return self._resolve_single_checkpoint(restart, cache_dir, local_dir)
+        if isinstance(restart, str):
+            return self._resolve_single_checkpoint(restart, cache_dir, local_dir)
 
-    elif isinstance(restart, (list, tuple)):
-      # Process multiple checkpoints
-      resolved = []
-      for ckpt in restart:
-        resolved_ckpt = self._resolve_single_checkpoint(ckpt, cache_dir, local_dir)
-        if resolved_ckpt is not None:
-          resolved.append(resolved_ckpt)
-      return resolved if resolved else None
+        elif isinstance(restart, (list, tuple)):
+            # Process multiple checkpoints
+            resolved = []
+            for ckpt in restart:
+                resolved_ckpt = self._resolve_single_checkpoint(ckpt, cache_dir, local_dir)
+                if resolved_ckpt is not None:
+                    resolved.append(resolved_ckpt)
+            return resolved if resolved else None
 
-    else:
-      logging.log(logging.WARN, f"Invalid restart type: {type(restart)}, ignoring")
-      return None
+    def _resolve_single_checkpoint(self, checkpoint, cache_dir=None, local_dir=None, silent=False):
+        """Resolve a single checkpoint path or environment name.
 
-  def _resolve_single_checkpoint(self, checkpoint, cache_dir=None, local_dir=None, silent=False):
-    """Resolve a single checkpoint path or environment name.
+        Args:
+            checkpoint: str (path or environment name)
+            cache_dir: Custom cache directory (optional)
+            silent: If True, suppress warnings for missing checkpoints (for auto-inference)
 
-    Args:
-        checkpoint: str (path or environment name)
-        cache_dir: Custom cache directory (optional)
-        silent: If True, suppress warnings for missing checkpoints (for auto-inference)
+        Returns:
+            str (resolved path) or None if resolution fails
+        """
+        import os
+        from pathlib import Path
 
-    Returns:
-        str (resolved path) or None if resolution fails
-    """
-    import os
-    from pathlib import Path
+        # Check if it's an explicit path
+        if (checkpoint.startswith('/') or
+            checkpoint.startswith('./') or
+            checkpoint.startswith('../') or
+            os.path.exists(checkpoint)):
+            # Explicit path provided - use directly
+            if os.path.exists(checkpoint):
+                logging.log(logging.INFO, f"Using checkpoint: {checkpoint}")
+                return checkpoint
+            else:
+                if not silent:
+                    logging.log(logging.WARN, f"Checkpoint path does not exist: {checkpoint}")
+                return None
 
-    # Check if it's an explicit path
-    if (checkpoint.startswith('/') or
-        checkpoint.startswith('./') or
-        checkpoint.startswith('../') or
-        os.path.exists(checkpoint)):
-      # Explicit path provided - use directly
-      if os.path.exists(checkpoint):
-        logging.log(logging.INFO, f"Using checkpoint: {checkpoint}")
-        return checkpoint
-      else:
-        if not silent:
-          logging.log(logging.WARN, f"Checkpoint path does not exist: {checkpoint}")
-        return None
+        # Assume it's an environment name - try to download from HF Hub
+        try:
+            from hydrogym.data_manager import HFDataManager
 
-    # Assume it's an environment name - try to download from HF Hub
-    try:
-      from hydrogym.data_manager import HFDataManager
+            if not silent:
+              logging.log(logging.INFO, f"Resolving checkpoint from environment: {checkpoint}")
 
-      if not silent:
-        logging.log(logging.INFO, f"Resolving checkpoint from environment: {checkpoint}")
+            dm = HFDataManager(
+                cache_dir=cache_dir,  # Use custom cache dir if provided
+                local_fallback_dir=local_dir,  # Use local directory for offline/testing
+                use_clean_cache='copy',  # Use 'copy' for readable ckpts
+                fallback_profile='FIREDRAKE'
+            )
 
-      dm = HFDataManager(
-          cache_dir=cache_dir,  # Use custom cache dir if provided
-          local_fallback_dir=local_dir,  # Use local directory for offline/testing
-          use_clean_cache='copy',  # Use 'copy' for readable ckpts
-          fallback_profile='FIREDRAKE'
-      )
+            # Get environment path (downloads if needed)
+            env_path = dm.get_environment_path(checkpoint)
 
-      # Get environment path (downloads if needed)
-      env_path = dm.get_environment_path(checkpoint)
+            # Find checkpoint file(s) in the environment directory
+            checkpoint_files = list(Path(env_path).glob('checkpoint*.h5'))
+            if not checkpoint_files:
+                checkpoint_files = list(Path(env_path).glob('*.ckpt'))
 
-      # Find checkpoint file(s) in the environment directory
-      checkpoint_files = list(Path(env_path).glob('checkpoint*.h5'))
-      if not checkpoint_files:
-        checkpoint_files = list(Path(env_path).glob('*.ckpt'))
+            if checkpoint_files:
+                resolved_path = str(checkpoint_files[0].resolve())
+                logging.log(logging.INFO, f"✓ Checkpoint resolved: {resolved_path}")
+                return resolved_path
+            else:
+                if not silent:
+                    logging.log(
+                        logging.WARN,
+                        f"No checkpoint file found in environment: {checkpoint}"
+                    )
+                return None
 
-      if checkpoint_files:
-        resolved_path = str(checkpoint_files[0].resolve())
-        logging.log(logging.INFO, f"✓ Checkpoint resolved: {resolved_path}")
-        return resolved_path
-      else:
-        if not silent:
-          logging.log(
-              logging.WARN,
-              f"No checkpoint file found in environment: {checkpoint}"
-          )
-        return None
+        except ImportError:
+            if not silent:
+                logging.log(
+                    logging.WARN,
+                    "HuggingFace Hub not available (pip install huggingface_hub). "
+                    "Checkpoint resolution disabled."
+                )
+            return None
+        except Exception as e:
+            if not silent:
+                logging.log(
+                    logging.WARN,
+                    f"Could not resolve checkpoint '{checkpoint}': {e}"
+                )
+            return None
 
-    except ImportError:
-      if not silent:
-        logging.log(
-            logging.WARN,
-            "HuggingFace Hub not available (pip install huggingface_hub). "
-            "Checkpoint resolution disabled."
-        )
-      return None
-    except Exception as e:
-      if not silent:
-        logging.log(
-            logging.WARN,
-            f"Could not resolve checkpoint '{checkpoint}': {e}"
-        )
-      return None
-
-  def load_mesh(self, name: str) -> ufl.Mesh:
-    return fd.Mesh(f"{self.MESH_DIR}/{name}.msh", name="mesh")
+    def load_mesh(self, name: str) -> ufl.Mesh:
+        return fd.Mesh(f"{self.MESH_DIR}/{name}.msh", name="mesh")
 
     def save_checkpoint(self, filename: str, write_mesh=True, idx=None):
         with fd.CheckpointFile(filename, "w") as chk:
@@ -428,18 +424,18 @@ class FlowConfig(PDEBase):
         F = -inner(dot(u, nabla_grad(u)), v) * dx - inner(sigma(u, p), epsilon(v)) * dx + inner(div(u), s) * dx
         return F
 
-  @pyadjoint.no_annotations
-  def max_cfl(self, dt) -> float:
-    """Estimate of maximum CFL number"""
-    h = fd.CellSize(self.mesh)
-    CFL = fd.assemble(
-        interpolate(dt * sqrt(dot(self.u, self.u)) / h, self.pressure_space))
-    # Handle both old and new Firedrake API
-    try:
-      max_val = CFL.vector().max()
-    except AttributeError:
-      max_val = CFL.dat.data_ro.max()
-    return self.mesh.comm.allreduce(max_val, op=MPI.MAX)
+    @pyadjoint.no_annotations
+    def max_cfl(self, dt) -> float:
+        """Estimate of maximum CFL number"""
+        h = fd.CellSize(self.mesh)
+        CFL = fd.assemble(
+            interpolate(dt * sqrt(dot(self.u, self.u)) / h, self.pressure_space))
+        # Handle both old and new Firedrake API
+        try:
+            max_val = CFL.vector().max()
+        except AttributeError:
+            max_val = CFL.dat.data_ro.max()
+        return self.mesh.comm.allreduce(max_val, op=MPI.MAX)
 
     @property
     def body_force(self):
@@ -499,53 +495,53 @@ class FlowConfig(PDEBase):
         Returns a list of velocities at the probe locations, ordered as
         (u1, u2, ..., uN, v1, v2, ..., vN) where N is the number of probes.
         """
-    if q is None:
-      q = self.q
-    u = q.subfunctions[0]
-    probes_array = np.asarray(probes)
-    # Get mesh from the main mixed space (self.q has mesh info)
-    mesh = self.mesh
-    # Create VertexOnlyMesh at probe locations and interpolate
-    vom = fd.VertexOnlyMesh(mesh, probes_array)
-    V_vom = fd.VectorFunctionSpace(vom, "DG", 0)
-    u_vom = fd.Function(V_vom)
-    u_vom.interpolate(u)
-    # Extract values and return in expected format
-    return u_vom.dat.data_ro.flatten("F")
+        if q is None:
+            q = self.q
+        u = q.subfunctions[0]
+        probes_array = np.asarray(probes)
+        # Get mesh from the main mixed space (self.q has mesh info)
+        mesh = self.mesh
+        # Create VertexOnlyMesh at probe locations and interpolate
+        vom = fd.VertexOnlyMesh(mesh, probes_array)
+        V_vom = fd.VectorFunctionSpace(vom, "DG", 0)
+        u_vom = fd.Function(V_vom)
+        u_vom.interpolate(u)
+        # Extract values and return in expected format
+        return u_vom.dat.data_ro.flatten("F")
 
-  def pressure_probe(self, probes, q: fd.Function = None) -> list[float]:
-    """Probe pressure around the cylinder"""
-    if q is None:
-      q = self.q
-    p = q.subfunctions[1]
-    probes_array = np.asarray(probes)
-    # Get mesh from the main mixed space
-    mesh = self.mesh
-    # Create VertexOnlyMesh at probe locations and interpolate
-    vom = fd.VertexOnlyMesh(mesh, probes_array)
-    P_vom = fd.FunctionSpace(vom, "DG", 0)
-    p_vom = fd.Function(P_vom)
-    p_vom.interpolate(p)
-    # Extract values and return
-    return p_vom.dat.data_ro
+    def pressure_probe(self, probes, q: fd.Function = None) -> list[float]:
+        """Probe pressure around the cylinder"""
+        if q is None:
+            q = self.q
+        p = q.subfunctions[1]
+        probes_array = np.asarray(probes)
+        # Get mesh from the main mixed space
+        mesh = self.mesh
+        # Create VertexOnlyMesh at probe locations and interpolate
+        vom = fd.VertexOnlyMesh(mesh, probes_array)
+        P_vom = fd.FunctionSpace(vom, "DG", 0)
+        p_vom = fd.Function(P_vom)
+        p_vom.interpolate(p)
+        # Extract values and return
+        return p_vom.dat.data_ro
 
-  def vorticity_probe(self, probes, q: fd.Function = None) -> list[float]:
-    """Probe vorticity in the wake."""
-    if q is None:
-      u = None
-    else:
-      u = q.subfunctions[0]
-    vort = self.vorticity(u=u)
-    probes_array = np.asarray(probes)
-    # Get mesh from the main mixed space
-    mesh = self.mesh
-    # Create VertexOnlyMesh at probe locations and interpolate
-    vom = fd.VertexOnlyMesh(mesh, probes_array)
-    V_vom = fd.FunctionSpace(vom, "DG", 0)
-    vort_vom = fd.Function(V_vom)
-    vort_vom.interpolate(vort)
-    # Extract values and return
-    return vort_vom.dat.data_ro
+    def vorticity_probe(self, probes, q: fd.Function = None) -> list[float]:
+        """Probe vorticity in the wake."""
+        if q is None:
+            u = None
+        else:
+            u = q.subfunctions[0]
+        vort = self.vorticity(u=u)
+        probes_array = np.asarray(probes)
+        # Get mesh from the main mixed space
+        mesh = self.mesh
+        # Create VertexOnlyMesh at probe locations and interpolate
+        vom = fd.VertexOnlyMesh(mesh, probes_array)
+        V_vom = fd.FunctionSpace(vom, "DG", 0)
+        vort_vom = fd.Function(V_vom)
+        vort_vom.interpolate(vort)
+        # Extract values and return
+        return vort_vom.dat.data_ro
 
     def linearize(self, qB=None, adjoint=False, sigma=0.0, inverse=False, solver_parameters=None):
         if sigma != 0.0 and not inverse:
