@@ -1,6 +1,5 @@
 """
 HF Data Manager with Symbolic Links
-====================================
 
 This version supports three approaches:
 - use_clean_cache=True: Create symlinks to HF cache (clean paths, no duplication!)
