@@ -123,38 +123,12 @@ class MaiaWorkspace:
 
         # Step 3: Create symbolic links for all required files
         if verbose:
-            print("3. Creating symbolic links...")
+            print(f"   Environment data ready: {self.env_data_path}")
+            print(f"2. Creating workspace: {self.work_dir}")
 
-        paths = {
-            "work_dir": str(work_path.absolute()),
-            "env_data_path": self.env_data_path,
-        }
-
-        # Link files
-        for source_name, target_rel in self.REQUIRED_FILES.items():
-            source_path = Path(self.env_data_path) / source_name
-            target_path = work_path / target_rel
-
-            if source_path.exists():
-                self._create_link(source_path, target_path, verbose=verbose)
-
-                # Store important file paths
-                if source_name == "properties_run.toml":
-                    paths["properties_file"] = str(target_path.absolute())
-                elif source_name == "environment_config.yaml":
-                    paths["config_file"] = str(target_path.absolute())
-            else:
-                print(f"   WARNING: Source file not found: {source_path}")
-
-        # Link directories
-        for source_name, target_rel in self.REQUIRED_DIRS.items():
-            source_path = Path(self.env_data_path) / source_name
-            target_path = work_path / target_rel
-
-            if source_path.exists():
-                self._create_link(source_path, target_path, verbose=verbose)
-            else:
-                print(f"   WARNING: Source directory not found: {source_path}")
+        paths = self.data_manager.prepare_working_directory(
+            self.env_data_path, self.work_dir
+        )
 
         self.is_setup = True
 
