@@ -1,0 +1,50 @@
+name: Spelling (codespell)
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: codespell-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  codespell:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install codespell
+        run: |
+          python -m pip install --upgrade pip
+          pip install codespell
+
+      # Uses [tool.codespell] from pyproject.toml
+      - name: Check spelling in pyproject toml
+        run: codespell --toml pyproject.toml
+      
+      - name: Check spelling in README.md
+        run: codespell README.md
+      
+      - name: Check spelling in examples
+        run: codespell examples
+      
+      - name: Check spelling in tests
+        run: codespell tests
+      
+      - name: Check spelling in docs
+        run: codespell docs
+      
+      - name: Check spelling in tutorials
+        run: codespell tutorials
+      
+      - name: Check spelling in main package
+        run: codespell hydrogym

@@ -1,0 +1,24 @@
+name: Ruff Format
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ruff-format-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ruff-format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Uses [tool.ruff] and [tool.ruff.format] from pyproject.toml (line-length, quote-style, etc.)
+      - name: Check formatting with Ruff
+        uses: astral-sh/ruff-action@v3
+        with:
+          args: format --check --diff
