@@ -51,7 +51,7 @@ class MaiaFlowEnv(gym.Env):
         action_space: Gymnasium action space.
     """
 
-    SOLVER_TYPE: str = 'MAIA_LB'
+    SOLVER_TYPE: str = "MAIA_LB"
 
     def __init__(self, env_config: Dict):
         """

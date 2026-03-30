@@ -31,8 +31,7 @@ try:
     import mpi4py  # noqa: F401
 except ImportError:
     raise ImportError(
-        "MAIA solver dependencies are not installed. "
-        "Install them with: pip install hydrogym[maia]"
+        "MAIA solver dependencies are not installed. Install them with: pip install hydrogym[maia]"
     ) from None
 
 # Import core classes and exceptions

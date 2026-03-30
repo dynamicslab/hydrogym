@@ -52,7 +52,7 @@ class MaiaWorkspace:
             repo_id=hf_repo_id,
             local_fallback_dir=local_fallback_dir,
             use_clean_cache=use_clean_cache,
-            fallback_profile='MAIA_LB',
+            fallback_profile="MAIA_LB",
         )
 
         self.env_data_path: Optional[str] = None
@@ -90,9 +90,7 @@ class MaiaWorkspace:
             print(f"   Environment data ready: {self.env_data_path}")
             print(f"2. Creating workspace: {self.work_dir}")
 
-        paths = self.data_manager.prepare_working_directory(
-            self.env_data_path, self.work_dir, profile='MAIA_LB'
-        )
+        paths = self.data_manager.prepare_working_directory(self.env_data_path, self.work_dir, profile="MAIA_LB")
 
         self.is_setup = True
 
@@ -128,12 +126,13 @@ class MaiaWorkspace:
             if verbose:
                 print(f"Removing symbolic links in: {self.work_dir}")
             from hydrogym.data_manager import SOLVER_PROFILES
-            profile = SOLVER_PROFILES.get('MAIA_LB', {})
-            for target_rel in profile.get('workspace_files', {}).values():
+
+            profile = SOLVER_PROFILES.get("MAIA_LB", {})
+            for target_rel in profile.get("workspace_files", {}).values():
                 target_path = work_path / target_rel
                 if target_path.is_symlink():
                     target_path.unlink()
-            for target_rel in profile.get('workspace_dirs', {}).values():
+            for target_rel in profile.get("workspace_dirs", {}).values():
                 target_path = work_path / target_rel
                 if target_path.is_symlink():
                     target_path.unlink()
@@ -171,11 +170,6 @@ def prepare_maia_workspace(
         work_dir, props_file = maia.prepare_maia_workspace('Cylinder_2D_Re200')
         # Then reference work_dir / props_file in your SLURM job script.
     """
-    workspace = MaiaWorkspace(
-        environment_name=environment_name,
-        work_dir=work_dir,
-        hf_repo_id=hf_repo_id,
-        **kwargs
-    )
+    workspace = MaiaWorkspace(environment_name=environment_name, work_dir=work_dir, hf_repo_id=hf_repo_id, **kwargs)
     paths = workspace.setup(force_download=force_download, verbose=True)
-    return paths['work_dir'], paths['properties_file']
+    return paths["work_dir"], paths["properties_file"]

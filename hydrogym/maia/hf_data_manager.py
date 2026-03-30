@@ -12,4 +12,4 @@ continue to work without modification.
 
 from hydrogym.data_manager import HFDataManager, SOLVER_PROFILES  # noqa: F401
 
-__all__ = ['HFDataManager', 'SOLVER_PROFILES']
+__all__ = ["HFDataManager", "SOLVER_PROFILES"]

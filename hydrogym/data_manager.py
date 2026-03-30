@@ -52,6 +52,7 @@ import logging
 
 try:
     from huggingface_hub import snapshot_download, HfApi
+
     HF_AVAILABLE = True
 except ImportError:
     HF_AVAILABLE = False
@@ -63,78 +64,89 @@ except ImportError:
 # ---------------------------------------------------------------------------
 
 SOLVER_PROFILES: Dict[str, dict] = {
-    'MAIA_LB': {
-        'sentinel': '.MAIA_LB',
-        'required_files': [
-            'geometry.toml',
-            'properties_grid.toml',
-            'properties_run.toml',
-            'grid.Netcdf',
-            'restart_.Netcdf',
+    "MAIA_LB": {
+        "sentinel": ".MAIA_LB",
+        "required_files": [
+            "geometry.toml",
+            "properties_grid.toml",
+            "properties_run.toml",
+            "grid.Netcdf",
+            "restart_.Netcdf",
         ],
-        'required_dirs':  ['stl'],
-        'optional_files': ['baseline_state.feather'],
+        "required_dirs": ["stl"],
+        "optional_files": ["baseline_state.feather"],
         # Workspace symlink map: source filename → relative target path inside run dir
-        'workspace_files': {
-            'grid.Netcdf':             'out_lb/grid.Netcdf',
-            'restart_.Netcdf':         'out_lb/restart_.Netcdf',
-            'properties_run.toml':     'properties_run.toml',
-            'geometry.toml':           'geometry.toml',
-            'environment_config.yaml': 'environment_config.yaml',
+        "workspace_files": {
+            "grid.Netcdf": "out_lb/grid.Netcdf",
+            "restart_.Netcdf": "out_lb/restart_.Netcdf",
+            "properties_run.toml": "properties_run.toml",
+            "geometry.toml": "geometry.toml",
+            "environment_config.yaml": "environment_config.yaml",
         },
-        'workspace_dirs': {
-            'stl': 'stl',
+        "workspace_dirs": {
+            "stl": "stl",
         },
     },
-    'MAIA_STRCTRD': {
-        'sentinel': '.MAIA_STRCTRD',
-        'required_files': [
-            'properties_run.toml',
-            'grid.hdf5',
-            'restart_.hdf5',
+    "MAIA_STRCTRD": {
+        "sentinel": ".MAIA_STRCTRD",
+        "required_files": [
+            "properties_run.toml",
+            "grid.hdf5",
+            "restart_.hdf5",
         ],
-        'required_dirs':  [],
-        'optional_files': ['environment_config.yaml'],
-        'workspace_files': {
-            'grid.hdf5':               'grid.hdf5',
-            'restart_.hdf5':           'restart_.hdf5',
-            'properties_run.toml':     'properties_run.toml',
-            'environment_config.yaml': 'environment_config.yaml',
+        "required_dirs": [],
+        "optional_files": ["environment_config.yaml"],
+        "workspace_files": {
+            "grid.hdf5": "grid.hdf5",
+            "restart_.hdf5": "restart_.hdf5",
+            "properties_run.toml": "properties_run.toml",
+            "environment_config.yaml": "environment_config.yaml",
         },
-        'workspace_dirs': {},
+        "workspace_dirs": {},
     },
     # Profiles for future solvers — fill in required_files/workspace_files when ready
-    'JAX': {
-        'sentinel': '.JAX',
-        'required_files': [], 'required_dirs': [], 'optional_files': [],
-        'workspace_files': {}, 'workspace_dirs': {},
+    "JAX": {
+        "sentinel": ".JAX",
+        "required_files": [],
+        "required_dirs": [],
+        "optional_files": [],
+        "workspace_files": {},
+        "workspace_dirs": {},
     },
-    'JAXFLUIDS': {
-        'sentinel': '.JAXFLUIDS',
-        'required_files': [], 'required_dirs': [], 'optional_files': [],
-        'workspace_files': {}, 'workspace_dirs': {},
+    "JAXFLUIDS": {
+        "sentinel": ".JAXFLUIDS",
+        "required_files": [],
+        "required_dirs": [],
+        "optional_files": [],
+        "workspace_files": {},
+        "workspace_dirs": {},
     },
-    'NEK5000': {
-        'sentinel': '.NEK5000',
-        'required_files': [], 'required_dirs': [], 'optional_files': [],
-        'workspace_files': {}, 'workspace_dirs': {},
+    "NEK5000": {
+        "sentinel": ".NEK5000",
+        "required_files": [],
+        "required_dirs": [],
+        "optional_files": [],
+        "workspace_files": {},
+        "workspace_dirs": {},
     },
-    'FIREDRAKE': {
-        'sentinel': '.FIREDRAKE',
-        'required_files': [], 'required_dirs': [], 'optional_files': [],
-        'workspace_files': {}, 'workspace_dirs': {},
+    "FIREDRAKE": {
+        "sentinel": ".FIREDRAKE",
+        "required_files": [],
+        "required_dirs": [],
+        "optional_files": [],
+        "workspace_files": {},
+        "workspace_dirs": {},
     },
 }
 
 # Reverse map: sentinel filename → profile name (built once at import time)
-_SENTINEL_TO_PROFILE: Dict[str, str] = {
-    v['sentinel']: k for k, v in SOLVER_PROFILES.items()
-}
+_SENTINEL_TO_PROFILE: Dict[str, str] = {v["sentinel"]: k for k, v in SOLVER_PROFILES.items()}
 
 
 # ---------------------------------------------------------------------------
 # Data manager
 # ---------------------------------------------------------------------------
+
 
 class HFDataManager:
     """
@@ -150,12 +162,14 @@ class HFDataManager:
     result (e.g. legacy environments or offline mode).
     """
 
-    def __init__(self,
-                 repo_id: str = "dynamicslab/HydroGym-environments",
-                 cache_dir: Optional[str] = None,
-                 local_fallback_dir: Optional[str] = None,
-                 use_clean_cache: Union[bool, str] = True,
-                 fallback_profile: str = 'MAIA_LB'):
+    def __init__(
+        self,
+        repo_id: str = "dynamicslab/HydroGym-environments",
+        cache_dir: Optional[str] = None,
+        local_fallback_dir: Optional[str] = None,
+        use_clean_cache: Union[bool, str] = True,
+        fallback_profile: str = "MAIA_LB",
+    ):
         """
         Initialize the HF Data Manager.
 
@@ -215,10 +229,7 @@ class HFDataManager:
         if os.path.exists(local_env_dir):
             for sentinel, profile_name in _SENTINEL_TO_PROFILE.items():
                 if os.path.exists(os.path.join(local_env_dir, sentinel)):
-                    self.logger.info(
-                        f"Detected solver profile '{profile_name}' "
-                        f"from local cache sentinel '{sentinel}'"
-                    )
+                    self.logger.info(f"Detected solver profile '{profile_name}' from local cache sentinel '{sentinel}'")
                     return profile_name
 
         # 2. Check local fallback dir (offline alternative, no network)
@@ -228,8 +239,7 @@ class HFDataManager:
                 for sentinel, profile_name in _SENTINEL_TO_PROFILE.items():
                     if os.path.exists(os.path.join(fallback_env_dir, sentinel)):
                         self.logger.info(
-                            f"Detected solver profile '{profile_name}' "
-                            f"from local fallback sentinel '{sentinel}'"
+                            f"Detected solver profile '{profile_name}' from local fallback sentinel '{sentinel}'"
                         )
                         return profile_name
 
@@ -239,24 +249,16 @@ class HFDataManager:
                 api = HfApi()
                 repo_files = api.list_repo_files(self.repo_id, repo_type="dataset")
                 for file_path in repo_files:
-                    parts = file_path.split('/')
-                    if (len(parts) == 2
-                            and parts[0] == env_name
-                            and parts[1] in _SENTINEL_TO_PROFILE):
+                    parts = file_path.split("/")
+                    if len(parts) == 2 and parts[0] == env_name and parts[1] in _SENTINEL_TO_PROFILE:
                         profile_name = _SENTINEL_TO_PROFILE[parts[1]]
-                        self.logger.info(
-                            f"Detected solver profile '{profile_name}' "
-                            f"from HF sentinel '{parts[1]}'"
-                        )
+                        self.logger.info(f"Detected solver profile '{profile_name}' from HF sentinel '{parts[1]}'")
                         return profile_name
             except Exception as e:
                 self.logger.warning(f"Could not query HF for solver profile: {e}")
 
         # 4. Last resort
-        self.logger.info(
-            f"No sentinel found for '{env_name}', "
-            f"using fallback profile: '{self.fallback_profile}'"
-        )
+        self.logger.info(f"No sentinel found for '{env_name}', using fallback profile: '{self.fallback_profile}'")
         return self.fallback_profile
 
     # ------------------------------------------------------------------
@@ -277,22 +279,23 @@ class HFDataManager:
 
                 env_names = set()
                 for file_path in repo_files:
-                    if '/' in file_path:
-                        env_names.add(file_path.split('/')[0])
+                    if "/" in file_path:
+                        env_names.add(file_path.split("/")[0])
 
                 return sorted(env_names)
             except Exception as e:
                 self.logger.warning(f"Could not fetch from HF Hub: {e}")
 
         if self.local_fallback_dir and os.path.exists(self.local_fallback_dir):
-            return [d for d in os.listdir(self.local_fallback_dir)
-                    if os.path.isdir(os.path.join(self.local_fallback_dir, d))]
+            return [
+                d
+                for d in os.listdir(self.local_fallback_dir)
+                if os.path.isdir(os.path.join(self.local_fallback_dir, d))
+            ]
 
         return []
 
-    def get_environment_path(self,
-                             env_name: str,
-                             force_download: bool = False) -> str:
+    def get_environment_path(self, env_name: str, force_download: bool = False) -> str:
         """
         Get path to environment files, downloading from HF Hub if necessary.
 
@@ -308,17 +311,14 @@ class HFDataManager:
         """
         profile = self._detect_solver_profile(env_name)
 
-        if self.use_clean_cache == 'copy':
+        if self.use_clean_cache == "copy":
             return self._get_environment_path_with_copy(env_name, force_download, profile)
         elif self.use_clean_cache is True:
             return self._get_environment_path_with_symlink(env_name, force_download, profile)
         else:
             return self._get_environment_path_direct(env_name, force_download, profile)
 
-    def prepare_working_directory(self,
-                                  env_path: str,
-                                  work_dir: str,
-                                  profile: Optional[str] = None) -> Dict[str, str]:
+    def prepare_working_directory(self, env_path: str, work_dir: str, profile: Optional[str] = None) -> Dict[str, str]:
         """
         Create *work_dir* and populate it with solver-specific symlinks.
 
@@ -350,15 +350,15 @@ class HFDataManager:
                     break
 
         solver = SOLVER_PROFILES.get(profile, {})
-        workspace_files = solver.get('workspace_files', {})
-        workspace_dirs  = solver.get('workspace_dirs',  {})
+        workspace_files = solver.get("workspace_files", {})
+        workspace_dirs = solver.get("workspace_dirs", {})
 
         work_path = Path(work_dir)
         work_path.mkdir(parents=True, exist_ok=True)
 
         paths: Dict[str, str] = {
-            'work_dir':      str(work_path.resolve()),
-            'env_data_path': str(env_path),
+            "work_dir": str(work_path.resolve()),
+            "env_data_path": str(env_path),
         }
 
         for source_name, target_rel in workspace_files.items():
@@ -367,10 +367,10 @@ class HFDataManager:
             if source_path.exists():
                 self._link_path(source_path, target_path)
                 # Expose well-known paths in the return dict
-                if source_name == 'properties_run.toml':
-                    paths['properties_file'] = str(target_path.resolve())
-                elif source_name == 'environment_config.yaml':
-                    paths['config_file'] = str(target_path.resolve())
+                if source_name == "properties_run.toml":
+                    paths["properties_file"] = str(target_path.resolve())
+                elif source_name == "environment_config.yaml":
+                    paths["config_file"] = str(target_path.resolve())
             else:
                 self.logger.warning(f"Workspace source not found, skipping: {source_path}")
 
@@ -389,8 +389,7 @@ class HFDataManager:
     # Cache strategies (internal)
     # ------------------------------------------------------------------
 
-    def _get_environment_path_with_symlink(self, env_name: str, force_download: bool,
-                                           profile: str) -> str:
+    def _get_environment_path_with_symlink(self, env_name: str, force_download: bool, profile: str) -> str:
         """Get environment path using symlinks (best option!)."""
         local_env_link = os.path.join(self.cache_dir, env_name)
 
@@ -416,7 +415,7 @@ class HFDataManager:
                     repo_id=self.repo_id,
                     repo_type="dataset",
                     allow_patterns=f"{env_name}/**",
-                    force_download=force_download
+                    force_download=force_download,
                 )
                 hf_env_path = os.path.join(hf_cache_path, env_name)
                 if os.path.exists(hf_env_path) and os.path.isdir(hf_env_path):
@@ -430,12 +429,11 @@ class HFDataManager:
                         os.unlink(local_env_link)
                         raise FileNotFoundError("Validation failed after creating symlink")
                 else:
-                    raise FileNotFoundError(
-                        f"Environment path not found in HF cache: {hf_env_path}"
-                    )
+                    raise FileNotFoundError(f"Environment path not found in HF cache: {hf_env_path}")
             except Exception as e:
                 self.logger.error(f"Failed to get from HF Hub: {e}")
                 import traceback
+
                 self.logger.error(traceback.format_exc())
 
         if self.local_fallback_dir:
@@ -449,12 +447,9 @@ class HFDataManager:
                     shutil.copytree(local_path, local_env_link)
                     return local_env_link
 
-        raise FileNotFoundError(
-            f"Environment '{env_name}' not found in HF Hub or local fallback"
-        )
+        raise FileNotFoundError(f"Environment '{env_name}' not found in HF Hub or local fallback")
 
-    def _get_environment_path_with_copy(self, env_name: str, force_download: bool,
-                                        profile: str) -> str:
+    def _get_environment_path_with_copy(self, env_name: str, force_download: bool, profile: str) -> str:
         """Get environment path using clean cache (with copying)."""
         local_env_dir = os.path.join(self.cache_dir, env_name)
 
@@ -480,7 +475,7 @@ class HFDataManager:
                     repo_id=self.repo_id,
                     repo_type="dataset",
                     allow_patterns=f"{env_name}/**",
-                    force_download=force_download
+                    force_download=force_download,
                 )
                 hf_env_path = os.path.join(hf_cache_path, env_name)
                 if os.path.exists(hf_env_path) and os.path.isdir(hf_env_path):
@@ -494,12 +489,11 @@ class HFDataManager:
                     else:
                         raise FileNotFoundError("Validation failed after copy")
                 else:
-                    raise FileNotFoundError(
-                        f"Environment path not found in HF cache: {hf_env_path}"
-                    )
+                    raise FileNotFoundError(f"Environment path not found in HF cache: {hf_env_path}")
             except Exception as e:
                 self.logger.error(f"Failed to get from HF Hub: {e}")
                 import traceback
+
                 self.logger.error(traceback.format_exc())
 
         if self.local_fallback_dir:
@@ -511,12 +505,9 @@ class HFDataManager:
                 shutil.copytree(local_path, local_env_dir)
                 return local_env_dir
 
-        raise FileNotFoundError(
-            f"Environment '{env_name}' not found in HF Hub or local fallback"
-        )
+        raise FileNotFoundError(f"Environment '{env_name}' not found in HF Hub or local fallback")
 
-    def _get_environment_path_direct(self, env_name: str, force_download: bool,
-                                     profile: str) -> str:
+    def _get_environment_path_direct(self, env_name: str, force_download: bool, profile: str) -> str:
         """Get environment path using HF cache directly (no local copying)."""
         if HF_AVAILABLE:
             try:
@@ -525,19 +516,18 @@ class HFDataManager:
                     repo_id=self.repo_id,
                     repo_type="dataset",
                     allow_patterns=f"{env_name}/**",
-                    force_download=force_download
+                    force_download=force_download,
                 )
                 env_path = os.path.join(hf_cache_path, env_name)
                 if os.path.exists(env_path) and self._validate_environment_files(env_path, profile):
                     print(f"Using environment at: {env_path}")
                     return env_path
                 else:
-                    raise FileNotFoundError(
-                        f"Environment path not found or invalid: {env_path}"
-                    )
+                    raise FileNotFoundError(f"Environment path not found or invalid: {env_path}")
             except Exception as e:
                 self.logger.error(f"Failed to get from HF Hub: {e}")
                 import traceback
+
                 self.logger.error(traceback.format_exc())
 
         if self.local_fallback_dir:
@@ -546,15 +536,13 @@ class HFDataManager:
                 print(f"Using local fallback: {local_path}")
                 return local_path
 
-        raise FileNotFoundError(
-            f"Environment '{env_name}' not found in HF Hub or local fallback"
-        )
+        raise FileNotFoundError(f"Environment '{env_name}' not found in HF Hub or local fallback")
 
     # ------------------------------------------------------------------
     # Validation
     # ------------------------------------------------------------------
 
-    def _validate_environment_files(self, env_dir: str, profile: str = 'MAIA_LB') -> bool:
+    def _validate_environment_files(self, env_dir: str, profile: str = "MAIA_LB") -> bool:
         """
         Validate that all required files/directories exist for the given solver profile.
 
@@ -570,25 +558,23 @@ class HFDataManager:
             self.logger.warning(f"Unknown solver profile '{profile}', skipping validation")
             return True
 
-        if not solver['required_files'] and not solver['required_dirs']:
-            self.logger.info(
-                f"Profile '{profile}' has no required files defined yet, skipping validation"
-            )
+        if not solver["required_files"] and not solver["required_dirs"]:
+            self.logger.info(f"Profile '{profile}' has no required files defined yet, skipping validation")
             return True
 
-        for file_name in solver['required_files']:
+        for file_name in solver["required_files"]:
             file_path = os.path.join(env_dir, file_name)
             if not os.path.exists(file_path):
                 self.logger.warning(f"Missing required file: {file_path}")
                 return False
 
-        for dir_name in solver['required_dirs']:
+        for dir_name in solver["required_dirs"]:
             dir_path = os.path.join(env_dir, dir_name)
             if not os.path.exists(dir_path) or not os.listdir(dir_path):
                 self.logger.warning(f"Missing or empty required directory: {dir_path}")
                 return False
 
-        for file_name in solver['optional_files']:
+        for file_name in solver["optional_files"]:
             file_path = os.path.join(env_dir, file_name)
             if os.path.exists(file_path):
                 self.logger.info(f"Found optional file: {file_name}")
@@ -625,8 +611,7 @@ class HFDataManager:
             env_name: Specific environment to clear, or ``None`` for all.
         """
         if not self.use_clean_cache:
-            print("Note: HF cache is managed by huggingface_hub. "
-                  "Use 'huggingface-cli delete-cache' to clear.")
+            print("Note: HF cache is managed by huggingface_hub. Use 'huggingface-cli delete-cache' to clear.")
             return
 
         if env_name:
@@ -652,21 +637,26 @@ class HFDataManager:
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(
-        description="Manage HydroGym environment data with Hugging Face Hub"
-    )
+    parser = argparse.ArgumentParser(description="Manage HydroGym environment data with Hugging Face Hub")
     parser.add_argument("--list", action="store_true", help="List available environments")
     parser.add_argument("--get", help="Get path to specific environment")
-    parser.add_argument("--prepare", metavar="WORK_DIR",
-                        help="Prepare a working directory for --get environment")
-    parser.add_argument("--mode", choices=['symlink', 'copy', 'direct'], default='symlink',
-                        help="Cache mode: symlink (default), copy, or direct")
-    parser.add_argument("--profile", choices=list(SOLVER_PROFILES), default=None,
-                        help="Solver profile override (auto-detected by default)")
+    parser.add_argument("--prepare", metavar="WORK_DIR", help="Prepare a working directory for --get environment")
+    parser.add_argument(
+        "--mode",
+        choices=["symlink", "copy", "direct"],
+        default="symlink",
+        help="Cache mode: symlink (default), copy, or direct",
+    )
+    parser.add_argument(
+        "--profile",
+        choices=list(SOLVER_PROFILES),
+        default=None,
+        help="Solver profile override (auto-detected by default)",
+    )
 
     args = parser.parse_args()
 
-    use_clean_cache = {'symlink': True, 'copy': 'copy', 'direct': False}[args.mode]
+    use_clean_cache = {"symlink": True, "copy": "copy", "direct": False}[args.mode]
 
     manager = HFDataManager(use_clean_cache=use_clean_cache)
 
