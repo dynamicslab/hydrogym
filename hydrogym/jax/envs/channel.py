@@ -11,10 +11,8 @@ from flax import struct
 from gymnax.environments import environment, spaces
 from hydrogym.jax.env_core import JAXFlowEnvBase, EnvParams as BaseEnvParams
 from hydrogym.jax.utils.utils import *
-from hydrogym.jax.flow import FlowConfig
 from hydrogym.jax.equation import * 
 from hydrogym.jax.solvers.base import *
-from hydrogym.jax.utils.utils import *
 
 #######################################################################################
 #                                                                                     #
@@ -28,7 +26,7 @@ class ChannelEnvParams(BaseEnvParams):
     """Extends base EnvParams with channel-specific settings."""
     action_dim: int = 24
     obs_subsample: int = 8
-    obs_include_components: int = 2   # 1 -> U only, 3 -> U,V,W
+    obs_include_components: int = 2   
     k_det: int = 9                    
 
     Nx: int = 72
@@ -101,6 +99,7 @@ class PseudoSpectralNavierStokes3D(SplitEquation):
         self.Ly = Ly
         self.Lz = Lz
         self.nu = nu
+        self.dtype = jnp.float32
 
         kx = jnp.fft.fftfreq(self.Nx, d=self.Lx / self.Nx) * 2.0 * jnp.pi
         ky = jnp.fft.fftfreq(self.Ny, d=self.Ly / self.Ny) * 2.0 * jnp.pi
@@ -109,11 +108,10 @@ class PseudoSpectralNavierStokes3D(SplitEquation):
         self.ky = ky
         self.ikx = (1j * kx)[:, None, None]
         self.iky = (1j * ky)[None, :, None]
-        self.k2 = (kx[:, None] ** 2 + ky[None, :] ** 2)
+        self.k2 = (kx[:, None] ** 2 + ky[None, :] ** 2)#.astype(dtype)
 
         self.z, self.Dz, self.Dzz = cheb_D_matrices(self.Nz, self.Lz)
-        self.dealias = dealias_mask_2_3(self.Nx, self.Ny)[:, :, None]
-        self.dtype = jnp.float32
+        self.dealias = dealias_mask_2_3(self.Nx, self.Ny)[:, :, None]#.astype(dtype)
 
     def fft_xy(self, f):
         return jnp.fft.fftn(f, axes=(0, 1))
@@ -411,12 +409,17 @@ class ChannelFlowSpectralEnv(JAXFlowEnvBase):
             nu=self.nu,
         )
         self.integrator = RungeKutta4(
-            flow=self.flow,
             equation=self.equation,
             dt=float(self.default_params.dt),
             save_n=1,
         )
-
+        
+        #################
+        # NOTE: As of now, the easiest way to load the initial files is by downloading them off of hugging face and loading them directly #
+        # Otherwise, user is free to generate their own initial conditions #
+        # Once the JAX environments interface with huggingface more easily, this will be done automatically #
+        ##################
+        
         self.U0 = jnp.load("U_nocontrol.npy")
         self.V0 = jnp.load("V_nocontrol.npy")
         self.W0 = jnp.load("W_nocontrol.npy")
@@ -427,9 +430,6 @@ class ChannelFlowSpectralEnv(JAXFlowEnvBase):
     @property
     def default_params(self) -> ChannelEnvParams:
         return ChannelEnvParams(
-            config={},
-            Nx=self.Nx,
-            Ny=self.Ny,
         )
 
     @property
@@ -475,11 +475,11 @@ class ChannelFlowSpectralEnv(JAXFlowEnvBase):
         )(action)
 
         reward = -wss
+        # Bonus variable = gradient term # 
         bonus = -jnp.vdot(action, grad_wss)
-        reward = reward + 1e2 * bonus
+        reward = reward #+ 1e2 * bonus
 
-        # keep your original env timing convention
-        time = state.time + 100
+        time = state.time + params.nsteps
         terminal = time >= params.max_steps_in_episode
 
         next_state = ChannelEnvState(

@@ -4,6 +4,7 @@ import jax.numpy as jnp
 import numpy as np
 import jax
 from jax import lax
+from jax.experimental import checkify
 
 from hydrogym.core import CallbackBase, PDEBase, TransientSolver
 from hydrogym.jax.utils.utils import *
@@ -89,15 +90,16 @@ class RungeKuttaCrankNicolson(TransientSolver):
   def solve(self, dt: float, flow: FlowConfig, t_span: Tuple[float, float], callbacks: Iterable[CallbackBase] = [], controller: Callable = None, save_n: int = 1) -> PDEBase:
 
     end_time = t_span[1]
-    
-    if end_time < 1:
-      raise ValueError("This flow configuration requires the end time to be at least 1. Please adjust your t_span value and run again.")
+    checkify.check(end_time < 1, "This flow configuration requires the end time to be at least 1. Please adjust your t_span value and run again.")
+
+    # if end_time < 1:
+    #   raise ValueError("This flow configuration requires the end time to be at least 1. Please adjust your t_span value and run again.")
     
     initialization = flow.initialize_state()
-    step_to_save = int(save_n // dt) 
+    step_to_save = int(save_n // dt)
 
-    total_steps = end_time // dt 
-    outer_steps = total_steps // step_to_save 
+    total_steps = int(end_time // dt)
+    outer_steps = int(total_steps // step_to_save)
     
     
     inner_scan = self.step(flow, dt, step_to_save, callbacks)
@@ -115,12 +117,10 @@ class RungeKuttaCrankNicolson(TransientSolver):
     
 class RungeKutta4():
   
-    def __init__(self, flow: "FlowConfig", equation, dt: float, save_n: int, **kwargs):
+    def __init__(self, equation, dt: float, save_n: int, **kwargs):
         self.save_n = int(save_n)
         self.dt = dt
-        self.flow = flow
         self.equation = equation
-        super().__init__(flow, dt)
 
     def rk4_step(
         self,

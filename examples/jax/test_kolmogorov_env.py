@@ -10,10 +10,9 @@ def to_real(omega_hat):
     return np.asarray(jnp.fft.irfftn(omega_hat))
 
 
-def run_env(env, params, action, steps=3):
+def run_env(env, params, action, steps=10):
     key = jax.random.PRNGKey(0)
     obs, state = env.reset_env(key, params)
-    jax.debug.print("Initial observation shape: {shape}", shape=jnp.mean(obs))
 
     for _ in range(steps):
         key, subkey = jax.random.split(key)
@@ -30,13 +29,12 @@ def main():
     zero_action = jnp.zeros((params.action_dim,))
     test_action = jnp.array([-0.25, -0.03, 0.02, 0.01])
 
-    print("Running zero-action...")
+    print("Running with no actuation...")
     traj_zero = run_env(env, params, zero_action)
 
-    print("Running controlled...")
+    print("Running with actuation...")
     traj_act = run_env(env, params, test_action)
 
-    # pick a few snapshots
     n_snap = min(4, len(traj_zero))
     idxs = np.linspace(0, len(traj_zero) - 1, n_snap, dtype=int)
 
