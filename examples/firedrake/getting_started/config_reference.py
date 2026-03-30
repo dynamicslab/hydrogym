@@ -16,7 +16,7 @@ License: MIT
 import numpy as np
 import hydrogym.firedrake as hgym
 from hydrogym import FlowEnv
-from hydrogym.firedrake.io import (
+from hydrogym.firedrake.utils.io import (
     CheckpointCallback,
     ParaviewCallback,
     LogCallback,
@@ -117,11 +117,11 @@ def example_cavity_multistep():
             "Re": 7500,
             "observation_type": "stress_sensor",  # Wall shear stress
         },
-        "solver": hgym.SemiImplicitBDF,
-        "solver_config": {
-            "dt": 1e-4,  # Small timestep for stiff cavity flow
-            "order": 3,
-            "stabilization": "gls",
+        'solver': hgym.SemiImplicitBDF,
+        'solver_config': {
+            'dt': 1e-4,  # Small timestep for stiff cavity flow
+            'order': 3,
+            'stabilization': 'none',
         },
         "actuation_config": {
             "num_substeps": 5,  # 5 solver steps per action
@@ -514,7 +514,9 @@ if __name__ == "__main__":
     print("2. Creating cylinder with velocity probes...")
     env = example_cylinder_probes()
     print(f"   ✓ Observation space: {env.observation_space}")
-    print(f"   ✓ Number of probes: {len(env.flow.probes) if hasattr(env.flow, 'probes') else 'N/A'}\n")
+    # For velocity_probes: obs_dim = 2 * num_probes (u and v components)
+    num_probes = env.observation_space.shape[0] // 2
+    print(f"   ✓ Number of probes: {num_probes}\n")
 
     # Example 3: Multi-substep
     print("3. Creating multi-substep cavity environment...")

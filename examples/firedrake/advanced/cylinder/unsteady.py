@@ -20,6 +20,7 @@ Physical setup:
     - Expected Strouhal number St ≈ 0.165
 """
 
+import os
 import firedrake as fd
 import psutil
 import hydrogym.firedrake as hgym
@@ -27,6 +28,7 @@ import hydrogym.firedrake as hgym
 Re = 100
 mesh_resolution = "medium"
 output_dir = f"./cylinder_Re{Re}_{mesh_resolution}_output"
+os.makedirs(output_dir, exist_ok=True)
 pvd_out = f"{output_dir}/solution.pvd"
 checkpoint = f"{output_dir}/checkpoint.h5"
 
@@ -47,7 +49,11 @@ Re_init = [40, 60, 80, Re]
 for i, Re_val in enumerate(Re_init):
     flow.Re.assign(Re_val)
     hgym.print(f"Steady solve at Re={Re_init[i]}")
-    solver = hgym.NewtonSolver(flow, stabilization="gls", solver_parameters=solver_parameters)
+    solver = hgym.NewtonSolver(
+        flow,
+        stabilization="none",  # Taylor-Hood (P2-P1) is inf-sup stable
+        solver_parameters=solver_parameters
+    )
     qB = solver.solve()
 
 # Save steady state as base flow
@@ -97,12 +103,15 @@ flow.q += rng.normal(flow.mixed_space, 0.0, 1e-3)
 
 # Integrate in time - vortex shedding should develop
 hgym.print("Starting time integration...\n")
+
+# Try without stabilization first (Taylor-Hood is inf-sup stable)
+# This uses the fast FGMRES + Schur complement solver
 hgym.integrate(
     flow,
     t_span=(0, Tf),
     dt=dt,
     callbacks=callbacks,
-    stabilization="gls",
+    stabilization="none",  # Change to "supg" if you see oscillations
 )
 
 hgym.print("\n" + "=" * 70)

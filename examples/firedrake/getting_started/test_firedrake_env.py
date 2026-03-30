@@ -27,7 +27,7 @@ Arguments:
     --num-steps: Number of simulation steps (default: 10)
     --num-episodes: Number of episodes (default: 1)
     --reynolds: Reynolds number (default: environment-specific)
-    --mesh-resolution: Mesh resolution (default: environment-specific)
+    --mesh-resolution: Mesh resolution - 'coarse', 'medium', or 'fine' (default: environment-specific)
     --seed: Random seed for reproducibility (optional)
     --verbose: Enable verbose output
 
@@ -50,7 +50,13 @@ Key Configuration Categories:
      * 'pressure_probes' - Pressure at probe locations
      * 'vorticity_probes' - Vorticity at probe locations
    - probes: List of (x, y) coordinates for probe-based observations
-   - restart: Checkpoint file(s) - string or list for multiple checkpoints
+   - restart: Checkpoint configuration (flexible!)
+     * None - Auto-loads from HF Hub based on flow config
+     * 'path/to/file.h5' - Explicit checkpoint path
+     * 'Cylinder_2D_Re100_medium_FD' - HF Hub environment name
+     * ['ckpt1.h5', 'ckpt2.h5'] - Multiple checkpoints (random selection)
+   - local_dir: Local checkpoint directory (for offline/testing)
+   - cache_dir: Custom HF cache directory
    - velocity_order: FEM element order (default: 2 for P2-P1)
    - noise_amplitude: Random forcing strength (Step only)
    - noise_time_constant: Noise filter timescale (Step only)
@@ -93,7 +99,19 @@ Cavity with multi-substep:
         'reward_aggregation': 'mean',
     }
 
-Pinball with multiple checkpoints:
+Automatic checkpoint loading:
+    # No restart specified - auto-loads 'Cylinder_2D_Re100_medium_FD' from HF Hub
+    flow_config = {
+        'mesh': 'medium',
+        'Re': 100,
+    }
+
+Local checkpoint directory:
+    flow_config = {
+        'local_dir': '/workspace/my_checkpoints',
+    }
+
+Multiple checkpoints (curriculum learning):
     flow_config = {
         'restart': ['ckpt1.h5', 'ckpt2.h5', 'ckpt3.h5'],
     }
@@ -204,8 +222,21 @@ def run_firedrake_test(
     flow_config["observation_type"] = "velocity_probes"
 
     # --- CHECKPOINT/RESTART CONFIGURATION ---
-    # Single checkpoint: loads this state on initialization
-    # flow_config['restart'] = 'path/to/checkpoint.h5'
+
+    # Option 1: Automatic checkpoint inference
+    # Just specify the local directory - auto-loads 'Cylinder_2D_Re100_medium_FD'
+    # flow_config['local_dir'] = '/workspace/firedrake_checkpoints'
+    # The checkpoint will be auto-loaded based on: {FlowClass}_2D_Re{Re}_{mesh}_FD
+
+    # Option 2: Explicit environment name
+    # flow_config['restart'] = 'Cylinder_2D_Re100_medium_FD'
+    # flow_config['local_dir'] = '/workspace/firedrake_checkpoints'
+
+    # Option 3: Custom cache directory (downloads from HF Hub to custom location)
+    # flow_config['cache_dir'] = '/workspace/firedrake_checkpoints_local'
+
+    # Option 4: Explicit checkpoint path
+    # flow_config['restart'] = '/workspace/firedrake_checkpoints/Cylinder_2D_Re100_medium_FD/cylinder_Re-100_Mesh-medium_DT-0.01_00000570.ckpt'
 
     # Multiple checkpoints: randomly selects one on each reset()
     # flow_config['restart'] = [
@@ -235,9 +266,9 @@ def run_firedrake_test(
     # --- SOLVER CONFIGURATION ---
     # Time-stepping parameters for transient solvers
     solver_config = {
-        "dt": 1e-2,  # Time step (REQUIRED for transient)
-        # 'order': 3,                  # BDF order: 1, 2, or 3 (default: 3)
-        # 'stabilization': 'supg',     # Options: 'none', 'supg', 'gls'
+        'dt': 1e-2,                    # Time step (REQUIRED for transient)
+        'order': 3,                  # BDF order: 1, 2, or 3 (default: 3)
+        'stabilization': 'none',     # Options: 'none', 'supg', 'gls'
         # 'rtol': 1e-6,                # Krylov solver relative tolerance
     }
 
@@ -262,34 +293,33 @@ def run_firedrake_test(
 
     # --- CALLBACK CONFIGURATION ---
     # List of callbacks for logging, checkpointing, visualization
-    callbacks = []
+    from hydrogym.firedrake.utils.io import CheckpointCallback, ParaviewCallback, LogCallback
 
-    # Example: Checkpoint saving
-    # from hydrogym.firedrake.io import CheckpointCallback
-    # callbacks.append(CheckpointCallback(
-    #     interval=100,                  # Save every 100 steps
-    #     filename='output/checkpoint.h5',
-    #     write_mesh=True,
-    #     write_timeseries=False,
-    # ))
+    callbacks = [
+        # 1. Paraview visualization - save every 5 steps
+        ParaviewCallback(
+            interval=5,
+            filename='output/solution.pvd',
+            postprocess=lambda flow: (flow.u, flow.p),
+        ),
 
-    # Example: Paraview visualization
-    # from hydrogym.firedrake.io import ParaviewCallback
-    # callbacks.append(ParaviewCallback(
-    #     interval=10,
-    #     filename='output/solution.pvd',
-    #     postprocess=lambda flow: (flow.u, flow.p),
-    # ))
+        # 2. Checkpoint saving - save every 100 steps
+        CheckpointCallback(
+            interval=2,
+            filename='output/checkpoint.h5',
+            write_mesh=True,
+            write_timeseries=False,
+        ),
 
-    # Example: Log forces/observations
-    # from hydrogym.firedrake.io import LogCallback
-    # callbacks.append(LogCallback(
-    #     postprocess=lambda flow: flow.get_observations(),
-    #     nvals=2,  # Number of values returned by postprocess
-    #     interval=1,
-    #     filename='output/log.txt',
-    #     print_fmt='t={:.4f} obs={:.4f}',
-    # ))
+        # 3. Log observations - log every step
+        LogCallback(
+            postprocess=lambda flow: flow.get_observations()[:4],  # Log first 4 probe velocities
+            nvals=4,
+            interval=1,
+            filename='output/observations.txt',
+            print_fmt='t={:.4f} obs=[{:.4f}, {:.4f}, {:.4f}, {:.4f}]',
+        ),
+    ]
 
     # --- COMPLETE ENV_CONFIG ---
     env_config = {
@@ -368,6 +398,22 @@ def run_firedrake_test(
         logger.info(f"  Action space: {env.action_space}")
         if hasattr(env, "flow"):
             logger.info(f"  Reynolds number: {float(env.flow.Re)}")
+
+            # Verify checkpoint was loaded (check resolved path from flow object)
+            if hasattr(env.flow, 'checkpoint_path') and env.flow.checkpoint_path is not None:
+                import firedrake as fd
+                u_norm = fd.norm(env.flow.u)
+                p_norm = fd.norm(env.flow.p)
+                logger.info(f"\n  Checkpoint verification:")
+                logger.info(f"    Checkpoint path: {env.flow.checkpoint_path}")
+                logger.info(f"    Velocity L2 norm: {u_norm:.6e}")
+                logger.info(f"    Pressure L2 norm: {p_norm:.6e}")
+                if u_norm < 1e-10 and p_norm < 1e-10:
+                    logger.warning("    ⚠ Fields are zero - checkpoint may not have loaded!")
+                else:
+                    logger.info("    ✓ Non-zero fields detected - checkpoint loaded successfully")
+            else:
+                logger.info(f"\n  No checkpoint loaded - starting from zero initial conditions")
         logger.info("-" * 70)
 
         # Run episodes
@@ -383,6 +429,7 @@ def run_firedrake_test(
                 obs, _ = env.reset(seed=seed)
                 logger.info("✓ Environment reset")
                 logger.info(f"  Initial observation shape: {obs.shape}")
+                logger.info(f"  Initial observation values: {obs}")
             except Exception as e:
                 logger.error(f"✗ Reset failed: {e}")
                 raise
@@ -398,7 +445,6 @@ def run_firedrake_test(
 
                     # Execute step
                     obs, reward, terminated, truncated, _ = env.step(action)
-                    print(obs)
 
                     episode_reward += reward
                     episode_steps += 1
@@ -466,7 +512,29 @@ def main():
     parser.add_argument("--num-episodes", type=int, default=1, help="Number of episodes (default: 1)")
     parser.add_argument("--reynolds", type=float, default=None, help="Reynolds number (default: environment-specific)")
     parser.add_argument(
-        "--mesh-resolution", type=int, default=None, help="Mesh resolution (default: environment-specific)"
+        "--num-steps",
+        type=int,
+        default=10,
+        help="Number of steps per episode (default: 10)"
+    )
+    parser.add_argument(
+        "--num-episodes",
+        type=int,
+        default=1,
+        help="Number of episodes (default: 1)"
+    )
+    parser.add_argument(
+        "--reynolds",
+        type=float,
+        default=None,
+        help="Reynolds number (default: environment-specific)"
+    )
+    parser.add_argument(
+        "--mesh-resolution",
+        type=str,
+        choices=['coarse', 'medium', 'fine'],
+        default=None,
+        help="Mesh resolution: 'coarse', 'medium', or 'fine' (default: environment-specific)"
     )
     parser.add_argument("--seed", type=int, default=None, help="Random seed for reproducibility (optional)")
     parser.add_argument("--verbose", action="store_true", help="Enable verbose logging")

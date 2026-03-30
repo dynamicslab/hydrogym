@@ -1,5 +1,11 @@
 # Pinball Flow Examples
 
+⚠️ **NOTE**: These are **advanced workflow examples** showing direct solver access and specialized workflows. They do NOT use the standard RL interface.
+
+**Looking for standard RL examples?** See [../../getting_started/](../../getting_started/) for `env.reset()`/`env.step()` interface.
+
+---
+
 Flow around three cylinders in triangular arrangement - a challenging benchmark for flow control.
 
 ## Physical Description

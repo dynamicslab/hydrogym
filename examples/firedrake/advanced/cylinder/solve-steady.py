@@ -18,18 +18,20 @@ Note: At Re=100, the steady state is linearly unstable (vortex shedding).
       This solver finds the unstable steady state, useful for stability analysis.
 """
 
+import os
 import firedrake as fd
 import hydrogym.firedrake as hgym
 
 output_dir = "output"
+os.makedirs(output_dir, exist_ok=True)
 mesh_resolution = "medium"
-Re = 40  # Use Re < 47 for stable steady state, or Re=100 for unstable equilibrium
+Re = 100  # Use Re < 47 for stable steady state, or Re=100 for unstable equilibrium
 
 solver_parameters = {"snes_monitor": None}
 
 # For Re > 50, ramp from lower Reynolds numbers for better convergence
 if Re > 50:
-    Re_init = [40, Re]
+    Re_init = [20, 40, 60, 80, Re]
 else:
     Re_init = [Re]
 
@@ -40,7 +42,7 @@ hgym.print(f"Total dof: {dof} --- dof/rank: {int(dof / fd.COMM_WORLD.size)}")
 
 solver = hgym.NewtonSolver(
     flow,
-    stabilization="gls",
+    stabilization="gls",  
     solver_parameters=solver_parameters,
 )
 
@@ -59,7 +61,13 @@ hgym.print(f"Steady state forces: CL={CL:.6f}, CD={CD:.6f}")
 
 # Save visualization
 vort = flow.vorticity()
-pvd = fd.File(f"{output_dir}/cylinder_Re{Re}_steady.pvd")
-pvd.write(flow.u, flow.p, vort)
+try:
+    # Try newer Firedrake API
+    pvd = fd.VTKFile(f"{output_dir}/cylinder_Re{Re}_steady.pvd")
+    pvd.write(flow.u, flow.p, vort)
+except AttributeError:
+    # Fall back to older API
+    pvd = fd.File(f"{output_dir}/cylinder_Re{Re}_steady.pvd")
+    pvd.write(flow.u, flow.p, vort)
 
 hgym.print(f"Steady state saved to {output_dir}/cylinder_Re{Re}_steady.h5")

@@ -1,6 +1,11 @@
-# Firedrake Environment Configuration Reference
+# Getting Started with Firedrake Environments
 
-This directory contains comprehensive configuration examples and testing utilities for HydroGym's Firedrake-based flow environments.
+✅ **START HERE** for standard RL interface examples using `env.reset()` and `env.step()`.
+
+This directory contains comprehensive configuration examples and testing utilities for HydroGym's Firedrake-based flow environments using the **standard RL interface**.
+
+> **Looking for advanced workflows?** (steady solvers, stability analysis, direct control)
+> See [`../advanced/`](../advanced/) for specialized research and development examples.
 
 ## 📁 Files
 
@@ -62,7 +67,9 @@ Open `config_reference.py` and copy the example that matches your use case.
 | `Re` | Reynolds number | Flow-dependent (e.g., 100 for cylinder) |
 | `observation_type` | Observation method | `'lift_drag'`, `'stress_sensor'`, `'velocity_probes'`, `'pressure_probes'`, `'vorticity_probes'` |
 | `probes` | Probe locations | `[(x1, y1), (x2, y2), ...]` |
-| `restart` | Checkpoint files | `'file.h5'` or `['file1.h5', 'file2.h5']` |
+| `restart` | Checkpoint file(s) | `None` (auto), `'file.h5'`, `'Cylinder_2D_Re100_medium_FD'` (env name), or `['file1.h5', 'file2.h5']` (multiple) |
+| `local_dir` | Local checkpoint directory | `'/path/to/checkpoints'` (for offline/testing) |
+| `cache_dir` | Custom cache directory | `'/path/to/cache'` (where HF downloads are stored) |
 | `velocity_order` | FEM element order | `2` (default, P2-P1 Taylor-Hood) |
 
 ### **Solver Configuration** (`solver_config`)
@@ -149,7 +156,44 @@ env = FlowEnv(env_config)
 # Each env.step() now runs 5 simulation steps internally
 ```
 
-### Example 3: Multiple Checkpoints for Curriculum Learning
+### Example 3: Automatic Checkpoint Loading (NEW!)
+```python
+# Checkpoints are automatically inferred from flow config and downloaded from HF Hub
+env_config = {
+    'flow': hgym.Cylinder,
+    'flow_config': {
+        'mesh': 'medium',
+        'Re': 100,
+        # No 'restart' specified - automatically loads 'Cylinder_2D_Re100_medium_FD'
+    },
+    'solver': hgym.SemiImplicitBDF,
+    'solver_config': {'dt': 1e-2},
+}
+
+env = FlowEnv(env_config)
+# Checkpoint auto-downloaded from HF Hub and loaded!
+print(f"Loaded checkpoint: {env.flow.checkpoint_path}")
+```
+
+### Example 4: Local Checkpoint Directory
+```python
+# Use local checkpoints without HF Hub (for offline/testing)
+env_config = {
+    'flow': hgym.Cylinder,
+    'flow_config': {
+        'mesh': 'medium',
+        'Re': 100,
+        'local_dir': '/workspace/my_checkpoints',  # Local directory
+        # Automatically loads: /workspace/my_checkpoints/Cylinder_2D_Re100_medium_FD/*.ckpt
+    },
+    'solver': hgym.SemiImplicitBDF,
+    'solver_config': {'dt': 1e-2},
+}
+
+env = FlowEnv(env_config)
+```
+
+### Example 5: Multiple Checkpoints for Curriculum Learning
 ```python
 env_config = {
     'flow': hgym.Pinball,
@@ -172,7 +216,7 @@ obs, info = env.reset()
 print(f"Started from checkpoint index: {info.get('checkpoint_index')}")
 ```
 
-### Example 4: Probe-Based Observations
+### Example 6: Probe-Based Observations
 ```python
 import numpy as np
 
@@ -196,7 +240,7 @@ obs, _ = env.reset()
 print(f"Observation shape: {obs.shape}")  # (40,) for 20 probes × 2 velocity components
 ```
 
-### Example 5: Using Callbacks
+### Example 7: Using Callbacks
 ```python
 from hydrogym.firedrake.io import CheckpointCallback, LogCallback
 
@@ -220,6 +264,57 @@ env_config = {
 }
 
 env = FlowEnv(env_config)
+```
+
+## 💾 Checkpoint Management
+
+HydroGym provides flexible checkpoint management with automatic inference and HuggingFace Hub integration.
+
+### **Checkpoint Loading Methods**
+
+| Method | Example | Use Case |
+|--------|---------|----------|
+| **Automatic** | No `restart` specified | Auto-loads from HF Hub based on flow config |
+| **Environment Name** | `restart='Cylinder_2D_Re100_medium_FD'` | Load specific HF Hub environment |
+| **Explicit Path** | `restart='/path/to/checkpoint.h5'` | Use local checkpoint file |
+| **Multiple Checkpoints** | `restart=['ckpt1.h5', 'ckpt2.h5']` | Random selection for curriculum learning |
+
+### **Configuration Parameters**
+
+```python
+flow_config = {
+    # Checkpoint configuration
+    'restart': None,  # or path, environment name, or list
+    'local_dir': '/path/to/local/checkpoints',  # For offline/testing
+    'cache_dir': '/path/to/custom/cache',  # Custom HF cache location
+}
+```
+
+### **Automatic Checkpoint Naming**
+
+Checkpoints follow the pattern: `{FlowClass}_2D_Re{Reynolds}_{mesh}_FD`
+
+Examples:
+- `Cylinder_2D_Re100_medium_FD` - Cylinder at Re=100 on medium mesh
+- `Pinball_2D_Re30_fine_FD` - Pinball at Re=30 on fine mesh
+- `Cavity_2D_Re7500_medium_FD` - Cavity at Re=7500 on medium mesh
+
+### **How It Works**
+
+1. **No restart specified** → Auto-constructs environment name → Downloads from HF Hub → Loads first checkpoint
+2. **Environment name given** → Downloads from HF Hub → Loads first checkpoint
+3. **Explicit path** → Uses path directly
+4. **Local directory** → Searches local directory → Uses symlinks (no duplication)
+
+### **Verification**
+
+After loading, check the checkpoint:
+```python
+env = FlowEnv(env_config)
+if env.flow.checkpoint_path:
+    print(f"Loaded: {env.flow.checkpoint_path}")
+else:
+    print("Starting from zeros")
 ```
 
 ## 🎛️ Available Callbacks
@@ -268,6 +363,6 @@ To add new examples:
 
 ---
 
-**Last Updated**: February 2026
-**HydroGym Version**: 0.2+
+**Last Updated**: March 2026
+**HydroGym Version**: 1.0+
 **Maintainer**: HydroGym Team

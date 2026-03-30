@@ -1,5 +1,11 @@
 # Backward-Facing Step Flow Examples
 
+⚠️ **NOTE**: These are **advanced workflow examples** showing direct solver access and specialized workflows. They do NOT use the standard RL interface.
+
+**Looking for standard RL examples?** See [../../getting_started/](../../getting_started/) for `env.reset()`/`env.step()` interface.
+
+---
+
 Flow over a backward-facing step demonstrates separated flow and reattachment.
 
 ## Physical Description

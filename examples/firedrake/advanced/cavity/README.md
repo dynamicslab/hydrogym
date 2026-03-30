@@ -1,5 +1,11 @@
 # Lid-Driven Cavity Flow Examples
 
+⚠️ **NOTE**: These are **advanced workflow examples** showing direct solver access, stability analysis, and specialized workflows. They do NOT use the standard RL interface.
+
+**Looking for standard RL examples?** See [../../getting_started/](../../getting_started/) for `env.reset()`/`env.step()` interface.
+
+---
+
 The lid-driven cavity is a classic CFD benchmark problem demonstrating recirculating flows and turbulence.
 
 ## Physical Description
