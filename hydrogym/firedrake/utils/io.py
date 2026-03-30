@@ -10,14 +10,19 @@ from .utils import is_rank_zero, print
 
 
 class ParaviewCallback(CallbackBase):
-    def __init__(
-        self,
-        interval: Optional[int] = 1,
-        filename: Optional[str] = "output/solution.pvd",
-        postprocess: Optional[Callable] = None,
-    ):
-        super().__init__(interval=interval)
-        self.file = fd.File(filename)
+
+  def __init__(
+      self,
+      interval: Optional[int] = 1,
+      filename: Optional[str] = "output/solution.pvd",
+      postprocess: Optional[Callable] = None,
+  ):
+    super().__init__(interval=interval)
+    # Handle both old and new Firedrake API
+    try:
+      self.file = fd.VTKFile(filename)
+    except AttributeError:
+      self.file = fd.File(filename)
 
         # Postprocess will be called before saving (use to compute vorticity, for instance)
         self.postprocess = postprocess
