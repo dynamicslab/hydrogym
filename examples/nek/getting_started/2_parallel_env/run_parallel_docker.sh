@@ -22,7 +22,7 @@ WORK_DIR="./train_run"
 LOCAL_DIR="/workspace/hydrogym/packaged_envs"
 ENV_NAME="TCFmini_3D_Re180"
 NPROC_NEK=10
-NUM_STEPS=100
+NUM_STEPS=1000
 TOTAL_TIMESTEPS=50000
 MODE="${1:-test}"  # test or train
 

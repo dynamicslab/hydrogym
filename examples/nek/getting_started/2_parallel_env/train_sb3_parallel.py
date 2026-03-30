@@ -128,6 +128,11 @@ def train_parallel_centralized(args):
       'configuration_file': args.config_file,
   }
   base_env = NekEnv(env_config=env_config)
+  # [YW-MOD] Rewrite the par file to ensure the simulation configuration is correct
+  from hydrogym.nek.nek_lib.nek_utils import NEK_INIT
+  nek_init = NEK_INIT(nek=base_env.conf.simulation, drl=base_env.conf.runner, rank_folder=base_env.run_folder)
+  nek_init.rewrite_REA_v19() # Rewrite the par file, v19 corresponds to the new Nek5000 format
+  # [YW-MOD] End
 
   # Wrap with parallel interface (dict-based)
   print("Wrapping with NekParallelEnv (dict-based)...")

@@ -42,6 +42,7 @@ if [ "$MODE" == "train" ]; then
         --work-dir "$WORK_DIR" \
         --cache-dir "$HOME/.cache/hydrogym"
 
+
     cd "$WORK_DIR" || exit 1
 
     mpirun \
@@ -63,7 +64,8 @@ else
         --local-dir "$LOCAL_DIR" \
         --env "$ENV_NAME" \
         --work-dir "$WORK_DIR" \
-        --cache-dir "$HOME/.cache/hydrogym"
+        --cache-dir "$HOME/.cache/hydrogym" \
+        --restart-index 1
 
     cd "$WORK_DIR" || exit 1
 
