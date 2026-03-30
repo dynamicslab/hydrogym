@@ -17,7 +17,11 @@ class ParaviewCallback(CallbackBase):
         postprocess: Optional[Callable] = None,
     ):
         super().__init__(interval=interval)
-        self.file = fd.File(filename)
+        # Handle both old and new Firedrake API
+        try:
+            self.file = fd.VTKFile(filename)
+        except AttributeError:
+            self.file = fd.File(filename)
 
         # Postprocess will be called before saving (use to compute vorticity, for instance)
         self.postprocess = postprocess

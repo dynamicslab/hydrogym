@@ -131,9 +131,11 @@ SOLVER_PROFILES: Dict[str, dict] = {
     },
     "FIREDRAKE": {
         "sentinel": ".FIREDRAKE",
+        # Checkpoint files can be either .h5 or .ckpt - validation happens in code
         "required_files": [],
         "required_dirs": [],
-        "optional_files": [],
+        "optional_files": ["environment_config.yaml", "README.md"],
+        # No workspace preparation needed - Firedrake uses paths directly
         "workspace_files": {},
         "workspace_dirs": {},
     },

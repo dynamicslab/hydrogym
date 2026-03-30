@@ -31,10 +31,12 @@ class SemiImplicitBDF(NavierStokesTransientSolver):
         order: int = 3,
         stabilization: str = "default",
         rtol=1e-6,
+        solver_parameters: dict = None,
         **kwargs,
     ):
         self.k = order  # Order of the BDF/EXT scheme
         self.ksp_rtol = rtol  # Krylov solver tolerance
+        self.custom_solver_parameters = solver_parameters  # Custom solver parameters
 
         if stabilization == "default":
             stabilization = flow.DEFAULT_STABILIZATION
@@ -78,24 +80,54 @@ class SemiImplicitBDF(NavierStokesTransientSolver):
         bcs = self.flow.collect_bcs()
         bdf_prob = fd.LinearVariationalProblem(a, L, q, bcs=bcs)
 
-        # Schur complement preconditioner. See:
-        # https://www.firedrakeproject.org/demos/saddle_point_systems.py.html
-        solver_parameters = {
-            "ksp_type": "fgmres",
-            "ksp_rtol": self.ksp_rtol,
-            "pc_type": "fieldsplit",
-            "pc_fieldsplit_type": "schur",
-            "pc_fieldsplit_schur_fact_type": "full",
-            "pc_fieldsplit_schur_precondition": "selfp",
-            #
-            # Default preconditioner for inv(A)
-            #   (ilu in serial, bjacobi in parallel)
-            "fieldsplit_0_ksp_type": "preonly",
-            #
-            # Single multigrid cycle preconditioner for inv(S)
-            "fieldsplit_1_ksp_type": "preonly",
-            "fieldsplit_1_pc_type": "hypre",
-        }
+        # Use custom solver parameters if provided, otherwise use defaults
+        if self.custom_solver_parameters is not None:
+            solver_parameters = self.custom_solver_parameters
+        else:
+            # Schur complement preconditioner. See:
+            # https://www.firedrakeproject.org/demos/saddle_point_systems.py.html
+            solver_parameters = {
+                "ksp_type": "fgmres",
+                "ksp_rtol": self.ksp_rtol,
+                "pc_type": "fieldsplit",
+                "pc_fieldsplit_type": "schur",
+                "pc_fieldsplit_schur_fact_type": "full",
+                "pc_fieldsplit_schur_precondition": "selfp",
+                #
+                # Default preconditioner for inv(A)
+                #   (ilu in serial, bjacobi in parallel)
+                "fieldsplit_0_ksp_type": "preonly",
+                #
+                # Single multigrid cycle preconditioner for inv(S)
+                "fieldsplit_1_ksp_type": "preonly",
+                "fieldsplit_1_pc_type": "hypre",
+            }
+
+            # Stabilization-specific solver parameters
+            # Both SUPG and GLS are incompatible with Schur complement preconditioners
+            # due to the additional coupling terms in the stabilization.
+            if self.stabilization in ["supg", "linearized_supg"]:
+                # SUPG: Use monolithic AMG (works, much faster than direct solver)
+                solver_parameters = {
+                    "ksp_type": "gmres",
+                    "ksp_rtol": self.ksp_rtol,
+                    "ksp_max_it": 200,
+                    "pc_type": "hypre",
+                    "pc_hypre_type": "boomeramg",
+                }
+            elif self.stabilization in ["gls", "linearized_gls"]:
+                # GLS: Use direct solver (monolithic AMG fails for GLS)
+                from firedrake import logging
+
+                logging.warning(
+                    "GLS stabilization detected: using direct solver (LU/MUMPS). "
+                    "This is slower than SUPG with monolithic AMG."
+                )
+                solver_parameters = {
+                    "ksp_type": "preonly",
+                    "pc_type": "lu",
+                    "pc_factor_mat_solver_type": "mumps",
+                }
 
         petsc_solver = fd.LinearVariationalSolver(bdf_prob, solver_parameters=solver_parameters)
         return petsc_solver

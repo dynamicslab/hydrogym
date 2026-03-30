@@ -6,125 +6,119 @@ Comprehensive examples demonstrating Hydrogym's Firedrake backend for CFD and fl
 
 ```
 firedrake/
-├── README.md                   # This file
-├── env_test/                   # Environment testing scripts
-│   ├── test_firedrake_env.py  # Comprehensive test suite
-│   └── run_example_docker.sh  # Docker runner script
-├── cavity/                     # Lid-driven cavity flow
-│   ├── README.md               # Cavity-specific documentation
-│   ├── run-transient.py        # Basic turbulent simulation
-│   ├── solve-steady.py         # Steady-state solver
-│   ├── unsteady.py             # Steady → turbulent workflow
-│   ├── stability.py            # Eigenvalue analysis
-│   └── sine-forcing.py         # Sinusoidal forcing
-├── cylinder/                   # Flow around circular cylinder
-│   ├── README.md               # Cylinder-specific documentation
-│   ├── run-transient.py        # Basic vortex shedding
-│   ├── solve-steady.py         # Steady/unstable equilibrium
-│   ├── unsteady.py             # Steady → shedding workflow
-│   ├── stability.py            # Wake stability analysis
-│   ├── pd-control.py           # PD feedback control
-│   ├── step_input.py           # Step response test
-│   ├── pd-phase-sweep.py       # Phase-swept control
-│   ├── pressure-probes.py      # Multi-point sensing
-│   └── lti_system.py           # Linearization (WIP)
-├── pinball/                    # Three-cylinder configuration
-│   ├── README.md               # Pinball-specific documentation
-│   ├── run-transient.py        # Complex three-body wake
-│   ├── solve-steady.py         # Steady equilibrium
-│   └── unsteady.py             # Wake dynamics workflow
-└── step/                       # Backward-facing step
-    ├── README.md               # Step-specific documentation
-    ├── run-transient.py        # Separated flow simulation
-    ├── solve-steady.py         # Steady recirculation zone
-    ├── unsteady.py             # Separation → shedding
-    └── step-control.py         # Step input control
+├── README.md                        # This file
+├── getting_started/                 # ⭐ START HERE - Standard RL interface
+│   ├── README.md                    # Complete getting started guide
+│   ├── test_firedrake_env.py        # Interactive test script
+│   ├── config_reference.py          # Copy-paste configuration examples
+│   └── run_example_docker.sh        # Docker runner script
+└── advanced/                        # Advanced workflows (not standard RL)
+    ├── README.md                    # Advanced examples overview
+    ├── cavity/                      # Lid-driven cavity flow
+    │   ├── README.md                # Cavity-specific documentation
+    │   ├── run-transient.py         # Direct simulation (not RL interface)
+    │   ├── solve-steady.py          # Steady-state solver
+    │   ├── unsteady.py              # Steady → turbulent workflow
+    │   ├── stability.py             # Eigenvalue analysis
+    │   └── sine-forcing.py          # Sinusoidal forcing
+    ├── cylinder/                    # Flow around circular cylinder
+    │   ├── README.md                # Cylinder-specific documentation
+    │   ├── run-transient.py         # Direct simulation (not RL interface)
+    │   ├── solve-steady.py          # Steady/unstable equilibrium
+    │   ├── unsteady.py              # Steady → shedding workflow
+    │   ├── stability.py             # Wake stability analysis
+    │   ├── pd-control.py            # PD feedback control (not RL)
+    │   ├── step_input.py            # Step response test
+    │   ├── pd-phase-sweep.py        # Phase-swept control
+    │   ├── pressure-probes.py       # Multi-point sensing
+    │   └── lti_system.py            # Linearization (WIP)
+    ├── pinball/                     # Three-cylinder configuration
+    │   ├── README.md                # Pinball-specific documentation
+    │   ├── run-transient.py         # Direct simulation (not RL interface)
+    │   ├── solve-steady.py          # Steady equilibrium
+    │   └── unsteady.py              # Wake dynamics workflow
+    └── step/                        # Backward-facing step
+        ├── README.md                # Step-specific documentation
+        ├── run-transient.py         # Direct simulation (not RL interface)
+        ├── solve-steady.py          # Steady recirculation zone
+        ├── unsteady.py              # Separation → shedding
+        └── step-control.py          # Step input control
 ```
 
 ## Quick Start
 
-### 1. Test Your Installation
+### **New Users: Start with the RL Interface**
 
-First, verify your Firedrake installation works:
+If you want to use HydroGym for **reinforcement learning** (the standard use case):
 
 ```bash
-cd env_test
+cd getting_started
 python test_firedrake_env.py --environment cylinder --num-steps 10
 ```
 
-This should run a short simulation and output force coefficients.
+This demonstrates the standard `env.reset()` / `env.step()` interface.
 
-### 2. Run Your First Example
+**Next steps:**
+1. Read [getting_started/README.md](getting_started/README.md) for complete documentation
+2. Explore [getting_started/config_reference.py](getting_started/config_reference.py) for copy-paste examples
+3. Start training your RL agent!
 
-Try the simplest example - cylinder vortex shedding:
+### **Advanced Users: Direct Solver Access**
+
+If you need **specialized workflows** (steady solvers, stability analysis, direct control):
 
 ```bash
-cd cylinder
+cd advanced/cylinder
 python run-transient.py
 ```
 
-You should see output like:
+**Note:** These examples do NOT use the standard RL interface. See [advanced/README.md](advanced/README.md) for details.
+
+## Example Categories
+
+### 🎓 Standard RL Interface (`getting_started/`)
+
+**Purpose:** Train reinforcement learning agents
+
+**Key files:**
+- `test_firedrake_env.py` - Interactive testing with standard Gym API
+- `config_reference.py` - 10 copy-paste configuration examples
+- Full documentation in [getting_started/README.md](getting_started/README.md)
+
+**Typical usage:**
+```python
+from hydrogym import FlowEnv
+import hydrogym.firedrake as hgym
+
+env_config = {
+    'flow': hgym.Cylinder,
+    'flow_config': {'mesh': 'medium', 'Re': 100},
+    'solver': hgym.SemiImplicitBDF,
+    'solver_config': {'dt': 1e-2},
+}
+
+env = FlowEnv(env_config)
+obs, info = env.reset()
+
+for _ in range(100):
+    action = env.action_space.sample()
+    obs, reward, terminated, truncated, info = env.step(action)
 ```
-t: 1.00,   CL: -0.234,   CD: 1.387   Mem: 15.2
-t: 2.00,   CL: 0.287,    CD: 1.402   Mem: 15.3
-...
-```
 
-### 3. Explore Other Environments
+### 🔬 Advanced Workflows (`advanced/`)
 
-Each environment has similar basic examples:
+**Purpose:** Research, development, and specialized analysis
 
-```bash
-# Lid-driven cavity turbulence
-cd cavity && python run-transient.py
+**Example types:**
+- **Direct simulations** (`run-transient.py`) - Time-stepping without RL interface
+- **Steady solvers** (`solve-steady.py`) - Newton iteration for equilibria
+- **Stability analysis** (`stability.py`) - Eigenvalue computation
+- **Direct control** (`pd-control.py`) - Feedback control without RL
+- **Specialized workflows** (`unsteady.py`) - Multi-stage simulations
 
-# Three-cylinder wake
-cd pinball && python run-transient.py
+See [advanced/README.md](advanced/README.md) for complete documentation.
 
-# Backward-facing step
-cd step && python run-transient.py
-```
-
-## Example Types
-
-All environments follow a standardized structure:
-
-### Tier 1: Essential (All environments have these)
-
-**run-transient.py** - Basic time-stepping simulation
-- Good starting point
-- Shows typical output
-- Runtime: 2-5 minutes
-
-**solve-steady.py** - Steady-state solver
-- Newton iteration with Reynolds ramping
-- Finds equilibrium states
-- Useful for perturbation studies
-
-**unsteady.py** - Complete workflow
-- Stage 1: Solve steady state
-- Stage 2: Perturb and run transient
-- Demonstrates typical research workflow
-
-### Tier 2: Advanced (Selected environments)
-
-**stability.py** - Linear stability analysis
-- Available for: Cavity, Cylinder
-- Computes eigenvalues and modes
-- Finds instability frequencies
-
-**Control examples** - Feedback/feedforward control
-- Cavity: `sine-forcing.py`
-- Cylinder: `pd-control.py`, `step_input.py`
-- Step: `step-control.py`
-
-### Tier 3: Specialized (Domain-specific)
-
-- `cylinder/pd-phase-sweep.py` - Phase-amplitude control
-- `cylinder/pressure-probes.py` - Multi-point sensing
-- `cylinder/lti_system.py` - Linearization (incomplete)
-
-## Environments Overview
+## Available Environments
 
 | Environment | Description | Re (default) | Key Phenomena |
 |-------------|-------------|--------------|---------------|
@@ -133,46 +127,69 @@ All environments follow a standardized structure:
 | **Pinball** | Three cylinders | 100 | Complex wake, mode switching |
 | **Step** | Backward step | 600 | Separation, reattachment |
 
-## Typical Workflow
+All environments are available in both `getting_started/` (RL interface) and `advanced/` (specialized workflows).
 
-For research or control design, follow this progression:
+## Typical Workflows
+
+### For RL Training (`getting_started/`)
 
 ```bash
-# 1. Basic simulation - understand the flow
+# 1. Test the environment
+cd getting_started
+python test_firedrake_env.py --environment cylinder --num-steps 10
+
+# 2. Explore configuration options
+python config_reference.py
+
+# 3. Copy a template and start training
+# (use your favorite RL library: Stable-Baselines3, RLlib, etc.)
+```
+
+### For Research/Analysis (`advanced/`)
+
+```bash
+cd advanced/cylinder
+
+# 1. Understand the flow
 python run-transient.py
 
-# 2. Find steady state - get base flow
+# 2. Find steady state
 python solve-steady.py
 
-# 3. Full workflow - see instability develop
-python unsteady.py
-
-# 4. Stability analysis - find unstable modes (if available)
+# 3. Analyze stability
 python stability.py
 
-# 5. Apply control - test control strategies (if available)
+# 4. Test control strategies
 python pd-control.py
 ```
 
 ## Running Examples
 
-### Basic Usage
+### Standard RL Interface
 
 ```bash
-python run-transient.py
-```
+cd getting_started
 
-### With MPI Parallelism
+# Single process
+python test_firedrake_env.py --environment cylinder --num-steps 10
 
-```bash
-mpirun -np 4 python run-transient.py
-```
+# MPI parallel
+mpirun -np 4 python test_firedrake_env.py --environment cylinder --num-steps 50
 
-### In Docker
-
-```bash
-cd env_test
+# In Docker
 bash run_example_docker.sh
+```
+
+### Advanced Workflows
+
+```bash
+cd advanced/cylinder
+
+# Basic usage
+python run-transient.py
+
+# With MPI parallelism
+mpirun -np 4 python stability.py
 ```
 
 ## Output Files
@@ -188,19 +205,22 @@ Examples typically generate:
 
 ## Documentation
 
-Each environment has detailed README.md:
+### Getting Started
+- [getting_started/README.md](getting_started/README.md) - **Start here for RL**
+  - Complete configuration reference
+  - Interactive test scripts
+  - Copy-paste examples for all use cases
 
-- [cavity/README.md](cavity/README.md) - Lid-driven cavity
-- [cylinder/README.md](cylinder/README.md) - Circular cylinder
-- [pinball/README.md](pinball/README.md) - Three cylinders
-- [step/README.md](step/README.md) - Backward-facing step
+### Advanced Workflows
+- [advanced/README.md](advanced/README.md) - Advanced examples overview
 
-These include:
-- Physical description
-- Expected results
-- Validation data
-- Usage tips
-- References
+### Individual Environments (in `advanced/`)
+- [advanced/cavity/README.md](advanced/cavity/README.md) - Lid-driven cavity
+- [advanced/cylinder/README.md](advanced/cylinder/README.md) - Circular cylinder
+- [advanced/pinball/README.md](advanced/pinball/README.md) - Three cylinders
+- [advanced/step/README.md](advanced/step/README.md) - Backward-facing step
+
+Each includes physical description, validation data, and usage tips.
 
 ## Common Parameters
 
@@ -282,7 +302,15 @@ See LICENSE file in repository root.
 
 **Ready to get started?**
 
-1. Test installation: `cd env_test && python test_firedrake_env.py --environment cylinder --num-steps 10`
-2. Run first example: `cd cylinder && python run-transient.py`
-3. Explore other environments: Check individual README.md files
-4. Learn more: Read the [main documentation](../../../docs/)
+### For RL Training (Most Users):
+1. **Start here:** `cd getting_started`
+2. **Test environment:** `python test_firedrake_env.py --environment cylinder --num-steps 10`
+3. **Read docs:** Open [getting_started/README.md](getting_started/README.md)
+4. **Copy template:** Use [config_reference.py](getting_started/config_reference.py) examples
+5. **Train agent:** Integrate with your RL library
+
+### For Research/Development:
+1. **Explore workflows:** `cd advanced && cat README.md`
+2. **Pick environment:** `cd advanced/cylinder`
+3. **Run examples:** `python run-transient.py`, `python stability.py`, etc.
+4. **Read environment docs:** Check individual README.md files
