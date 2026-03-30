@@ -10,7 +10,7 @@ Usage:
 """
 
 import argparse
-import hydrogym.maia as maia
+from hydrogym.maia.workspace import prepare_maia_workspace  # avoids mpi4py init
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Prepare MAIA workspace")
@@ -21,7 +21,7 @@ if __name__ == "__main__":
 
     print(f"Preparing workspace for {args.env}...")
 
-    work_dir, properties_file = maia.prepare_maia_workspace(
+    work_dir, properties_file = prepare_maia_workspace(
         environment_name=args.env,
         work_dir=args.work_dir,
         force_download=args.force_download,

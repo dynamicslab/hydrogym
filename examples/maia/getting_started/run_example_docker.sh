@@ -3,11 +3,15 @@
 export OMP_NUM_THREADS=1
 
 # load maia solver (here GPU version) -> CPU: MAIA/1.0-gompi-2024a-SystemCUDA-CPU
-module load MAIA/1.0-NVHPC-24.11-SystemCUDA-GPU
+module purge
+# module load MAIA/1.0-NVHPC-26.1
+module load MAIA/1.0-gompi-2024a-SystemCUDA-CPU
+
+source /home/easybuild/venvs/hydrogym_gpu/bin/activate
 
 # Configuration
-WORK_DIR="./test_run_005"
-ENVIRONMENT="SquareCylinder_2D_Re1000"
+WORK_DIR="./test_run_001"
+ENVIRONMENT="Cylinder_2D_Re1000"
 PROPERTIES_FILE="properties_run.toml"
 
 # Prepare environment
@@ -23,4 +27,4 @@ echo "Properties file: $PROPERTIES_FILE"
 echo ""
 
 # Run M-AIA based hydrogym environment in MPMD mode
-mpirun -np 1 python ../test_maia_env.py --environment=$ENVIRONMENT : -np 1 maia $PROPERTIES_FILE --silent
+mpirun -np 1 python ../test_maia_env.py --environment=$ENVIRONMENT : -np 10 maia $PROPERTIES_FILE --silent
