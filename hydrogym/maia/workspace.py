@@ -126,9 +126,7 @@ class MaiaWorkspace:
             print(f"   Environment data ready: {self.env_data_path}")
             print(f"2. Creating workspace: {self.work_dir}")
 
-        paths = self.data_manager.prepare_working_directory(
-            self.env_data_path, self.work_dir
-        )
+        paths = self.data_manager.prepare_working_directory(self.env_data_path, self.work_dir)
 
         self.is_setup = True
 

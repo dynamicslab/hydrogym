@@ -52,7 +52,7 @@ for i, Re_val in enumerate(Re_init):
     solver = hgym.NewtonSolver(
         flow,
         stabilization="none",  # Taylor-Hood (P2-P1) is inf-sup stable
-        solver_parameters=solver_parameters
+        solver_parameters=solver_parameters,
     )
     qB = solver.solve()
 

@@ -46,6 +46,7 @@ Outputs:
 Note: This is a work-in-progress example demonstrating linearization concepts.
       Full LTI operator construction requires additional LinearOperator wrappers.
 """
+
 import os
 
 import firedrake as fd
@@ -58,7 +59,7 @@ import hydrogym.firedrake as hgym
 show_plots = False  # Set to True to display vorticity plots
 output_dir = "output"
 if not os.path.exists(output_dir):
-  os.makedirs(output_dir)
+    os.makedirs(output_dir)
 
 # Create flow configuration with rotary cylinder actuation
 # RotaryCylinder uses tangential velocity BC (cylinder rotation)
@@ -80,10 +81,10 @@ hgym.print(f"Base flow forces: CL = {CL_base:.6f}, CD = {CD_base:.6f}")
 
 # Optional: Visualize base flow vorticity
 if show_plots:
-  vort = flow.vorticity(qB.subfunctions[0])
-  fig, ax = plt.subplots(1, 1, figsize=(6, 3))
-  tripcolor(vort, axes=ax, cmap="RdBu", vmin=-2, vmax=2)
-  ax.set_title("Base Flow Vorticity")
+    vort = flow.vorticity(qB.subfunctions[0])
+    fig, ax = plt.subplots(1, 1, figsize=(6, 3))
+    tripcolor(vort, axes=ax, cmap="RdBu", vmin=-2, vmax=2)
+    ax.set_title("Base Flow Vorticity")
 
 # ========================================================================
 # Step 2: Compute control influence field qC (the "B" operator effect)
@@ -116,11 +117,11 @@ hgym.print("Control influence field computed successfully")
 
 # Optional: Visualize control influence field
 if show_plots:
-  vort = flow.vorticity(qC.subfunctions[0])
-  fig, ax = plt.subplots(1, 1, figsize=(6, 3))
-  tripcolor(vort, axes=ax, cmap="RdBu", vmin=-2, vmax=2)
-  ax.set_title("Control Influence Field (qC) Vorticity")
-  plt.show()
+    vort = flow.vorticity(qC.subfunctions[0])
+    fig, ax = plt.subplots(1, 1, figsize=(6, 3))
+    tripcolor(vort, axes=ax, cmap="RdBu", vmin=-2, vmax=2)
+    ax.set_title("Control Influence Field (qC) Vorticity")
+    plt.show()
 
 # ========================================================================
 # Step 3: Save linearized fields for future use
@@ -133,9 +134,9 @@ if show_plots:
 
 hgym.print(f"Saving linearized fields to {output_dir}/lin_fields.h5...")
 with fd.CheckpointFile(f"{output_dir}/lin_fields.h5", "w") as chk:
-  chk.save_mesh(flow.mesh)
-  chk.save_function(qB)  # Base flow (steady state)
-  chk.save_function(qC)  # Control influence (B operator effect)
+    chk.save_mesh(flow.mesh)
+    chk.save_function(qB)  # Base flow (steady state)
+    chk.save_function(qC)  # Control influence (B operator effect)
 
 hgym.print("LTI system components saved successfully!")
 hgym.print("\nNext steps:")

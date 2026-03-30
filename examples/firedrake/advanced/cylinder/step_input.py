@@ -36,13 +36,14 @@ Expected Behavior (Re=40, stable flow):
     - t = 5s: Step input applied
     - t > 5s: CL, CD transition to new steady state
 """
+
 import os
 
 import hydrogym.firedrake as hgym
 
 output_dir = "output"
 if not os.path.exists(output_dir):
-  os.makedirs(output_dir)
+    os.makedirs(output_dir)
 
 # Numerical configuration
 # Note: P1-P1 elements require stabilization (GLS used here)
@@ -73,26 +74,26 @@ qB = steady_solver.solve()  # Steady solution (velocity, pressure)
 # Classic step function: zero for t < 5s, maximum for t ≥ 5s
 # This is the standard input for system identification
 def controller(t, u):
-  """
-  Step function control input.
+    """
+    Step function control input.
 
-  Args:
-    t: Current time
-    u: Observation (unused in open-loop step test)
+    Args:
+      t: Current time
+      u: Observation (unused in open-loop step test)
 
-  Returns:
-    Control input: 0 before t=5s, MAX_CONTROL after
-  """
-  return flow.MAX_CONTROL if t > 5.0 else 0.0
+    Returns:
+      Control input: 0 before t=5s, MAX_CONTROL after
+    """
+    return flow.MAX_CONTROL if t > 5.0 else 0.0
 
 
 # ========================================================================
 # Step 3: Configure logging to capture response
 # ========================================================================
 def log_postprocess(flow):
-  """Extract force coefficients at each time step."""
-  CL, CD = flow.get_observations()  # Lift and drag
-  return CL, CD
+    """Extract force coefficients at each time step."""
+    CL, CD = flow.get_observations()  # Lift and drag
+    return CL, CD
 
 
 # Print and save time series data

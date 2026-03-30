@@ -38,18 +38,27 @@ from .workspace import MaiaWorkspace, prepare_maia_workspace
 # This prevents mpi4py from hanging when the package is imported outside mpirun
 # (e.g. for workspace preparation on a login node).
 
-_MPI_ATTRS = frozenset([
-    'MaiaFlowEnv', 'ConfigError',
-    'from_hf', 'list_available_environments', 'list_registered_types',
-    'MaiaInterface',
-    'Cylinder', 'RotaryCylinder',
-    'Cavity', 'Cavity3Jet',
-    'Pinball', 'JetPinball',
-    'NACA0012', 'NACA0012Gust',
-    'SquareCylinder',
-    'Cube',
-    'Sphere',
-])
+_MPI_ATTRS = frozenset(
+    [
+        "MaiaFlowEnv",
+        "ConfigError",
+        "from_hf",
+        "list_available_environments",
+        "list_registered_types",
+        "MaiaInterface",
+        "Cylinder",
+        "RotaryCylinder",
+        "Cavity",
+        "Cavity3Jet",
+        "Pinball",
+        "JetPinball",
+        "NACA0012",
+        "NACA0012Gust",
+        "SquareCylinder",
+        "Cube",
+        "Sphere",
+    ]
+)
 
 
 def _load_mpi_deps() -> None:
@@ -58,16 +67,19 @@ def _load_mpi_deps() -> None:
         import mpi4py  # noqa: F401
     except ImportError:
         raise ImportError(
-            "MAIA solver dependencies are not installed. "
-            "Install them with: pip install hydrogym[maia]"
+            "MAIA solver dependencies are not installed. Install them with: pip install hydrogym[maia]"
         ) from None
 
     import sys
+
     _mod = sys.modules[__name__]
 
     from .env_core import (
-        MaiaFlowEnv, ConfigError, from_hf,
-        list_available_environments, list_registered_types,
+        MaiaFlowEnv,
+        ConfigError,
+        from_hf,
+        list_available_environments,
+        list_registered_types,
     )
     from .mpmd_interface import MaiaInterface
     from .envs.cylinder import Cylinder, RotaryCylinder
@@ -79,18 +91,23 @@ def _load_mpi_deps() -> None:
     from .envs.sphere import Sphere
 
     for _name, _obj in [
-        ('MaiaFlowEnv', MaiaFlowEnv), ('ConfigError', ConfigError),
-        ('from_hf', from_hf),
-        ('list_available_environments', list_available_environments),
-        ('list_registered_types', list_registered_types),
-        ('MaiaInterface', MaiaInterface),
-        ('Cylinder', Cylinder), ('RotaryCylinder', RotaryCylinder),
-        ('Cavity', Cavity), ('Cavity3Jet', Cavity3Jet),
-        ('Pinball', Pinball), ('JetPinball', JetPinball),
-        ('NACA0012', NACA0012), ('NACA0012Gust', NACA0012Gust),
-        ('SquareCylinder', SquareCylinder),
-        ('Cube', Cube),
-        ('Sphere', Sphere),
+        ("MaiaFlowEnv", MaiaFlowEnv),
+        ("ConfigError", ConfigError),
+        ("from_hf", from_hf),
+        ("list_available_environments", list_available_environments),
+        ("list_registered_types", list_registered_types),
+        ("MaiaInterface", MaiaInterface),
+        ("Cylinder", Cylinder),
+        ("RotaryCylinder", RotaryCylinder),
+        ("Cavity", Cavity),
+        ("Cavity3Jet", Cavity3Jet),
+        ("Pinball", Pinball),
+        ("JetPinball", JetPinball),
+        ("NACA0012", NACA0012),
+        ("NACA0012Gust", NACA0012Gust),
+        ("SquareCylinder", SquareCylinder),
+        ("Cube", Cube),
+        ("Sphere", Sphere),
     ]:
         setattr(_mod, _name, _obj)
 
@@ -99,6 +116,7 @@ def __getattr__(name: str):
     if name in _MPI_ATTRS:
         _load_mpi_deps()
         import sys
+
         try:
             return getattr(sys.modules[__name__], name)
         except AttributeError:
@@ -108,25 +126,25 @@ def __getattr__(name: str):
 
 __all__ = [
     # Always available
-    'HFDataManager',
-    'MaiaWorkspace',
-    'prepare_maia_workspace',
+    "HFDataManager",
+    "MaiaWorkspace",
+    "prepare_maia_workspace",
     # MPI-dependent (lazy)
-    'MaiaFlowEnv',
-    'ConfigError',
-    'from_hf',
-    'list_available_environments',
-    'list_registered_types',
-    'MaiaInterface',
-    'Cylinder',
-    'RotaryCylinder',
-    'Cavity',
-    'Cavity3Jet',
-    'Pinball',
-    'JetPinball',
-    'NACA0012',
-    'NACA0012Gust',
-    'SquareCylinder',
-    'Cube',
-    'Sphere',
+    "MaiaFlowEnv",
+    "ConfigError",
+    "from_hf",
+    "list_available_environments",
+    "list_registered_types",
+    "MaiaInterface",
+    "Cylinder",
+    "RotaryCylinder",
+    "Cavity",
+    "Cavity3Jet",
+    "Pinball",
+    "JetPinball",
+    "NACA0012",
+    "NACA0012Gust",
+    "SquareCylinder",
+    "Cube",
+    "Sphere",
 ]

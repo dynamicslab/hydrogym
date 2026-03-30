@@ -117,11 +117,11 @@ def example_cavity_multistep():
             "Re": 7500,
             "observation_type": "stress_sensor",  # Wall shear stress
         },
-        'solver': hgym.SemiImplicitBDF,
-        'solver_config': {
-            'dt': 1e-4,  # Small timestep for stiff cavity flow
-            'order': 3,
-            'stabilization': 'none',
+        "solver": hgym.SemiImplicitBDF,
+        "solver_config": {
+            "dt": 1e-4,  # Small timestep for stiff cavity flow
+            "order": 3,
+            "stabilization": "none",
         },
         "actuation_config": {
             "num_substeps": 5,  # 5 solver steps per action

@@ -34,7 +34,7 @@ import hydrogym.firedrake as hgym
 
 output_dir = "output"
 if not os.path.exists(output_dir):
-  os.makedirs(output_dir)
+    os.makedirs(output_dir)
 
 data_file = f"{output_dir}/pressure.dat"
 
@@ -47,15 +47,14 @@ method = "BDF"  # Backward Differentiation Formula (implicit time-stepping)
 # Configure probe array - evenly spaced around the cylinder surface
 n_probes = 8  # Number of measurement points
 R = 0.5  # Cylinder radius
-probes = [(R * np.cos(theta), R * np.sin(theta))
-          for theta in np.linspace(0, 2 * np.pi, n_probes, endpoint=False)]
+probes = [(R * np.cos(theta), R * np.sin(theta)) for theta in np.linspace(0, 2 * np.pi, n_probes, endpoint=False)]
 
 # Create flow with custom observation points
 flow = hgym.Cylinder(
     Re=100,
     mesh=mesh,
     velocity_order=velocity_order,
-    observation_type="pressure_probes",  
+    observation_type="pressure_probes",
     probes=probes,  # List of (x, y) coordinates
 )
 
@@ -66,9 +65,9 @@ dt = 0.1  # Time step
 
 # Extract probe measurements and memory usage at each time step
 def log_postprocess(flow):
-  mem_usage = psutil.virtual_memory().percent
-  p = flow.get_observations()  # Returns array of probe values [p1, p2, ..., p8]
-  return *p, mem_usage  # Unpack probe values + memory
+    mem_usage = psutil.virtual_memory().percent
+    p = flow.get_observations()  # Returns array of probe values [p1, p2, ..., p8]
+    return *p, mem_usage  # Unpack probe values + memory
 
 
 # Configure data logging
@@ -91,7 +90,7 @@ callbacks = [
 
 # Optional controller function (currently commented out in integrate call)
 def controller(t, y):
-  return [flow.MAX_CONTROL]  # Apply maximum control input
+    return [flow.MAX_CONTROL]  # Apply maximum control input
 
 
 hgym.print("Beginning integration")
@@ -108,7 +107,7 @@ hgym.integrate(
 # Load and visualize probe measurements
 data = np.loadtxt(data_file)
 t = data[:, 0]  # Time column
-p = data[:, 1:n_probes + 1]  # Probe measurements (columns 1-8)
+p = data[:, 1 : n_probes + 1]  # Probe measurements (columns 1-8)
 
 # Plot all probe time series
 plt.figure(figsize=(7, 2))

@@ -22,6 +22,7 @@ Outputs:
 Note: This uses RotaryCylinder (with tangential actuation capability),
       but no control is applied (zero actuation input).
 """
+
 import os
 import psutil
 import hydrogym.firedrake as hgym
@@ -29,7 +30,7 @@ import hydrogym.firedrake as hgym
 # Create output directory for checkpoints
 output_dir = "output"
 if not os.path.exists(output_dir):
-  os.makedirs(output_dir)
+    os.makedirs(output_dir)
 
 pvd_out = None  # Set to a file path to enable Paraview visualization
 restart = None  # Set to checkpoint path to continue from previous simulation
@@ -52,15 +53,15 @@ flow = hgym.RotaryCylinder(
 )
 
 # Time integration parameters
-tf = 300.0  # Final time 
+tf = 300.0  # Final time
 dt = 0.01  # Time step size (adjust for CFL condition)
 
 
 # Custom function to extract quantities of interest at each time step
 def log_postprocess(flow):
-  mem_usage = psutil.virtual_memory().percent  # RAM usage for monitoring
-  CL, CD = flow.get_observations()  # Lift and drag coefficients
-  return CL, CD, mem_usage
+    mem_usage = psutil.virtual_memory().percent  # RAM usage for monitoring
+    CL, CD = flow.get_observations()  # Lift and drag coefficients
+    return CL, CD, mem_usage
 
 
 # Configure logging callback to print and save time series data

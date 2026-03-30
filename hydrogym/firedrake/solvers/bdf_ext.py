@@ -24,7 +24,6 @@ _beta_EXT = [
 
 
 class SemiImplicitBDF(NavierStokesTransientSolver):
-
     def __init__(
         self,
         flow: FlowConfig,
@@ -119,9 +118,11 @@ class SemiImplicitBDF(NavierStokesTransientSolver):
             elif self.stabilization in ["gls", "linearized_gls"]:
                 # GLS: Use direct solver (monolithic AMG fails for GLS)
                 from firedrake import logging
+
                 logging.warning(
                     f"GLS stabilization detected: using direct solver (LU/MUMPS). "
-                    f"This is slower than SUPG with monolithic AMG.")
+                    f"This is slower than SUPG with monolithic AMG."
+                )
                 solver_parameters = {
                     "ksp_type": "preonly",
                     "pc_type": "lu",

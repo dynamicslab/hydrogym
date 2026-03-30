@@ -266,9 +266,9 @@ def run_firedrake_test(
     # --- SOLVER CONFIGURATION ---
     # Time-stepping parameters for transient solvers
     solver_config = {
-        'dt': 1e-2,                    # Time step (REQUIRED for transient)
-        'order': 3,                  # BDF order: 1, 2, or 3 (default: 3)
-        'stabilization': 'none',     # Options: 'none', 'supg', 'gls'
+        "dt": 1e-2,  # Time step (REQUIRED for transient)
+        "order": 3,  # BDF order: 1, 2, or 3 (default: 3)
+        "stabilization": "none",  # Options: 'none', 'supg', 'gls'
         # 'rtol': 1e-6,                # Krylov solver relative tolerance
     }
 
@@ -299,25 +299,23 @@ def run_firedrake_test(
         # 1. Paraview visualization - save every 5 steps
         ParaviewCallback(
             interval=5,
-            filename='output/solution.pvd',
+            filename="output/solution.pvd",
             postprocess=lambda flow: (flow.u, flow.p),
         ),
-
         # 2. Checkpoint saving - save every 100 steps
         CheckpointCallback(
             interval=2,
-            filename='output/checkpoint.h5',
+            filename="output/checkpoint.h5",
             write_mesh=True,
             write_timeseries=False,
         ),
-
         # 3. Log observations - log every step
         LogCallback(
             postprocess=lambda flow: flow.get_observations()[:4],  # Log first 4 probe velocities
             nvals=4,
             interval=1,
-            filename='output/observations.txt',
-            print_fmt='t={:.4f} obs=[{:.4f}, {:.4f}, {:.4f}, {:.4f}]',
+            filename="output/observations.txt",
+            print_fmt="t={:.4f} obs=[{:.4f}, {:.4f}, {:.4f}, {:.4f}]",
         ),
     ]
 
@@ -400,8 +398,9 @@ def run_firedrake_test(
             logger.info(f"  Reynolds number: {float(env.flow.Re)}")
 
             # Verify checkpoint was loaded (check resolved path from flow object)
-            if hasattr(env.flow, 'checkpoint_path') and env.flow.checkpoint_path is not None:
+            if hasattr(env.flow, "checkpoint_path") and env.flow.checkpoint_path is not None:
                 import firedrake as fd
+
                 u_norm = fd.norm(env.flow.u)
                 p_norm = fd.norm(env.flow.p)
                 logger.info(f"\n  Checkpoint verification:")
@@ -511,30 +510,15 @@ def main():
     parser.add_argument("--num-steps", type=int, default=10, help="Number of steps per episode (default: 10)")
     parser.add_argument("--num-episodes", type=int, default=1, help="Number of episodes (default: 1)")
     parser.add_argument("--reynolds", type=float, default=None, help="Reynolds number (default: environment-specific)")
-    parser.add_argument(
-        "--num-steps",
-        type=int,
-        default=10,
-        help="Number of steps per episode (default: 10)"
-    )
-    parser.add_argument(
-        "--num-episodes",
-        type=int,
-        default=1,
-        help="Number of episodes (default: 1)"
-    )
-    parser.add_argument(
-        "--reynolds",
-        type=float,
-        default=None,
-        help="Reynolds number (default: environment-specific)"
-    )
+    parser.add_argument("--num-steps", type=int, default=10, help="Number of steps per episode (default: 10)")
+    parser.add_argument("--num-episodes", type=int, default=1, help="Number of episodes (default: 1)")
+    parser.add_argument("--reynolds", type=float, default=None, help="Reynolds number (default: environment-specific)")
     parser.add_argument(
         "--mesh-resolution",
         type=str,
-        choices=['coarse', 'medium', 'fine'],
+        choices=["coarse", "medium", "fine"],
         default=None,
-        help="Mesh resolution: 'coarse', 'medium', or 'fine' (default: environment-specific)"
+        help="Mesh resolution: 'coarse', 'medium', or 'fine' (default: environment-specific)",
     )
     parser.add_argument("--seed", type=int, default=None, help="Random seed for reproducibility (optional)")
     parser.add_argument("--verbose", action="store_true", help="Enable verbose logging")

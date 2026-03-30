@@ -81,15 +81,15 @@ class FlowConfig(PDEBase):
 
         # Process restart parameter - resolve environment names to checkpoint paths
         # or auto-infer from flow configuration
-        mesh = config.get('mesh', self.DEFAULT_MESH)
-        cache_dir = config.pop('cache_dir', None)  # Custom cache directory (optional)
-        local_dir = config.pop('local_dir', None)  # Local fallback directory (optional)
+        mesh = config.get("mesh", self.DEFAULT_MESH)
+        cache_dir = config.pop("cache_dir", None)  # Custom cache directory (optional)
+        local_dir = config.pop("local_dir", None)  # Local fallback directory (optional)
 
         # Extract numeric Reynolds number from Firedrake Constant
         Re_value = int(float(self.Re))
 
         resolved_restart = self._resolve_checkpoint(
-            restart=config.get('restart'),
+            restart=config.get("restart"),
             Re=Re_value,
             mesh=mesh,
             cache_dir=cache_dir,
@@ -99,7 +99,7 @@ class FlowConfig(PDEBase):
         # Store resolved checkpoint path for verification/debugging
         self.checkpoint_path = resolved_restart
 
-        config['restart'] = resolved_restart
+        config["restart"] = resolved_restart
 
         super().__init__(**config)
 
@@ -126,17 +126,11 @@ class FlowConfig(PDEBase):
             flow_name = self.__class__.__name__
             env_name = f"{flow_name}_2D_Re{Re}_{mesh}_FD"
 
-            logging.log(
-                logging.INFO,
-                f"No checkpoint specified, attempting to auto-load: {env_name}"
-            )
+            logging.log(logging.INFO, f"No checkpoint specified, attempting to auto-load: {env_name}")
 
             resolved = self._resolve_single_checkpoint(env_name, cache_dir, local_dir, silent=True)
             if resolved is None:
-              logging.log(
-                  logging.INFO,
-                  f"No checkpoint found for {env_name}, starting from zeros"
-              )
+                logging.log(logging.INFO, f"No checkpoint found for {env_name}, starting from zeros")
             return resolved
 
         if isinstance(restart, str):
@@ -166,10 +160,12 @@ class FlowConfig(PDEBase):
         from pathlib import Path
 
         # Check if it's an explicit path
-        if (checkpoint.startswith('/') or
-            checkpoint.startswith('./') or
-            checkpoint.startswith('../') or
-            os.path.exists(checkpoint)):
+        if (
+            checkpoint.startswith("/")
+            or checkpoint.startswith("./")
+            or checkpoint.startswith("../")
+            or os.path.exists(checkpoint)
+        ):
             # Explicit path provided - use directly
             if os.path.exists(checkpoint):
                 logging.log(logging.INFO, f"Using checkpoint: {checkpoint}")
@@ -184,22 +180,22 @@ class FlowConfig(PDEBase):
             from hydrogym.data_manager import HFDataManager
 
             if not silent:
-              logging.log(logging.INFO, f"Resolving checkpoint from environment: {checkpoint}")
+                logging.log(logging.INFO, f"Resolving checkpoint from environment: {checkpoint}")
 
             dm = HFDataManager(
                 cache_dir=cache_dir,  # Use custom cache dir if provided
                 local_fallback_dir=local_dir,  # Use local directory for offline/testing
-                use_clean_cache='copy',  # Use 'copy' for readable ckpts
-                fallback_profile='FIREDRAKE'
+                use_clean_cache="copy",  # Use 'copy' for readable ckpts
+                fallback_profile="FIREDRAKE",
             )
 
             # Get environment path (downloads if needed)
             env_path = dm.get_environment_path(checkpoint)
 
             # Find checkpoint file(s) in the environment directory
-            checkpoint_files = list(Path(env_path).glob('checkpoint*.h5'))
+            checkpoint_files = list(Path(env_path).glob("checkpoint*.h5"))
             if not checkpoint_files:
-                checkpoint_files = list(Path(env_path).glob('*.ckpt'))
+                checkpoint_files = list(Path(env_path).glob("*.ckpt"))
 
             if checkpoint_files:
                 resolved_path = str(checkpoint_files[0].resolve())
@@ -207,26 +203,19 @@ class FlowConfig(PDEBase):
                 return resolved_path
             else:
                 if not silent:
-                    logging.log(
-                        logging.WARN,
-                        f"No checkpoint file found in environment: {checkpoint}"
-                    )
+                    logging.log(logging.WARN, f"No checkpoint file found in environment: {checkpoint}")
                 return None
 
         except ImportError:
             if not silent:
                 logging.log(
                     logging.WARN,
-                    "HuggingFace Hub not available (pip install huggingface_hub). "
-                    "Checkpoint resolution disabled."
+                    "HuggingFace Hub not available (pip install huggingface_hub). Checkpoint resolution disabled.",
                 )
             return None
         except Exception as e:
             if not silent:
-                logging.log(
-                    logging.WARN,
-                    f"Could not resolve checkpoint '{checkpoint}': {e}"
-                )
+                logging.log(logging.WARN, f"Could not resolve checkpoint '{checkpoint}': {e}")
             return None
 
     def load_mesh(self, name: str) -> ufl.Mesh:
@@ -428,8 +417,7 @@ class FlowConfig(PDEBase):
     def max_cfl(self, dt) -> float:
         """Estimate of maximum CFL number"""
         h = fd.CellSize(self.mesh)
-        CFL = fd.assemble(
-            interpolate(dt * sqrt(dot(self.u, self.u)) / h, self.pressure_space))
+        CFL = fd.assemble(interpolate(dt * sqrt(dot(self.u, self.u)) / h, self.pressure_space))
         # Handle both old and new Firedrake API
         try:
             max_val = CFL.vector().max()

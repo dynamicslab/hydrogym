@@ -10,7 +10,6 @@ from .utils import is_rank_zero, print
 
 
 class ParaviewCallback(CallbackBase):
-
     def __init__(
         self,
         interval: Optional[int] = 1,

@@ -192,8 +192,8 @@ from typing import List, Tuple, Optional
 import numpy as np
 
 # Force unbuffered output for MPMD mode
-sys.stdout = open(sys.stdout.fileno(), 'w', buffering=1)
-sys.stderr = open(sys.stderr.fileno(), 'w', buffering=1)
+sys.stdout = open(sys.stdout.fileno(), "w", buffering=1)
+sys.stderr = open(sys.stderr.fileno(), "w", buffering=1)
 
 # Import hydrogym (lazy import prevents firedrake loading in MPMD mode)
 import hydrogym.maia as maia
@@ -211,10 +211,7 @@ def setup_logging(verbose: bool = False) -> logging.Logger:
     """
     level = logging.DEBUG if verbose else logging.INFO
     logging.basicConfig(
-        level=level,
-        format='%(asctime)s [%(levelname)s] %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S',
-        stream=sys.stdout
+        level=level, format="%(asctime)s [%(levelname)s] %(message)s", datefmt="%Y-%m-%d %H:%M:%S", stream=sys.stdout
     )
     return logging.getLogger(__name__)
 
@@ -229,16 +226,14 @@ def parse_range_arg(arg_str: str) -> Tuple[float, float, int]:
     Returns:
         Tuple of (min, max, num_points)
     """
-    parts = arg_str.split(',')
+    parts = arg_str.split(",")
     if len(parts) != 3:
         raise ValueError(f"Range must be in format 'min,max,num', got: {arg_str}")
     return float(parts[0]), float(parts[1]), int(parts[2])
 
 
 def create_probe_locations(
-    x_range: Tuple[float, float, int],
-    y_range: Tuple[float, float, int],
-    logger: logging.Logger
+    x_range: Tuple[float, float, int], y_range: Tuple[float, float, int], logger: logging.Logger
 ) -> List[float]:
     """
     Create probe location grid for 2D flow field sampling.
@@ -276,7 +271,7 @@ def run_environment_test(
     probe_locations: List[float],
     obs_normalization: str,
     seed: Optional[int],
-    logger: logging.Logger
+    logger: logging.Logger,
 ) -> None:
     """
     Run MAIA environment test with specified parameters.
@@ -394,7 +389,7 @@ def run_environment_test(
         # Production configuration with custom probes and normalization
         env = maia.from_hf(
             environment_name,
-            use_clean_cache=False,         # Use cached workspace (already prepared)
+            use_clean_cache=False,  # Use cached workspace (already prepared)
             probe_locations=probe_locations,
             obs_normalization_strategy=obs_normalization,
         )
@@ -469,7 +464,7 @@ def run_environment_test(
     # CAVITY (Open Cavity) [2D/3D]:
     #   - environment: Cavity_2D_Re{Re}
     #   - Available Re: 4140, 7500
-    #   - num_inputs: 1 
+    #   - num_inputs: 1
     #   - Actuation: 1 Jet
     #   - Reward: Problem-specific (mixing, vortex control, etc.)
     #
@@ -508,7 +503,7 @@ def run_environment_test(
     #   - Actuation: Surface jets or suction
     #   - Reward: -(|C_D|)
     #   - Observation: 3D probe grid in wake region
-  
+
     try:
         # Log environment information
         logger.info("-" * 70)
@@ -600,7 +595,7 @@ def main():
     parser = argparse.ArgumentParser(
         description="Test MAIA CFD environment with MPMD coupling",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog=__doc__
+        epilog=__doc__,
     )
 
     parser.add_argument(
@@ -611,20 +606,12 @@ def main():
             "Format: TYPE_DIMENSION_Re{Reynolds}. "
             "Available types: Cylinder, RotaryCylinder, Pinball, JetPinball, "
             "SquareCylinder, Cavity, Cavity3Jet, NACA0012, NACA0012Gust, Cube, Sphere"
-        )
+        ),
     )
     parser.add_argument(
-        "--num-steps",
-        type=int,
-        default=10,
-        help="Number of simulation steps per episode (default: 10)"
+        "--num-steps", type=int, default=10, help="Number of simulation steps per episode (default: 10)"
     )
-    parser.add_argument(
-        "--num-episodes",
-        type=int,
-        default=1,
-        help="Number of episodes to run (default: 1)"
-    )
+    parser.add_argument("--num-episodes", type=int, default=1, help="Number of episodes to run (default: 1)")
     parser.add_argument(
         "--probe-x-range",
         type=str,
@@ -633,7 +620,7 @@ def main():
             "X-axis probe range as 'min,max,num' (default: 1.0,8.0,8). "
             "Creates num equally-spaced probes from min to max in x-direction. "
             "For wake sampling: start > 1.0 (downstream of body)"
-        )
+        ),
     )
     parser.add_argument(
         "--probe-y-range",
@@ -643,14 +630,9 @@ def main():
             "Y-axis probe range as 'min,max,num' (default: -1.0,1.0,5). "
             "Creates num equally-spaced probes from min to max in y-direction. "
             "For wake sampling: span crossflow region of interest"
-        )
+        ),
     )
-    parser.add_argument(
-        "--seed",
-        type=int,
-        default=None,
-        help="Random seed for reproducibility (optional)"
-    )
+    parser.add_argument("--seed", type=int, default=None, help="Random seed for reproducibility (optional)")
     parser.add_argument(
         "--obs-norm",
         type=str,
@@ -662,13 +644,9 @@ def main():
             "probewise_mean_std: per-probe normalization by mean/std. "
             "none: raw observation values. "
             "customized: user-defined (requires code modification)"
-        )
+        ),
     )
-    parser.add_argument(
-        "--verbose",
-        action="store_true",
-        help="Enable verbose logging (DEBUG level)"
-    )
+    parser.add_argument("--verbose", action="store_true", help="Enable verbose logging (DEBUG level)")
 
     args = parser.parse_args()
 
@@ -699,7 +677,7 @@ def main():
             probe_locations=probe_locations,
             obs_normalization=args.obs_norm,
             seed=args.seed,
-            logger=logger
+            logger=logger,
         )
         logger.info("\n✓ Test completed successfully!")
         sys.exit(0)
@@ -711,6 +689,7 @@ def main():
     except Exception as e:
         logger.error(f"\n✗ Test failed with error: {e}")
         import traceback
+
         logger.debug(traceback.format_exc())
         sys.exit(1)
 
