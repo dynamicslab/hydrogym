@@ -174,9 +174,7 @@ def run_firedrake_test(
         from hydrogym import FlowEnv
     except ImportError as e:
         logger.error(f"✗ Failed to import: {e}")
-        logger.error(
-            "Make sure Firedrake is installed: https://www.firedrakeproject.org/download.html"
-        )
+        logger.error("Make sure Firedrake is installed: https://www.firedrakeproject.org/download.html")
         sys.exit(1)
 
     # Map environment names to flow classes and default solvers
@@ -320,9 +318,7 @@ def run_firedrake_test(
         ),
         # 3. Log observations - log every step
         LogCallback(
-            postprocess=lambda flow: flow.get_observations()[
-                :4
-            ],  # Log first 4 probe velocities
+            postprocess=lambda flow: flow.get_observations()[:4],  # Log first 4 probe velocities
             nvals=4,
             interval=1,
             filename="output/observations.txt",
@@ -409,10 +405,7 @@ def run_firedrake_test(
             logger.info(f"  Reynolds number: {float(env.flow.Re)}")
 
             # Verify checkpoint was loaded (check resolved path from flow object)
-            if (
-                hasattr(env.flow, "checkpoint_path")
-                and env.flow.checkpoint_path is not None
-            ):
+            if hasattr(env.flow, "checkpoint_path") and env.flow.checkpoint_path is not None:
                 import firedrake as fd
 
                 u_norm = fd.norm(env.flow.u)
@@ -422,17 +415,11 @@ def run_firedrake_test(
                 logger.info(f"    Velocity L2 norm: {u_norm:.6e}")
                 logger.info(f"    Pressure L2 norm: {p_norm:.6e}")
                 if u_norm < 1e-10 and p_norm < 1e-10:
-                    logger.warning(
-                        "    ⚠ Fields are zero - checkpoint may not have loaded!"
-                    )
+                    logger.warning("    ⚠ Fields are zero - checkpoint may not have loaded!")
                 else:
-                    logger.info(
-                        "    ✓ Non-zero fields detected - checkpoint loaded successfully"
-                    )
+                    logger.info("    ✓ Non-zero fields detected - checkpoint loaded successfully")
             else:
-                logger.info(
-                    "\n  No checkpoint loaded - starting from zero initial conditions"
-                )
+                logger.info("\n  No checkpoint loaded - starting from zero initial conditions")
         logger.info("-" * 70)
 
         # Run episodes
@@ -480,9 +467,7 @@ def run_firedrake_test(
                     # Handle episode termination
                     if terminated or truncated:
                         reason = "terminated" if terminated else "truncated"
-                        logger.info(
-                            f"  Episode ended ({reason}) after {episode_steps} steps"
-                        )
+                        logger.info(f"  Episode ended ({reason}) after {episode_steps} steps")
                         break
 
                 except Exception as e:
@@ -535,9 +520,7 @@ def main():
         default=10,
         help="Number of steps per episode (default: 10)",
     )
-    parser.add_argument(
-        "--num-episodes", type=int, default=1, help="Number of episodes (default: 1)"
-    )
+    parser.add_argument("--num-episodes", type=int, default=1, help="Number of episodes (default: 1)")
     parser.add_argument(
         "--reynolds",
         type=float,
@@ -550,9 +533,7 @@ def main():
         default=10,
         help="Number of steps per episode (default: 10)",
     )
-    parser.add_argument(
-        "--num-episodes", type=int, default=1, help="Number of episodes (default: 1)"
-    )
+    parser.add_argument("--num-episodes", type=int, default=1, help="Number of episodes (default: 1)")
     parser.add_argument(
         "--reynolds",
         type=float,

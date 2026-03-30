@@ -562,9 +562,7 @@ def run_environment_test(
                     # Handle episode termination
                     if terminated or truncated:
                         reason = "terminated" if terminated else "truncated"
-                        logger.info(
-                            f"  Episode ended ({reason}) after {episode_steps} steps"
-                        )
+                        logger.info(f"  Episode ended ({reason}) after {episode_steps} steps")
                         break
 
                 except Exception as e:
@@ -666,9 +664,7 @@ def main():
             "customized: user-defined (requires code modification)"
         ),
     )
-    parser.add_argument(
-        "--verbose", action="store_true", help="Enable verbose logging (DEBUG level)"
-    )
+    parser.add_argument("--verbose", action="store_true", help="Enable verbose logging (DEBUG level)")
 
     args = parser.parse_args()
 

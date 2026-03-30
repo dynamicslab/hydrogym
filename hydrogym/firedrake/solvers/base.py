@@ -39,9 +39,7 @@ class NewtonSolver:
 
         bcs = self.flow.collect_bcs()
         problem = fd.NonlinearVariationalProblem(F, q, bcs, J)
-        solver = fd.NonlinearVariationalSolver(
-            problem, solver_parameters=self.solver_parameters
-        )
+        solver = fd.NonlinearVariationalSolver(problem, solver_parameters=self.solver_parameters)
         solver.solve()
 
         return q.copy(deepcopy=True)

@@ -69,15 +69,9 @@ class FlowConfig(PDEBase):
             probes = []
 
         probe_obs_types = {
-            "velocity_probes": ObservationFunction(
-                partial(self.velocity_probe, probes), num_outputs=2 * len(probes)
-            ),
-            "pressure_probes": ObservationFunction(
-                partial(self.pressure_probe, probes), num_outputs=len(probes)
-            ),
-            "vorticity_probes": ObservationFunction(
-                partial(self.vorticity_probe, probes), num_outputs=len(probes)
-            ),
+            "velocity_probes": ObservationFunction(partial(self.velocity_probe, probes), num_outputs=2 * len(probes)),
+            "pressure_probes": ObservationFunction(partial(self.pressure_probe, probes), num_outputs=len(probes)),
+            "vorticity_probes": ObservationFunction(partial(self.vorticity_probe, probes), num_outputs=len(probes)),
         }
 
         self.obs_fun = self.configure_observations(
@@ -137,9 +131,7 @@ class FlowConfig(PDEBase):
                 f"No checkpoint specified, attempting to auto-load: {env_name}",
             )
 
-            resolved = self._resolve_single_checkpoint(
-                env_name, cache_dir, local_dir, silent=True
-            )
+            resolved = self._resolve_single_checkpoint(env_name, cache_dir, local_dir, silent=True)
             if resolved is None:
                 logging.log(
                     logging.INFO,
@@ -154,16 +146,12 @@ class FlowConfig(PDEBase):
             # Process multiple checkpoints
             resolved = []
             for ckpt in restart:
-                resolved_ckpt = self._resolve_single_checkpoint(
-                    ckpt, cache_dir, local_dir
-                )
+                resolved_ckpt = self._resolve_single_checkpoint(ckpt, cache_dir, local_dir)
                 if resolved_ckpt is not None:
                     resolved.append(resolved_ckpt)
             return resolved if resolved else None
 
-    def _resolve_single_checkpoint(
-        self, checkpoint, cache_dir=None, local_dir=None, silent=False
-    ):
+    def _resolve_single_checkpoint(self, checkpoint, cache_dir=None, local_dir=None, silent=False):
         """Resolve a single checkpoint path or environment name.
 
         Args:
@@ -190,9 +178,7 @@ class FlowConfig(PDEBase):
                 return checkpoint
             else:
                 if not silent:
-                    logging.log(
-                        logging.WARN, f"Checkpoint path does not exist: {checkpoint}"
-                    )
+                    logging.log(logging.WARN, f"Checkpoint path does not exist: {checkpoint}")
                 return None
 
         # Assume it's an environment name - try to download from HF Hub
@@ -200,9 +186,7 @@ class FlowConfig(PDEBase):
             from hydrogym.data_manager import HFDataManager
 
             if not silent:
-                logging.log(
-                    logging.INFO, f"Resolving checkpoint from environment: {checkpoint}"
-                )
+                logging.log(logging.INFO, f"Resolving checkpoint from environment: {checkpoint}")
 
             dm = HFDataManager(
                 cache_dir=cache_dir,  # Use custom cache dir if provided
@@ -240,9 +224,7 @@ class FlowConfig(PDEBase):
             return None
         except Exception as e:
             if not silent:
-                logging.log(
-                    logging.WARN, f"Could not resolve checkpoint '{checkpoint}': {e}"
-                )
+                logging.log(logging.WARN, f"Could not resolve checkpoint '{checkpoint}': {e}")
             return None
 
     def load_mesh(self, name: str) -> ufl.Mesh:
@@ -292,9 +274,7 @@ class FlowConfig(PDEBase):
 
         self.split_solution()  # Reset functions so self.u, self.p point to the new solution
 
-    def configure_observations(
-        self, obs_type=None, probe_obs_types={}
-    ) -> ObservationFunction:
+    def configure_observations(self, obs_type=None, probe_obs_types={}) -> ObservationFunction:
         raise NotImplementedError
 
     def get_observations(self) -> np.ndarray:
@@ -311,13 +291,9 @@ class FlowConfig(PDEBase):
         self.x, self.y = fd.SpatialCoordinate(self.mesh)
 
         # Set up Taylor-Hood elements
-        self.velocity_space = fd.VectorFunctionSpace(
-            self.mesh, "CG", self.velocity_order
-        )
+        self.velocity_space = fd.VectorFunctionSpace(self.mesh, "CG", self.velocity_order)
         self.pressure_space = fd.FunctionSpace(self.mesh, "CG", 1)
-        self.mixed_space = fd.MixedFunctionSpace(
-            [self.velocity_space, self.pressure_space]
-        )
+        self.mixed_space = fd.MixedFunctionSpace([self.velocity_space, self.pressure_space])
         for f_name in self.FUNCTIONS:
             setattr(self, f_name, fd.Function(self.mixed_space, name=f_name))
 
@@ -443,20 +419,14 @@ class FlowConfig(PDEBase):
             (v, s) = q_test
 
         sigma, epsilon = self.sigma, self.epsilon
-        F = (
-            -inner(dot(u, nabla_grad(u)), v) * dx
-            - inner(sigma(u, p), epsilon(v)) * dx
-            + inner(div(u), s) * dx
-        )
+        F = -inner(dot(u, nabla_grad(u)), v) * dx - inner(sigma(u, p), epsilon(v)) * dx + inner(div(u), s) * dx
         return F
 
     @pyadjoint.no_annotations
     def max_cfl(self, dt) -> float:
         """Estimate of maximum CFL number"""
         h = fd.CellSize(self.mesh)
-        CFL = fd.assemble(
-            interpolate(dt * sqrt(dot(self.u, self.u)) / h, self.pressure_space)
-        )
+        CFL = fd.assemble(interpolate(dt * sqrt(dot(self.u, self.u)) / h, self.pressure_space))
         # Handle both old and new Firedrake API
         try:
             max_val = CFL.vector().max()
@@ -486,9 +456,7 @@ class FlowConfig(PDEBase):
 
             if hasattr(self, "bcu_actuation"):
                 for i in range(self.num_inputs):
-                    u = np.clip(
-                        self.actuators[i].state, -self.MAX_CONTROL, self.MAX_CONTROL
-                    )
+                    u = np.clip(self.actuators[i].state, -self.MAX_CONTROL, self.MAX_CONTROL)
                     self.bcu_actuation[i].set_scale(u)
 
     def inner_product(
@@ -572,9 +540,7 @@ class FlowConfig(PDEBase):
         # Extract values and return
         return vort_vom.dat.data_ro
 
-    def linearize(
-        self, qB=None, adjoint=False, sigma=0.0, inverse=False, solver_parameters=None
-    ):
+    def linearize(self, qB=None, adjoint=False, sigma=0.0, inverse=False, solver_parameters=None):
         if sigma != 0.0 and not inverse:
             raise ValueError("Must use `inverse=True` with spectral shift.")
 
@@ -585,13 +551,9 @@ class FlowConfig(PDEBase):
             return self._jacobian_operator(qB, adjoint=adjoint)
 
         if sigma.imag == 0.0:
-            return self._real_shift_inv_operator(
-                qB, sigma, adjoint=adjoint, solver_parameters=solver_parameters
-            )
+            return self._real_shift_inv_operator(qB, sigma, adjoint=adjoint, solver_parameters=solver_parameters)
 
-        return self._complex_shift_inv_operator(
-            qB, sigma, adjoint=adjoint, solver_parameters=solver_parameters
-        )
+        return self._complex_shift_inv_operator(qB, sigma, adjoint=adjoint, solver_parameters=solver_parameters)
 
     # TODO: Test this. This is just here as an extension of the work done with
     # shift-inverse-type operators, but hasn't been directly tested yet. Really
@@ -627,9 +589,7 @@ class FlowConfig(PDEBase):
 
         return A
 
-    def _real_shift_inv_operator(
-        self, qB, sigma, adjoint=False, solver_parameters=None
-    ):
+    def _real_shift_inv_operator(self, qB, sigma, adjoint=False, solver_parameters=None):
         """Construct a shift-inverse Arnoldi iterator with real (or zero) shift.
 
         The shift-inverse iteration solves the matrix pencil
@@ -667,9 +627,7 @@ class FlowConfig(PDEBase):
 
         return A
 
-    def _complex_shift_inv_operator(
-        self, qB, sigma, adjoint=False, solver_parameters=None
-    ):
+    def _complex_shift_inv_operator(self, qB, sigma, adjoint=False, solver_parameters=None):
         """Construct a shift-inverse Arnoldi iterator with complex-valued shift.
 
         The shifted operator is `A = (J - sigma * M)`
