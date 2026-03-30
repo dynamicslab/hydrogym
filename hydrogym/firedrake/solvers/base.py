@@ -39,7 +39,9 @@ class NewtonSolver:
 
         bcs = self.flow.collect_bcs()
         problem = fd.NonlinearVariationalProblem(F, q, bcs, J)
-        solver = fd.NonlinearVariationalSolver(problem, solver_parameters=self.solver_parameters)
+        solver = fd.NonlinearVariationalSolver(
+            problem, solver_parameters=self.solver_parameters
+        )
         solver.solve()
 
         return q.copy(deepcopy=True)
@@ -55,8 +57,6 @@ class NewtonSolver:
         # negative signs designed for transient solvers (du/dt = residual). This broke
         # GLS stabilization which was added in commit 044d2ac (Feb 2024) with positive signs.
         # Restoring the original formulation that works with GLS/SUPG stabilization.
-        from ufl import inner, dot, nabla_grad, div, dx
-
         F = (
             inner(dot(u, nabla_grad(u)), v) * dx
             + inner(self.flow.sigma(u, p), self.flow.epsilon(v)) * dx

@@ -184,10 +184,10 @@ Customized normalization:
 See full examples in the script below.
 """
 
-import sys
 import argparse
 import logging
-from typing import List, Tuple, Optional
+import sys
+from typing import List, Optional, Tuple
 
 import numpy as np
 
@@ -196,7 +196,7 @@ sys.stdout = open(sys.stdout.fileno(), "w", buffering=1)
 sys.stderr = open(sys.stderr.fileno(), "w", buffering=1)
 
 # Import hydrogym (lazy import prevents firedrake loading in MPMD mode)
-import hydrogym.maia as maia
+import hydrogym.maia as maia  # noqa: E402
 
 
 def setup_logging(verbose: bool = False) -> logging.Logger:
@@ -211,7 +211,10 @@ def setup_logging(verbose: bool = False) -> logging.Logger:
     """
     level = logging.DEBUG if verbose else logging.INFO
     logging.basicConfig(
-        level=level, format="%(asctime)s [%(levelname)s] %(message)s", datefmt="%Y-%m-%d %H:%M:%S", stream=sys.stdout
+        level=level,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+        stream=sys.stdout,
     )
     return logging.getLogger(__name__)
 
@@ -233,7 +236,9 @@ def parse_range_arg(arg_str: str) -> Tuple[float, float, int]:
 
 
 def create_probe_locations(
-    x_range: Tuple[float, float, int], y_range: Tuple[float, float, int], logger: logging.Logger
+    x_range: Tuple[float, float, int],
+    y_range: Tuple[float, float, int],
+    logger: logging.Logger,
 ) -> List[float]:
     """
     Create probe location grid for 2D flow field sampling.
@@ -249,7 +254,7 @@ def create_probe_locations(
     x_min, x_max, num_x = x_range
     y_min, y_max, num_y = y_range
 
-    logger.info(f"Creating probe grid:")
+    logger.info("Creating probe grid:")
     logger.info(f"  X: [{x_min}, {x_max}] with {num_x} probes")
     logger.info(f"  Y: [{y_min}, {y_max}] with {num_y} probes")
     logger.info(f"  Total probes: {num_x * num_y}")
@@ -375,7 +380,7 @@ def run_environment_test(
 
     # Create environment
     logger.info("Creating environment from Hugging Face Hub...")
-    logger.info(f"Configuration:")
+    logger.info("Configuration:")
     logger.info(f"  Environment: {environment_name}")
     logger.info(f"  Probe locations: {len(probe_locations) // 2} probes (2D)")
     logger.info(f"  Observation normalization: {obs_normalization}")
@@ -524,7 +529,7 @@ def run_environment_test(
             # Reset environment
             try:
                 obs, _ = env.reset(seed=seed)
-                logger.info(f"✓ Environment reset")
+                logger.info("✓ Environment reset")
                 logger.info(f"  Initial observation shape: {obs.shape}")
             except Exception as e:
                 logger.error(f"✗ Reset failed: {e}")
@@ -557,7 +562,9 @@ def run_environment_test(
                     # Handle episode termination
                     if terminated or truncated:
                         reason = "terminated" if terminated else "truncated"
-                        logger.info(f"  Episode ended ({reason}) after {episode_steps} steps")
+                        logger.info(
+                            f"  Episode ended ({reason}) after {episode_steps} steps"
+                        )
                         break
 
                 except Exception as e:
@@ -609,9 +616,17 @@ def main():
         ),
     )
     parser.add_argument(
-        "--num-steps", type=int, default=10, help="Number of simulation steps per episode (default: 10)"
+        "--num-steps",
+        type=int,
+        default=10,
+        help="Number of simulation steps per episode (default: 10)",
     )
-    parser.add_argument("--num-episodes", type=int, default=1, help="Number of episodes to run (default: 1)")
+    parser.add_argument(
+        "--num-episodes",
+        type=int,
+        default=1,
+        help="Number of episodes to run (default: 1)",
+    )
     parser.add_argument(
         "--probe-x-range",
         type=str,
@@ -632,7 +647,12 @@ def main():
             "For wake sampling: span crossflow region of interest"
         ),
     )
-    parser.add_argument("--seed", type=int, default=None, help="Random seed for reproducibility (optional)")
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=None,
+        help="Random seed for reproducibility (optional)",
+    )
     parser.add_argument(
         "--obs-norm",
         type=str,
@@ -646,7 +666,9 @@ def main():
             "customized: user-defined (requires code modification)"
         ),
     )
-    parser.add_argument("--verbose", action="store_true", help="Enable verbose logging (DEBUG level)")
+    parser.add_argument(
+        "--verbose", action="store_true", help="Enable verbose logging (DEBUG level)"
+    )
 
     args = parser.parse_args()
 
