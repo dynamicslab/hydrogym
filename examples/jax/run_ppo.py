@@ -13,6 +13,7 @@ import optax
 from flax.linen.initializers import constant, orthogonal
 from typing import Sequence, NamedTuple, Any
 from flax.training.train_state import TrainState
+from functools import partial
 import distrax
 import sys, os
 import pickle
@@ -182,7 +183,8 @@ def make_train(config):
             / config["NUM_UPDATES"]
         )
         return config["LR"] * frac
-
+    
+    #@partial(jax.jit, static_argnums=(1,))
     def train(rng):
         # INIT NETWORK
         network = ActorCritic(
@@ -409,8 +411,8 @@ if __name__ == "__main__":
     }
     
     rng = jax.random.PRNGKey(30)
-    train_jit = make_train(config)
-    #train_jit = jax.jit(make_train(config))
+    #train_jit = make_train(config)
+    train_jit = jax.jit(make_train(config))
     out = train_jit(rng)
 
     #  After training is completed

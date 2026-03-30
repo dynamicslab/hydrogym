@@ -267,8 +267,6 @@ class PseudoSpectralNavierStokes2D(IMEXEquation):
 
       return self.kx * cfy_hat - self.ky * cfx_hat
     
-
-    
     
   def forcing_term(self):
       """Computes the user-specified forcing term of the vorticity equation 
@@ -306,7 +304,7 @@ class KolmogorovFlowState(environment.EnvState):
 
 @struct.dataclass
 class KolmogorovFlowParams(EnvParams):
-    min_action: float = -0.1
+    min_action: float = -0.5
     max_action: float = 0.5
     min_obs: float = -jnp.inf
     max_obs: float = jnp.inf
@@ -323,7 +321,7 @@ class KolmogorovFlowParams(EnvParams):
     action_dim: int = 4
     obs_dim: int = 64
     max_episode_steps: int = 1000
-    reward_alpha: float = 4.0
+    reward_alpha: float = 0.0
     
     include_grad: bool = True
 
@@ -464,7 +462,7 @@ class KolmogorovFlow(JAXFlowEnvBase):
     ) -> jnp.ndarray:
         energy = self._avg_tke(trajectory)
         action_penalty = jnp.sum(jnp.abs(action))
-        return params.reward_alpha * energy - action_penalty
+        return -(params.reward_alpha * energy + action_penalty)
 
     def reset_env(
         self,
