@@ -24,7 +24,7 @@ import hydrogym.firedrake as hgym
 
 output_dir = "output"
 if not os.path.exists(output_dir):
-  os.makedirs(output_dir)
+    os.makedirs(output_dir)
 
 mesh_resolution = "medium"
 Re = 80  # Use Re < 100 for better steady convergence
@@ -55,9 +55,9 @@ solver = hgym.NewtonSolver(
 
 # Reynolds ramping for convergence
 for i, Re_val in enumerate(Re_init):
-  flow.Re.assign(Re_val)
-  hgym.print(f"Steady solve at Re={Re_init[i]}")
-  qB = solver.solve()
+    flow.Re.assign(Re_val)
+    hgym.print(f"Steady solve at Re={Re_init[i]}")
+    qB = solver.solve()
 
 # Save steady state checkpoint for restart or post-processing
 flow.save_checkpoint(f"{output_dir}/pinball_Re{Re}_steady.h5")
@@ -73,12 +73,12 @@ hgym.print(f"  Cylinder 3: CL={CL[2]:.6f}, CD={CD[2]:.6f}")
 # Save visualization
 vort = flow.vorticity()
 try:
-  # Try newer Firedrake API
-  pvd = fd.VTKFile(f"{output_dir}/pinball_Re{Re}_steady.pvd")
-  pvd.write(flow.u, flow.p, vort)
+    # Try newer Firedrake API
+    pvd = fd.VTKFile(f"{output_dir}/pinball_Re{Re}_steady.pvd")
+    pvd.write(flow.u, flow.p, vort)
 except AttributeError:
-  # Fall back to older API
-  pvd = fd.File(f"{output_dir}/pinball_Re{Re}_steady.pvd")
-  pvd.write(flow.u, flow.p, vort)
+    # Fall back to older API
+    pvd = fd.File(f"{output_dir}/pinball_Re{Re}_steady.pvd")
+    pvd.write(flow.u, flow.p, vort)
 
 hgym.print(f"Steady state saved to {output_dir}/pinball_Re{Re}_steady.h5")

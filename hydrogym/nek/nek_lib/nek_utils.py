@@ -1,5 +1,5 @@
 """
-Collection of NEK5000 usage 
+Collection of NEK5000 usage
 """
 
 import os
@@ -45,7 +45,6 @@ V17_PARAM_MAPPING = {
 
 
 class NEK_INIT:
-
     def __init__(self, nek: nek, drl: drl, rank_folder) -> None:
         """
         A class for initialization of NEK Dependencies
@@ -116,7 +115,6 @@ class NEK_INIT:
             if not os.path.exists(from_file):
                 raise FileNotFoundError(f"[IO] {from_file} not EXIST!")
             else:
-
                 # IF the file exist, we clean it to ensure everything works fine.
                 if os.path.exists(to_file):
                     os.remove(to_file)
@@ -219,33 +217,19 @@ class NEK_INIT:
             # ---------------------------
             userp = 1
             fpar.write("#------DRL SETUP-------\n")
-            fpar.write(
-                "userParam%02d = %s \n" % (userp, self.nek.ndrl)
-            )  # Number of DRL step
+            fpar.write("userParam%02d = %s \n" % (userp, self.nek.ndrl))  # Number of DRL step
             userp += 1
-            fpar.write(
-                "userParam%02d = %s \n" % (userp, self.nek.znmf_avg)
-            )  # Average Z-mode for DRL
+            fpar.write("userParam%02d = %s \n" % (userp, self.nek.znmf_avg))  # Average Z-mode for DRL
             userp += 1
-            fpar.write(
-                "userParam%02d = %s \n" % (userp, self.nek.y_sensing)
-            )  # Sensing plane location for DRL
+            fpar.write("userParam%02d = %s \n" % (userp, self.nek.y_sensing))  # Sensing plane location for DRL
             userp += 1
-            fpar.write(
-                "userParam%02d = %s \n" % (userp, self.nek.retau)
-            )  # Reynolds number for reference channel
+            fpar.write("userParam%02d = %s \n" % (userp, self.nek.retau))  # Reynolds number for reference channel
             userp += 1
-            fpar.write(
-                "userParam%02d = %s \n" % (userp, self.nek.ys_bdf)
-            )  # Sensing plane location for Body-Force
+            fpar.write("userParam%02d = %s \n" % (userp, self.nek.ys_bdf))  # Sensing plane location for Body-Force
             userp += 1
-            fpar.write(
-                "userParam%02d = %s \n" % (userp, self.nek.amp_bdf)
-            )  # Amplitude for Body-Force
+            fpar.write("userParam%02d = %s \n" % (userp, self.nek.amp_bdf))  # Amplitude for Body-Force
             userp += 1
-            fpar.write(
-                "userParam%02d = %s \n" % (userp, self.nek.ret_bdf)
-            )  # Scale for Body-Force
+            fpar.write("userParam%02d = %s \n" % (userp, self.nek.ret_bdf))  # Scale for Body-Force
             # userp+ = 1
             fpar.write("#---------------------\n")
             fpar.write("\n")

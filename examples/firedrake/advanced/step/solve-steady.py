@@ -18,6 +18,7 @@ Note: The steady state at Re=600 may be unstable, exhibiting vortex shedding
       when perturbed. This solver finds the equilibrium solution useful for
       stability studies and as a base flow.
 """
+
 import os
 import firedrake as fd
 import numpy as np
@@ -67,12 +68,12 @@ flow.save_checkpoint(f"{checkpoint_prefix}.h5")
 # Save visualization with velocity, pressure, and vorticity
 vort = flow.vorticity()
 try:
-  # Try newer Firedrake API
-  pvd = fd.VTKFile(f"{checkpoint_prefix}.pvd")
-  pvd.write(flow.u, flow.p, vort)
+    # Try newer Firedrake API
+    pvd = fd.VTKFile(f"{checkpoint_prefix}.pvd")
+    pvd.write(flow.u, flow.p, vort)
 except AttributeError:
-  # Fall back to older API
-  pvd = fd.File(f"{checkpoint_prefix}.pvd")
-  pvd.write(flow.u, flow.p, vort)
+    # Fall back to older API
+    pvd = fd.File(f"{checkpoint_prefix}.pvd")
+    pvd.write(flow.u, flow.p, vort)
 
 hgym.print(f"Steady state saved to {checkpoint_prefix}.h5")

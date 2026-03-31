@@ -21,6 +21,7 @@ Outputs:
 
 Note: The controller function is defined but commented out in the integration call.
 """
+
 import os
 import numpy as np
 import psutil
@@ -43,10 +44,10 @@ flow = hgym.Pinball(
 
 # Custom function to extract quantities of interest at each time step
 def log_postprocess(flow):
-  mem_usage = psutil.virtual_memory().percent  # RAM usage for monitoring
-  obs = flow.get_observations()
-  CL = obs[:3]  # Lift coefficients for all three cylinders
-  return *CL, mem_usage
+    mem_usage = psutil.virtual_memory().percent  # RAM usage for monitoring
+    obs = flow.get_observations()
+    CL = obs[:3]  # Lift coefficients for all three cylinders
+    return *CL, mem_usage
 
 
 # Configure logging callback to print and save time series data
@@ -69,7 +70,7 @@ callbacks = [
 
 # Controller function (currently not used - see commented line in integrate call)
 def controller(t, obs):
-  return np.array([0.0, 1.0, 1.0])  # Actuation inputs for three cylinders
+    return np.array([0.0, 1.0, 1.0])  # Actuation inputs for three cylinders
 
 
 # Time integration parameters

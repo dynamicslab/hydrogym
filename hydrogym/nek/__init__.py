@@ -26,10 +26,11 @@ from .AFC import AFC, OppoCtrl, BLCtrl, SinWave, ZeroCtrl, make_afc_controller
 
 # Try to import PettingZoo wrapper (optional)
 try:
-  from .pettingzoo_env import NekPettingZooEnv, make_pettingzoo_env
-  __all_pettingzoo__ = ["NekPettingZooEnv", "make_pettingzoo_env"]
+    from .pettingzoo_env import NekPettingZooEnv, make_pettingzoo_env
+
+    __all_pettingzoo__ = ["NekPettingZooEnv", "make_pettingzoo_env"]
 except ImportError:
-  __all_pettingzoo__ = []
+    __all_pettingzoo__ = []
 
 # Import integrate last to avoid circular imports
 from .integrate import integrate
@@ -38,18 +39,15 @@ __all__ = [
     # Core environment classes
     "NekEnv",
     "NekParallelEnv",
-
     # Configuration
     "Config",
     "ConfigError",
-
     # Utilities
     "mpi_split",
     "integrate",
     "io",
     "is_rank_zero",
     "print",
-
     # Controllers
     "AFC",
     "OppoCtrl",
@@ -62,23 +60,23 @@ __all__ = [
 
 # Backwards compatibility: provide old names
 def load_nek_config(config_path: str, overrides=None):
-  """
-  Load Nek config from YAML and apply overrides.
+    """
+    Load Nek config from YAML and apply overrides.
 
-  DEPRECATED: This function is kept for backwards compatibility.
-  The new NekEnv accepts OmegaConf objects directly.
-  """
-  from omegaconf import OmegaConf
+    DEPRECATED: This function is kept for backwards compatibility.
+    The new NekEnv accepts OmegaConf objects directly.
+    """
+    from omegaconf import OmegaConf
 
-  if overrides is None:
-    overrides = []
+    if overrides is None:
+        overrides = []
 
-  conf = OmegaConf.merge(
-      OmegaConf.structured(Config()),
-      OmegaConf.load(config_path),
-      OmegaConf.from_dotlist(overrides),
-  )
-  return conf
+    conf = OmegaConf.merge(
+        OmegaConf.structured(Config()),
+        OmegaConf.load(config_path),
+        OmegaConf.from_dotlist(overrides),
+    )
+    return conf
 
 
 # Legacy compatibility: NekMARLGymWrapper -> NekEnv

@@ -18,6 +18,7 @@ Note: At Re=7500, the flow is turbulent, but this solver finds the unstable
       steady state solution, which is useful for stability analysis and as
       a base flow for turbulence studies.
 """
+
 import os
 import firedrake as fd
 
@@ -35,11 +36,7 @@ solver_parameters = {"snes_monitor": None}
 Re_init = [500, 1000, 2000, 4000, Re]
 
 # Create flow configuration with P1-P1 elements
-flow = hgym.Cavity(
-    Re=Re_init[0],
-    mesh=mesh_resolution,
-    velocity_order=1,
-    use_HF_data_manager=False)
+flow = hgym.Cavity(Re=Re_init[0], mesh=mesh_resolution, velocity_order=1, use_HF_data_manager=False)
 
 dof = flow.mixed_space.dim()
 hgym.print(f"Total dof: {dof} --- dof/rank: {int(dof / fd.COMM_WORLD.size)}")
@@ -64,12 +61,12 @@ flow.save_checkpoint(f"{output_dir}/{Re}_steady.h5")
 # Save visualization with velocity, pressure, and vorticity
 vort = flow.vorticity()
 try:
-  # Try newer Firedrake API
-  pvd = fd.VTKFile(f"{output_dir}/{Re}_steady.pvd")
-  pvd.write(flow.u, flow.p, vort)
+    # Try newer Firedrake API
+    pvd = fd.VTKFile(f"{output_dir}/{Re}_steady.pvd")
+    pvd.write(flow.u, flow.p, vort)
 except AttributeError:
-  # Fall back to older API
-  pvd = fd.File(f"{output_dir}/{Re}_steady.pvd")
-  pvd.write(flow.u, flow.p, vort)
+    # Fall back to older API
+    pvd = fd.File(f"{output_dir}/{Re}_steady.pvd")
+    pvd.write(flow.u, flow.p, vort)
 
 hgym.print(f"Steady state saved to {output_dir}/{Re}_steady.h5")

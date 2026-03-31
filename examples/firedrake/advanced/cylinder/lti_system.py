@@ -109,8 +109,7 @@ bcs = flow.collect_bcs()  # Collect all boundary conditions
 # Solve linear system: J * qC = 0 with inhomogeneous BCs
 # This gives the steady flow field caused by unit actuation
 qC = fd.Function(flow.mixed_space, name="qC")
-v, s = fd.TestFunctions(
-    flow.mixed_space)  # Test functions for velocity, pressure
+v, s = fd.TestFunctions(flow.mixed_space)  # Test functions for velocity, pressure
 zero = inner(fd.Constant((0.0, 0.0)), v) * dx  # Zero forcing on RHS
 fd.solve(J == zero, qC, bcs=bcs)
 

@@ -23,6 +23,7 @@ Outputs:
 Prerequisites:
     - Requires steady state checkpoint from solve-steady.py
 """
+
 import os
 import firedrake as fd
 import numpy as np
@@ -63,19 +64,15 @@ dt = 0.01  # Time step size
 
 # Custom function to extract quantities of interest at each time step
 def log_postprocess(flow):
-  KE = 0.5 * fd.assemble(
-      fd.inner(flow.u, flow.u) * fd.dx)  # Total kinetic energy
-  TKE = flow.evaluate_objective(
-  )  # Turbulent kinetic energy (fluctuation energy)
-  CFL = flow.max_cfl(dt)  # CFL number for numerical stability monitoring
-  mem_usage = psutil.virtual_memory().percent  # RAM usage
-  return [CFL, KE, TKE, mem_usage]
+    KE = 0.5 * fd.assemble(fd.inner(flow.u, flow.u) * fd.dx)  # Total kinetic energy
+    TKE = flow.evaluate_objective()  # Turbulent kinetic energy (fluctuation energy)
+    CFL = flow.max_cfl(dt)  # CFL number for numerical stability monitoring
+    mem_usage = psutil.virtual_memory().percent  # RAM usage
+    return [CFL, KE, TKE, mem_usage]
 
 
 # Configure logging callback to print and save time series data
-print_fmt = (
-    "t: {0:0.3f}\t\tCFL: {1:0.3f}\t\t KE: {2:0.6e}\t\t TKE: {3:0.6e}\t\t Mem: {4:0.1f}"
-)
+print_fmt = "t: {0:0.3f}\t\tCFL: {1:0.3f}\t\t KE: {2:0.6e}\t\t TKE: {3:0.6e}\t\t Mem: {4:0.1f}"
 interval = max(1, int(1e-1 / dt))  # Log every 0.1 time units
 callbacks = [
     # hgym.io.ParaviewCallback(interval=100, filename=pvd_out, postprocess=compute_vort),

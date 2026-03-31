@@ -22,6 +22,7 @@ Outputs:
 Prerequisites:
     - Requires steady state checkpoint from solve-steady.py
 """
+
 import os
 import firedrake as fd
 import numpy as np
@@ -50,19 +51,15 @@ flow.q += rng.normal(flow.mixed_space, 0.0, 1e-2)
 
 # Custom function to extract quantities of interest at each time step
 def log_postprocess(flow):
-  KE = 0.5 * fd.assemble(
-      fd.inner(flow.u, flow.u) * fd.dx)  # Total kinetic energy
-  TKE = flow.evaluate_objective(
-  )  # Turbulent kinetic energy (fluctuation energy)
-  CFL = flow.max_cfl(dt)  # CFL number for numerical stability monitoring
-  mem_usage = psutil.virtual_memory().percent  # RAM usage
-  return [CFL, KE, TKE, mem_usage]
+    KE = 0.5 * fd.assemble(fd.inner(flow.u, flow.u) * fd.dx)  # Total kinetic energy
+    TKE = flow.evaluate_objective()  # Turbulent kinetic energy (fluctuation energy)
+    CFL = flow.max_cfl(dt)  # CFL number for numerical stability monitoring
+    mem_usage = psutil.virtual_memory().percent  # RAM usage
+    return [CFL, KE, TKE, mem_usage]
 
 
 # Configure logging callback to print and save time series data
-print_fmt = (
-    "t: {0:0.3f}\t\tCFL: {1:0.3f}\t\t KE: {2:0.3e}\t\t TKE: {3:0.3e}\t\t Mem: {4:0.1f}"
-)
+print_fmt = "t: {0:0.3f}\t\tCFL: {1:0.3f}\t\t KE: {2:0.3e}\t\t TKE: {3:0.3e}\t\t Mem: {4:0.1f}"
 callbacks = [
     # hgym.io.ParaviewCallback(interval=100, filename=pvd_out, postprocess=compute_vort),
     # hgym.io.CheckpointCallback(interval=1000, filename=checkpoint),

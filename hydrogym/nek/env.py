@@ -77,12 +77,9 @@ def mpi_split(comm_world: MPI.Comm, nproc: Optional[int] = None) -> MPI.Comm:
         flush=True,
     )
 
-    sub_comm = local_comm.Create_intercomm(
-        local_leader=0, peer_comm=MPI.COMM_WORLD, remote_leader=1, tag=99
-    )
+    sub_comm = local_comm.Create_intercomm(local_leader=0, peer_comm=MPI.COMM_WORLD, remote_leader=1, tag=99)
     print(
-        f"[MPI_SPLIT] Inter-comm created: local_size={sub_comm.Get_size()}, "
-        f"remote_size={sub_comm.Get_remote_size()}",
+        f"[MPI_SPLIT] Inter-comm created: local_size={sub_comm.Get_size()}, remote_size={sub_comm.Get_remote_size()}",
         flush=True,
     )
     return sub_comm
@@ -154,15 +151,12 @@ class NekEnv(gym.Env):
         """
         # Determine which API is being used
         if conf is not None and env_config is not None:
-            raise ValueError(
-                "Cannot provide both 'conf' and 'env_config'. Use one or the other."
-            )
+            raise ValueError("Cannot provide both 'conf' and 'env_config'. Use one or the other.")
 
         if conf is not None:
             # Legacy API
             warnings.warn(
-                "Passing 'conf' is deprecated. Use the MAIA pattern: "
-                "env = NekEnv.from_hf('EnvName', nproc=10)",
+                "Passing 'conf' is deprecated. Use the MAIA pattern: env = NekEnv.from_hf('EnvName', nproc=10)",
                 DeprecationWarning,
                 stacklevel=2,
             )
@@ -223,9 +217,7 @@ class NekEnv(gym.Env):
         }
         return cls(env_config=env_config)
 
-    def _init_from_legacy(
-        self, conf: Config, run_root: str, run_name: Optional[str], reward_agg: str
-    ):
+    def _init_from_legacy(self, conf: Config, run_root: str, run_name: Optional[str], reward_agg: str):
         """Initialize using legacy conf object."""
         self.conf = conf
         self.reward_agg = reward_agg
@@ -252,9 +244,7 @@ class NekEnv(gym.Env):
         # Initialize the environment (this sets n_actuators, obs_per_actuator, etc.)
         self._initialize()
 
-    def _init_from_hf(
-        self, env_config: Dict, run_root: str, run_name: Optional[str], reward_agg: str
-    ):
+    def _init_from_hf(self, env_config: Dict, run_root: str, run_name: Optional[str], reward_agg: str):
         """Initialize using MAIA pattern from HuggingFace."""
         # Validate required parameters
         if "environment_name" not in env_config:
@@ -269,9 +259,7 @@ class NekEnv(gym.Env):
         self.reward_agg = reward_agg
 
         # Initialize HF data manager
-        self.hf_repo_id = env_config.get(
-            "hf_repo_id", "dynamicslab/HydroGym-environments"
-        )
+        self.hf_repo_id = env_config.get("hf_repo_id", "dynamicslab/HydroGym-environments")
         self.local_fallback_dir = env_config.get("local_fallback_dir", None)
         self.use_clean_cache = env_config.get("use_clean_cache", True)
 
@@ -286,9 +274,7 @@ class NekEnv(gym.Env):
         self.env_data_path = self._setup_environment_data()
 
         # Resolve and load configuration file
-        self.configuration_file = self._resolve_configuration_file(
-            env_config.get("configuration_file")
-        )
+        self.configuration_file = self._resolve_configuration_file(env_config.get("configuration_file"))
 
         if not self.configuration_file:
             raise ConfigError(
@@ -337,9 +323,7 @@ class NekEnv(gym.Env):
         but it contains the path to the run_folder where Nek will execute.
         """
         # Get case name from config (or use environment name as fallback)
-        if hasattr(self.conf, "simulation") and hasattr(
-            self.conf.simulation, "CASENAME"
-        ):
+        if hasattr(self.conf, "simulation") and hasattr(self.conf.simulation, "CASENAME"):
             casename = self.conf.simulation.CASENAME
         elif hasattr(self.conf, "mesh") and hasattr(self.conf.mesh, "CASENAME"):
             casename = self.conf.mesh.CASENAME
@@ -385,13 +369,9 @@ class NekEnv(gym.Env):
             print(f"[NEK] Using environment data from: {env_path}")
             return env_path
         except Exception as e:
-            raise ConfigError(
-                f"Failed to setup environment data for {self.environment_name}: {e}"
-            )
+            raise ConfigError(f"Failed to setup environment data for {self.environment_name}: {e}")
 
-    def _resolve_configuration_file(
-        self, config_file_input: Optional[str]
-    ) -> Optional[str]:
+    def _resolve_configuration_file(self, config_file_input: Optional[str]) -> Optional[str]:
         """
         Resolve configuration file path.
 
@@ -432,12 +412,8 @@ class NekEnv(gym.Env):
             restart_folder = self.conf.initial_conditions.restart_folder
             # Handle both relative and absolute paths
             if not os.path.isabs(restart_folder):
-                self.conf.initial_conditions.restart_folder = os.path.join(
-                    self.env_data_path, restart_folder
-                )
-        elif hasattr(self.conf, "simulation") and hasattr(
-            self.conf.simulation, "restart_folder"
-        ):
+                self.conf.initial_conditions.restart_folder = os.path.join(self.env_data_path, restart_folder)
+        elif hasattr(self.conf, "simulation") and hasattr(self.conf.simulation, "restart_folder"):
             # Support old format (both 'restarts' and 'restart_files')
             restart_folder = self.conf.simulation.restart_folder
             if not os.path.isabs(restart_folder):
@@ -451,9 +427,7 @@ class NekEnv(gym.Env):
                         break
                 else:
                     # Fallback: use configured path even if it doesn't exist yet
-                    self.conf.simulation.restart_folder = os.path.join(
-                        self.env_data_path, restart_folder
-                    )
+                    self.conf.simulation.restart_folder = os.path.join(self.env_data_path, restart_folder)
 
     def _apply_runtime_overrides(self, env_config: Dict):
         """Apply runtime overrides from env_config to loaded config."""
@@ -537,20 +511,14 @@ class NekEnv(gym.Env):
         self.mpi_info = mpi_info
 
         # Get TOTCTRL before initializing actuators (needed by _init_actuators)
-        self.TOTCTRL = self._get_config_value(
-            ("mesh", "TOTCTRL"), ("simulation", "TOTCTRL")
-        )
+        self.TOTCTRL = self._get_config_value(("mesh", "TOTCTRL"), ("simulation", "TOTCTRL"))
 
         # Initialize actuators (communicate with Nek to get control point info)
         self._init_actuators()
 
         # State/observation setup
-        self.obs_per_actuator = self._get_config_value(
-            ("rl_interface", "npl_state"), ("runner", "npl_state")
-        )
-        self.utau = self._get_config_value(
-            ("normalization", "u_tau"), ("runner", "u_tau")
-        )
+        self.obs_per_actuator = self._get_config_value(("rl_interface", "npl_state"), ("runner", "npl_state"))
+        self.utau = self._get_config_value(("normalization", "u_tau"), ("runner", "u_tau"))
 
         # Action setup
         lx1 = self._get_config_value(("mesh", "lx1"), ("simulation", "lx1"))
@@ -563,9 +531,7 @@ class NekEnv(gym.Env):
             ("runner", "rescale_actions"),
             default=False,
         )
-        ctrl_max_amp = self._get_config_value(
-            ("rl_interface", "ctrl_max_amp"), ("runner", "ctrl_max_amp"), default=1.0
-        )
+        ctrl_max_amp = self._get_config_value(("rl_interface", "ctrl_max_amp"), ("runner", "ctrl_max_amp"), default=1.0)
         ctrl_min_amp = self._get_config_value(
             ("rl_interface", "ctrl_min_amp"), ("runner", "ctrl_min_amp"), default=-1.0
         )
@@ -579,9 +545,7 @@ class NekEnv(gym.Env):
             self.ctrl_max_amp = ctrl_max_amp
 
         # Reward setup
-        self.baseline_dudy = self._get_config_value(
-            ("normalization", "dUdy"), ("runner", "dUdy")
-        )
+        self.baseline_dudy = self._get_config_value(("normalization", "dUdy"), ("runner", "dUdy"))
         self.restart_index = 0
         self.act_index = 0
         self.reward_log = []
@@ -598,20 +562,12 @@ class NekEnv(gym.Env):
         print(f"SCALE: dUdy={self.baseline_dudy}\n Utau={self.utau}", flush=True)
 
         # Reward history (if using moving average)
-        rew_mode = self._get_config_value(
-            ("episode", "reward_mode"), ("runner", "rew_mode"), default="Homo"
-        )
+        rew_mode = self._get_config_value(("episode", "reward_mode"), ("runner", "rew_mode"), default="Homo")
         if rew_mode == "MovingAverage":
-            size_history = self._get_config_value(
-                ("episode", "size_history"), ("runner", "size_history"), default=10
-            )
-            self.reward_history = RingBuffer(
-                length=size_history, dim=(self.n_actuators,)
-            )
+            size_history = self._get_config_value(("episode", "size_history"), ("runner", "size_history"), default=10)
+            self.reward_history = RingBuffer(length=size_history, dim=(self.n_actuators,))
             for i_h in range(size_history):
-                self.reward_history.data[i_h] = self.baseline_dudy * np.ones(
-                    (self.n_actuators,)
-                )
+                self.reward_history.data[i_h] = self.baseline_dudy * np.ones((self.n_actuators,))
 
         # Define Gym spaces (after all attributes are set)
         # Observation: flattened array of all actuator observations
@@ -644,14 +600,14 @@ class NekEnv(gym.Env):
             default=10000,  # Default max steps per episode (old configs don't have this)
         )
         self.ndrl = self._get_config_value(
-            ("simulation", "ndrl"), default=1  # Default: 1 Nek step per RL action
+            ("simulation", "ndrl"),
+            default=1,  # Default: 1 Nek step per RL action
         )
         self.target_cfl = self._get_config_value(
-            ("simulation", "target_cfl"), default=2.0  # Default CFL threshold
+            ("simulation", "target_cfl"),
+            default=2.0,  # Default CFL threshold
         )
-        self.znmf_avg = self._get_config_value(
-            ("physics", "znmf_avg"), ("simulation", "znmf_avg"), default=0
-        )
+        self.znmf_avg = self._get_config_value(("physics", "znmf_avg"), ("simulation", "znmf_avg"), default=0)
         self.normalize_input = self._get_config_value(
             ("normalization", "normalize_input"),
             ("runner", "normalize_input"),
@@ -667,9 +623,7 @@ class NekEnv(gym.Env):
     def _init_actuators(self):
         """Initialize actuators by communicating with Nek to get control point info."""
         request = b"INTAL"
-        self.sub_comm.Send(
-            [request, MPI.CHARACTER], dest=0, tag=tag_dict["COMMAND"]["tag"]
-        )
+        self.sub_comm.Send([request, MPI.CHARACTER], dest=0, tag=tag_dict["COMMAND"]["tag"])
         self.n_actuators = 0
 
         # Create actuator info storage
@@ -679,9 +633,7 @@ class NekEnv(gym.Env):
                 self.actuator_info[k] = []
 
         # Handshake from Nek: get node list
-        node_list = np.zeros(
-            (self.nproc,), dtype=np.int32
-        )  # Initialize to zero to avoid garbage values
+        node_list = np.zeros((self.nproc,), dtype=np.int32)  # Initialize to zero to avoid garbage values
         print(f"[NEK] REQUEST NODE LIST (expecting {self.nproc} ranks)", flush=True)
         self.sub_comm.Recv([node_list, MPI.INTEGER], 0, tag=tag_dict["NID"]["tag"])
         print(f"[NEK] RAW NODE LIST RECEIVED: {node_list}", flush=True)
@@ -700,9 +652,7 @@ class NekEnv(gym.Env):
             flush=True,
         )
         print(f"[NEK] Control points per rank: {node_list[valid_mask]}", flush=True)
-        print(
-            f"[NEK] Will receive actuator info from {len(nid_list)} ranks", flush=True
-        )
+        print(f"[NEK] Will receive actuator info from {len(nid_list)} ranks", flush=True)
 
         # Receive actuator info from each rank
         for nid in nid_list:
@@ -712,15 +662,13 @@ class NekEnv(gym.Env):
             for k in self.actuator_info.keys():
                 if "NID" not in k:
                     if "NUMCTRL" not in k:
-                        rank_data[k] = np.empty(
-                            (self.TOTCTRL,), dtype=tag_dict[k]["py_dtype"]
-                        )
+                        rank_data[k] = np.empty((self.TOTCTRL,), dtype=tag_dict[k]["py_dtype"])
                     else:
                         rank_data[k] = np.empty((1,), dtype=tag_dict[k]["py_dtype"])
 
                     # MPI receive
                     print(
-                        f'[NEK] Waiting to receive {k} from rank {nid}, tag={nid + tag_dict[k]["tag"]}',
+                        f"[NEK] Waiting to receive {k} from rank {nid}, tag={nid + tag_dict[k]['tag']}",
                         flush=True,
                     )
                     self.sub_comm.Recv(
@@ -734,9 +682,7 @@ class NekEnv(gym.Env):
             numctrl = rank_data["NUMCTRL"][0]
             for k in rank_data.keys():
                 if ("NUMCTRL" in k) or ("NID" in k):
-                    rank_data[k] = rank_data[k][0] * np.ones(
-                        shape=(numctrl,), dtype=tag_dict[k]["py_dtype"]
-                    )
+                    rank_data[k] = rank_data[k][0] * np.ones(shape=(numctrl,), dtype=tag_dict[k]["py_dtype"])
                 else:
                     rank_data[k] = rank_data[k][:numctrl]
                 self.actuator_info[k].append(rank_data[k])
@@ -816,9 +762,7 @@ class NekEnv(gym.Env):
         # Validate action shape
         action = np.asarray(action).reshape(-1)
         if action.size != self.n_actuators:
-            raise ValueError(
-                f"Action size {action.size} does not match expected {self.n_actuators}"
-            )
+            raise ValueError(f"Action size {action.size} does not match expected {self.n_actuators}")
 
         # Rescale actions if needed
         if self.rescale_actions:
@@ -931,9 +875,7 @@ class NekEnv(gym.Env):
             _index = np.where((self.actuator_info["NID"] == nid))[0]
 
             # Create action buffer for this node
-            act_buffer = np.ndarray(
-                shape=(self.TOTCTRL,), dtype=tag_dict["ACTION"]["py_dtype"]
-            )
+            act_buffer = np.ndarray(shape=(self.TOTCTRL,), dtype=tag_dict["ACTION"]["py_dtype"])
             for jl in range(len(_index)):
                 act_buffer[jl] = action[icount]
                 icount += 1
@@ -972,8 +914,7 @@ class NekEnv(gym.Env):
             # Check for CFL explosion
             if current_cfl >= self.target_cfl:
                 print(
-                    f"[WARNING] {i_evolv}/{self.ndrl} Current CFL "
-                    f"{current_cfl} >= {self.target_cfl}!",
+                    f"[WARNING] {i_evolv}/{self.ndrl} Current CFL {current_cfl} >= {self.target_cfl}!",
                     flush=True,
                 )
                 self._end_simulation(farewell=True)
@@ -981,9 +922,7 @@ class NekEnv(gym.Env):
 
             # Receive reward buffer at last step
             if i_evolv == self.ndrl:
-                ws_stress_buffer = np.ndarray(
-                    shape=(self.nNID, self.TOTCTRL), dtype=tag_dict["REWRD"]["py_dtype"]
-                )
+                ws_stress_buffer = np.ndarray(shape=(self.nNID, self.TOTCTRL), dtype=tag_dict["REWRD"]["py_dtype"])
                 for il, nid in enumerate(self.uniqID):
                     recv_buffer = np.ndarray(shape=(self.TOTCTRL,), dtype=np.float64)
                     self.sub_comm.Recv(
@@ -1018,8 +957,7 @@ class NekEnv(gym.Env):
         )
 
         print(
-            f"[LOGGER] act_index={self.act_index} dUdy={np.mean(ws_stress_buffer):.5f} "
-            f"R={np.mean(rewards):.5f}",
+            f"[LOGGER] act_index={self.act_index} dUdy={np.mean(ws_stress_buffer):.5f} R={np.mean(rewards):.5f}",
             flush=True,
         )
 
@@ -1061,9 +999,7 @@ class NekEnv(gym.Env):
             elif self.normalize_input == "std":
                 state /= np.std(state)
             elif self.normalize_input == "minmax":
-                state = (
-                    2 * (state - np.min(state)) / (np.max(state) - np.min(state)) - 1
-                )
+                state = 2 * (state - np.min(state)) / (np.max(state) - np.min(state)) - 1
         return state
 
     def _normalize_reward(self, reward: float) -> float:
@@ -1132,14 +1068,7 @@ class NekEnv(gym.Env):
     @staticmethod
     def _name_agent(nid, gllid, iface, ix, iy, iz):
         """Create agent name from grid information."""
-        return (
-            f"jet_np{nid:08d}_"
-            f"gid{gllid:08d}_"
-            f"iface{iface}_"
-            f"ix{ix:08d}_"
-            f"iy{iy:08d}_"
-            f"iz{iz:08d}"
-        )
+        return f"jet_np{nid:08d}_gid{gllid:08d}_iface{iface}_ix{ix:08d}_iy{iy:08d}_iz{iz:08d}"
 
     def render(self, mode="human"):
         """Render the environment (not implemented)."""
@@ -1169,9 +1098,7 @@ class RingBuffer:
 
     def extend(self, x):
         """Add array x to ring buffer."""
-        assert (
-            x.shape == self.data.shape[1:]
-        ), "Input array does not match the ring buffer size"
+        assert x.shape == self.data.shape[1:], "Input array does not match the ring buffer size"
         x_index = self.index % self.data.shape[0]
         self.data[x_index] = x
         self.index = x_index + 1

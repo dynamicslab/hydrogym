@@ -68,11 +68,10 @@ def compute_vort(flow):
 
 # Extract force coefficients at each time step for logging
 def log_postprocess(flow):
-  CL, CD = flow.get_observations()  # Lift and drag coefficients
-  mem_usage = psutil.virtual_memory().available * 100 / psutil.virtual_memory(
-  ).total
-  mem_usage = psutil.virtual_memory().percent  # RAM usage percentage
-  return CL, CD, mem_usage
+    CL, CD = flow.get_observations()  # Lift and drag coefficients
+    mem_usage = psutil.virtual_memory().available * 100 / psutil.virtual_memory().total
+    mem_usage = psutil.virtual_memory().percent  # RAM usage percentage
+    return CL, CD, mem_usage
 
 
 # Configure output callbacks

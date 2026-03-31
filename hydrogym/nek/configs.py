@@ -18,15 +18,9 @@ class Runner:
     # Essential Parameter
     # Number of "interactions" which is just better for understanding stepping
     nb_interactions: int = 3000
-    nb_episodes: int = (
-        100  # The total amount of Episodes is n_episode =  nb_interactions * nb_episodes
-    )
-    nb_warmup_episodes: int = (
-        1  # Only for transfer learning, the number of episodes to warm up the critic
-    )
-    train_steps: int = (
-        300  # Off-policy only:  Steps to train the model, N-train = n_episode // train_steps
-    )
+    nb_episodes: int = 100  # The total amount of Episodes is n_episode =  nb_interactions * nb_episodes
+    nb_warmup_episodes: int = 1  # Only for transfer learning, the number of episodes to warm up the critic
+    train_steps: int = 300  # Off-policy only:  Steps to train the model, N-train = n_episode // train_steps
     ckpt_int: int = 1  # Frequency of saving policy
 
     # Common: For Roll-out/Replay buffer
@@ -68,9 +62,7 @@ class Runner:
     buffer_mode: str = "rotate"
 
     # Agent loading/resuming options
-    random_init: int = (
-        2  # -1==No Shuffle, use the No.init = RANK; -2==NOT Cover the current rs8
-    )
+    random_init: int = 2  # -1==No Shuffle, use the No.init = RANK; -2==NOT Cover the current rs8
     agent_run_name: int = 0
     load_agent: bool = False
     rewrite_input_files: bool = False
@@ -166,9 +158,7 @@ class Simulation:
 
     # [_RUNPAR]               # Runtime parameter section for rprm module
     PARFWRITE: str = "no"  # Do we write runtime parameter file
-    PARFNAME: str = (
-        "outparfile"  # Runtime parameter file name for output (without .par)
-    )
+    PARFNAME: str = "outparfile"  # Runtime parameter file name for output (without .par)
 
     # [_MONITOR]              # Runtime parameter section for monitor module
     LOGLEVEL: int = 1  # Logging threshold for toolboxes

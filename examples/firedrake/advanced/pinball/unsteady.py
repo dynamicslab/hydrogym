@@ -50,13 +50,14 @@ solver_parameters = {"snes_monitor": None}
 Re_init = [40, 60, 80, Re]
 
 for i, Re_val in enumerate(Re_init):
-  flow.Re.assign(Re_val)
-  hgym.print(f"Steady solve at Re={Re_init[i]}")
-  solver = hgym.NewtonSolver(
-      flow,
-      stabilization="none",  # Taylor-Hood (P2-P1) is inf-sup stable
-      solver_parameters=solver_parameters)
-  qB = solver.solve()
+    flow.Re.assign(Re_val)
+    hgym.print(f"Steady solve at Re={Re_init[i]}")
+    solver = hgym.NewtonSolver(
+        flow,
+        stabilization="none",  # Taylor-Hood (P2-P1) is inf-sup stable
+        solver_parameters=solver_parameters,
+    )
+    qB = solver.solve()
 
 # Save steady state as base flow for reference
 flow.qB = flow.q.copy(deepcopy=True)
@@ -79,23 +80,21 @@ dt = 0.01
 
 # Custom function to extract quantities of interest at each time step
 def log_postprocess(flow):
-  obs = flow.get_observations()
-  CL1, CL2, CL3 = obs[:3]  # Extract lift coefficients (first 3 values)
-  CFL = flow.max_cfl(dt)  # CFL number for numerical stability monitoring
-  mem_usage = psutil.virtual_memory().percent
-  return [CFL, CL1, CL2, CL3, mem_usage]
+    obs = flow.get_observations()
+    CL1, CL2, CL3 = obs[:3]  # Extract lift coefficients (first 3 values)
+    CFL = flow.max_cfl(dt)  # CFL number for numerical stability monitoring
+    mem_usage = psutil.virtual_memory().percent
+    return [CFL, CL1, CL2, CL3, mem_usage]
 
 
 # Function to output velocity, pressure, and vorticity for visualization
 def compute_vort(flow):
-  return (flow.u, flow.p, flow.vorticity())
+    return (flow.u, flow.p, flow.vorticity())
 
 
-print_fmt = ("t: {0:0.2f}\t\tCFL: {1:0.2f}\t\t"
-             "CL1: {2:0.3f}\t\tCL2: {3:0.3f}\t\tCL3: {4:0.3f}\t\tMem: {5:0.1f}")
+print_fmt = "t: {0:0.2f}\t\tCFL: {1:0.2f}\t\tCL1: {2:0.3f}\t\tCL2: {3:0.3f}\t\tCL3: {4:0.3f}\t\tMem: {5:0.1f}"
 callbacks = [
-    hgym.io.ParaviewCallback(
-        interval=100, filename=pvd_out, postprocess=compute_vort),
+    hgym.io.ParaviewCallback(interval=100, filename=pvd_out, postprocess=compute_vort),
     hgym.io.CheckpointCallback(interval=500, filename=checkpoint),
     hgym.io.LogCallback(
         postprocess=log_postprocess,

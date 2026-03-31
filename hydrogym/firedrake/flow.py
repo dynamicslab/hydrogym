@@ -70,16 +70,9 @@ class FlowConfig(PDEBase):
         self._validate_probes_on_init = config.pop("validate_probes", True)
 
         probe_obs_types = {
-            "velocity_probes":
-                ObservationFunction(
-                    partial(self.velocity_probe, probes),
-                    num_outputs=2 * len(probes)),
-            "pressure_probes":
-                ObservationFunction(
-                    partial(self.pressure_probe, probes), num_outputs=len(probes)),
-            "vorticity_probes":
-                ObservationFunction(
-                    partial(self.vorticity_probe, probes), num_outputs=len(probes)),
+            "velocity_probes": ObservationFunction(partial(self.velocity_probe, probes), num_outputs=2 * len(probes)),
+            "pressure_probes": ObservationFunction(partial(self.pressure_probe, probes), num_outputs=len(probes)),
+            "vorticity_probes": ObservationFunction(partial(self.vorticity_probe, probes), num_outputs=len(probes)),
         }
 
         self.obs_fun = self.configure_observations(
@@ -89,20 +82,16 @@ class FlowConfig(PDEBase):
 
         # Process restart parameter - resolve environment names to checkpoint paths
         # or auto-infer from flow configuration
-        mesh = config.get('mesh', self.MESH_DIR)
-        cache_dir = config.pop('cache_dir',
-                               None)  # Custom cache directory (optional)
-        local_dir = config.pop('local_dir',
-                               None)  # Local fallback directory (optional)
-        use_HF_data_manager = config.pop(
-            'use_HF_data_manager',
-            True)  # Control HF data manager usage (default: True)
+        mesh = config.get("mesh", self.MESH_DIR)
+        cache_dir = config.pop("cache_dir", None)  # Custom cache directory (optional)
+        local_dir = config.pop("local_dir", None)  # Local fallback directory (optional)
+        use_HF_data_manager = config.pop("use_HF_data_manager", True)  # Control HF data manager usage (default: True)
 
         # Extract numeric Reynolds number from Firedrake Constant
         Re_value = int(float(self.Re))
 
         resolved_restart = self._resolve_checkpoint(
-            restart=config.get('restart'),
+            restart=config.get("restart"),
             Re=Re_value,
             mesh=mesh,
             cache_dir=cache_dir,
@@ -117,13 +106,7 @@ class FlowConfig(PDEBase):
 
         super().__init__(**config)
 
-    def _resolve_checkpoint(self,
-                          restart,
-                          Re,
-                          mesh,
-                          cache_dir=None,
-                          local_dir=None,
-                          use_HF_data_manager=True):
+    def _resolve_checkpoint(self, restart, Re, mesh, cache_dir=None, local_dir=None, use_HF_data_manager=True):
         """Resolve checkpoint parameter to actual file path(s).
 
             Handles four cases:
@@ -148,49 +131,38 @@ class FlowConfig(PDEBase):
             flow_name = self.__class__.__name__
             env_name = f"{flow_name}_2D_Re{Re}_{mesh}_FD"
 
-            logging.log(
-                logging.INFO,
-                f"No checkpoint specified, attempting to auto-load: {env_name}")
+            logging.log(logging.INFO, f"No checkpoint specified, attempting to auto-load: {env_name}")
 
             resolved = self._resolve_single_checkpoint(
-                env_name,
-                cache_dir,
-                local_dir,
-                use_HF_data_manager=use_HF_data_manager,
-                silent=True)
+                env_name, cache_dir, local_dir, use_HF_data_manager=use_HF_data_manager, silent=True
+            )
             if resolved is None:
-                logging.log(logging.INFO,
-                            f"No checkpoint found for {env_name}, starting from zeros")
+                logging.log(logging.INFO, f"No checkpoint found for {env_name}, starting from zeros")
             return resolved
 
         if isinstance(restart, str):
             return self._resolve_single_checkpoint(
-                restart,
-                cache_dir,
-                local_dir,
-                use_HF_data_manager=use_HF_data_manager)
+                restart, cache_dir, local_dir, use_HF_data_manager=use_HF_data_manager
+            )
 
         elif isinstance(restart, (list, tuple)):
             # Process multiple checkpoints
             resolved = []
             for ckpt in restart:
                 resolved_ckpt = self._resolve_single_checkpoint(
-                    ckpt, cache_dir, local_dir, use_HF_data_manager=use_HF_data_manager)
+                    ckpt, cache_dir, local_dir, use_HF_data_manager=use_HF_data_manager
+                )
                 if resolved_ckpt is not None:
                     resolved.append(resolved_ckpt)
             return resolved if resolved else None
 
         else:
-            logging.log(logging.WARN,
-                        f"Invalid restart type: {type(restart)}, ignoring")
+            logging.log(logging.WARN, f"Invalid restart type: {type(restart)}, ignoring")
             return None
 
-    def _resolve_single_checkpoint(self,
-                                   checkpoint,
-                                   cache_dir=None,
-                                   local_dir=None,
-                                   use_HF_data_manager=True,
-                                   silent=False):
+    def _resolve_single_checkpoint(
+        self, checkpoint, cache_dir=None, local_dir=None, use_HF_data_manager=True, silent=False
+    ):
         """Resolve a single checkpoint path or environment name.
 
         Args:
@@ -207,25 +179,25 @@ class FlowConfig(PDEBase):
         from pathlib import Path
 
         # Check if it's an explicit path
-        if (checkpoint.startswith('/') or checkpoint.startswith('./') or
-            checkpoint.startswith('../') or os.path.exists(checkpoint)):
+        if (
+            checkpoint.startswith("/")
+            or checkpoint.startswith("./")
+            or checkpoint.startswith("../")
+            or os.path.exists(checkpoint)
+        ):
             # Explicit path provided - use directly
             if os.path.exists(checkpoint):
                 logging.log(logging.INFO, f"Using checkpoint: {checkpoint}")
                 return checkpoint
             else:
                 if not silent:
-                    logging.log(logging.WARN,
-                                f"Checkpoint path does not exist: {checkpoint}")
+                    logging.log(logging.WARN, f"Checkpoint path does not exist: {checkpoint}")
                 return None
 
         # If HF data manager is disabled, don't try to resolve from HF Hub
         if not use_HF_data_manager:
             if not silent:
-                logging.log(
-                    logging.INFO,
-                    f"HF data manager disabled, skipping checkpoint resolution for: {checkpoint}"
-                )
+                logging.log(logging.INFO, f"HF data manager disabled, skipping checkpoint resolution for: {checkpoint}")
             return None
 
         # Assume it's an environment name - try to download from HF Hub
@@ -233,14 +205,14 @@ class FlowConfig(PDEBase):
             from hydrogym.data_manager import HFDataManager
 
             if not silent:
-                logging.log(logging.INFO,
-                            f"Resolving checkpoint from environment: {checkpoint}")
+                logging.log(logging.INFO, f"Resolving checkpoint from environment: {checkpoint}")
 
             dm = HFDataManager(
                 cache_dir=cache_dir,  # Use custom cache dir if provided
                 local_fallback_dir=local_dir,  # Use local directory for offline/testing
-                use_clean_cache='copy',  # Use 'copy' for readable ckpts
-                fallback_profile='FIREDRAKE')
+                use_clean_cache="copy",  # Use 'copy' for readable ckpts
+                fallback_profile="FIREDRAKE",
+            )
 
             # Get environment path (downloads if needed)
             env_path = dm.get_environment_path(checkpoint)
@@ -256,10 +228,7 @@ class FlowConfig(PDEBase):
                 return resolved_path
             else:
                 if not silent:
-                    logging.log(
-                        logging.WARN,
-                        f"No checkpoint file found in environment: {checkpoint}"
-                    )
+                    logging.log(logging.WARN, f"No checkpoint file found in environment: {checkpoint}")
                 return None
 
         except ImportError:
@@ -352,9 +321,7 @@ class FlowConfig(PDEBase):
         if self._validate_probes_on_init and self._probes_to_validate is not None:
             try:
                 self._validate_probes(self._probes_to_validate)
-                logging.log(
-                    logging.INFO,
-                    f"✓ Validated {len(self._probes_to_validate)} probe location(s)")
+                logging.log(logging.INFO, f"✓ Validated {len(self._probes_to_validate)} probe location(s)")
             except ValueError as e:
                 logging.log(logging.ERROR, f"Probe validation failed: {e}")
                 raise

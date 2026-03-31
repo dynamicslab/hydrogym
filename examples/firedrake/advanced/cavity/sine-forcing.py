@@ -16,6 +16,7 @@ Physical setup:
 Prerequisites:
     - Requires checkpoint from previous simulation (unsteady.py or run-transient.py)
 """
+
 import os
 import firedrake as fd
 import numpy as np
@@ -42,11 +43,10 @@ def compute_vort(flow):
 
 # Custom function to extract quantities of interest at each time step
 def log_postprocess(flow):
-  KE = 0.5 * fd.assemble(
-      fd.inner(flow.u, flow.u) * fd.dx)  # Total kinetic energy
-  TKE = flow.evaluate_objective()  # Turbulent kinetic energy
-  CFL = flow.max_cfl(dt)  # CFL number for numerical stability monitoring
-  return [CFL, KE, TKE]
+    KE = 0.5 * fd.assemble(fd.inner(flow.u, flow.u) * fd.dx)  # Total kinetic energy
+    TKE = flow.evaluate_objective()  # Turbulent kinetic energy
+    CFL = flow.max_cfl(dt)  # CFL number for numerical stability monitoring
+    return [CFL, KE, TKE]
 
 
 # Configure flow environment with callbacks
@@ -57,8 +57,7 @@ env_config = {
         "restart": restart,  # Load from checkpoint
         "use_HF_data_manager": False,
     },
-    "solver":
-        hgym.SemiImplicitBDF,  # BDF time-stepping scheme
+    "solver": hgym.SemiImplicitBDF,  # BDF time-stepping scheme
     "solver_config": {
         "dt": dt,
     },
@@ -80,7 +79,7 @@ num_steps = int(Tf // dt)
 
 hgym.print(f"Running {num_steps} time steps with sinusoidal forcing")
 for i in range(num_steps):
-  t = dt * i
-  env.step(np.sin(t))  # Apply sinusoidal actuation
+    t = dt * i
+    env.step(np.sin(t))  # Apply sinusoidal actuation
 
 hgym.print(f"Simulation complete! Output saved to {output_dir}/")

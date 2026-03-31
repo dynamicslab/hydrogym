@@ -16,6 +16,7 @@ Physical setup:
     - Flow transitions from steady → turbulent
     - Long integration time (Tf=500) to capture statistical behavior
 """
+
 import os
 import firedrake as fd
 import psutil
@@ -66,13 +67,11 @@ dt = 2.5e-4
 
 # Custom function to extract quantities of interest at each time step
 def log_postprocess(flow):
-  KE = 0.5 * fd.assemble(
-      fd.inner(flow.u, flow.u) * fd.dx)  # Total kinetic energy
-  TKE = flow.evaluate_objective(
-  )  # Turbulent kinetic energy (fluctuation energy)
-  CFL = flow.max_cfl(dt)  # CFL number for numerical stability monitoring
-  mem_usage = psutil.virtual_memory().percent
-  return [CFL, KE, TKE, mem_usage]
+    KE = 0.5 * fd.assemble(fd.inner(flow.u, flow.u) * fd.dx)  # Total kinetic energy
+    TKE = flow.evaluate_objective()  # Turbulent kinetic energy (fluctuation energy)
+    CFL = flow.max_cfl(dt)  # CFL number for numerical stability monitoring
+    mem_usage = psutil.virtual_memory().percent
+    return [CFL, KE, TKE, mem_usage]
 
 
 # Function to output velocity, pressure, and vorticity for visualization
