@@ -109,8 +109,13 @@ if __name__ == "__main__":
     velocity_order = 2
     stabilization = "none"
 
-    # Create flow configuration (mesh, boundary conditions, etc.)
-    flow = hgym.Cylinder(Re=Re, mesh=mesh, velocity_order=velocity_order)
+  # Create flow configuration (mesh, boundary conditions, etc.)
+  flow = hgym.Cylinder(
+      Re=Re,
+      mesh=mesh,
+      velocity_order=velocity_order,
+      use_HF_data_manager=False,
+  )
 
     hgym.print("|------------------------------------------------|")
     hgym.print("| Linear stability analysis of the cylinder wake |")

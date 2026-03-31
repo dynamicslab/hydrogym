@@ -88,11 +88,12 @@ if __name__ == "__main__":
     velocity_order = 2
     stabilization = "none"
 
-    flow = hgym.Cavity(
-        Re=Re,
-        mesh=mesh,
-        velocity_order=velocity_order,
-    )
+  flow = hgym.Cavity(
+      Re=Re,
+      mesh=mesh,
+      velocity_order=velocity_order,
+      use_HF_data_manager=False,
+  )
 
     dof = flow.mixed_space.dim()
 

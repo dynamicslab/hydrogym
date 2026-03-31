@@ -7,14 +7,14 @@ Comprehensive examples demonstrating Hydrogym's Firedrake backend for CFD and fl
 ```
 firedrake/
 ├── README.md                        # This file
-├── getting_started/                 # ⭐ START HERE - Standard RL interface
+├── getting_started/                 # START HERE - Standard RL interface
 │   ├── README.md                    # Complete getting started guide
 │   ├── test_firedrake_env.py        # Interactive test script
 │   ├── config_reference.py          # Copy-paste configuration examples
 │   └── run_example_docker.sh        # Docker runner script
 └── advanced/                        # Advanced workflows (not standard RL)
     ├── README.md                    # Advanced examples overview
-    ├── cavity/                      # Lid-driven cavity flow
+    ├── cavity/                      # Open cavity flow
     │   ├── README.md                # Cavity-specific documentation
     │   ├── run-transient.py         # Direct simulation (not RL interface)
     │   ├── solve-steady.py          # Steady-state solver
@@ -76,7 +76,7 @@ python run-transient.py
 
 ## Example Categories
 
-### 🎓 Standard RL Interface (`getting_started/`)
+### Standard RL Interface (`getting_started/`)
 
 **Purpose:** Train reinforcement learning agents
 
@@ -105,7 +105,7 @@ for _ in range(100):
     obs, reward, terminated, truncated, info = env.step(action)
 ```
 
-### 🔬 Advanced Workflows (`advanced/`)
+### Advanced Workflows (`advanced/`)
 
 **Purpose:** Research, development, and specialized analysis
 
@@ -122,8 +122,8 @@ See [advanced/README.md](advanced/README.md) for complete documentation.
 
 | Environment | Description | Re (default) | Key Phenomena |
 |-------------|-------------|--------------|---------------|
-| **Cavity** | Lid-driven cavity | 7500 | Recirculation, turbulence |
-| **Cylinder** | Circular cylinder | 100 | Vortex shedding, St=0.165 |
+| **Cavity** | Open cavity | 7500 | Recirculation, turbulence |
+| **Cylinder** | Circular cylinder | 100 | Vortex shedding |
 | **Pinball** | Three cylinders | 100 | Complex wake, mode switching |
 | **Step** | Backward step | 600 | Separation, reattachment |
 
@@ -203,114 +203,3 @@ Examples typically generate:
 - **`.dat` files** - Time series data (lift, drag, energy)
   - Plot with: `np.loadtxt("stats.dat")`
 
-## Documentation
-
-### Getting Started
-- [getting_started/README.md](getting_started/README.md) - **Start here for RL**
-  - Complete configuration reference
-  - Interactive test scripts
-  - Copy-paste examples for all use cases
-
-### Advanced Workflows
-- [advanced/README.md](advanced/README.md) - Advanced examples overview
-
-### Individual Environments (in `advanced/`)
-- [advanced/cavity/README.md](advanced/cavity/README.md) - Lid-driven cavity
-- [advanced/cylinder/README.md](advanced/cylinder/README.md) - Circular cylinder
-- [advanced/pinball/README.md](advanced/pinball/README.md) - Three cylinders
-- [advanced/step/README.md](advanced/step/README.md) - Backward-facing step
-
-Each includes physical description, validation data, and usage tips.
-
-## Common Parameters
-
-Most examples accept similar parameters (check each file for specifics):
-
-**Reynolds number:**
-- Cavity: 1000-7500 (turbulent)
-- Cylinder: 40-200 (vortex shedding)
-- Pinball: 30-100 (complex wake)
-- Step: 400-800 (separated flow)
-
-**Mesh resolution:**
-- `coarse` - Fast, less accurate (~5k elements)
-- `medium` - Good balance (~20k elements) **[default]**
-- `fine` - Accurate, slow (~80k elements)
-
-**Time step:**
-- Typical: dt = 0.01
-- High Re: dt = 0.001-0.005
-- Rule: Keep CFL < 1
-
-## Troubleshooting
-
-**Import errors:**
-```bash
-# Ensure Firedrake environment is activated
-source firedrake/bin/activate
-pip install -e /path/to/hydrogym
-```
-
-**Compilation errors:**
-```bash
-# If using Docker/EasyBuild, load required modules first
-module load GCC OpenMPI PETSc
-```
-
-**Simulation diverges:**
-- Reduce time step: dt = 0.005
-- Use coarser mesh: `mesh="coarse"`
-- Check CFL number (should be < 1)
-
-**Out of memory:**
-- Use coarser mesh
-- Reduce number of MPI processes
-- Close other applications
-
-## Contributing
-
-To add a new example:
-
-1. Follow the standard patterns (see existing examples)
-2. Add clear docstring explaining purpose
-3. Include in environment README.md
-4. Test with `--dry-run` or small parameters first
-
-## References
-
-**Hydrogym:**
-- Paper: [Add citation when published]
-- GitHub: https://github.com/hydrogym/hydrogym
-
-**Firedrake:**
-- Website: https://www.firedrakeproject.org/
-- Paper: Rathgeber et al. (2016)
-
-**Flow Control:**
-- Cavity: Ghia et al. (1982)
-- Cylinder: Rabault et al. (2019)
-- Pinball: Deng et al. (2020)
-- Step: Armaly et al. (1983)
-
-See individual environment READMEs for detailed references.
-
-## License
-
-See LICENSE file in repository root.
-
----
-
-**Ready to get started?**
-
-### For RL Training (Most Users):
-1. **Start here:** `cd getting_started`
-2. **Test environment:** `python test_firedrake_env.py --environment cylinder --num-steps 10`
-3. **Read docs:** Open [getting_started/README.md](getting_started/README.md)
-4. **Copy template:** Use [config_reference.py](getting_started/config_reference.py) examples
-5. **Train agent:** Integrate with your RL library
-
-### For Research/Development:
-1. **Explore workflows:** `cd advanced && cat README.md`
-2. **Pick environment:** `cd advanced/cylinder`
-3. **Run examples:** `python run-transient.py`, `python stability.py`, etc.
-4. **Read environment docs:** Check individual README.md files

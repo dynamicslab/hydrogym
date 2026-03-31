@@ -1,4 +1,4 @@
-# Lid-Driven Cavity Flow Examples
+# Open Cavity Flow Examples
 
 ⚠️ **NOTE**: These are **advanced workflow examples** showing direct solver access, stability analysis, and specialized workflows. They do NOT use the standard RL interface.
 
@@ -6,143 +6,80 @@
 
 ---
 
-The lid-driven cavity is a classic CFD benchmark problem demonstrating recirculating flows and turbulence.
+The open cavity is a classic CFD benchmark problem demonstrating recirculating flows and shear-layer instability.
 
 ## Physical Description
 
 **Configuration:**
-- Square cavity (1×1) with moving top wall
-- Top wall velocity: U = 1.0 (left to right)
+- Open square cavity (1×1) with moving top wall
+- Inlet velocity: U = 1.0 
 - All other walls: no-slip (U = 0)
-- Reynolds number Re = 1000-7500
-
-**Key Phenomena:**
-- **Re < 5000:** Steady recirculating flow with corner vortices
-- **Re > 5000:** Turbulent flow with fluctuating kinetic energy
-- **Re = 7500:** Benchmark case for turbulent cavity flow
-
-## Examples Overview
-
-| Script | Type | Purpose | Runtime |
-|--------|------|---------|---------|
-| **run-transient.py** | Simulation | Turbulent flow evolution | ~3 min |
-| **solve-steady.py** | Solver | Steady state at high Re | ~2 min |
-| **unsteady.py** | Workflow | Steady → turbulent transition | ~5 min |
-| **stability.py** | Analysis | Eigenvalue/stability analysis | ~10 min |
-| **sine-forcing.py** | Control | Sinusoidal forcing demo | ~3 min |
+- Reynolds number Re = 7500
 
 ## Quick Start
 
-### 1. Turbulent Flow Simulation
+### 1. Flow Simulation
 
-Run turbulent cavity at Re=7500:
+Run open cavity at Re=7500:
 
 ```bash
 python run-transient.py
 ```
 
+**What it does:** Simulates turbulent cavity flow from perturbed base state
 **Outputs:**
-- Console shows evolution of kinetic energy (KE) and turbulent kinetic energy (TKE)
-- Flow develops from random initial condition
+- `output/stats.dat` - Time series of CFL, KE, TKE
+- Console shows evolution of kinetic energy and turbulent kinetic energy
+**Prerequisites:** Requires steady state checkpoint from solve-steady.py
 
 ### 2. Find Steady State
 
-Solve for steady flow using Reynolds ramping:
+Solve for steady flow using Newton iteration with Reynolds ramping:
 
 ```bash
 python solve-steady.py
 ```
 
-**Uses ramping:** 500 → 1000 → 2000 → 4000 → 7500
-
+**What it does:** Computes steady base flow for high-Re cavity
+**Uses ramping:** 500 → 1000 → 2000 → 4000 → 7500 for convergence
 **Outputs:**
-- `output/7500_steady.h5` - Steady flow checkpoint
+- `output/7500_steady.h5` - Steady flow checkpoint for restart
 - `output/7500_steady.pvd` - Paraview visualization
+**Prerequisites:** None
 
 ### 3. Stability Analysis
 
 Compute eigenvalues of steady flow:
 
 ```bash
-python stability.py --Re 5000 --num-eigs 10
+python stability.py --Re 7500 --num-eigs 10
 ```
 
-**Purpose:** Identify unstable modes leading to turbulence
+**What it does:** Linear stability analysis using Arnoldi iteration
+**Purpose:** Identify unstable modes leading to shear-layer instability
+**Outputs:** Eigenvalues, eigenvectors, growth rates
+**Prerequisites:** Optional (can compute steady state internally)
 
 ### 4. Complete Workflow
 
-Run full steady → unsteady transition:
+Two-stage simulation: steady solve + perturbed transient:
 
 ```bash
 python unsteady.py
 ```
 
-**Stage 1:** Solve steady state with ramping
-**Stage 2:** Add perturbation and watch turbulence develop
+**What it does:** Demonstrates transition from steady to unstable flow
+**Stage 1:** Solve steady state with Reynolds ramping (500 → ... → 7500)
+**Stage 2:** Add perturbation and run long transient (Tf=500)
+**Outputs:** Time series, Paraview animations, TKE evolution
+**Prerequisites:** None (computes steady state internally)
 
-## Detailed Example Descriptions
+---
 
-### run-transient.py
-- Starts from random initial condition
-- Evolves turbulent flow at Re=7500
-- Monitors kinetic energy (KE) and turbulent kinetic energy (TKE)
-- Uses BDF time-stepping with GLS stabilization
+**MPI Parallelization:**
+All scripts support parallel execution:
+```bash
+mpirun -np 4 python <script-name>.py
+```
 
-### solve-steady.py
-- Newton solver with Reynolds ramping for convergence
-- High-Re flows need gradual ramping (500 → 7500)
-- Saves checkpoint for restart or perturbation studies
 
-### unsteady.py
-- Two-stage workflow: (1) steady solve, (2) transient with perturbation
-- Demonstrates transition to turbulence
-- Compares steady vs unsteady kinetic energy
-
-### stability.py
-- Linear stability analysis using Arnoldi iteration
-- Computes eigenvalues and eigenmodes
-- Command-line arguments for Re, number of eigenvalues, shift
-- Includes adjoint mode computation
-
-### sine-forcing.py
-- Demonstrates sinusoidal forcing on top wall
-- Uses FlowEnv wrapper (different pattern from others)
-- Shows time-varying boundary conditions
-
-## Physical Validation
-
-Benchmark data from Ghia et al. (1982):
-
-| Re | u-velocity at cavity centerline | v-velocity at cavity centerline |
-|----|----------------------------------|----------------------------------|
-| 1000 | Validated ✓ | Validated ✓ |
-| 5000 | See validation.ipynb | See validation.ipynb |
-
-See `validation.ipynb` for detailed comparison plots.
-
-## Usage Tips
-
-**Reynolds number:**
-- Re = 1000: Steady flow, good for validation
-- Re = 5000: Transitional regime
-- Re = 7500: Fully turbulent (default)
-
-**Mesh resolution:**
-- For Re=7500, use `fine` mesh (80k+ elements)
-- For Re=1000, `medium` mesh sufficient
-
-**Time step:**
-- High Re needs small dt: 1e-4 to 5e-4
-- CFL should stay < 1 for stability
-
-## References
-
-1. Ghia, U., Ghia, K.N., Shin, C.T. (1982). High-Re solutions for incompressible flow using Navier-Stokes equations. *J. Comp. Phys.*, 48, 387-411.
-2. See `validation.ipynb` for detailed comparisons
-
-## Next Steps
-
-- Validate against Ghia et al. using `validation.ipynb`
-- Try different Reynolds numbers
-- Apply control/forcing with `sine-forcing.py`
-- Perform stability analysis at transitional Re

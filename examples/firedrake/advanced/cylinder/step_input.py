@@ -55,6 +55,7 @@ flow = hgym.Cylinder(
     Re=40,
     mesh="medium",
     velocity_order=1,  # P1 elements (linear velocity)
+    use_HF_data_manager=False,
 )
 
 # ========================================================================
