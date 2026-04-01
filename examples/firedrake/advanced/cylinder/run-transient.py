@@ -50,6 +50,7 @@ flow = hgym.RotaryCylinder(
     restart=restart,
     mesh=mesh_resolution,
     velocity_order=velocity_order,
+    use_HF_data_manager=False,
 )
 
 # Time integration parameters

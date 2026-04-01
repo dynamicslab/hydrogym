@@ -9,12 +9,16 @@ Supports three caching strategies:
 - use_clean_cache='copy':  Copy to ~/.cache/hydrogym/ (clean paths, duplicated storage)
 - use_clean_cache=False:   Use HF cache paths directly (no duplication, messy paths)
 
+Local fallback optimization:
+When local_fallback_dir is provided and contains the requested environment, it is used
+directly without copying/linking to the cache (cache layer is only used for HF downloads)
+
 Solver profiles
 ---------------
 Each entry in :data:`SOLVER_PROFILES` describes one solver backend:
 
 - ``sentinel``:        Hidden file stored alongside environment data on HF that identifies the
-                       solver (e.g. ``.MAIA_LB``).  Used for automatic profile detection.
+                       solver (e.g. ``.MAIA_LB``). Used for automatic profile detection.
 - ``required_files``:  Files that must exist for validation to pass.
 - ``required_dirs``:   Directories that must exist and be non-empty.
 - ``optional_files``:  Files that are logged but not required.
@@ -23,7 +27,7 @@ Each entry in :data:`SOLVER_PROFILES` describes one solver backend:
                        solver-specific symlinks in a run directory.
 - ``workspace_dirs``:  Same idea for directories.
 
-To add a new solver, add an entry here.  No other file needs to change for
+To add a new solver, add an entry here. No other file needs to change for
 basic support (download + validation + workspace prep).
 
 Usage::
@@ -57,7 +61,6 @@ try:
 except ImportError:
     HF_AVAILABLE = False
     print("Warning: huggingface_hub not installed. Install with: pip install huggingface_hub")
-
 
 # ---------------------------------------------------------------------------
 # Solver profiles
@@ -98,7 +101,7 @@ SOLVER_PROFILES: Dict[str, dict] = {
         "optional_files": ["environment_config.yaml"],
         "workspace_files": {
             "grid.hdf5": "grid.hdf5",
-            "restart_.hdf5": "restart_.hdf5",
+            "restart_.hdf5": "out/restart_.hdf5",  # ← Goes in out/ subdirectory
             "properties_run.toml": "properties_run.toml",
             "environment_config.yaml": "environment_config.yaml",
         },
@@ -123,11 +126,32 @@ SOLVER_PROFILES: Dict[str, dict] = {
     },
     "NEK5000": {
         "sentinel": ".NEK5000",
-        "required_files": [],
-        "required_dirs": [],
-        "optional_files": [],
-        "workspace_files": {},
-        "workspace_dirs": {},
+        # Runtime-only files (assumes nek5000 executable is pre-compiled)
+        "required_files": [
+            "environment_config.yaml",  # Environment configuration (REQUIRED for MAIA pattern)
+            "phill.re2",  # Mesh file (read at runtime)
+            "phill.ma2",  # Material properties (read at runtime)
+            "phill.par",  # Parameter file (read at runtime, overridable)
+            "int_pos",  # Time series probe positions (required for TSRS module)
+        ],
+        "required_dirs": [
+            "restart_files",  # Initial condition files (read at startup)
+        ],
+        "optional_files": [
+            "config.yaml",  # Alternative config name (legacy support)
+            "README.md",  # Documentation
+        ],
+        # Workspace: runtime files symlinked to run directory
+        "workspace_files": {
+            "phill.re2": "phill.re2",
+            "phill.ma2": "phill.ma2",
+            "phill.par": "phill.par",
+            "int_pos": "int_pos",
+            "environment_config.yaml": "environment_config.yaml",
+        },
+        "workspace_dirs": {
+            "restart_files": "restart_files",  # Link restart files directly
+        },
     },
     "FIREDRAKE": {
         "sentinel": ".FIREDRAKE",
@@ -144,7 +168,6 @@ SOLVER_PROFILES: Dict[str, dict] = {
 # Reverse map: sentinel filename → profile name (built once at import time)
 _SENTINEL_TO_PROFILE: Dict[str, str] = {v["sentinel"]: k for k, v in SOLVER_PROFILES.items()}
 
-
 # ---------------------------------------------------------------------------
 # Data manager
 # ---------------------------------------------------------------------------
@@ -158,9 +181,9 @@ class HFDataManager:
     solver-profile detection, validation, and working-directory preparation.
 
     Solver profiles are detected automatically from sentinel files (e.g. ``.MAIA_LB``,
-    ``.MAIA_STRCTRD``) stored alongside environment data on HF.  The local cache is
+    ``.MAIA_STRCTRD``) stored alongside environment data on HF. The local cache is
     checked first; if no sentinel is found the HF file listing is queried (lightweight
-    — no full download).  ``fallback_profile`` is used when neither source yields a
+    — no full download). ``fallback_profile`` is used when neither source yields a
     result (e.g. legacy environments or offline mode).
     """
 
@@ -178,12 +201,14 @@ class HFDataManager:
         Args:
             repo_id: Hugging Face repository ID.
             cache_dir: Clean local cache directory (default: ``~/.cache/hydrogym``).
+                Only used for HF downloads; local_fallback_dir is used directly.
             local_fallback_dir: Local directory with environment files used when HF
-                is unreachable.
+                is unreachable. When available, used directly without cache layer.
             use_clean_cache:
                 - ``True``:    Create symlinks into HF cache (recommended).
                 - ``'copy'``:  Copy files to clean cache.
                 - ``False``:   Use HF cache paths directly.
+                Note: cache_dir is only used for HF downloads, not for local_fallback.
             fallback_profile: Solver profile to use when no sentinel file is found.
                 Defaults to ``'MAIA_LB'``.  Pass the environment class's
                 ``SOLVER_TYPE`` attribute to get the right fallback in offline /
@@ -361,6 +386,7 @@ class HFDataManager:
         paths: Dict[str, str] = {
             "work_dir": str(work_path.resolve()),
             "env_data_path": str(env_path),
+            "solver_profile": profile,
         }
 
         for source_name, target_rel in workspace_files.items():
@@ -393,6 +419,13 @@ class HFDataManager:
 
     def _get_environment_path_with_symlink(self, env_name: str, force_download: bool, profile: str) -> str:
         """Get environment path using symlinks (best option!)."""
+        # Check local fallback first - if available, use it directly (skip cache layer)
+        if self.local_fallback_dir and not force_download:
+            local_fallback_path = os.path.join(self.local_fallback_dir, env_name)
+            if os.path.exists(local_fallback_path) and self._validate_environment_files(local_fallback_path, profile):
+                print(f"Using local fallback directly (skip cache): {local_fallback_path}")
+                return local_fallback_path
+
         local_env_link = os.path.join(self.cache_dir, env_name)
 
         if os.path.islink(local_env_link) and not force_download:
@@ -438,21 +471,24 @@ class HFDataManager:
 
                 self.logger.error(traceback.format_exc())
 
+        # Final fallback: local_fallback_dir (if HF download failed)
         if self.local_fallback_dir:
-            local_path = os.path.join(self.local_fallback_dir, env_name)
-            if os.path.exists(local_path):
-                print(f"Using local fallback: {local_path}")
-                try:
-                    os.symlink(local_path, local_env_link)
-                    return local_env_link
-                except OSError:
-                    shutil.copytree(local_path, local_env_link)
-                    return local_env_link
+            local_fallback_path = os.path.join(self.local_fallback_dir, env_name)
+            if os.path.exists(local_fallback_path):
+                print(f"Using local fallback: {local_fallback_path}")
+                return local_fallback_path
 
         raise FileNotFoundError(f"Environment '{env_name}' not found in HF Hub or local fallback")
 
     def _get_environment_path_with_copy(self, env_name: str, force_download: bool, profile: str) -> str:
         """Get environment path using clean cache (with copying)."""
+        # Check local fallback first - if available, use it directly (skip cache layer)
+        if self.local_fallback_dir and not force_download:
+            local_fallback_path = os.path.join(self.local_fallback_dir, env_name)
+            if os.path.exists(local_fallback_path) and self._validate_environment_files(local_fallback_path, profile):
+                print(f"Using local fallback directly (skip cache): {local_fallback_path}")
+                return local_fallback_path
+
         local_env_dir = os.path.join(self.cache_dir, env_name)
 
         if os.path.exists(local_env_dir) and not force_download:
@@ -498,14 +534,12 @@ class HFDataManager:
 
                 self.logger.error(traceback.format_exc())
 
+        # Final fallback: local_fallback_dir (if HF download failed)
         if self.local_fallback_dir:
-            local_path = os.path.join(self.local_fallback_dir, env_name)
-            if os.path.exists(local_path):
-                print(f"Using local fallback: {local_path}")
-                if os.path.exists(local_env_dir):
-                    shutil.rmtree(local_env_dir)
-                shutil.copytree(local_path, local_env_dir)
-                return local_env_dir
+            local_fallback_path = os.path.join(self.local_fallback_dir, env_name)
+            if os.path.exists(local_fallback_path):
+                print(f"Using local fallback: {local_fallback_path}")
+                return local_fallback_path
 
         raise FileNotFoundError(f"Environment '{env_name}' not found in HF Hub or local fallback")
 
@@ -640,6 +674,7 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Manage HydroGym environment data with Hugging Face Hub")
+
     parser.add_argument("--list", action="store_true", help="List available environments")
     parser.add_argument("--get", help="Get path to specific environment")
     parser.add_argument("--prepare", metavar="WORK_DIR", help="Prepare a working directory for --get environment")

@@ -19,23 +19,10 @@ class MaiaWorkspace:
     """
     Manages MAIA workspace setup including file downloads and symbolic links.
 
-    This class handles the file preparation needed before launching MPMD coupling,
-    ensuring all files have proper names and extensions for the MAIA solver.
+    File preparation is driven by solver profiles in
+    :data:`~hydrogym.data_manager.SOLVER_PROFILES`.  The correct profile
+    (``'MAIA_LB'`` or ``'MAIA_STRCTRD'``) is auto-detected from sentinel files.
     """
-
-    # Required files and their expected names in the work directory
-    REQUIRED_FILES = {
-        "grid.Netcdf": "out_lb/grid.Netcdf",
-        "restart_.Netcdf": "out_lb/restart_.Netcdf",
-        "properties_run.toml": "properties_run.toml",
-        "geometry.toml": "geometry.toml",
-        "environment_config.yaml": "environment_config.yaml",
-    }
-
-    # Required directories
-    REQUIRED_DIRS = {
-        "stl": "stl",
-    }
 
     def __init__(
         self,
@@ -44,6 +31,7 @@ class MaiaWorkspace:
         hf_repo_id: str = "dynamicslab/HydroGym-environments",
         local_fallback_dir: Optional[str] = None,
         use_clean_cache: bool = True,
+        solver_type: Optional[str] = None,
     ):
         """
         Initialize the MAIA workspace.
@@ -54,24 +42,27 @@ class MaiaWorkspace:
             hf_repo_id: Hugging Face repository ID.
             local_fallback_dir: Optional local fallback directory.
             use_clean_cache: Whether to use clean cache for HF downloads.
+            solver_type: Solver profile key (``'MAIA_LB'`` or ``'MAIA_STRCTRD'``).
+                Auto-detected from sentinel files if ``None`` (recommended).
+                Defaults to ``'MAIA_LB'`` as fallback for legacy environments.
         """
         self.environment_name = environment_name
         self.work_dir = work_dir or f"./run_{environment_name}"
-        self.hf_repo_id = hf_repo_id
 
-        # Initialize data manager
         self.data_manager = HFDataManager(
             repo_id=hf_repo_id,
             local_fallback_dir=local_fallback_dir,
             use_clean_cache=use_clean_cache,
+            fallback_profile=solver_type or "MAIA_LB",
         )
 
-        self.env_data_path = None
+        self.env_data_path: Optional[str] = None
+        self.solver_profile: Optional[str] = None
         self.is_setup = False
 
     def setup(self, force_download: bool = False, verbose: bool = True) -> Dict[str, str]:
         """
-        Setup the workspace with all required files.
+        Set up the workspace with all required files.
 
         This method:
         1. Downloads/locates environment data from HF Hub
@@ -91,80 +82,31 @@ class MaiaWorkspace:
         """
         if verbose:
             print(f"=== Setting up MAIA workspace for {self.environment_name} ===")
-
-        # Step 1: Get environment data from HF Hub or cache
-        if verbose:
             print("1. Fetching environment data...")
 
-        # First check ~/.cache/maiagym/ for existing data
-        cache_dir = Path.home() / ".cache" / "maiagym" / self.environment_name
-        if cache_dir.exists() and not force_download:
-            self.env_data_path = str(cache_dir)
-            if verbose:
-                print(f"   Using cached data: {self.env_data_path}")
-        else:
-            # Download/get from HF Hub
-            self.env_data_path = self.data_manager.get_environment_path(
-                self.environment_name, force_download=force_download
-            )
-            if verbose:
-                print(f"   Environment data ready: {self.env_data_path}")
+        self.env_data_path = self.data_manager.get_environment_path(
+            self.environment_name, force_download=force_download
+        )
 
-        # Step 2: Create work directory structure
-        if verbose:
-            print(f"2. Creating work directory: {self.work_dir}")
-
-        work_path = Path(self.work_dir)
-        work_path.mkdir(parents=True, exist_ok=True)
-
-        # Create output subdirectory for MAIA
-        out_lb_path = work_path / "out_lb"
-        out_lb_path.mkdir(exist_ok=True)
-
-        # Step 3: Create symbolic links for all required files
         if verbose:
             print(f"   Environment data ready: {self.env_data_path}")
             print(f"2. Creating workspace: {self.work_dir}")
 
         paths = self.data_manager.prepare_working_directory(self.env_data_path, self.work_dir)
 
+        # Store detected solver profile for cleanup
+        self.solver_profile = paths.get("solver_profile", self.data_manager.fallback_profile)
+
         self.is_setup = True
 
         if verbose:
             print("=== Workspace setup complete ===")
-            print(f"   Work directory: {paths['work_dir']}")
-            print(f"   Properties file: {paths.get('properties_file', 'N/A')}")
+            print(f"   Work directory:   {paths['work_dir']}")
+            print(f"   Solver profile:   {self.solver_profile}")
+            print(f"   Properties file:  {paths.get('properties_file', 'N/A')}")
             print()
 
         return paths
-
-    def _create_link(self, source: Path, target: Path, verbose: bool = True) -> None:
-        """
-        Create a symbolic link, handling existing files/links.
-
-        Args:
-            source: Source file/directory path.
-            target: Target link path.
-            verbose: Print creation messages.
-        """
-        # Get absolute path of source
-        abs_source = source.resolve()
-
-        # Remove existing link/file if it exists
-        if target.is_symlink() or target.exists():
-            if target.is_dir() and not target.is_symlink():
-                shutil.rmtree(target)
-            else:
-                target.unlink()
-
-        # Create parent directory if needed
-        target.parent.mkdir(parents=True, exist_ok=True)
-
-        # Create symlink
-        target.symlink_to(abs_source)
-
-        if verbose:
-            print(f"   Linked: {target.name} -> {abs_source}")
 
     def cleanup(self, remove_work_dir: bool = False, verbose: bool = True) -> None:
         """
@@ -188,14 +130,15 @@ class MaiaWorkspace:
         else:
             if verbose:
                 print(f"Removing symbolic links in: {self.work_dir}")
+            from hydrogym.data_manager import SOLVER_PROFILES
 
-            # Remove only the symlinks we created
-            for target_rel in self.REQUIRED_FILES.values():
+            # Use detected profile instead of hardcoded MAIA_LB
+            profile = SOLVER_PROFILES.get(self.solver_profile or "MAIA_LB", {})
+            for target_rel in profile.get("workspace_files", {}).values():
                 target_path = work_path / target_rel
                 if target_path.is_symlink():
                     target_path.unlink()
-
-            for target_rel in self.REQUIRED_DIRS.values():
+            for target_rel in profile.get("workspace_dirs", {}).values():
                 target_path = work_path / target_rel
                 if target_path.is_symlink():
                     target_path.unlink()
@@ -211,7 +154,7 @@ def prepare_maia_workspace(
     **kwargs,
 ) -> Tuple[str, str]:
     """
-    Convenient function to prepare a MAIA workspace for MPMD coupling.
+    Convenience function to prepare a MAIA workspace for MPMD coupling.
 
     This function handles all the file preparation needed before launching
     mpirun with Python and MAIA. It downloads data from HF Hub (if needed)
@@ -237,7 +180,5 @@ def prepare_maia_workspace(
         >>> # sbatch job.slurm  # where job.slurm references work_dir
     """
     workspace = MaiaWorkspace(environment_name=environment_name, work_dir=work_dir, hf_repo_id=hf_repo_id, **kwargs)
-
     paths = workspace.setup(force_download=force_download, verbose=True)
-
     return paths["work_dir"], paths["properties_file"]

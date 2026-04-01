@@ -49,6 +49,8 @@ class MaiaFlowEnv(gym.Env):
         action_space: Gymnasium action space.
     """
 
+    SOLVER_TYPE: str = "MAIA_LB"
+
     def __init__(self, env_config: Dict):
         """
         Initialize the MaiaFlowEnv environment.
@@ -77,7 +79,10 @@ class MaiaFlowEnv(gym.Env):
         self.use_clean_cache = env_config.get("use_clean_cache", True)
 
         self.data_manager = HFDataManager(
-            repo_id=self.hf_repo_id, local_fallback_dir=self.local_fallback_dir, use_clean_cache=self.use_clean_cache
+            repo_id=self.hf_repo_id,
+            local_fallback_dir=self.local_fallback_dir,
+            use_clean_cache=self.use_clean_cache,
+            fallback_profile=self.SOLVER_TYPE,
         )
 
         # Environment identification

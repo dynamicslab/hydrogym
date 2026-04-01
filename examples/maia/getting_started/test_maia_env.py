@@ -211,10 +211,7 @@ def setup_logging(verbose: bool = False) -> logging.Logger:
     """
     level = logging.DEBUG if verbose else logging.INFO
     logging.basicConfig(
-        level=level,
-        format="%(asctime)s [%(levelname)s] %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-        stream=sys.stdout,
+        level=level, format="%(asctime)s [%(levelname)s] %(message)s", datefmt="%Y-%m-%d %H:%M:%S", stream=sys.stdout
     )
     return logging.getLogger(__name__)
 
@@ -236,9 +233,7 @@ def parse_range_arg(arg_str: str) -> Tuple[float, float, int]:
 
 
 def create_probe_locations(
-    x_range: Tuple[float, float, int],
-    y_range: Tuple[float, float, int],
-    logger: logging.Logger,
+    x_range: Tuple[float, float, int], y_range: Tuple[float, float, int], logger: logging.Logger
 ) -> List[float]:
     """
     Create probe location grid for 2D flow field sampling.
@@ -614,17 +609,9 @@ def main():
         ),
     )
     parser.add_argument(
-        "--num-steps",
-        type=int,
-        default=10,
-        help="Number of simulation steps per episode (default: 10)",
+        "--num-steps", type=int, default=10, help="Number of simulation steps per episode (default: 10)"
     )
-    parser.add_argument(
-        "--num-episodes",
-        type=int,
-        default=1,
-        help="Number of episodes to run (default: 1)",
-    )
+    parser.add_argument("--num-episodes", type=int, default=1, help="Number of episodes to run (default: 1)")
     parser.add_argument(
         "--probe-x-range",
         type=str,
@@ -645,12 +632,7 @@ def main():
             "For wake sampling: span crossflow region of interest"
         ),
     )
-    parser.add_argument(
-        "--seed",
-        type=int,
-        default=None,
-        help="Random seed for reproducibility (optional)",
-    )
+    parser.add_argument("--seed", type=int, default=None, help="Random seed for reproducibility (optional)")
     parser.add_argument(
         "--obs-norm",
         type=str,

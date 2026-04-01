@@ -1,13 +1,13 @@
 # Getting Started with Firedrake Environments
 
-✅ **START HERE** for standard RL interface examples using `env.reset()` and `env.step()`.
+**START HERE** for standard RL interface examples using `env.reset()` and `env.step()`.
 
 This directory contains comprehensive configuration examples and testing utilities for HydroGym's Firedrake-based flow environments using the **standard RL interface**.
 
 > **Looking for advanced workflows?** (steady solvers, stability analysis, direct control)
 > See [`../advanced/`](../advanced/) for specialized research and development examples.
 
-## 📁 Files
+## Files
 
 ### [`config_reference.py`](config_reference.py)
 **Comprehensive configuration examples** - Copy-pasteable configurations for all use cases.
@@ -43,7 +43,41 @@ mpirun -np 4 python test_firedrake_env.py --environment cylinder --num-steps 50
 
 Contains **inline configuration documentation** showing all available options.
 
-## 🎯 Quick Start
+### [`train_sb3_firedrake.py`](train_sb3_firedrake.py)
+**SB3 training script** - Train reinforcement learning agents (PPO/TD3/SAC) with Stable-Baselines3.
+
+Features:
+- Monitor wrapper for episode statistics
+- VecNormalize for observation/reward normalization
+- Checkpoint saving with normalization stats
+- TensorBoard logging
+- Pure Python execution (no MPMD required)
+
+Usage:
+```bash
+# Basic training
+python train_sb3_firedrake.py --env cylinder --algo PPO --total-timesteps 100000
+
+# With custom configuration
+python train_sb3_firedrake.py --env cavity --reynolds 7500 --mesh fine --algo SAC
+
+# Monitor training
+tensorboard --logdir logs/
+```
+
+### [`run_example_docker.sh`](run_example_docker.sh)
+**Docker runner script** - Run Firedrake examples in Docker with automatic setup.
+
+Usage:
+```bash
+# Test environment
+./run_example_docker.sh
+
+# Train SB3 agent
+./run_example_docker.sh train
+```
+
+## Quick Start
 
 ### 1. View All Configuration Options
 ```bash
@@ -58,7 +92,7 @@ python test_firedrake_env.py --environment cylinder --num-steps 10 --verbose
 ### 3. Copy a Configuration Template
 Open `config_reference.py` and copy the example that matches your use case.
 
-## 📚 Configuration Categories
+## Configuration Categories
 
 ### **Flow Configuration** (`flow_config`)
 | Parameter | Description | Options/Examples |
@@ -92,7 +126,7 @@ Open `config_reference.py` and copy the example that matches your use case.
 | `max_steps` | Episode length | `1e6` |
 | `callbacks` | Callback list | `[]` |
 
-## 🔬 Available Environments
+## Available Environments
 
 | Environment | Inputs | Control Type | Default Obs | Meshes |
 |-------------|--------|--------------|-------------|--------|
@@ -102,7 +136,7 @@ Open `config_reference.py` and copy the example that matches your use case.
 | **Cavity** | 1 | Blowing/suction (±0.1) | stress_sensor | medium, fine |
 | **Step** | 1 | Blowing/suction (±0.1) | stress_sensor | coarse, medium, fine |
 
-## 📊 Observation Types
+## Observation Types
 
 ### 1. **Force-Based Observations**
 - `'lift_drag'` → Returns `(CL, CD)` for cylinder/rotary, `(CL1, CD1, CL2, CD2, CL3, CD3)` for pinball
@@ -117,7 +151,7 @@ Open `config_reference.py` and copy the example that matches your use case.
 
 **Note:** For probe-based observations, you must specify `probes` in `flow_config`.
 
-## 🎓 Usage Examples
+## Usage Examples
 
 ### Example 1: Basic Cylinder Environment
 ```python
@@ -156,7 +190,42 @@ env = FlowEnv(env_config)
 # Each env.step() now runs 5 simulation steps internally
 ```
 
-### Example 3: Automatic Checkpoint Loading (NEW!)
+### Example 3: Training with Stable-Baselines3
+```python
+# See train_sb3_firedrake.py for full implementation
+from hydrogym import FlowEnv
+import hydrogym.firedrake as hgym
+from stable_baselines3 import PPO
+from stable_baselines3.common.monitor import Monitor
+from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
+
+def make_env():
+    env_config = {
+        'flow': hgym.Cylinder,
+        'flow_config': {'mesh': 'medium', 'Re': 100},
+        'solver': hgym.SemiImplicitBDF,
+        'solver_config': {'dt': 1e-2},
+        'actuation_config': {'num_substeps': 2},
+    }
+    env = FlowEnv(env_config)
+    return Monitor(env)
+
+env = DummyVecEnv([make_env])
+env = VecNormalize(env, norm_obs=True, norm_reward=True, clip_obs=10.0)
+
+model = PPO("MlpPolicy", env, verbose=1, tensorboard_log="./logs")
+model.learn(total_timesteps=100000)
+
+model.save("ppo_cylinder")
+env.save("vec_normalize.pkl")
+```
+
+Run with:
+```bash
+python train_sb3_firedrake.py --env cylinder --algo PPO --total-timesteps 100000
+```
+
+### Example 4: Automatic Checkpoint Loading
 ```python
 # Checkpoints are automatically inferred from flow config and downloaded from HF Hub
 env_config = {
@@ -175,7 +244,7 @@ env = FlowEnv(env_config)
 print(f"Loaded checkpoint: {env.flow.checkpoint_path}")
 ```
 
-### Example 4: Local Checkpoint Directory
+### Example 5: Local Checkpoint Directory
 ```python
 # Use local checkpoints without HF Hub (for offline/testing)
 env_config = {
@@ -193,7 +262,7 @@ env_config = {
 env = FlowEnv(env_config)
 ```
 
-### Example 5: Multiple Checkpoints for Curriculum Learning
+### Example 6: Multiple Checkpoints for Curriculum Learning
 ```python
 env_config = {
     'flow': hgym.Pinball,
@@ -216,7 +285,7 @@ obs, info = env.reset()
 print(f"Started from checkpoint index: {info.get('checkpoint_index')}")
 ```
 
-### Example 6: Probe-Based Observations
+### Example 7: Probe-Based Observations
 ```python
 import numpy as np
 
@@ -240,7 +309,7 @@ obs, _ = env.reset()
 print(f"Observation shape: {obs.shape}")  # (40,) for 20 probes × 2 velocity components
 ```
 
-### Example 7: Using Callbacks
+### Example 8: Using Callbacks
 ```python
 from hydrogym.firedrake.io import CheckpointCallback, LogCallback
 
@@ -266,7 +335,7 @@ env_config = {
 env = FlowEnv(env_config)
 ```
 
-## 💾 Checkpoint Management
+## Checkpoint Management
 
 HydroGym provides flexible checkpoint management with automatic inference and HuggingFace Hub integration.
 
@@ -317,7 +386,7 @@ else:
     print("Starting from zeros")
 ```
 
-## 🎛️ Available Callbacks
+## Available Callbacks
 
 Import from `hydrogym.firedrake.io`:
 
@@ -328,38 +397,6 @@ Import from `hydrogym.firedrake.io`:
 | `LogCallback` | Log to text file | `interval`, `filename`, `postprocess`, `nvals` |
 | `SnapshotCallback` | Save for modal analysis | `interval`, `filename` |
 | `GenericCallback` | Custom function | `callback`, `interval` |
-
-## 📖 Additional Resources
-
-- **HydroGym Documentation**: [https://hydrogym.readthedocs.io](https://hydrogym.readthedocs.io)
-- **Firedrake Documentation**: [https://www.firedrakeproject.org](https://www.firedrakeproject.org)
-- **Gymnasium API**: [https://gymnasium.farama.org](https://gymnasium.farama.org)
-
-## 💡 Tips
-
-1. **Start with defaults** - Use `example_minimal()` and add options incrementally
-2. **Check timestep stability** - If simulation diverges, reduce `dt`
-3. **Use multi-substep for RL** - Improves sample efficiency by running multiple simulation steps per policy action
-4. **Multiple checkpoints for exploration** - Provides diverse initial conditions
-5. **Monitor with callbacks** - Use `LogCallback` to track training progress
-6. **Cavity is stiff** - Requires very small timestep (`dt=1e-4`)
-
-## 🐛 Troubleshooting
-
-| Issue | Solution |
-|-------|----------|
-| Simulation diverges | Reduce `dt` or add stabilization |
-| Low observation values | Check `observation_type` and `probes` configuration |
-| Slow performance | Use coarser mesh or increase `num_substeps` |
-| Checkpoint load fails | Verify file exists and mesh compatibility |
-| Import errors | Ensure Firedrake is installed and activated |
-
-## 📝 Contributing
-
-To add new examples:
-1. Add a new `example_*()` function in `config_reference.py`
-2. Document the configuration purpose and parameters
-3. Include in the summary table and main execution block
 
 ---
 

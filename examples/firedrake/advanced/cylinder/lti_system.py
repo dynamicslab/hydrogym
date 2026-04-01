@@ -63,7 +63,7 @@ if not os.path.exists(output_dir):
 
 # Create flow configuration with rotary cylinder actuation
 # RotaryCylinder uses tangential velocity BC (cylinder rotation)
-flow = hgym.RotaryCylinder(Re=100, mesh="medium")
+flow = hgym.RotaryCylinder(Re=100, mesh="medium", use_HF_data_manager=False)
 
 # ========================================================================
 # Step 1: Compute steady base flow qB

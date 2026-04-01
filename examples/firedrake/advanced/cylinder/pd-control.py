@@ -99,6 +99,7 @@ flow = hgym.RotaryCylinder(
     restart=restart,  # Load developed vortex shedding state
     callbacks=callbacks,
     velocity_order=velocity_order,
+    use_HF_data_manager=False,
 )
 
 # PD controller tuning parameters

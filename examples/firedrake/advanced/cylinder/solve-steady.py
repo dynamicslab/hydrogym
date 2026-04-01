@@ -35,7 +35,7 @@ if Re > 50:
 else:
     Re_init = [Re]
 
-flow = hgym.Cylinder(Re=Re_init[0], mesh=mesh_resolution, velocity_order=2)
+flow = hgym.Cylinder(Re=Re_init[0], mesh=mesh_resolution, velocity_order=2, use_HF_data_manager=False)
 
 dof = flow.mixed_space.dim()
 hgym.print(f"Total dof: {dof} --- dof/rank: {int(dof / fd.COMM_WORLD.size)}")

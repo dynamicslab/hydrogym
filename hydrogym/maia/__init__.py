@@ -57,6 +57,12 @@ _MPI_ATTRS = frozenset(
         "SquareCylinder",
         "Cube",
         "Sphere",
+        "ZPGTBLBase",
+        "ZPGTBLJet",
+        "ZPGTBLSurfaceWave",
+        "DRA2303Base",
+        "DRA2303Jet",
+        "DRA2303SurfaceWave",
     ]
 )
 
@@ -89,6 +95,8 @@ def _load_mpi_deps() -> None:
     from .envs.square_cylinder import SquareCylinder
     from .envs.cube import Cube
     from .envs.sphere import Sphere
+    from .envs.turbulent_boundary_layer import ZPGTBLBase, ZPGTBLJet, ZPGTBLSurfaceWave
+    from .envs.dra2303 import DRA2303Base, DRA2303Jet, DRA2303SurfaceWave
 
     for _name, _obj in [
         ("MaiaFlowEnv", MaiaFlowEnv),
@@ -108,6 +116,12 @@ def _load_mpi_deps() -> None:
         ("SquareCylinder", SquareCylinder),
         ("Cube", Cube),
         ("Sphere", Sphere),
+        ("ZPGTBLBase", ZPGTBLBase),
+        ("ZPGTBLJet", ZPGTBLJet),
+        ("ZPGTBLSurfaceWave", ZPGTBLSurfaceWave),
+        ("DRA2303Base", DRA2303Base),
+        ("DRA2303Jet", DRA2303Jet),
+        ("DRA2303SurfaceWave", DRA2303SurfaceWave),
     ]:
         setattr(_mod, _name, _obj)
 
@@ -147,4 +161,10 @@ __all__ = [
     "SquareCylinder",
     "Cube",
     "Sphere",
+    "ZPGTBLBase",
+    "ZPGTBLJet",
+    "ZPGTBLSurfaceWave",
+    "DRA2303Base",
+    "DRA2303Jet",
+    "DRA2303SurfaceWave",
 ]

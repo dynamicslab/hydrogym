@@ -51,7 +51,6 @@ class NACA0012(NACA0012Base):
         """
         super().__init__(env_config)
         self.numJetsInSimulation = self._get_property(self.runtime_property_file_data, "lbNoJets")
-
         self.configure_observations()
         self.configure_probe_dimensions()
         self.set_observation_action_spaces()

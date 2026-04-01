@@ -110,7 +110,12 @@ if __name__ == "__main__":
     stabilization = "none"
 
     # Create flow configuration (mesh, boundary conditions, etc.)
-    flow = hgym.Cylinder(Re=Re, mesh=mesh, velocity_order=velocity_order)
+    flow = hgym.Cylinder(
+        Re=Re,
+        mesh=mesh,
+        velocity_order=velocity_order,
+        use_HF_data_manager=False,
+    )
 
     hgym.print("|------------------------------------------------|")
     hgym.print("| Linear stability analysis of the cylinder wake |")
@@ -185,21 +190,21 @@ if __name__ == "__main__":
         hgym.print("Computing adjoint modes...")
         adj_results = hgym.utils.stability_analysis(flow, sigma, m, tol, adjoint=True)
 
-    # Save adjoint eigenvalues (same as direct, but computed independently)
-    evals = adj_results.evals
-    eval_data = np.zeros((len(evals), 3), dtype=np.float64)
-    eval_data[:, 0] = evals.real
-    eval_data[:, 1] = evals.imag
-    eval_data[:, 2] = adj_results.residuals
-    np.save(f"{output_dir}/adj_evals", eval_data)
+        # Save adjoint eigenvalues (same as direct, but computed independently)
+        evals = adj_results.evals
+        eval_data = np.zeros((len(evals), 3), dtype=np.float64)
+        eval_data[:, 0] = evals.real
+        eval_data[:, 1] = evals.imag
+        eval_data[:, 2] = adj_results.residuals
+        np.save(f"{output_dir}/adj_evals", eval_data)
 
-    with fd.CheckpointFile(f"{output_dir}/adj_evecs.h5", "w") as chk:
-        for i in range(len(evals)):
-            chk.save_mesh(flow.mesh)
-            adj_results.evecs_real[i].rename(f"evec_{i}_re")
-            chk.save_function(adj_results.evecs_real[i])
-            adj_results.evecs_imag[i].rename(f"evec_{i}_im")
-            chk.save_function(adj_results.evecs_imag[i])
+        with fd.CheckpointFile(f"{output_dir}/adj_evecs.h5", "w") as chk:
+            for i in range(len(evals)):
+                chk.save_mesh(flow.mesh)
+                adj_results.evecs_real[i].rename(f"evec_{i}_re")
+                chk.save_function(adj_results.evecs_real[i])
+                adj_results.evecs_imag[i].rename(f"evec_{i}_im")
+                chk.save_function(adj_results.evecs_imag[i])
 
     hgym.print(
         "NOTE: If there is a warning following this, ignore it.  It is raised by PETSc "

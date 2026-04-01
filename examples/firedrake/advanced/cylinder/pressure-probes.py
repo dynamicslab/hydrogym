@@ -56,6 +56,7 @@ flow = hgym.Cylinder(
     velocity_order=velocity_order,
     observation_type="pressure_probes",
     probes=probes,  # List of (x, y) coordinates
+    use_HF_data_manager=False,
 )
 
 # Time integration parameters

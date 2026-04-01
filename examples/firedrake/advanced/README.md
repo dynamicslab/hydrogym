@@ -22,17 +22,6 @@ These examples are intended for:
 - Advanced users exploring flow physics and stability
 - Developers extending HydroGym capabilities
 
-## Environments
-
-Each environment folder contains advanced workflow scripts:
-
-| Environment | Description | Advanced Examples |
-|-------------|-------------|-------------------|
-| [**cavity/**](cavity/) | Lid-driven cavity | Steady solver, stability analysis, sine forcing |
-| [**cylinder/**](cylinder/) | Circular cylinder | PD control, stability, phase-swept control, probes |
-| [**pinball/**](pinball/) | Three cylinders | Steady → transient workflow, complex wake |
-| [**step/**](step/) | Backward-facing step | Separation control, steady solver |
-
 ## Example Types
 
 ### Steady-State Solvers (`solve-steady.py`)
@@ -42,18 +31,14 @@ from hydrogym.firedrake import Cylinder, IPCS
 from hydrogym.firedrake.utils import solve_steady_state_stokes
 
 flow = Cylinder(Re=100, mesh='medium')
-solver = IPCS(flow, dt=1e-2)
-solve_steady_state_stokes(flow, solver, max_iter=10)
-```
-
-### Linear Stability Analysis (`stability.py`)
-Compute eigenvalues and unstable modes:
-```python
-from hydrogym.firedrake.utils import compute_stability
-
-eigenvalues, eigenmodes = compute_stability(
-    flow, solver, n_eigs=10, target=1j
+solver_parameters = {"snes_monitor": None}
+solver = hgym.NewtonSolver(
+    flow,
+    stabilization="gls",  
+    solver_parameters=solver_parameters,
 )
+
+solver.solve()
 ```
 
 ### Direct Control (`pd-control.py`)
@@ -92,42 +77,6 @@ Multi-stage research workflows:
 
 4. **Progress to specialized scripts** - Try steady solvers, stability analysis, control
 
-## Running Examples
-
-### Basic Execution
-```bash
-cd advanced/cylinder
-python run-transient.py
-```
-
-### With MPI Parallelism
-```bash
-mpirun -np 4 python stability.py
-```
-
-### Typical Workflow
-```bash
-# 1. Understand the flow
-python run-transient.py
-
-# 2. Find base state
-python solve-steady.py
-
-# 3. Analyze stability
-python stability.py
-
-# 4. Test control
-python pd-control.py
-```
-
-## Documentation
-
-Each environment has detailed documentation:
-- [cavity/README.md](cavity/README.md) - Lid-driven cavity
-- [cylinder/README.md](cylinder/README.md) - Circular cylinder
-- [pinball/README.md](pinball/README.md) - Three cylinders
-- [step/README.md](step/README.md) - Backward-facing step
-
 ## Need Standard RL Examples?
 
 👉 **Go to [`../getting_started/`](../getting_started/)** for standard RL interface examples with:
@@ -137,5 +86,3 @@ Each environment has detailed documentation:
 - Copy-paste ready templates
 
 ---
-
-**Remember**: These are advanced examples for specialized workflows. For standard RL training, use [`../getting_started/`](../getting_started/).

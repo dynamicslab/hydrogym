@@ -32,7 +32,7 @@ os.makedirs(output_dir, exist_ok=True)
 pvd_out = f"{output_dir}/solution.pvd"
 checkpoint = f"{output_dir}/checkpoint.h5"
 
-flow = hgym.Cylinder(Re=Re, mesh=mesh_resolution, velocity_order=2)
+flow = hgym.Cylinder(Re=Re, mesh=mesh_resolution, velocity_order=2, use_HF_data_manager=False)
 
 # ========================================================================
 # Stage 1: Solve steady state (unstable equilibrium at Re=100)

@@ -68,6 +68,10 @@ class FlowConfig(PDEBase):
         if probes is None:
             probes = []
 
+        # Store probes for later validation (after mesh is loaded)
+        self._probes_to_validate = probes if len(probes) > 0 else None
+        self._validate_probes_on_init = config.pop("validate_probes", True)
+
         probe_obs_types = {
             "velocity_probes": ObservationFunction(partial(self.velocity_probe, probes), num_outputs=2 * len(probes)),
             "pressure_probes": ObservationFunction(partial(self.pressure_probe, probes), num_outputs=len(probes)),
@@ -81,9 +85,10 @@ class FlowConfig(PDEBase):
 
         # Process restart parameter - resolve environment names to checkpoint paths
         # or auto-infer from flow configuration
-        mesh = config.get("mesh", self.DEFAULT_MESH)
+        mesh = config.get("mesh", self.MESH_DIR)
         cache_dir = config.pop("cache_dir", None)  # Custom cache directory (optional)
         local_dir = config.pop("local_dir", None)  # Local fallback directory (optional)
+        use_HF_data_manager = config.pop("use_HF_data_manager", True)  # Control HF data manager usage (default: True)
 
         # Extract numeric Reynolds number from Firedrake Constant
         Re_value = int(float(self.Re))
@@ -94,6 +99,7 @@ class FlowConfig(PDEBase):
             mesh=mesh,
             cache_dir=cache_dir,
             local_dir=local_dir,
+            use_HF_data_manager=use_HF_data_manager,
         )
 
         # Store resolved checkpoint path for verification/debugging
@@ -103,20 +109,22 @@ class FlowConfig(PDEBase):
 
         super().__init__(**config)
 
-    def _resolve_checkpoint(self, restart, Re, mesh, cache_dir=None, local_dir=None):
+    def _resolve_checkpoint(self, restart, Re, mesh, cache_dir=None, local_dir=None, use_HF_data_manager=True):
         """Resolve checkpoint parameter to actual file path(s).
 
-        Handles four cases:
-        1. None - auto-infer environment name from config and try to download
-        2. Explicit path (str starting with / or ./) - use directly
-        3. Environment name (str like 'Cylinder_2D_Re100_medium_FD') - download from HF Hub
-        4. List of paths/names - process each one
+            Handles four cases:
+            1. None - auto-infer environment name from config and try to download
+            2. Explicit path (str starting with / or ./) - use directly
+            3. Environment name (str like 'Cylinder_2D_Re100_medium_FD') - download from HF Hub
+            4. List of paths/names - process each one
 
         Args:
             restart: None, str (path or env name), or list of str
             Re: Reynolds number (for auto-inference)
             mesh: Mesh resolution (for auto-inference)
             cache_dir: Custom cache directory (optional)
+            local_dir: Local fallback directory (optional)
+            use_HF_data_manager: Whether to use HF data manager for checkpoint resolution (default: True)
 
         Returns:
             None, str (resolved path), or list of str (resolved paths)
@@ -126,37 +134,45 @@ class FlowConfig(PDEBase):
             flow_name = self.__class__.__name__
             env_name = f"{flow_name}_2D_Re{Re}_{mesh}_FD"
 
-            logging.log(
-                logging.INFO,
-                f"No checkpoint specified, attempting to auto-load: {env_name}",
-            )
+            logging.log(logging.INFO, f"No checkpoint specified, attempting to auto-load: {env_name}")
 
-            resolved = self._resolve_single_checkpoint(env_name, cache_dir, local_dir, silent=True)
+            resolved = self._resolve_single_checkpoint(
+                env_name, cache_dir, local_dir, use_HF_data_manager=use_HF_data_manager, silent=True
+            )
             if resolved is None:
-                logging.log(
-                    logging.INFO,
-                    f"No checkpoint found for {env_name}, starting from zeros",
-                )
+                logging.log(logging.INFO, f"No checkpoint found for {env_name}, starting from zeros")
             return resolved
 
         if isinstance(restart, str):
-            return self._resolve_single_checkpoint(restart, cache_dir, local_dir)
+            return self._resolve_single_checkpoint(
+                restart, cache_dir, local_dir, use_HF_data_manager=use_HF_data_manager
+            )
 
         elif isinstance(restart, (list, tuple)):
             # Process multiple checkpoints
             resolved = []
             for ckpt in restart:
-                resolved_ckpt = self._resolve_single_checkpoint(ckpt, cache_dir, local_dir)
+                resolved_ckpt = self._resolve_single_checkpoint(
+                    ckpt, cache_dir, local_dir, use_HF_data_manager=use_HF_data_manager
+                )
                 if resolved_ckpt is not None:
                     resolved.append(resolved_ckpt)
             return resolved if resolved else None
 
-    def _resolve_single_checkpoint(self, checkpoint, cache_dir=None, local_dir=None, silent=False):
+        else:
+            logging.log(logging.WARN, f"Invalid restart type: {type(restart)}, ignoring")
+            return None
+
+    def _resolve_single_checkpoint(
+        self, checkpoint, cache_dir=None, local_dir=None, use_HF_data_manager=True, silent=False
+    ):
         """Resolve a single checkpoint path or environment name.
 
         Args:
             checkpoint: str (path or environment name)
             cache_dir: Custom cache directory (optional)
+            local_dir: Local fallback directory (optional)
+            use_HF_data_manager: Whether to use HF data manager for checkpoint resolution (default: True)
             silent: If True, suppress warnings for missing checkpoints (for auto-inference)
 
         Returns:
@@ -180,6 +196,12 @@ class FlowConfig(PDEBase):
                 if not silent:
                     logging.log(logging.WARN, f"Checkpoint path does not exist: {checkpoint}")
                 return None
+
+        # If HF data manager is disabled, don't try to resolve from HF Hub
+        if not use_HF_data_manager:
+            if not silent:
+                logging.log(logging.INFO, f"HF data manager disabled, skipping checkpoint resolution for: {checkpoint}")
+            return None
 
         # Assume it's an environment name - try to download from HF Hub
         try:
@@ -209,10 +231,7 @@ class FlowConfig(PDEBase):
                 return resolved_path
             else:
                 if not silent:
-                    logging.log(
-                        logging.WARN,
-                        f"No checkpoint file found in environment: {checkpoint}",
-                    )
+                    logging.log(logging.WARN, f"No checkpoint file found in environment: {checkpoint}")
                 return None
 
         except ImportError:
@@ -300,6 +319,15 @@ class FlowConfig(PDEBase):
         self.split_solution()  # Break out and rename main solution
 
         self._vorticity = fd.Function(self.pressure_space, name="vort")
+
+        # Validate probe locations if configured
+        if self._validate_probes_on_init and self._probes_to_validate is not None:
+            try:
+                self._validate_probes(self._probes_to_validate)
+                logging.log(logging.INFO, f"✓ Validated {len(self._probes_to_validate)} probe location(s)")
+            except ValueError as e:
+                logging.log(logging.ERROR, f"Probe validation failed: {e}")
+                raise
 
     def set_state(self, q: fd.Function):
         """Set the current state fields
@@ -485,6 +513,60 @@ class FlowConfig(PDEBase):
         if not assemble:
             return M
         return fd.assemble(M)
+
+    def _validate_probes(self, probes: ArrayLike, mesh: fd.Mesh = None) -> None:
+        """Validate that probe locations are inside the mesh.
+
+        Args:
+            probes: Array of (x, y) probe coordinates
+            mesh: Mesh to check against (defaults to self.mesh)
+
+        Raises:
+            ValueError: If any probe is outside the mesh bounds
+
+        Note:
+            This performs a bounding box check first, then attempts to create
+            a VertexOnlyMesh to verify Firedrake can locate the points.
+        """
+        import logging
+
+        if mesh is None:
+            mesh = self.mesh
+
+        probes_array = np.asarray(probes)
+        if len(probes_array) == 0:
+            return  # No probes to validate
+
+        # Get mesh coordinates for bounding box check
+        coords = mesh.coordinates.dat.data_ro
+        x_min, y_min = coords.min(axis=0)
+        x_max, y_max = coords.max(axis=0)
+
+        # Check if any probes are outside bounding box
+        outside_probes = []
+        for i, (x, y) in enumerate(probes_array):
+            if x < x_min or x > x_max or y < y_min or y > y_max:
+                outside_probes.append((i, x, y))
+
+        if outside_probes:
+            msg = f"Found {len(outside_probes)} probe(s) outside mesh bounds:\n"
+            msg += f"  Mesh bounds: x ∈ [{x_min:.3f}, {x_max:.3f}], y ∈ [{y_min:.3f}, {y_max:.3f}]\n"
+            for idx, x, y in outside_probes[:5]:  # Show first 5
+                msg += f"  Probe {idx}: ({x:.3f}, {y:.3f})\n"
+            if len(outside_probes) > 5:
+                msg += f"  ... and {len(outside_probes) - 5} more\n"
+            logging.log(logging.ERROR, msg)
+            raise ValueError(msg)
+
+        # Try to create VertexOnlyMesh to verify Firedrake can locate the points
+        # This is a more accurate test than bounding box alone
+        try:
+            _ = fd.VertexOnlyMesh(mesh, probes_array)
+            # If we got here, all points were successfully located
+        except Exception as e:
+            msg = f"Failed to locate probe points in mesh: {e}\n"
+            msg += "This may indicate probes are outside the mesh or in excluded regions."
+            raise ValueError(msg) from e
 
     def velocity_probe(self, probes, q: fd.Function = None) -> list[float]:
         """Probe velocity in the wake.

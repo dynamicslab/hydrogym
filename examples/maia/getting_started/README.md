@@ -4,7 +4,7 @@
 
 This directory contains examples and utilities for HydroGym's MAIA-based flow environments using the **standard RL interface** with **MPMD coupling**.
 
-## 📁 Files
+## Files
 
 ### [`test_maia_env.py`](test_maia_env.py)
 **Interactive test script** - Test MAIA environments with command-line arguments via MPMD execution.
@@ -16,6 +16,29 @@ mpirun -np 1 python test_maia_env.py --environment Cylinder_2D_Re200 : -np 1 mai
 
 # Parallel MAIA (1 Python + 4 MAIA processes)
 mpirun -np 1 python test_maia_env.py --environment Cylinder_2D_Re200 : -np 4 maia properties.toml
+```
+
+### [`train_sb3_maia.py`](train_sb3_maia.py)
+**SB3 training script** - Train reinforcement learning agents (PPO/TD3/SAC) with Stable-Baselines3.
+
+Features:
+- Monitor wrapper for episode statistics
+- VecNormalize for observation/reward normalization
+- Checkpoint saving with normalization stats
+- TensorBoard logging
+
+Usage:
+```bash
+# First, prepare workspace
+python prepare_workspace.py --env Cylinder_2D_Re200 --work-dir ./train_run
+
+# Then train with MPMD execution
+cd train_run
+mpirun -np 1 python ../train_sb3_maia.py --env Cylinder_2D_Re200 --algo PPO --total-timesteps 100000 : -np 1 maia properties.toml
+
+# Monitor training
+tensorboard --logdir logs/
+```
 
 ### [`prepare_workspace.py`](prepare_workspace.py)
 **Workspace setup utility** - Downloads environment data and creates workspace for HPC jobs.
@@ -28,7 +51,16 @@ python prepare_workspace.py --env Cylinder_2D_Re200 --work-dir ./my_workspace
 ### [`run_example_docker.sh`](run_example_docker.sh)
 **Docker runner script** - Run MAIA examples in Docker with automatic setup.
 
-## 🎯 Quick Start
+Usage:
+```bash
+# Test environment
+./run_example_docker.sh
+
+# Train SB3 agent
+./run_example_docker.sh train
+```
+
+## Quick Start
 
 **⚠️ Internet Required:** Environment files are downloaded from Hugging Face Hub. For offline/HPC use, see [Offline Usage](#offline-usage-no-internet-on-compute-nodes) below.
 
@@ -75,7 +107,7 @@ The test script supports many configuration options:
 python test_maia_env.py --help
 ```
 
-## 🎓 Usage Examples
+## Usage Examples
 
 ### Example 1: Basic RL Loop
 
@@ -113,7 +145,47 @@ env.close()
 mpirun -np 1 python your_script.py : -np 4 maia properties.toml
 ```
 
-### Example 2: Custom Probe Configuration
+### Example 2: Training with Stable-Baselines3
+
+```python
+# See train_sb3_maia.py for full implementation
+import hydrogym.maia as maia
+from stable_baselines3 import PPO
+from stable_baselines3.common.monitor import Monitor
+from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
+
+# Define probes
+probe_locations = []
+for x in np.linspace(1.0, 8.0, 8):
+    for y in np.linspace(-1.0, 1.0, 5):
+        probe_locations.extend([x, y])
+
+def make_env():
+    env = maia.from_hf(
+        'Cylinder_2D_Re200',
+        use_clean_cache=False,
+        probe_locations=probe_locations,
+        obs_normalization_strategy='U_inf',
+    )
+    return Monitor(env)
+
+env = DummyVecEnv([make_env])
+env = VecNormalize(env, norm_obs=True, norm_reward=True, clip_obs=10.0)
+
+model = PPO("MlpPolicy", env, verbose=1, tensorboard_log="./logs")
+model.learn(total_timesteps=100000)
+
+model.save("ppo_cylinder")
+env.save("vec_normalize.pkl")
+```
+
+**Run with MPMD:**
+```bash
+cd work_dir
+mpirun -np 1 python ../train_sb3_maia.py --env Cylinder_2D_Re200 --algo PPO : -np 1 maia properties.toml
+```
+
+### Example 3: Custom Probe Configuration
 
 ```python
 import hydrogym.maia as maia
@@ -135,7 +207,7 @@ obs, _ = env.reset()
 print(f"Observation shape: {obs.shape}")  # (100,) for 50 probes × 2 velocity components
 ```
 
-### Example 3: Custom Normalization
+### Example 4: Custom Normalization
 
 ```python
 import hydrogym.maia as maia
@@ -160,7 +232,7 @@ env = maia.from_hf(
 )
 ```
 
-### Example 4: Offline Usage with Local Files
+### Example 5: Offline Usage with Local Files
 
 ```python
 import hydrogym.maia as maia

@@ -23,7 +23,6 @@ from hydrogym.firedrake.utils.io import (
     SnapshotCallback,
 )
 
-
 # =============================================================================
 # EXAMPLE 1: Minimal Configuration (Defaults)
 # =============================================================================
@@ -492,7 +491,6 @@ For detailed examples, see the functions in this file:
   - example_pinball_checkpoints()  - Multiple restart checkpoints
   - example_production_rl()        - Production RL training setup
 """
-
 
 # =============================================================================
 # USAGE EXAMPLES

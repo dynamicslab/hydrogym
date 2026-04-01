@@ -98,6 +98,7 @@ flow = hgym.RotaryCylinder(
     restart=restart,  # Start from developed vortex shedding
     callbacks=callbacks,
     velocity_order=velocity_order,
+    use_HF_data_manager=False,
 )
 
 # Phase sweep parameters

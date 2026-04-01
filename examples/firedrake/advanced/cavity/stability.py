@@ -9,7 +9,6 @@ mpiexec -np 20 python stability.py --output-dir eig_output --sigma 1.0+11j
 import argparse
 import os
 
-# from cyl_common import base_checkpoint, evec_checkpoint, flow
 from typing import NamedTuple
 
 import firedrake as fd
@@ -92,6 +91,7 @@ if __name__ == "__main__":
         Re=Re,
         mesh=mesh,
         velocity_order=velocity_order,
+        use_HF_data_manager=False,
     )
 
     dof = flow.mixed_space.dim()

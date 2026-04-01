@@ -9,7 +9,7 @@ maintainers = [
     "Ludger Paehler <paehlerludger@gmail.com>",
     "Jared Callaham <jared.callaham@gmail.com>",
 ]
-description = "A Reinforcement Learning Benchmarking Environment for Fluid Dynamics (with Firedrake and Maia solver support)"
+description = "A Reinforcement Learning Benchmarking Environment for Fluid Dynamics (with Firedrake, MAIA, and NEK5000 solver support)"
 license = "MIT"
 readme = "README.md"
 classifiers=[
@@ -46,19 +46,32 @@ python = "^3.10"
 # Core dependencies
 control = "^0.9.2"
 dmsuite = "^0.1.1"
-gmsh = "^4.11.1"
-
-# Gymnasium environment
-gymnasium = "^0.28.0"
-
-# Maia solver dependencies (included by default)
-mpi4py = "^4.0.0"
-omegaconf = "^2.1.0"
-einops = "^0.6.0"
+gymnasium = "^1.2.3"
 huggingface-hub = "^0.16.0"
 pandas = "^2.1.0"
 scipy = "^1.7.0"
-toml = "^0.10.0"
+
+# Firedrake solver optional dependencies
+# (firedrake itself must be installed via its own installer)
+gmsh = { version = "^4.11.1", optional = true }
+psutil = {version = "^7.2.2", optional = true }
+
+# Maia solver optional dependencies
+mpi4py = { version = "^4.0.0", optional = true }
+omegaconf = { version = "^2.1.0", optional = true }
+einops = { version = "^0.6.0", optional = true }
+toml = { version = "^0.10.0", optional = true }
+
+# NEK5000 solver optional dependencies
+pymech = { version = "^1.4.0", optional = true }
+pettingzoo = { version = "^1.24.0", optional = true }
+stable-baselines3 = { version = "^2.7.1", optional = true }
+
+[tool.poetry.extras]
+firedrake = ["gmsh", "psutil"]
+maia = ["mpi4py", "omegaconf", "einops", "toml"]
+nek = ["mpi4py", "omegaconf", "pymech", "pettingzoo", "stable-baselines3"]
+all = ["gmsh", "psutil", "mpi4py", "omegaconf", "einops", "toml", "pymech", "pettingzoo", "stable-baselines3"]
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.15.8"

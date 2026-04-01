@@ -11,7 +11,7 @@ MAIA is a high-performance CFD solver designed for massively parallel simulation
 ```
 maia/
 ├── README.md              # This file
-└── getting_started/       # ⭐ START HERE - Standard RL interface
+└── getting_started/       # START HERE - Standard RL interface
     ├── test_maia_env.py   # Interactive test script with MPMD
     ├── prepare_workspace.py  # Workspace setup utility
     └── run_example_docker.sh # Docker runner script

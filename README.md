@@ -9,104 +9,192 @@
 <a href="https://join.slack.com/t/hydrogym/shared_invite/zt-27u914dfn-UFq3CkaxiLs8dwZ_fDkBuA"><img alt="Slack" src="https://img.shields.io/badge/slack-hydrogym-brightgreen.svg?logo=slack"></a>
 </p>
 
+# HydroGym: Reinforcement Learning for Fluid Dynamics
 
+**88 environments | 6 solver backends | 2D & 3D | Ready for RL training**
 
-# About this Package
+HydroGym is a comprehensive platform for applying reinforcement learning to fluid dynamics and flow control. With environments ranging from canonical benchmarks to turbulent flows, HydroGym provides a standardized Gymnasium-compatible interface for training RL agents on challenging CFD problems.
 
-__IMPORTANT NOTE: This package is still ahead of an official public release, so consider anything here as an early beta. In other words, we're not guaranteeing any of this is working or correct yet. Use at your own risk__
+> **Paper**: Lagemann, C., et al. (2025). *HydroGym: A reinforcement learning platform for fluid dynamics.* arXiv:2512.17534 [[arxiv]](https://arxiv.org/abs/2512.17534)
 
-HydroGym is an open-source library of challenge problems in data-driven modeling and control of fluid dynamics.
-It is roughly designed as an abstract interface for control of PDEs that is compatible with typical reinforcement learning APIs
-(in particular Ray/RLLib and Gymnasium) along with specific numerical solver implementations for some canonical flow control problems.
-Environments are implemented using two solver backends: [Firedrake](https://www.firedrakeproject.org/) (finite element) and m-AIA (MPI-based).
+## Key Features
 
-## Features
-* __Hierarchical:__ Designed for analysis and controller design **from a high-level black-box interface to low-level operator access**
-    - High-level: `hydrogym.FlowEnv` classes implement the Gymnasium `Env` interface
-    - Intermediate: Typical CFD interface with `hydrogym.FlowConfig` and `hydrogym.TransientSolver` classes
-    - Low-level: Access to linearized operators and sparse scipy or PETSc CSR matrices
-* __Modeling and analysis tools:__ Global stability analysis (via SLEPc) and modal decompositions (via modred)
-* __Scalable:__ Individual environments parallelized with MPI with a **highly scalable [Ray](https://github.com/ray-project/ray) backend reinforcement learning training**.
+- **Diverse Environments**: 88 pre-configured environments across 6 CFD solvers
+- **Standard RL Interface**: Gymnasium-compatible API works with Stable-Baselines3, RLlib, and other RL libraries
+- **Compute Efficient**: Highly optimized GPU & CPU backends for efficient RL deployment ranging from local workstations to exascale HPC systems
+- **Scalable**: MPI-parallelized solvers with distributed RL training support
+- **Multiple Backends**: Finite Element (Firedrake), Lattice Boltzmann (MAIA LBM), Finite Volume (MAIA FV), Spectral Element (NEK5000), Fully Differentiable solvers (JAX-Fluids)
+- **2D & 3D**: From simple 2D benchmarks to complex 3D turbulent flows (Re up to 400,000)
+- **Research-Ready**: Includes checkpoints, observation strategies, and reward formulations managed by a complementary HuggingFace repository
 
-# Installation
+## Quick Start with Docker (Recommended)
 
-HydroGym supports two CFD solver backends: **Firedrake** (finite element) and **Maia** (m-AIA with MPI). Both backends are fully integrated and ready to use.
-
-## Quick Installation
-
-### Unified Installation (Recommended)
-
-HydroGym now includes all dependencies by default. Simply install the system MPI library and HydroGym:
+**We strongly recommend using our pre-configured Docker containers** for hassle-free setup:
 
 ```bash
-# Install system MPI library
-sudo apt-get install libopenmpi-dev openmpi-bin  # Ubuntu/Debian
-# OR: brew install open-mpi  # macOS
+# For NVIDIA GPUs (CUDA)
+docker pull clagemann/maia-cuda-12.8.1:latest
 
-# Install HydroGym (includes Maia support)
-pip install hydrogym
+# For AMD GPUs (ROCm)
+docker pull clagemann/maia-rocm-6.3.3:latest
+
+# Run container
+docker run -it --gpus all clagemann/maia-cuda-12.8.1:latest
 ```
+## Available Environments
 
-### With Firedrake Backend
+HydroGym provides **88 environments** across 6 solver backends:
 
-To use Firedrake environments, install Firedrake first using its native [Python installation](https://www.firedrakeproject.org/install.html#installing-firedrake-using-pip):
+| Solver Backend | Count | Description | Dimensions |
+|----------------|-------|-------------|------------|
+| **Firedrake** (FEM) | 20 | Canonical flow control benchmarks | 2D |
+| **MAIA LBM** | 55 | Lattice Boltzmann method environments | 2D, 3D |
+| **MAIA Structured FV** | 8 | High-Reynolds turbulent boundary layers | 3D |
+| **NEK5000** | 1 | Spectral element turbulent channel flow | 3D |
+| **JAX** | 2 | Differentiable fluid dynamics | 2D, 3D |
+| **JAX-Fluids** | 2 | Compressible jet engine control | 2D, 3D |
+
+### Environment Categories
+
+**Canonical Benchmarks** (Low-Mid Re):
+- Cylinder wake (Re=100-3900, 2D/3D)
+- Rotating cylinder (Re=100-3900, 2D/3D)
+- Pinball (Re=30-150, 2D/3D)
+- Cavity flow (Re=4140-7500, 2D/3D)
+- Backward-facing step (Re=600, 2D)
+- Square cylinder (Re=200-3900, 2D/3D)
+- Sphere (Re=300-3700, 3D)
+- Cube (Re=300-3700, 3D)
+- Turbulent channel flow (Re_tau=180, 3D)
+
+**Airfoil Control**:
+- NACA0012 steady (Re=100-50000, AOA=12-40°, 2D/3D)
+- NACA0012 with gust disturbance (Re=100-50000, 2D/3D)
+
+**High Reynolds Number Flows**:
+- Zero-pressure-gradient turbulent boundary layer with jet/surface wave actuation (Re_Tau=1000-5000, 3D)
+- DRA2303 airfoil with jet/surface wave actuation (Re=400000, Ma=0.2-0.7, 3D)
+
+**Fully Differentiable Flows**:
+- Jet engine thrust vectoring (TVC/TVD, Ma=2.2, 2D/3D)
+- Kolmogorov flow (Re=1000, 2D)
+
+See [`existing_environments.yaml`](existing_environments.yaml) for complete list with exact naming conventions.
+
+## Examples
+
+HydroGym includes comprehensive examples for each solver backend:
+
+### Firedrake Examples
+
+See [examples/firedrake/getting_started/](examples/firedrake/getting_started/) for detailed documentation.
 
 ```bash
-# Follow Firedrake pre-install instructions in the pip guide above
+cd examples/firedrake/getting_started
 
-# Install Firedrake
-pip install firedrake
+# Test environment interactively
+python test_firedrake_env.py --environment cylinder --num-steps 10
 
-# Install HydroGym
-pip install hydrogym
+# Train with Stable-Baselines3
+python train_sb3_firedrake.py --env cylinder --algo PPO --total-timesteps 100000
 ```
 
-## Development Installation
+### MAIA Examples
 
-To install from source:
+See [examples/maia/getting_started/](examples/maia/getting_started/) for MPMD coupling details.
 
 ```bash
-git clone https://github.com/dynamicslab/hydrogym.git
-cd hydrogym
+cd examples/maia/getting_started
 
-# Install git-lfs for mesh files
-git lfs install && git lfs fetch --all
+# Prepare workspace (downloads from Hugging Face Hub)
+python prepare_workspace.py --env Cylinder_2D_Re200 --work-dir ./test_run
 
-# Install HydroGym
-pip install .
-# OR for development: poetry install
+# Run with MPMD execution (1 Python + 1 MAIA process)
+cd test_run
+mpirun -np 1 python ../test_maia_env.py --environment Cylinder_2D_Re200 : -np 1 maia properties.toml
 ```
 
-At which point you are ready to run HydroGym locally.
+### NEK5000 Examples
 
-# Quickstart Guide
+See [examples/nek/getting_started/](examples/nek/getting_started/) for interface patterns.
 
- Having installed Hydrogym into our virtual environment experimenting with Hydrogym is as easy as starting the Python interpreter
- 
- ```bash
- python
- ```
- 
- and then setting up a first Hydrogym environment instance
- 
+```bash
+cd examples/nek/getting_started/1_nekenv_single
+
+# Test single-agent environment
+mpirun -np 1 python test_nek_direct.py --steps 100 : -np 10 nek5000
+
+# Train with SB3
+mpirun -np 1 python train_sb3_nek_direct.py --env TCFmini_3D_Re180 --algo PPO : -np 10 nek5000
+```
+
+## Training RL Agents
+
+HydroGym works with standard RL libraries. Example with Stable-Baselines3:
+
 ```python
+from hydrogym import FlowEnv
 import hydrogym.firedrake as hgym
-env = hgym.FlowEnv({"flow": hgym.Cylinder}) # Cylinder wake flow configuration
-for i in range(num_steps):
-    action = 0.0   # Put your control law here
-    (lift, drag), reward, done, info = env.step(action)
+from stable_baselines3 import PPO
+from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
+
+# Create environment
+def make_env():
+    env_config = {
+        'flow': hgym.Cylinder,
+        'flow_config': {'mesh': 'medium', 'Re': 100},
+        'solver': hgym.SemiImplicitBDF,
+        'solver_config': {'dt': 1e-2},
+        'actuation_config': {'num_substeps': 2},
+    }
+    return FlowEnv(env_config)
+
+# Vectorize and normalize
+env = DummyVecEnv([make_env])
+env = VecNormalize(env, norm_obs=True, norm_reward=True)
+
+# Train
+model = PPO("MlpPolicy", env, verbose=1)
+model.learn(total_timesteps=100000)
 ```
 
-To test that you can run individual environment instances in a multithreaded fashion, run the steady-state Newton solver on the cylinder wake with 4 processors:
+## Advanced Features
 
-```bash
-cd /path/to/hydrogym/examples/cylinder
-mpiexec -np 4 python pd-control.py
+- **Checkpoint management**: Automatic loading from Hugging Face Hub
+- **Custom observations**: Force sensors, velocity/pressure/vorticity probes, stress sensors
+- **Callbacks**: Checkpointing, logging, Paraview export
+- **Stability analysis**: Global stability analysis via SLEPc (Firedrake)
+- **Modal decompositions**: DMD, POD via modred (Firedrake)
+- **Multi-agent RL**: PettingZoo interface for distributed actuation (NEK5000)
+
+## Documentation
+
+- **Getting Started Guides**: See `examples/[backend]/getting_started/README.md`
+- **API Documentation**: [https://hydrogym.readthedocs.io](https://hydrogym.readthedocs.io)
+- **Flow Configurations**: [docs/FlowConfigurations.md](docs/FlowConfigurations.md)
+- **Paper**: [arXiv:2512.17534](https://arxiv.org/abs/2512.17534)
+
+## Citation
+
+If you use HydroGym in your research, please cite the following two papers:
+
+```bibtex
+@inproceedings{lagemann2025hydrogym_a,
+  title={HydroGym: A Reinforcement Learning Platform for Fluid Dynamics},
+  author={Lagemann, Christian and Paehler, Ludger and Callaham, Jared and Mokbel, Sajeda and Ahnert, Samuel and Lagemann, Kai and Lagemann, Esther and Adams, Nikolaus and Brunton, Steven},
+  booktitle={7th Annual Learning for Dynamics$\backslash$\& Control Conference},
+  pages={497--512},
+  year={2025},
+  organization={PMLR}
+}
+@article{lagemann2025hydrogym_b,
+  title={Hydrogym: A reinforcement learning platform for fluid dynamics},
+  author={Lagemann, Christian and Mokbel, Sajeda and Gondrum, Miro and R{\"u}ttgers, Mario and Callaham, Jared and Paehler, Ludger and Ahnert, Samuel and Zolman, Nicholas and Lagemann, Kai and Adams, Nikolaus and others},
+  journal={arXiv preprint arXiv:2512.17534},
+  year={2025}
+}
 ```
 
-For more detail, check out:
+## License
 
-* A quick tour of features in `notebooks/overview.ipynb`
-* Example codes for various simulation, modeling, and control tasks in `examples`
-* The [ReadTheDocs](https://hydrogym.readthedocs.io/en/latest/)
-
+HydroGym is released under the MIT License. See [LICENSE](LICENSE) for details.

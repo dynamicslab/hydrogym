@@ -19,7 +19,7 @@ Available environments:
     - cylinder: Flow around a circular cylinder with jet actuation
     - rotary_cylinder: Flow around a rotating cylinder
     - pinball: Flow around three cylinders (pinball configuration)
-    - cavity: Lid-driven cavity flow
+    - cavity: Open cavity flow
     - step: Backward-facing step flow
 
 Arguments:
@@ -132,10 +132,7 @@ def setup_logging(verbose: bool = False) -> logging.Logger:
     """Configure logging with appropriate level."""
     level = logging.DEBUG if verbose else logging.INFO
     logging.basicConfig(
-        level=level,
-        format="%(asctime)s [%(levelname)s] %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-        stream=sys.stdout,
+        level=level, format="%(asctime)s [%(levelname)s] %(message)s", datefmt="%Y-%m-%d %H:%M:%S", stream=sys.stdout
     )
     return logging.getLogger(__name__)
 
@@ -170,8 +167,8 @@ def run_firedrake_test(
     # Import hydrogym (FlowEnv wrapper + firedrake)
     logger.info("Importing hydrogym...")
     try:
-        import hydrogym.firedrake as firedrake
         from hydrogym import FlowEnv
+        import hydrogym.firedrake as firedrake
     except ImportError as e:
         logger.error(f"✗ Failed to import: {e}")
         logger.error("Make sure Firedrake is installed: https://www.firedrakeproject.org/download.html")
@@ -239,7 +236,10 @@ def run_firedrake_test(
     # flow_config['cache_dir'] = '/workspace/firedrake_checkpoints_local'
 
     # Option 4: Explicit checkpoint path
-    # flow_config['restart'] = '/workspace/firedrake_checkpoints/Cylinder_2D_Re100_medium_FD/cylinder_Re-100_Mesh-medium_DT-0.01_00000570.ckpt'  # noqa: E501
+    # flow_config['restart'] = (
+    #     '/workspace/firedrake_checkpoints/Cylinder_2D_Re100_medium_FD/'
+    #     'cylinder_Re-100_Mesh-medium_DT-0.01_00000570.ckpt'
+    # )
 
     # Multiple checkpoints: randomly selects one on each reset()
     # flow_config['restart'] = [
@@ -296,11 +296,7 @@ def run_firedrake_test(
 
     # --- CALLBACK CONFIGURATION ---
     # List of callbacks for logging, checkpointing, visualization
-    from hydrogym.firedrake.utils.io import (
-        CheckpointCallback,
-        LogCallback,
-        ParaviewCallback,
-    )
+    from hydrogym.firedrake.utils.io import CheckpointCallback, ParaviewCallback, LogCallback
 
     callbacks = [
         # 1. Paraview visualization - save every 5 steps
@@ -514,32 +510,9 @@ def main():
         choices=["cylinder", "rotary_cylinder", "pinball", "cavity", "step"],
         help="Environment type",
     )
-    parser.add_argument(
-        "--num-steps",
-        type=int,
-        default=10,
-        help="Number of steps per episode (default: 10)",
-    )
+    parser.add_argument("--num-steps", type=int, default=10, help="Number of steps per episode (default: 10)")
     parser.add_argument("--num-episodes", type=int, default=1, help="Number of episodes (default: 1)")
-    parser.add_argument(
-        "--reynolds",
-        type=float,
-        default=None,
-        help="Reynolds number (default: environment-specific)",
-    )
-    parser.add_argument(
-        "--num-steps",
-        type=int,
-        default=10,
-        help="Number of steps per episode (default: 10)",
-    )
-    parser.add_argument("--num-episodes", type=int, default=1, help="Number of episodes (default: 1)")
-    parser.add_argument(
-        "--reynolds",
-        type=float,
-        default=None,
-        help="Reynolds number (default: environment-specific)",
-    )
+    parser.add_argument("--reynolds", type=float, default=None, help="Reynolds number (default: environment-specific)")
     parser.add_argument(
         "--mesh-resolution",
         type=str,
@@ -547,12 +520,7 @@ def main():
         default=None,
         help="Mesh resolution: 'coarse', 'medium', or 'fine' (default: environment-specific)",
     )
-    parser.add_argument(
-        "--seed",
-        type=int,
-        default=None,
-        help="Random seed for reproducibility (optional)",
-    )
+    parser.add_argument("--seed", type=int, default=None, help="Random seed for reproducibility (optional)")
     parser.add_argument("--verbose", action="store_true", help="Enable verbose logging")
 
     args = parser.parse_args()
