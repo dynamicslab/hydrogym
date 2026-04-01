@@ -200,7 +200,7 @@ import hydrogym.maia as maia  # noqa: E402
 
 
 def setup_logging(verbose: bool = False) -> logging.Logger:
-  """
+    """
     Configure logging with timestamps and appropriate level.
 
     Args:
@@ -209,17 +209,17 @@ def setup_logging(verbose: bool = False) -> logging.Logger:
     Returns:
         Configured logger instance.
     """
-  level = logging.DEBUG if verbose else logging.INFO
-  logging.basicConfig(
-      level=level,
-      format='%(asctime)s [%(levelname)s] %(message)s',
-      datefmt='%Y-%m-%d %H:%M:%S',
-      stream=sys.stdout)
-  return logging.getLogger(__name__)
+    level = logging.DEBUG if verbose else logging.INFO
+    logging.basicConfig(
+        level=level,
+        format='%(asctime)s [%(levelname)s] %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S',
+        stream=sys.stdout)
+    return logging.getLogger(__name__)
 
 
 def parse_range_arg(arg_str: str) -> Tuple[float, float, int]:
-  """
+    """
     Parse range argument in format 'min,max,num'.
 
     Args:
@@ -228,16 +228,16 @@ def parse_range_arg(arg_str: str) -> Tuple[float, float, int]:
     Returns:
         Tuple of (min, max, num_points)
     """
-  parts = arg_str.split(',')
-  if len(parts) != 3:
-    raise ValueError(f"Range must be in format 'min,max,num', got: {arg_str}")
-  return float(parts[0]), float(parts[1]), int(parts[2])
+    parts = arg_str.split(',')
+    if len(parts) != 3:
+        raise ValueError(f"Range must be in format 'min,max,num', got: {arg_str}")
+    return float(parts[0]), float(parts[1]), int(parts[2])
 
 
 def create_probe_locations(x_range: Tuple[float, float, int],
                            y_range: Tuple[float, float, int],
                            logger: logging.Logger) -> List[float]:
-  """
+    """
     Create probe location grid for 2D flow field sampling.
 
     Args:
@@ -248,38 +248,28 @@ def create_probe_locations(x_range: Tuple[float, float, int],
     Returns:
         Flattened list of probe coordinates [x0, y0, x1, y1, ...]
     """
-  x_min, x_max, num_x = x_range
-  y_min, y_max, num_y = y_range
+    x_min, x_max, num_x = x_range
+    y_min, y_max, num_y = y_range
 
-  logger.info("Creating probe grid:")
-  logger.info(f"  X: [{x_min}, {x_max}] with {num_x} probes")
-  logger.info(f"  Y: [{y_min}, {y_max}] with {num_y} probes")
-  logger.info(f"  Total probes: {num_x * num_y}")
+    logger.info("Creating probe grid:")
+    logger.info(f"  X: [{x_min}, {x_max}] with {num_x} probes")
+    logger.info(f"  Y: [{y_min}, {y_max}] with {num_y} probes")
+    logger.info(f"  Total probes: {num_x * num_y}")
 
-  xp = np.linspace(x_min, x_max, num_x)
-  yp = np.linspace(y_min, y_max, num_y)
-  X, Y = np.meshgrid(xp, yp)
+    xp = np.linspace(x_min, x_max, num_x)
+    yp = np.linspace(y_min, y_max, num_y)
+    X, Y = np.meshgrid(xp, yp)
 
-  probe_list = [(x, y) for x, y in zip(X.ravel(), Y.ravel())]
-  probe_locations = [coord for point in probe_list for coord in point]
+    probe_list = [(x, y) for x, y in zip(X.ravel(), Y.ravel())]
+    probe_locations = [coord for point in probe_list for coord in point]
 
-  return probe_locations
+    return probe_locations
 
 
 def run_environment_test(environment_name: str, num_steps: int,
                          num_episodes: int, probe_locations: List[float],
                          obs_normalization: str, seed: Optional[int],
                          logger: logging.Logger) -> None:
-  """
-def run_environment_test(
-    environment_name: str,
-    num_steps: int,
-    num_episodes: int,
-    probe_locations: List[float],
-    obs_normalization: str,
-    seed: Optional[int],
-    logger: logging.Logger,
-) -> None:
     """
     Run MAIA environment test with specified parameters.
 
@@ -295,410 +285,410 @@ def run_environment_test(
     Raises:
         RuntimeError: If environment creation or execution fails
     """
-  logger.info("=" * 70)
-  logger.info(f"MAIA Environment Test: {environment_name}")
-  logger.info("=" * 70)
-
-  # Set random seed if provided
-  if seed is not None:
-    np.random.seed(seed)
-    logger.info(f"Random seed set to: {seed}")
-
-  # =========================================================================
-  # COMPREHENSIVE MAIA ENVIRONMENT CONFIGURATION EXAMPLE
-  # =========================================================================
-  # This section demonstrates ALL available configuration options.
-  # Uncomment and modify sections as needed for your specific use case.
-  # =========================================================================
-
-  # --- BASIC CONFIGURATION ---
-  # Required: environment name
-  # Optional: Hugging Face repository ID
-  # hf_repo_id = 'dynamicslab/HydroGym-environments'  # default
-
-  # --- DATA MANAGEMENT ---
-  # Control caching behavior and offline usage
-  # use_clean_cache = True   # True: fresh workspace copy (recommended for production)
-  #                          # False: reuse cached workspace (faster for development)
-  # local_fallback_dir = '/path/to/local/environments'  # For offline usage
-
-  # --- PROBE CONFIGURATION ---
-  # Define probe locations for flow field sampling
-  # Format: [x0, y0, x1, y1, ...] for 2D or [x0, y0, z0, x1, y1, z1, ...] for 3D
-
-  # Example 1: Default grid (from command-line arguments)
-  # probe_locations = probe_locations  # Already computed from args
-
-  # Example 2: Custom wake sampling grid
-  # probe_x = np.linspace(1.0, 10.0, 16)  # 16 points downstream
-  # probe_y = np.linspace(-2.0, 2.0, 8)   # 8 points in crossflow
-  # X, Y = np.meshgrid(probe_x, probe_y)
-  # probe_locations = [coord for x, y in zip(X.flat, Y.flat) for coord in (x, y)]
-
-  # Example 3: Sparse strategic probes
-  # probe_locations = [
-  #     2.0, 0.0,    # Near wake, centerline
-  #     2.0, 0.5,    # Near wake, upper
-  #     2.0, -0.5,   # Near wake, lower
-  #     4.0, 0.0,    # Mid wake, centerline
-  #     6.0, 0.0,    # Far wake, centerline
-  # ]
-
-  # Example 4: 3D probe grid for cube/sphere
-  # probe_x = np.linspace(1.0, 5.0, 8)
-  # probe_y = np.linspace(-1.0, 1.0, 4)
-  # probe_z = np.linspace(-1.0, 1.0, 4)
-  # X, Y, Z = np.meshgrid(probe_x, probe_y, probe_z)
-  # probe_locations = [coord for x, y, z in zip(X.flat, Y.flat, Z.flat)
-  #                          for coord in (x, y, z)]
-
-  # --- OBSERVATION NORMALIZATION ---
-  # Strategy for normalizing observation values
-
-  # Option 1: 'U_inf' normalization (RECOMMENDED)
-  # Normalizes by freestream velocity - best for learning
-  # obs_normalization_strategy = 'U_inf'  # default
-
-  # Option 2: Probewise mean/std normalization
-  # Each probe normalized independently by its own statistics
-  # obs_normalization_strategy = 'probewise_mean_std'
-
-  # Option 3: No normalization (raw values)
-  # Use when handling normalization in your RL algorithm
-  # obs_normalization_strategy = 'none'
-
-  # Option 4: Customized normalization
-  # Provide your own offset and scale arrays
-  # obs_normalization_strategy = 'customized'
-  # obs_loc = np.zeros(num_probes * num_components)      # Offset (mean)
-  # obs_scale = np.ones(num_probes * num_components)     # Scale (std)
-
-  # --- ADVANCED CONFIGURATION ---
-  # Custom configuration file (if not using HF Hub default)
-  # configuration_file = '/path/to/custom/config.yaml'
-
-  # Testing mode (enables additional checks/logging)
-  # is_testing = True
-
-  # Create environment
-  logger.info("Creating environment from Hugging Face Hub...")
-  logger.info("Configuration:")
-  logger.info(f"  Environment: {environment_name}")
-  logger.info(f"  Probe locations: {len(probe_locations) // 2} probes (2D)")
-  logger.info(f"  Observation normalization: {obs_normalization}")
-
-  try:
-    # ========== BASIC CONFIGURATION ==========
-    # Minimal configuration - just environment name
-    # env = maia.from_hf(environment_name)
-
-    # ========== STANDARD CONFIGURATION ==========
-    # Production configuration with custom probes and normalization
-    env = maia.from_hf(
-        environment_name,
-        use_clean_cache=False,  # Use cached workspace (already prepared)
-        probe_locations=probe_locations,
-        obs_normalization_strategy=obs_normalization,
-    )
-
-    # ========== ADVANCED CONFIGURATION ==========
-    # All available options (uncomment as needed)
-    # env = maia.from_hf(
-    #     environment_name,
-    #     # Data management
-    #     hf_repo_id='dynamicslab/HydroGym-environments',
-    #     use_clean_cache=False,
-    #     local_fallback_dir=None,
-    #     # Observation configuration
-    #     probe_locations=probe_locations,
-    #     obs_normalization_strategy='U_inf',
-    #     # obs_loc=custom_offset,         # For 'customized' strategy
-    #     # obs_scale=custom_scale,        # For 'customized' strategy
-    #     # Configuration override
-    #     # configuration_file='/path/to/config.yaml',
-    #     # Testing
-    #     # is_testing=False,
-    # )
-
-    logger.info("✓ Environment created successfully")
-  except Exception as e:
-    logger.error(f"✗ Failed to create environment: {e}")
-    raise RuntimeError(f"Environment creation failed: {e}") from e
-
-  # =========================================================================
-  # ENVIRONMENT-SPECIFIC CONFIGURATION REFERENCE
-  # =========================================================================
-  #
-  # CYLINDER (Blowing/Suction Jets) [2D/3D]:
-  #   - environment: Cylinder_2D_Re{Re}
-  #   - Available Re: 200, 1000, etc.
-  #   - num_inputs: Depends on jet configuration (typically 1-2)
-  #   - Actuation: Synthetic jet actuators on cylinder surface
-  #   - Reward: -(|C_D| + omega * |C_L|)
-  #   - Observation: Probe velocities in wake region
-  #   - Typical probes: Wake sampling grid (x: 1-8, y: -2 to 2)
-  #
-  # ROTARY CYLINDER (Rotation Control) [2D/3D]:
-  #   - environment: RotaryCylinder_2D_Re{Re}
-  #   - Available Re: 200, 1000, etc.
-  #   - num_inputs: 1 (rotation rate)
-  #   - Actuation: Cylinder rotation speed
-  #   - Reward: -(|C_D| + omega * |C_L|)
-  #   - Observation: Probe velocities in wake region
-  #
-  # PINBALL (Three Rotating Cylinders) [2D/3D]:
-  #   - environment: Pinball_2D_Re{Re}
-  #   - Available Re: 30, 75, 100,  etc.
-  #   - num_inputs: 3 (one rotation rate per cylinder)
-  #   - Actuation: Independent rotation of 3 cylinders
-  #   - Reward: -(|C_D| + omega * |C_L|) summed over all cylinders
-  #   - Observation: Probe velocities in wake region
-  #   - Classic configuration: Equilateral triangle arrangement
-  #
-  # JET PINBALL (Three Cylinders with Jets) [2D/3D]:
-  #   - environment: JetPinball_2D_Re{Re}
-  #   - num_inputs: Depends on jet configuration
-  #   - Actuation: Synthetic jets on cylinder surfaces
-  #   - Reward: Similar to Pinball
-  #
-  # SQUARE CYLINDER [2D/3D]:
-  #   - environment: SquareCylinder_2D_Re{Re}
-  #   - Available Re: 200, 1000, etc.
-  #   - num_inputs: Depends on actuation type
-  #   - Actuation: Jets or other control mechanisms
-  #   - Reward: -(|C_D| + omega * |C_L|)
-  #
-  # CAVITY (Open Cavity) [2D/3D]:
-  #   - environment: Cavity_2D_Re{Re}
-  #   - Available Re: 4140, 7500
-  #   - num_inputs: 1
-  #   - Actuation: 1 Jet
-  #   - Reward: Problem-specific (mixing, vortex control, etc.)
-  #
-  # CAVITY3JET (Cavity with 3 Jets) [2D/3D]:
-  #   - environment: Cavity3Jet_2D_Re{Re}
-  #   - num_inputs: 3 (one per jet)
-  #   - Actuation: Three wall jets for flow control
-  #   - Reward: Enhanced mixing or flow stabilization
-  #
-  # NACA0012 (Airfoil) [2D/3D]:
-  #   - environment: NACA0012_2D_Re{Re}
-  #   - Available Re: 100, 1000, etc.
-  #   - num_inputs: 3
-  #   - Actuation: Jets
-  #   - Reward: -(|C_D| + omega * |C_L|) with target lift
-  #   - Observation: Pressure/velocity probes near airfoil
-  #
-  # NACA0012GUST (Airfoil with Gust) [2D/3D]:
-  #   - environment: NACA0012Gust_2D_Re{Re}
-  #   - num_inputs: Similar to NACA0012
-  #   - Reward: Minimize lift fluctuations due to gust
-  #   - Challenge: Unsteady incoming flow
-  #
-  # CUBE (3D Bluff Body):
-  #   - environment: Cube_3D_Re{Re}
-  #   - Available Re: 300, 3700, etc.
-  #   - num_inputs: Depends on actuation type
-  #   - Actuation: Surface jets or other 3D control
-  #   - Reward: -(|C_D| + omega * |C_L| + omega * |C_S|)  # Side force
-  #   - Observation: 3D probe grid (x, y, z coordinates)
-  #
-  # SPHERE (3D Bluff Body):
-  #   - environment: Sphere_3D_Re{Re}
-  #   - Available Re: 300, 3700, etc.
-  #   - num_inputs: Depends on actuation type
-  #   - Actuation: Surface jets or suction
-  #   - Reward: -(|C_D|)
-  #   - Observation: 3D probe grid in wake region
-
-  try:
-    # Log environment information
-    logger.info("-" * 70)
-    logger.info("Environment Information:")
-    logger.info(f"  Observation space: {env.observation_space}")
-    logger.info(f"  Action space: {env.action_space}")
-    logger.info(f"  Max episode steps: {env.max_episode_steps}")
-    logger.info("-" * 70)
-
-    # Run episodes
-    total_steps = 0
-    total_reward = 0.0
-
-    for episode in range(num_episodes):
-      logger.info(f"\nEpisode {episode + 1}/{num_episodes}")
-      logger.info("-" * 70)
-
-      # Reset environment
-      try:
-        obs, _ = env.reset(seed=seed)
-        logger.info("✓ Environment reset")
-        logger.info(f"  Initial observation shape: {obs.shape}")
-      except Exception as e:
-        logger.error(f"✗ Reset failed: {e}")
-        raise
-
-      episode_reward = 0.0
-      episode_steps = 0
-
-      # Run steps
-      for step in range(num_steps):
-        try:
-          # Sample random action
-          action = env.action_space.sample()
-
-          # Execute step
-          obs, reward, terminated, truncated, _ = env.step(action)
-
-          episode_reward += reward
-          episode_steps += 1
-          total_steps += 1
-
-          # Log progress
-          logger.info(f"  Step {step + 1}/{num_steps}: "
-                      f"reward={reward:.6f}, "
-                      f"terminated={terminated}, "
-                      f"truncated={truncated}")
-
-          # Handle episode termination
-          if terminated or truncated:
-            reason = "terminated" if terminated else "truncated"
-            logger.info(
-                f"  Episode ended ({reason}) after {episode_steps} steps")
-            break
-
-        except Exception as e:
-          logger.error(f"✗ Step {step + 1} failed: {e}")
-          raise
-
-      total_reward += episode_reward
-      logger.info(f"Episode {episode + 1} summary:")
-      logger.info(f"  Steps: {episode_steps}")
-      logger.info(f"  Total reward: {episode_reward:.6f}")
-      logger.info(f"  Average reward: {episode_reward / episode_steps:.6f}")
-
-    # Final summary
-    logger.info("\n" + "=" * 70)
-    logger.info("Test Summary:")
-    logger.info(f"  Episodes completed: {num_episodes}")
-    logger.info(f"  Total steps: {total_steps}")
-    logger.info(f"  Total reward: {total_reward:.6f}")
-    logger.info(f"  Average reward per step: {total_reward / total_steps:.6f}")
+    logger.info("=" * 70)
+    logger.info(f"MAIA Environment Test: {environment_name}")
     logger.info("=" * 70)
 
-  finally:
-    # Always close environment
-    logger.info("\nClosing environment and signaling MAIA to finish...")
+    # Set random seed if provided
+    if seed is not None:
+        np.random.seed(seed)
+        logger.info(f"Random seed set to: {seed}")
+
+    # =========================================================================
+    # COMPREHENSIVE MAIA ENVIRONMENT CONFIGURATION EXAMPLE
+    # =========================================================================
+    # This section demonstrates ALL available configuration options.
+    # Uncomment and modify sections as needed for your specific use case.
+    # =========================================================================
+
+    # --- BASIC CONFIGURATION ---
+    # Required: environment name
+    # Optional: Hugging Face repository ID
+    # hf_repo_id = 'dynamicslab/HydroGym-environments'  # default
+
+    # --- DATA MANAGEMENT ---
+    # Control caching behavior and offline usage
+    # use_clean_cache = True   # True: fresh workspace copy (recommended for production)
+    #                          # False: reuse cached workspace (faster for development)
+    # local_fallback_dir = '/path/to/local/environments'  # For offline usage
+
+    # --- PROBE CONFIGURATION ---
+    # Define probe locations for flow field sampling
+    # Format: [x0, y0, x1, y1, ...] for 2D or [x0, y0, z0, x1, y1, z1, ...] for 3D
+
+    # Example 1: Default grid (from command-line arguments)
+    # probe_locations = probe_locations  # Already computed from args
+
+    # Example 2: Custom wake sampling grid
+    # probe_x = np.linspace(1.0, 10.0, 16)  # 16 points downstream
+    # probe_y = np.linspace(-2.0, 2.0, 8)   # 8 points in crossflow
+    # X, Y = np.meshgrid(probe_x, probe_y)
+    # probe_locations = [coord for x, y in zip(X.flat, Y.flat) for coord in (x, y)]
+
+    # Example 3: Sparse strategic probes
+    # probe_locations = [
+    #     2.0, 0.0,    # Near wake, centerline
+    #     2.0, 0.5,    # Near wake, upper
+    #     2.0, -0.5,   # Near wake, lower
+    #     4.0, 0.0,    # Mid wake, centerline
+    #     6.0, 0.0,    # Far wake, centerline
+    # ]
+
+    # Example 4: 3D probe grid for cube/sphere
+    # probe_x = np.linspace(1.0, 5.0, 8)
+    # probe_y = np.linspace(-1.0, 1.0, 4)
+    # probe_z = np.linspace(-1.0, 1.0, 4)
+    # X, Y, Z = np.meshgrid(probe_x, probe_y, probe_z)
+    # probe_locations = [coord for x, y, z in zip(X.flat, Y.flat, Z.flat)
+    #                          for coord in (x, y, z)]
+
+    # --- OBSERVATION NORMALIZATION ---
+    # Strategy for normalizing observation values
+
+    # Option 1: 'U_inf' normalization (RECOMMENDED)
+    # Normalizes by freestream velocity - best for learning
+    # obs_normalization_strategy = 'U_inf'  # default
+
+    # Option 2: Probewise mean/std normalization
+    # Each probe normalized independently by its own statistics
+    # obs_normalization_strategy = 'probewise_mean_std'
+
+    # Option 3: No normalization (raw values)
+    # Use when handling normalization in your RL algorithm
+    # obs_normalization_strategy = 'none'
+
+    # Option 4: Customized normalization
+    # Provide your own offset and scale arrays
+    # obs_normalization_strategy = 'customized'
+    # obs_loc = np.zeros(num_probes * num_components)      # Offset (mean)
+    # obs_scale = np.ones(num_probes * num_components)     # Scale (std)
+
+    # --- ADVANCED CONFIGURATION ---
+    # Custom configuration file (if not using HF Hub default)
+    # configuration_file = '/path/to/custom/config.yaml'
+
+    # Testing mode (enables additional checks/logging)
+    # is_testing = True
+
+    # Create environment
+    logger.info("Creating environment from Hugging Face Hub...")
+    logger.info("Configuration:")
+    logger.info(f"  Environment: {environment_name}")
+    logger.info(f"  Probe locations: {len(probe_locations) // 2} probes (2D)")
+    logger.info(f"  Observation normalization: {obs_normalization}")
+
     try:
-      env.close()
-      logger.info("✓ Environment closed successfully")
+        # ========== BASIC CONFIGURATION ==========
+        # Minimal configuration - just environment name
+        # env = maia.from_hf(environment_name)
+
+        # ========== STANDARD CONFIGURATION ==========
+        # Production configuration with custom probes and normalization
+        env = maia.from_hf(
+            environment_name,
+            use_clean_cache=False,  # Use cached workspace (already prepared)
+            probe_locations=probe_locations,
+            obs_normalization_strategy=obs_normalization,
+        )
+
+        # ========== ADVANCED CONFIGURATION ==========
+        # All available options (uncomment as needed)
+        # env = maia.from_hf(
+        #     environment_name,
+        #     # Data management
+        #     hf_repo_id='dynamicslab/HydroGym-environments',
+        #     use_clean_cache=False,
+        #     local_fallback_dir=None,
+        #     # Observation configuration
+        #     probe_locations=probe_locations,
+        #     obs_normalization_strategy='U_inf',
+        #     # obs_loc=custom_offset,         # For 'customized' strategy
+        #     # obs_scale=custom_scale,        # For 'customized' strategy
+        #     # Configuration override
+        #     # configuration_file='/path/to/config.yaml',
+        #     # Testing
+        #     # is_testing=False,
+        # )
+
+        logger.info("✓ Environment created successfully")
     except Exception as e:
-      logger.warning(f"⚠ Error during cleanup: {e}")
+        logger.error(f"✗ Failed to create environment: {e}")
+        raise RuntimeError(f"Environment creation failed: {e}") from e
+
+    # =========================================================================
+    # ENVIRONMENT-SPECIFIC CONFIGURATION REFERENCE
+    # =========================================================================
+    #
+    # CYLINDER (Blowing/Suction Jets) [2D/3D]:
+    #   - environment: Cylinder_2D_Re{Re}
+    #   - Available Re: 200, 1000, etc.
+    #   - num_inputs: Depends on jet configuration (typically 1-2)
+    #   - Actuation: Synthetic jet actuators on cylinder surface
+    #   - Reward: -(|C_D| + omega * |C_L|)
+    #   - Observation: Probe velocities in wake region
+    #   - Typical probes: Wake sampling grid (x: 1-8, y: -2 to 2)
+    #
+    # ROTARY CYLINDER (Rotation Control) [2D/3D]:
+    #   - environment: RotaryCylinder_2D_Re{Re}
+    #   - Available Re: 200, 1000, etc.
+    #   - num_inputs: 1 (rotation rate)
+    #   - Actuation: Cylinder rotation speed
+    #   - Reward: -(|C_D| + omega * |C_L|)
+    #   - Observation: Probe velocities in wake region
+    #
+    # PINBALL (Three Rotating Cylinders) [2D/3D]:
+    #   - environment: Pinball_2D_Re{Re}
+    #   - Available Re: 30, 75, 100,  etc.
+    #   - num_inputs: 3 (one rotation rate per cylinder)
+    #   - Actuation: Independent rotation of 3 cylinders
+    #   - Reward: -(|C_D| + omega * |C_L|) summed over all cylinders
+    #   - Observation: Probe velocities in wake region
+    #   - Classic configuration: Equilateral triangle arrangement
+    #
+    # JET PINBALL (Three Cylinders with Jets) [2D/3D]:
+    #   - environment: JetPinball_2D_Re{Re}
+    #   - num_inputs: Depends on jet configuration
+    #   - Actuation: Synthetic jets on cylinder surfaces
+    #   - Reward: Similar to Pinball
+    #
+    # SQUARE CYLINDER [2D/3D]:
+    #   - environment: SquareCylinder_2D_Re{Re}
+    #   - Available Re: 200, 1000, etc.
+    #   - num_inputs: Depends on actuation type
+    #   - Actuation: Jets or other control mechanisms
+    #   - Reward: -(|C_D| + omega * |C_L|)
+    #
+    # CAVITY (Open Cavity) [2D/3D]:
+    #   - environment: Cavity_2D_Re{Re}
+    #   - Available Re: 4140, 7500
+    #   - num_inputs: 1
+    #   - Actuation: 1 Jet
+    #   - Reward: Problem-specific (mixing, vortex control, etc.)
+    #
+    # CAVITY3JET (Cavity with 3 Jets) [2D/3D]:
+    #   - environment: Cavity3Jet_2D_Re{Re}
+    #   - num_inputs: 3 (one per jet)
+    #   - Actuation: Three wall jets for flow control
+    #   - Reward: Enhanced mixing or flow stabilization
+    #
+    # NACA0012 (Airfoil) [2D/3D]:
+    #   - environment: NACA0012_2D_Re{Re}
+    #   - Available Re: 100, 1000, etc.
+    #   - num_inputs: 3
+    #   - Actuation: Jets
+    #   - Reward: -(|C_D| + omega * |C_L|) with target lift
+    #   - Observation: Pressure/velocity probes near airfoil
+    #
+    # NACA0012GUST (Airfoil with Gust) [2D/3D]:
+    #   - environment: NACA0012Gust_2D_Re{Re}
+    #   - num_inputs: Similar to NACA0012
+    #   - Reward: Minimize lift fluctuations due to gust
+    #   - Challenge: Unsteady incoming flow
+    #
+    # CUBE (3D Bluff Body):
+    #   - environment: Cube_3D_Re{Re}
+    #   - Available Re: 300, 3700, etc.
+    #   - num_inputs: Depends on actuation type
+    #   - Actuation: Surface jets or other 3D control
+    #   - Reward: -(|C_D| + omega * |C_L| + omega * |C_S|)  # Side force
+    #   - Observation: 3D probe grid (x, y, z coordinates)
+    #
+    # SPHERE (3D Bluff Body):
+    #   - environment: Sphere_3D_Re{Re}
+    #   - Available Re: 300, 3700, etc.
+    #   - num_inputs: Depends on actuation type
+    #   - Actuation: Surface jets or suction
+    #   - Reward: -(|C_D|)
+    #   - Observation: 3D probe grid in wake region
+
+    try:
+        # Log environment information
+        logger.info("-" * 70)
+        logger.info("Environment Information:")
+        logger.info(f"  Observation space: {env.observation_space}")
+        logger.info(f"  Action space: {env.action_space}")
+        logger.info(f"  Max episode steps: {env.max_episode_steps}")
+        logger.info("-" * 70)
+
+        # Run episodes
+        total_steps = 0
+        total_reward = 0.0
+
+        for episode in range(num_episodes):
+            logger.info(f"\nEpisode {episode + 1}/{num_episodes}")
+            logger.info("-" * 70)
+
+            # Reset environment
+            try:
+                obs, _ = env.reset(seed=seed)
+                logger.info("✓ Environment reset")
+                logger.info(f"  Initial observation shape: {obs.shape}")
+            except Exception as e:
+                logger.error(f"✗ Reset failed: {e}")
+                raise
+
+            episode_reward = 0.0
+            episode_steps = 0
+
+            # Run steps
+            for step in range(num_steps):
+                try:
+                    # Sample random action
+                    action = env.action_space.sample()
+
+                    # Execute step
+                    obs, reward, terminated, truncated, _ = env.step(action)
+
+                    episode_reward += reward
+                    episode_steps += 1
+                    total_steps += 1
+
+                    # Log progress
+                    logger.info(f"  Step {step + 1}/{num_steps}: "
+                                f"reward={reward:.6f}, "
+                                f"terminated={terminated}, "
+                                f"truncated={truncated}")
+
+                    # Handle episode termination
+                    if terminated or truncated:
+                        reason = "terminated" if terminated else "truncated"
+                        logger.info(
+                            f"  Episode ended ({reason}) after {episode_steps} steps")
+                        break
+
+                except Exception as e:
+                    logger.error(f"✗ Step {step + 1} failed: {e}")
+                    raise
+
+            total_reward += episode_reward
+            logger.info(f"Episode {episode + 1} summary:")
+            logger.info(f"  Steps: {episode_steps}")
+            logger.info(f"  Total reward: {episode_reward:.6f}")
+            logger.info(f"  Average reward: {episode_reward / episode_steps:.6f}")
+
+        # Final summary
+        logger.info("\n" + "=" * 70)
+        logger.info("Test Summary:")
+        logger.info(f"  Episodes completed: {num_episodes}")
+        logger.info(f"  Total steps: {total_steps}")
+        logger.info(f"  Total reward: {total_reward:.6f}")
+        logger.info(f"  Average reward per step: {total_reward / total_steps:.6f}")
+        logger.info("=" * 70)
+
+    finally:
+        # Always close environment
+        logger.info("\nClosing environment and signaling MAIA to finish...")
+        try:
+            env.close()
+            logger.info("✓ Environment closed successfully")
+        except Exception as e:
+            logger.warning(f"⚠ Error during cleanup: {e}")
 
 
 def main():
-  """Main entry point for the environment test script."""
-  # Parse arguments
-  parser = argparse.ArgumentParser(
-      description="Test MAIA CFD environment with MPMD coupling",
-      formatter_class=argparse.RawDescriptionHelpFormatter,
-      epilog=__doc__)
+    """Main entry point for the environment test script."""
+    # Parse arguments
+    parser = argparse.ArgumentParser(
+        description="Test MAIA CFD environment with MPMD coupling",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=__doc__)
 
-  parser.add_argument(
-      "--environment",
-      required=True,
-      help=(
-          "Environment name (e.g., Cylinder_2D_Re200, Sphere_3D_Re100). "
-          "Format: TYPE_DIMENSION_Re{Reynolds}. "
-          "Available types: Cylinder, RotaryCylinder, Pinball, JetPinball, "
-          "SquareCylinder, Cavity, Cavity3Jet, NACA0012, NACA0012Gust, Cube, Sphere"
-      ))
-  parser.add_argument(
-      "--num-steps",
-      type=int,
-      default=10,
-      help="Number of simulation steps per episode (default: 10)")
-  parser.add_argument(
-      "--num-episodes",
-      type=int,
-      default=1,
-      help="Number of episodes to run (default: 1)")
-  parser.add_argument(
-      "--probe-x-range",
-      type=str,
-      default="1.0,8.0,8",
-      help=("X-axis probe range as 'min,max,num' (default: 1.0,8.0,8). "
-            "Creates num equally-spaced probes from min to max in x-direction. "
-            "For wake sampling: start > 1.0 (downstream of body)"))
-  parser.add_argument(
-      "--probe-y-range",
-      type=str,
-      default="-1.0,1.0,5",
-      help=("Y-axis probe range as 'min,max,num' (default: -1.0,1.0,5). "
-            "Creates num equally-spaced probes from min to max in y-direction. "
-            "For wake sampling: span crossflow region of interest"))
-  parser.add_argument(
-      "--seed",
-      type=int,
-      default=None,
-      help="Random seed for reproducibility (optional)")
-  parser.add_argument(
-      "--obs-norm",
-      type=str,
-      default="U_inf",
-      choices=["U_inf", "probewise_mean_std", "none", "customized"],
-      help=("Observation normalization strategy (default: U_inf). "
-            "U_inf: normalize by freestream velocity (recommended for RL). "
-            "probewise_mean_std: per-probe normalization by mean/std. "
-            "none: raw observation values. "
-            "customized: user-defined (requires code modification)"))
-  parser.add_argument(
-      "--verbose",
-      action="store_true",
-      help="Enable verbose logging (DEBUG level)")
+    parser.add_argument(
+        "--environment",
+        required=True,
+        help=(
+            "Environment name (e.g., Cylinder_2D_Re200, Sphere_3D_Re100). "
+            "Format: TYPE_DIMENSION_Re{Reynolds}. "
+            "Available types: Cylinder, RotaryCylinder, Pinball, JetPinball, "
+            "SquareCylinder, Cavity, Cavity3Jet, NACA0012, NACA0012Gust, Cube, Sphere"
+        ))
+    parser.add_argument(
+        "--num-steps",
+        type=int,
+        default=10,
+        help="Number of simulation steps per episode (default: 10)")
+    parser.add_argument(
+        "--num-episodes",
+        type=int,
+        default=1,
+        help="Number of episodes to run (default: 1)")
+    parser.add_argument(
+        "--probe-x-range",
+        type=str,
+        default="1.0,8.0,8",
+        help=("X-axis probe range as 'min,max,num' (default: 1.0,8.0,8). "
+              "Creates num equally-spaced probes from min to max in x-direction. "
+              "For wake sampling: start > 1.0 (downstream of body)"))
+    parser.add_argument(
+        "--probe-y-range",
+        type=str,
+        default="-1.0,1.0,5",
+        help=("Y-axis probe range as 'min,max,num' (default: -1.0,1.0,5). "
+              "Creates num equally-spaced probes from min to max in y-direction. "
+              "For wake sampling: span crossflow region of interest"))
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=None,
+        help="Random seed for reproducibility (optional)")
+    parser.add_argument(
+        "--obs-norm",
+        type=str,
+        default="U_inf",
+        choices=["U_inf", "probewise_mean_std", "none", "customized"],
+        help=("Observation normalization strategy (default: U_inf). "
+              "U_inf: normalize by freestream velocity (recommended for RL). "
+              "probewise_mean_std: per-probe normalization by mean/std. "
+              "none: raw observation values. "
+              "customized: user-defined (requires code modification)"))
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Enable verbose logging (DEBUG level)")
 
-  args = parser.parse_args()
+    args = parser.parse_args()
 
-  # Setup logging
-  logger = setup_logging(verbose=args.verbose)
+    # Setup logging
+    logger = setup_logging(verbose=args.verbose)
 
-  # Parse probe ranges
-  try:
-    x_range = parse_range_arg(args.probe_x_range)
-    y_range = parse_range_arg(args.probe_y_range)
-  except ValueError as e:
-    logger.error(f"Invalid probe range: {e}")
-    sys.exit(1)
+    # Parse probe ranges
+    try:
+        x_range = parse_range_arg(args.probe_x_range)
+        y_range = parse_range_arg(args.probe_y_range)
+    except ValueError as e:
+        logger.error(f"Invalid probe range: {e}")
+        sys.exit(1)
 
-  # Create probe locations
-  try:
-    probe_locations = create_probe_locations(x_range, y_range, logger)
-  except Exception as e:
-    logger.error(f"Failed to create probe locations: {e}")
-    sys.exit(1)
+    # Create probe locations
+    try:
+        probe_locations = create_probe_locations(x_range, y_range, logger)
+    except Exception as e:
+        logger.error(f"Failed to create probe locations: {e}")
+        sys.exit(1)
 
-  # Run environment test
-  try:
-    run_environment_test(
-        environment_name=args.environment,
-        num_steps=args.num_steps,
-        num_episodes=args.num_episodes,
-        probe_locations=probe_locations,
-        obs_normalization=args.obs_norm,
-        seed=args.seed,
-        logger=logger)
-    logger.info("\n✓ Test completed successfully!")
-    sys.exit(0)
+    # Run environment test
+    try:
+        run_environment_test(
+            environment_name=args.environment,
+            num_steps=args.num_steps,
+            num_episodes=args.num_episodes,
+            probe_locations=probe_locations,
+            obs_normalization=args.obs_norm,
+            seed=args.seed,
+            logger=logger)
+        logger.info("\n✓ Test completed successfully!")
+        sys.exit(0)
 
-  except KeyboardInterrupt:
-    logger.warning("\n⚠ Test interrupted by user")
-    sys.exit(130)
+    except KeyboardInterrupt:
+        logger.warning("\n⚠ Test interrupted by user")
+        sys.exit(130)
 
-  except Exception as e:
-    logger.error(f"\n✗ Test failed with error: {e}")
-    import traceback
-    logger.debug(traceback.format_exc())
-    sys.exit(1)
+    except Exception as e:
+        logger.error(f"\n✗ Test failed with error: {e}")
+        import traceback
+        logger.debug(traceback.format_exc())
+        sys.exit(1)
 
 
 if __name__ == "__main__":
-  main()
+    main()

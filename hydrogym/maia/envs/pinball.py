@@ -14,7 +14,7 @@ from hydrogym.maia.env_core import MaiaFlowEnv, register_environment
 
 
 class PinballBase(MaiaFlowEnv):
-  """
+    """
     Base class for pinball flow environments with Hugging Face integration.
 
     The pinball configuration consists of multiple cylinders arranged in a
@@ -26,17 +26,17 @@ class PinballBase(MaiaFlowEnv):
     where C_D and C_L are summed across all cylinders.
     """
 
-  def __init__(self, env_config: Dict):
-    """
+    def __init__(self, env_config: Dict):
+        """
         Initialize the pinball base environment.
 
         Args:
             env_config: Environment configuration dictionary.
         """
-    super().__init__(env_config)
+        super().__init__(env_config)
 
-  def get_reward(self) -> Tuple[float, Dict]:
-    """
+    def get_reward(self) -> Tuple[float, Dict]:
+        """
         Compute the reward based on total aerodynamic force coefficients.
 
         Aggregates forces from all cylinders in the pinball configuration.
@@ -46,108 +46,107 @@ class PinballBase(MaiaFlowEnv):
                 - reward: Scalar reward based on total drag and lift
                 - obj_dict: Dictionary with force coefficient information
         """
-    forces = []
-    for bc_id in self.bcId:
-      forces.append(self.maiaInterface.getForce(bc_id))
+        forces = []
+        for bc_id in self.bcId:
+            forces.append(self.maiaInterface.getForce(bc_id))
 
-    forces = np.stack(forces)
+        forces = np.stack(forces)
 
         nondim_coefficients = self.compute_nondim_coefficients(
             forces=forces,
             density=1.0,
             referenceVelocity=self.Ma / np.sqrt(3),
-            projectionLength=self.referenceLength / self.dX * self.zLength / self.dX
+            projectionLength=self.referenceLength / self.dX * self.zLength / self.dX,
         )
 
-        obj_dict = {'forces': nondim_coefficients}
+        obj_dict = {"forces": nondim_coefficients}
 
-    reward = (-np.abs(nondim_coefficients[:, 0].sum()) -
-              self.omega * np.abs(nondim_coefficients[:, 1].sum()))
+        reward = -np.abs(nondim_coefficients[:, 0].sum()) - self.omega * np.abs(nondim_coefficients[:, 1].sum())
 
-    return reward, obj_dict
+        return reward, obj_dict
 
 
 class Pinball(PinballBase):
-  """
-  Rotary pinball environment with rotational actuation.
-
-  This environment controls flow using cylinder rotation.
-  Each cylinder can rotate independently.
-  """
-
-  def __init__(self, env_config: Dict):
     """
-    Initialize the pinball environment.
+    Rotary pinball environment with rotational actuation.
 
-    Args:
-      env_config: Environment configuration dictionary.
+    This environment controls flow using cylinder rotation.
+    Each cylinder can rotate independently.
     """
-    super().__init__(env_config)
 
-    self.configure_observations()
-    self.configure_probe_dimensions()
-    self.set_observation_action_spaces()
+    def __init__(self, env_config: Dict):
+        """
+        Initialize the pinball environment.
 
-    self.setup_normalization()
+        Args:
+            env_config: Environment configuration dictionary.
+        """
+        super().__init__(env_config)
 
-  def convert_action(self, action: np.ndarray) -> np.ndarray:
-    """
-    Convert RL action to CFD actuation format.
+        self.configure_observations()
+        self.configure_probe_dimensions()
+        self.set_observation_action_spaces()
 
-    Args:
-      action: Action array from the RL agent.
+        self.setup_normalization()
 
-    Returns:
-      Action sequence for the CFD solver.
-    """
-    return action
+    def convert_action(self, action: np.ndarray) -> np.ndarray:
+        """
+        Convert RL action to CFD actuation format.
+
+        Args:
+            action: Action array from the RL agent.
+
+        Returns:
+            Action sequence for the CFD solver.
+        """
+        return action
 
 
 class JetPinball(PinballBase):
-  """
-  Jet-actuated pinball environment.
-
-  This environment controls flow using synthetic jets on the cylinders.
-  Jets are paired for zero net mass flux actuation.
-
-  Attributes:
-    numJetsInSimulation: Number of jet actuators in the CFD simulation.
-  """
-
-  def __init__(self, env_config: Dict):
     """
-    Initialize the jet pinball environment.
+    Jet-actuated pinball environment.
 
-    Args:
-      env_config: Environment configuration dictionary.
+    This environment controls flow using synthetic jets on the cylinders.
+    Jets are paired for zero net mass flux actuation.
+
+    Attributes:
+        numJetsInSimulation: Number of jet actuators in the CFD simulation.
     """
-    super().__init__(env_config)
-    self.numJetsInSimulation = self._get_property(self.runtime_property_file_data, "lbNoJets")
 
-    self.configure_observations()
-    self.configure_probe_dimensions()
-    self.set_observation_action_spaces()
+    def __init__(self, env_config: Dict):
+        """
+        Initialize the jet pinball environment.
 
-    self.setup_normalization()
+        Args:
+            env_config: Environment configuration dictionary.
+        """
+        super().__init__(env_config)
+        self.numJetsInSimulation = self._get_property(self.runtime_property_file_data, "lbNoJets")
 
-  def convert_action(self, action: np.ndarray) -> List[float]:
-    """
-    Convert RL action to CFD actuation sequence.
+        self.configure_observations()
+        self.configure_probe_dimensions()
+        self.set_observation_action_spaces()
 
-    Implements zero net mass flux by pairing jets with opposite signs.
+        self.setup_normalization()
 
-    Args:
-      action: Action array from the RL agent.
+    def convert_action(self, action: np.ndarray) -> List[float]:
+        """
+        Convert RL action to CFD actuation sequence.
 
-    Returns:
-      Actuation sequence for the CFD solver.
-    """
-    maia_action_sequence = []
+        Implements zero net mass flux by pairing jets with opposite signs.
 
-    for jet_pair in range(int(self.numJetsInSimulation / 2)):
-      maia_action_sequence.extend([action[jet_pair], -action[jet_pair]])
+        Args:
+            action: Action array from the RL agent.
 
-    return maia_action_sequence
+        Returns:
+            Actuation sequence for the CFD solver.
+        """
+        maia_action_sequence = []
+
+        for jet_pair in range(int(self.numJetsInSimulation / 2)):
+            maia_action_sequence.extend([action[jet_pair], -action[jet_pair]])
+
+        return maia_action_sequence
 
 
 # Register environment types with the factory

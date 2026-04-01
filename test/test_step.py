@@ -64,5 +64,5 @@ def test_env():
     }
     env = hgym.FlowEnv(env_config)
 
-  for i in range(10):
-    y, reward, terminated, truncated, info = env.step(0.1 * sin(i * env.solver.dt))
+    for i in range(10):
+        y, reward, terminated, truncated, info = env.step(0.1 * sin(i * env.solver.dt))
