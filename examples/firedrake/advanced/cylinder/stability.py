@@ -136,10 +136,7 @@ if __name__ == "__main__":
     else:
         hgym.print("Solving the steady-state problem for the cylinder base flow...")
 
-        steady_solver = hgym.NewtonSolver(
-            flow,
-            stabilization=stabilization,
-            solver_parameters={"snes_monitor": None})
+        steady_solver = hgym.NewtonSolver(flow, stabilization=stabilization, solver_parameters={"snes_monitor": None})
 
         # Reynolds ramping: Start from lower Re for better convergence
         if Re > 50:
@@ -161,8 +158,7 @@ if __name__ == "__main__":
     # Direct modes represent physical flow disturbances:
     #   q' = q_mode * exp(lambda*t)  where lambda = eigenvalue
     hgym.print("Computing direct modes...")
-    dir_results = hgym.utils.stability_analysis(
-        flow, sigma, m, tol, schur_restart=args.schur, adjoint=False)
+    dir_results = hgym.utils.stability_analysis(flow, sigma, m, tol, schur_restart=args.schur, adjoint=False)
     np.save(f"{output_dir}/raw_evals", dir_results.raw_evals)
 
     # Save converged eigenvalues with residuals

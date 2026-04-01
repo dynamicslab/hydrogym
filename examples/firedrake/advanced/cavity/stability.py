@@ -127,8 +127,7 @@ if __name__ == "__main__":
         flow.save_checkpoint(f"{args.output_dir}/base.h5")
 
     hgym.print("Computing direct modes...")
-    dir_results = hgym.utils.stability_analysis(
-        flow, sigma, m, tol, schur_restart=args.schur, adjoint=False)
+    dir_results = hgym.utils.stability_analysis(flow, sigma, m, tol, schur_restart=args.schur, adjoint=False)
     np.save(f"{output_dir}/raw_evals", dir_results.raw_evals)
 
     # Save checkpoints
@@ -149,8 +148,7 @@ if __name__ == "__main__":
 
     if not args.no_adjoint:
         hgym.print("Computing adjoint modes...")
-        adj_results = hgym.utils.stability_analysis(
-            flow, sigma, m, tol, adjoint=True)
+        adj_results = hgym.utils.stability_analysis(flow, sigma, m, tol, adjoint=True)
 
         # Save checkpoints
         evals = adj_results.evals
