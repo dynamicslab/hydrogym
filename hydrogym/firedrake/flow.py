@@ -14,6 +14,9 @@ from ..core import ActuatorBase, PDEBase
 from .actuator import DampedActuator
 from .utils.linalg import DirectOperator, InverseOperator
 
+# Use interpolate from firedrake directly (works in both old and new versions)
+interpolate = fd.interpolate
+
 
 class ScaledDirichletBC(fd.DirichletBC):
     def __init__(self, V, g, sub_domain, method=None):
