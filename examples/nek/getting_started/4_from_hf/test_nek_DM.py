@@ -27,6 +27,7 @@ from pathlib import Path
 import numpy as np
 
 from hydrogym.nek import NekEnv
+from hydrogym.nek.nek_lib.nek_utils import NEK_INIT
 
 
 def main():

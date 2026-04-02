@@ -242,7 +242,7 @@ class MultiPolicyDeployer:
                     raw_actions = pred
 
                 raw_actions = np.asarray(raw_actions, dtype=np.float32).reshape(n_agents, -1)
-                # [YW-MOD] clip the action to the action bounds, again note that the action is NOT normalized by the u_tau yet
+                # Clip the action to the action bounds, note that the action is NOT normalized by the u_tau yet
                 clipped = np.clip(raw_actions[:, 0], spec.action_min, spec.action_max)
                 group["cached_actions"] = clipped.reshape(n_agents, 1)
 

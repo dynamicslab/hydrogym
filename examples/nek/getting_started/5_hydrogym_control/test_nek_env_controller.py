@@ -30,13 +30,12 @@ from pathlib import Path
 from typing import Optional
 
 import numpy as np
+from hydrogym.nek import NekEnv
+from hydrogym.nek.nek_lib.nek_utils import NEK_INIT
 
 # Force unbuffered output for MPMD mode
 sys.stdout = open(sys.stdout.fileno(), "w", buffering=1)
 sys.stderr = open(sys.stderr.fileno(), "w", buffering=1)
-
-from hydrogym.nek import NekEnv  # noqa: E402
-from hydrogym.nek.nek_lib.nek_utils import NEK_INIT
 
 
 def setup_logging(verbose: bool = False) -> logging.Logger:

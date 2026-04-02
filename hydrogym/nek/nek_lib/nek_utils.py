@@ -45,7 +45,7 @@ V17_PARAM_MAPPING = {
 
 
 class NEK_INIT:
-    def __init__(self, nek: nek, drl: drl, rank_folder) -> None:
+    def __init__(self, nek: nek, drl: drl, rank_folder):
         """
         A class for initialization of NEK Dependencies
         nek:[dataclass]Simulation config

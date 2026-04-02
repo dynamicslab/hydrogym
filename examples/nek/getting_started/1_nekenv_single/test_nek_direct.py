@@ -83,7 +83,7 @@ def main():
     print(f"\nRunning {max_steps} steps with zero control...")
 
     total_reward = 0.0
-    action_dim = env.action_space.shape[0]
+    #action_dim = env.action_space.shape[0] --> uncomment when needed
 
     for step in range(max_steps):
         # Define action (example: zero control - baseline)
