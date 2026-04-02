@@ -127,7 +127,6 @@ SOLVER_PROFILES: Dict[str, dict] = {
     "NEK5000_v19": {
         "sentinel": ".NEK5000",
         # Runtime-only files (assumes nek5000 executable is pre-compiled)
-        # [YW-MOD] Make it flexible to handle different cases
         "required_files": [
             "environment_config.yaml",  # Environment configuration (REQUIRED for MAIA pattern)
             "int_pos",  # Time series probe positions (required for TSRS module)
@@ -138,7 +137,6 @@ SOLVER_PROFILES: Dict[str, dict] = {
             ["*.ma2"],  # Material properties
             ["*.par"],  # Parameter file (old versions use .rea)
         ],
-        # [YW-MOD]
         "required_dirs": [
             "restart_files",  # Initial condition files (read at startup)
         ],
@@ -147,7 +145,6 @@ SOLVER_PROFILES: Dict[str, dict] = {
             "README.md",  # Documentation
         ],
         # Workspace: runtime files symlinked to run directory
-        # [YW-MOD] Flexible workspace files for NEK5000 v17 and v19
         "workspace_files": {
             "environment_config.yaml": "environment_config.yaml",
         },
@@ -157,16 +154,13 @@ SOLVER_PROFILES: Dict[str, dict] = {
             ["*.ma2"],
             ["*.par"],
         ],
-        # [YW-MOD]
         "workspace_dirs": {
             "restart_files": "restart_files",  # Link restart files directly
         },
     },
-    # [YW-MOD] Add NEK5000_v17 profile
     "NEK5000_v17": {
         "sentinel": ".NEK5000_v17",
         # Runtime-only files (assumes nek5000 executable is pre-compiled)
-        # [YW-MOD] Make it flexible to handle different cases
         "required_files": [
             "environment_config.yaml",  # Environment configuration (REQUIRED for MAIA pattern)
             "stat_pts.in",  # Time series probe positions (required for TSRS module)
@@ -191,7 +185,6 @@ SOLVER_PROFILES: Dict[str, dict] = {
             "README.md",  # Documentation
         ],
         # Workspace: runtime files symlinked to run directory
-        # [YW-MOD] Flexible workspace files for NEK5000 v17
         "workspace_files": {
             "environment_config.yaml": "environment_config.yaml",
             "stat_pts.in": "stat_pts.in",
@@ -212,7 +205,6 @@ SOLVER_PROFILES: Dict[str, dict] = {
             "restart_files": "restart_files",  # Link restart files directly
         },
     },
-    # [YW-MOD] End
     "FIREDRAKE": {
         "sentinel": ".FIREDRAKE",
         # Checkpoint files can be either .h5 or .ckpt - validation happens in code
@@ -462,35 +454,34 @@ class HFDataManager:
             else:
                 self.logger.warning(f"Workspace source not found, skipping: {source_path}")
 
-    # [YW-MOD] Flexible workspace files for NEK5000 v17 and v19
-    workspace_glob_groups = solver.get("workspace_glob_groups", [])
-    if workspace_glob_groups:
-        env_path_obj = Path(env_path)
-        for pattern_group in workspace_glob_groups:
-            matched_paths: List[Path] = []
-            for pattern in pattern_group:
-                matches = sorted([p for p in env_path_obj.glob(pattern) if p.is_file()])
-                if matches:
-                    matched_paths = matches
-                    break
-            if not matched_paths:
-                self.logger.warning(f"Workspace glob group has no matches: {pattern_group}")
-                continue
-            for source_path in matched_paths:
-                target_path = work_path / source_path.name
+        # Flexible workspace files for NEK5000 v17 and v19
+        workspace_glob_groups = solver.get("workspace_glob_groups", [])
+        if workspace_glob_groups:
+            env_path_obj = Path(env_path)
+            for pattern_group in workspace_glob_groups:
+                matched_paths: List[Path] = []
+                for pattern in pattern_group:
+                    matches = sorted([p for p in env_path_obj.glob(pattern) if p.is_file()])
+                    if matches:
+                        matched_paths = matches
+                        break
+                if not matched_paths:
+                    self.logger.warning(f"Workspace glob group has no matches: {pattern_group}")
+                    continue
+                for source_path in matched_paths:
+                    target_path = work_path / source_path.name
+                    self._link_path(source_path, target_path)
+
+        for source_name, target_rel in workspace_dirs.items():
+            source_path = Path(env_path) / source_name
+            target_path = work_path / target_rel
+            if source_path.exists():
                 self._link_path(source_path, target_path)
-    # [YW-MOD]
+            else:
+                self.logger.warning(f"Workspace source dir not found, skipping: {source_path}")
 
-    for source_name, target_rel in workspace_dirs.items():
-        source_path = Path(env_path) / source_name
-        target_path = work_path / target_rel
-        if source_path.exists():
-            self._link_path(source_path, target_path)
-        else:
-            self.logger.warning(f"Workspace source dir not found, skipping: {source_path}")
-
-            self.logger.info(f"Working directory ready at: {work_path.resolve()}")
-            return paths
+        self.logger.info(f"Working directory ready at: {work_path.resolve()}")
+        return paths
 
     # ------------------------------------------------------------------
     # Cache strategies (internal)
@@ -683,35 +674,33 @@ class HFDataManager:
                 self.logger.warning(f"Missing required file: {file_path}")
                 return False
 
-    # [YW-MOD]
-    required_any_files = solver.get("required_any_files", [])
-    if required_any_files:
-        env_path_obj = Path(env_dir)
-        for pattern_group in required_any_files:
-            group_match = False
-            for pattern in pattern_group:
-                if any(p.is_file() for p in env_path_obj.glob(pattern)):
-                    group_match = True
-                    break
-            if not group_match:
-                self.logger.warning(f"Missing required file matching any of: {pattern_group}")
+        required_any_files = solver.get("required_any_files", [])
+        if required_any_files:
+            env_path_obj = Path(env_dir)
+            for pattern_group in required_any_files:
+                group_match = False
+                for pattern in pattern_group:
+                    if any(p.is_file() for p in env_path_obj.glob(pattern)):
+                        group_match = True
+                        break
+                if not group_match:
+                    self.logger.warning(f"Missing required file matching any of: {pattern_group}")
+                    return False
+
+        for dir_name in solver["required_dirs"]:
+            dir_path = os.path.join(env_dir, dir_name)
+            if not os.path.exists(dir_path) or not os.listdir(dir_path):
+                self.logger.warning(f"Missing or empty required directory: {dir_path}")
                 return False
-    # [YW-MOD]
 
-    for dir_name in solver["required_dirs"]:
-        dir_path = os.path.join(env_dir, dir_name)
-        if not os.path.exists(dir_path) or not os.listdir(dir_path):
-            self.logger.warning(f"Missing or empty required directory: {dir_path}")
-            return False
+        for file_name in solver["optional_files"]:
+            file_path = os.path.join(env_dir, file_name)
+            if os.path.exists(file_path):
+                self.logger.info(f"Found optional file: {file_name}")
+            else:
+                self.logger.info(f"Optional file not present: {file_name}")
 
-            for file_name in solver["optional_files"]:
-                file_path = os.path.join(env_dir, file_name)
-                if os.path.exists(file_path):
-                    self.logger.info(f"Found optional file: {file_name}")
-                else:
-                    self.logger.info(f"Optional file not present: {file_name}")
-
-            return True
+        return True
 
     # ------------------------------------------------------------------
     # Utilities
