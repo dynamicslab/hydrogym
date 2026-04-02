@@ -43,32 +43,32 @@ def train_single_agent(args):
         print("✗ Error: Stable-Baselines3 not installed!")
         sys.exit(1)
 
-  # 1. Safe Environment Creation Function
-  def make_env():
-    env_config = {
-        'environment_name': args.env,
-        'nproc': args.nproc,
-        'use_clean_cache': False,
-        'local_fallback_dir': args.local_dir,
-        'configuration_file': args.config_file,
-    }
-    env = NekEnv(env_config=env_config)
+    # 1. Safe Environment Creation Function
+    def make_env():
+        env_config = {
+            'environment_name': args.env,
+            'nproc': args.nproc,
+            'use_clean_cache': False,
+            'local_fallback_dir': args.local_dir,
+            'configuration_file': args.config_file,
+        }
+        env = NekEnv(env_config=env_config)
 
-    # [YW-MOD] Modify the par file to ensure the simulation configuration is correct before training
-    from hydrogym.nek.nek_lib.nek_utils import NEK_INIT
-    nek_init = NEK_INIT(nek=env.conf.simulation, drl=env.conf.runner, rank_folder=env.run_folder)
-    nek_init.rewrite_REA_v19() # Rewrite the par file, v19 corresponds to the new Nek5000 format
-    env = Monitor(env)  # CRITICAL: Enables episode reward/length logging
-    return env
+        # Modify the par file to ensure the simulation configuration is correct before training
+        from hydrogym.nek.nek_lib.nek_utils import NEK_INIT
+        nek_init = NEK_INIT(nek=env.conf.simulation, drl=env.conf.runner, rank_folder=env.run_folder)
+        nek_init.rewrite_REA_v19() # Rewrite the par file, v19 corresponds to the new Nek5000 format
+        env = Monitor(env)  # CRITICAL: Enables episode reward/length logging
+        return env
 
     # 2. Wrap in DummyVecEnv
     env = DummyVecEnv([make_env])
 
-  # 3. Apply VecNormalize (Crucial for Fluid Dynamics)
-  # This scales inputs to mean 0, std 1 so the Neural Net learns faster.
-  # [YW-NOTE] VecNormalize is not used in the literature, so it is not guaranteed to work.
-  # Please see MARL set for more details.
-  env = VecNormalize(env, norm_obs=True, norm_reward=True, clip_obs=10.0)
+    # 3. Apply VecNormalize (Crucial for Fluid Dynamics)
+    # This scales inputs to mean 0, std 1 so the Neural Net learns faster.
+    # VecNormalize is not used in the literature, so it is not guaranteed to work.
+    # Please see MARL set for more details.
+    env = VecNormalize(env, norm_obs=True, norm_reward=True, clip_obs=10.0)
 
     print("Environment created (Wrapped in Monitor, DummyVecEnv, VecNormalize):")
     print(f"  Observation space: {env.observation_space}")
