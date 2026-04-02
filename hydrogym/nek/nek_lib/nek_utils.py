@@ -225,19 +225,19 @@ class NEK_INIT:
             # userp+ = 1
             fpar.write("#---------------------\n")
             fpar.write("\n")
-            
+
             # Problem Type
             fpar.write("[PROBLEMTYPE]\n")
             fpar.write("stressFormulation = %s\n" % self.nek.stressFormulation)
             fpar.write("variableProperties = %s\n" % self.nek.variableProperties)
             fpar.write("\n")
-            
+
             # PRESSURE
             fpar.write("[PRESSURE]\n")
             fpar.write("residualTol = %e\n" % self.nek.p_residualTol)
             fpar.write("residualProj = %s\n" % self.nek.p_residualProj)
             fpar.write("\n")
-            
+
             # VELOCITY
             fpar.write("[VELOCITY]\n")
             fpar.write("residualTol = %e\n" % self.nek.v_residualTol)
@@ -246,32 +246,32 @@ class NEK_INIT:
             fpar.write("viscosity = %f\n" % self.nek.viscosity)
             fpar.write("advection = %s\n" % self.nek.advection)
             fpar.write("\n")
-            
+
             # _RUNPAR
             fpar.write("[_RUNPAR]\n")
             fpar.write("PARFWRITE = %s\n" % self.nek.PARFWRITE)
             fpar.write("outparfile = %s\n" % self.nek.PARFNAME)
             fpar.write("\n")
-            
+
             # MONITOR
             fpar.write("[_MONITOR]\n")
             fpar.write("LOGLEVEL = %d\n" % self.nek.LOGLEVEL)
             fpar.write("WALLTIME = %s\n" % self.nek.WALLTIME)
             fpar.write("\n")
-            
+
             # _CHECKPOINT
             fpar.write("[_CHKPOINT]\n")
             fpar.write("READCHKPT = %s\n" % self.nek.READCHKPT)
             fpar.write("CHKPFNUMBER = %d\n" % self.nek.CHKPFNUMBER)
             fpar.write("CHKPINTERVAL = %d\n" % self.nek.CHKPINTERVAL)
             fpar.write("\n")
-            
+
             # _STAT
             fpar.write("[_STAT]\n")
             fpar.write("AVSTEP = %d\n" % self.nek.AVSTEP)
             fpar.write("IOSTEP = %d\n" % self.nek.IOSTEP)
             fpar.write("\n")
-            
+
             # _STAT
             fpar.write("[_TSRS]\n")
             fpar.write("SMPSTEP = %d\n" % self.nek.SMPSTEP)
