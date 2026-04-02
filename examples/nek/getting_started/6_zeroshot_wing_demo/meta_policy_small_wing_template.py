@@ -39,13 +39,13 @@ POLICY_SPECS = [
         "name": "CTRL000",
         "x_range": [0.23, 0.40],
         "side": "SS",
-        "algorithm": "BL", # This is a constant action policy, no model needed
-        "agent_run_name": "601031", # This is the agent run name, it is the name of the folder that contains the model
-        "policy": "rl_model_749700000_steps", # This is the policy name, it is the name of the policy
-        "drl_step": 4, # This is the action refresh interval, it is the number of steps between each action refresh
-        "u_tau": 1.0, # This is the u_tau, it is the u_tau of the environment, it is used to normalize the observation
-        "baseline_dudy": 1135.83, # This is the baseline_dudy, it is the baseline_dudy of the environment
-        "action_bounds": [-1.0, 1.0], # This is the action bounds, it is the action bounds of the environment
+        "algorithm": "BL",  # This is a constant action policy, no model needed
+        "agent_run_name": "601031",  # This is the agent run name, it is the name of the folder that contains the model
+        "policy": "rl_model_749700000_steps",  # This is the policy name, it is the name of the policy
+        "drl_step": 4,  # This is the action refresh interval, it is the number of steps between each action refresh
+        "u_tau": 1.0,  # This is the u_tau, it is the u_tau of the environment, it is used to normalize the observation
+        "baseline_dudy": 1135.83,  # This is the baseline_dudy, it is the baseline_dudy of the environment
+        "action_bounds": [-1.0, 1.0],  # This is the action bounds, it is the action bounds of the environment
     },
     {
         "name": "CTRL001",

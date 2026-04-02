@@ -16,6 +16,7 @@ from datetime import datetime
 
 from hydrogym.nek import NekEnv, make_pettingzoo_env
 
+
 def train_pettingzoo_with_supersuit(args):
     """Train using SuperSuit wrapper (production approach)."""
     print("=" * 70)
@@ -26,20 +27,20 @@ def train_pettingzoo_with_supersuit(args):
     print("Approach: SuperSuit (production-ready ecosystem wrapper)")
     print("=" * 70 + "\n")
 
-  # Create base environment with direct instantiation
-  print("Creating NekEnv...")
-  env_config = {
-      'environment_name': args.env,
-      'nproc': args.nproc,
-      'use_clean_cache': False,
-      'local_fallback_dir': args.local_dir,
-      'configuration_file': args.config_file,
-      'rescale_actions': True, # The action space has range of [-1,1] and we rescale by the maximum amplitude
-      'normalize_input': 'utau',
-      'ctrl_min_amp': -0.06388353,
-      'ctrl_max_amp': 0.06388353,
-  }
-  base_env = NekEnv(env_config=env_config)
+    # Create base environment with direct instantiation
+    print("Creating NekEnv...")
+    env_config = {
+        "environment_name": args.env,
+        "nproc": args.nproc,
+        "use_clean_cache": False,
+        "local_fallback_dir": args.local_dir,
+        "configuration_file": args.config_file,
+        "rescale_actions": True,  # The action space has range of [-1,1] and we rescale by the maximum amplitude
+        "normalize_input": "utau",
+        "ctrl_min_amp": -0.06388353,
+        "ctrl_max_amp": 0.06388353,
+    }
+    base_env = NekEnv(env_config=env_config)
 
     # Wrap with PettingZoo interface
     print("Wrapping with PettingZoo interface...")
@@ -57,14 +58,12 @@ def train_pettingzoo_with_supersuit(args):
         print("Install with: pip install pettingzoo supersuit")
         sys.exit(1)
 
-  try:
-    import numpy as np
-    from stable_baselines3.common.monitor import Monitor
-    from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize, VecEnvWrapper
-    from stable_baselines3.common.callbacks import CheckpointCallback
-    # [YW-MOD] Add import for fixed action noise
-    from stable_baselines3.common.noise import NormalActionNoise
-    # [YW-MOD] End
+    try:
+        import numpy as np
+        from stable_baselines3.common.monitor import Monitor
+        from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize, VecEnvWrapper
+        from stable_baselines3.common.callbacks import CheckpointCallback
+        from stable_baselines3.common.noise import NormalActionNoise
 
         if args.algo == "PPO":
             from stable_baselines3 import PPO as Algorithm
@@ -117,9 +116,9 @@ def train_pettingzoo_with_supersuit(args):
     print("Wrapping for VecEnv API compatibility...")
     env = VecEnvCompatWrapper(env)
 
-  # Wrap with VecNormalize
-  print("Wrapping with VecNormalize...")
-  env = VecNormalize(env, norm_obs=False, norm_reward=False, clip_obs=0.0)
+    # Wrap with VecNormalize
+    print("Wrapping with VecNormalize...")
+    env = VecNormalize(env, norm_obs=False, norm_reward=False, clip_obs=0.0)
 
     print("Final environment:")
     print(f"  Observation space: {env.observation_space}")
@@ -133,44 +132,46 @@ def train_pettingzoo_with_supersuit(args):
     # Create model
     print(f"Creating {args.algo} model...")
 
-  model_kwargs = {
-      "policy": "MlpPolicy",
-      "env": env,
-      "learning_rate": args.learning_rate,
-      # [YW-MOD] Add fixed network architecture 
-      "policy_kwargs": {"net_arch": { "qf": [16,16,64], "pi": [8,] }}, 
-      # [YW-MOD] End
-      "gamma": args.gamma,
-      "verbose": 1,
-      "tensorboard_log": str(log_dir)
-  }
+    model_kwargs = {
+        "policy": "MlpPolicy",
+        "env": env,
+        "learning_rate": args.learning_rate,
+        "policy_kwargs": {
+            "net_arch": {
+                "qf": [16, 16, 64],
+                "pi": [
+                    8,
+                ],
+            }
+        },
+        "gamma": args.gamma,
+        "verbose": 1,
+        "tensorboard_log": str(log_dir),
+    }
 
-  # NOTE: PPO is not used in the literature, so it is not guaranteed to work.
-  if args.algo == "PPO":
-    model_kwargs["n_steps"] = args.n_steps
-    model_kwargs["batch_size"] = args.batch_size
-  else:
-    model_kwargs["batch_size"] = args.batch_size
-    # [YW-MOD] Configuration in the literature
-    model_kwargs["buffer_size"] = int(1E6)
-    model_kwargs["learning_starts"] = 100
-    model_kwargs["train_freq"] = (300, 'step')
-    model_kwargs["gradient_steps"] = 64
-    model_kwargs["action_noise"] = NormalActionNoise(
-      mean=np.zeros(env.action_space.shape[0]), # Zero-Mean
-      sigma=0.1*np.ones(env.action_space.shape[0]) # Action noise is 10% of the action space
-    )
-    # [YW-MOD] End
+    # NOTE: PPO is not used in the literature, so it is not guaranteed to work.
+    if args.algo == "PPO":
+        model_kwargs["n_steps"] = args.n_steps
+        model_kwargs["batch_size"] = args.batch_size
+    else:
+        model_kwargs["batch_size"] = args.batch_size
+        model_kwargs["buffer_size"] = int(1e6)
+        model_kwargs["learning_starts"] = 100
+        model_kwargs["train_freq"] = (300, "step")
+        model_kwargs["gradient_steps"] = 64
+        model_kwargs["action_noise"] = NormalActionNoise(
+            mean=np.zeros(env.action_space.shape[0]),  # Zero-Mean
+            sigma=0.1 * np.ones(env.action_space.shape[0]),  # Action noise is 10% of the action space
+        )
 
     model = Algorithm(**model_kwargs)
     print("✓ Model created\n")
 
-  # Calculate safe save frequency
-  safe_save_freq = max(args.save_freq // env.num_envs, 1)
+    # Calculate safe save frequency
+    safe_save_freq = max(args.save_freq // env.num_envs, 1)
 
-  # [YW-MOD] CallBack list during training process 
-  callback_list = []
-  # [YW-MOD] End
+    # CallBack list during training process
+    callback_list = []
 
     # Custom callback to save VecNormalize stats
     class SaveVecNormalizeCallback(CheckpointCallback):
@@ -185,26 +186,20 @@ def train_pettingzoo_with_supersuit(args):
         save_freq=safe_save_freq, save_path=str(log_dir), name_prefix="model"
     )
 
-  callback_list.append(checkpoint_callback)
-  # [YW-MOD] Add CheckpointCallback to the callback list
-  callback_list.append(
-    CheckpointCallback(
-      save_freq=safe_save_freq, save_path=str(log_dir), name_prefix="rl-model")
-    )
-  # [YW-MOD] End
+    callback_list.append(checkpoint_callback)
 
-  print(f"Log directory: {log_dir}\n")
+    # Add CheckpointCallback to the callback list
+    callback_list.append(CheckpointCallback(save_freq=safe_save_freq, save_path=str(log_dir), name_prefix="rl-model"))
+
+    print(f"Log directory: {log_dir}\n")
 
     # Train
     print("=" * 70)
     print("Starting training...")
     print("=" * 70 + "\n")
 
-  try:
-    model.learn(
-        total_timesteps=args.total_timesteps,
-        callback=callback_list, # [YW-MOD] Use the callback list instead of checkpoint_callback
-        tb_log_name=f"{args.algo}_run")
+    try:
+        model.learn(total_timesteps=args.total_timesteps, callback=callback_list, tb_log_name=f"{args.algo}_run")
 
         # Save final model and normalization stats
         final_model_path = log_dir / "model_final.zip"
@@ -235,17 +230,17 @@ def main():
     parser.add_argument("--nproc", type=int, default=10, help="Nek5000 processes")
     parser.add_argument("--config-file", type=str, default=None, help="Config file (None = auto-detect)")
 
-  # Algorithm
-  parser.add_argument("--algo", default="PPO", choices=["PPO", "TD3", "SAC"])
-  parser.add_argument("--total-timesteps", type=int, default=100000)
-  parser.add_argument("--n-steps", type=int, default=2048)
-  parser.add_argument("--learning-rate", type=float, default=1e-3)
-  parser.add_argument("--batch-size", type=int, default=256)
-  parser.add_argument("--gamma", type=float, default=0.99)
+    # Algorithm
+    parser.add_argument("--algo", default="PPO", choices=["PPO", "TD3", "SAC"])
+    parser.add_argument("--total-timesteps", type=int, default=100000)
+    parser.add_argument("--n-steps", type=int, default=2048)
+    parser.add_argument("--learning-rate", type=float, default=1e-3)
+    parser.add_argument("--batch-size", type=int, default=256)
+    parser.add_argument("--gamma", type=float, default=0.99)
 
-  # Logging
-  parser.add_argument("--log-dir", default="./logs")
-  parser.add_argument("--save-freq", type=int, default=5)
+    # Logging
+    parser.add_argument("--log-dir", default="./logs")
+    parser.add_argument("--save-freq", type=int, default=5)
 
     args = parser.parse_args()
 

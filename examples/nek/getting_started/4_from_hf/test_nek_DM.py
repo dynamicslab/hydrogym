@@ -37,20 +37,18 @@ def main():
     parser.add_argument("--local-dir", type=str, default=None, help="Local fallback directory for environments")
     args = parser.parse_args()
 
-  # Create environment using MAIA pattern
-  print(f"\nCreating Nek5000 environment: {args.env}")
-  env = NekEnv.from_hf(
-      args.env,
-      nproc=args.nproc,
-      use_clean_cache=False,
-      local_fallback_dir=args.local_dir,
-  )
+    # Create environment using MAIA pattern
+    print(f"\nCreating Nek5000 environment: {args.env}")
+    env = NekEnv.from_hf(
+        args.env,
+        nproc=args.nproc,
+        use_clean_cache=False,
+        local_fallback_dir=args.local_dir,
+    )
 
-  # [YW-MOD] Rewrite the par file to ensure the simulation configuration is correct
-  from hydrogym.nek.nek_lib.nek_utils import NEK_INIT
-  nek_init = NEK_INIT(nek=env.conf.simulation, drl=env.conf.runner, rank_folder=env.run_folder)
-  nek_init.rewrite_REA_v19() # Rewrite the par file, v19 corresponds to the new Nek5000 format
-  # [YW-MOD] End
+    # Rewrite the par file to ensure the simulation configuration is correct
+    nek_init = NEK_INIT(nek=env.conf.simulation, drl=env.conf.runner, rank_folder=env.run_folder)
+    nek_init.rewrite_REA_v19()
 
     print("\nEnvironment info:")
     print("=" * 80)

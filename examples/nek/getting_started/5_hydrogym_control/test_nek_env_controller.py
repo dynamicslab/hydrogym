@@ -36,6 +36,7 @@ sys.stdout = open(sys.stdout.fileno(), "w", buffering=1)
 sys.stderr = open(sys.stderr.fileno(), "w", buffering=1)
 
 from hydrogym.nek import NekEnv  # noqa: E402
+from hydrogym.nek.nek_lib.nek_utils import NEK_INIT
 
 
 def setup_logging(verbose: bool = False) -> logging.Logger:
@@ -51,26 +52,26 @@ def create_controller(env, controller_type: str, logger: logging.Logger):
     """Create controller based on type."""
     logger.info(f"Creating {controller_type} controller")
 
-  if controller_type.upper() == 'OC':
-    # Opposition control
-    def controller(t, obs, env):
-      # Oppose the velocity at sensor location (obs is flattened 1D array)
-      # For opposition control, use negative of observation values
-      return -obs[1:] # YW: Again note that we are opposing the wall-normal velocity (index = 1) 
-  elif controller_type.upper() == 'BL':
-    # Constant blowing
-    def controller(t, obs, env):
-      return np.ones(env.action_space.shape, dtype=np.float32) * 0.5
-  elif controller_type.upper() == 'SIN':
-    # Sinusoidal wave
-    def controller(t, obs, env):
-      return np.sin(2 * np.pi * t) * 0.5
-  elif controller_type.upper() == 'ZERO':
-    # No control
-    def controller(t, obs, env):
-      return np.zeros(env.action_space.shape, dtype=np.float32)
-  else:
-    raise ValueError(f"Unknown controller type: {controller_type}")
+    if controller_type.upper() == "OC":
+        # Opposition control
+        def controller(t, obs, env):
+            # Oppose the velocity at sensor location (obs is flattened 1D array)
+            # For opposition control, use negative of observation values
+            return -obs[1:]  # YW: Again note that we are opposing the wall-normal velocity (index = 1)
+    elif controller_type.upper() == "BL":
+        # Constant blowing
+        def controller(t, obs, env):
+            return np.ones(env.action_space.shape, dtype=np.float32) * 0.5
+    elif controller_type.upper() == "SIN":
+        # Sinusoidal wave
+        def controller(t, obs, env):
+            return np.sin(2 * np.pi * t) * 0.5
+    elif controller_type.upper() == "ZERO":
+        # No control
+        def controller(t, obs, env):
+            return np.zeros(env.action_space.shape, dtype=np.float32)
+    else:
+        raise ValueError(f"Unknown controller type: {controller_type}")
 
     return controller
 
@@ -139,16 +140,14 @@ def run_nek_test(
         else:
             raise ValueError("Must provide either --env (MAIA pattern) or --config (legacy pattern)")
 
-    # [YW-MOD] Rewrite the par file to ensure the simulation configuration is correct
-    from hydrogym.nek.nek_lib.nek_utils import NEK_INIT
-    nek_init = NEK_INIT(nek=env.conf.simulation, drl=env.conf.runner, rank_folder=env.run_folder)
-    nek_init.rewrite_REA_v19() # Rewrite the par file, v19 corresponds to the new Nek5000 format
-    # [YW-MOD] End
+        # Rewrite the par file to ensure the simulation configuration is correct
+        nek_init = NEK_INIT(nek=env.conf.simulation, drl=env.conf.runner, rank_folder=env.run_folder)
+        nek_init.rewrite_REA_v19()
 
-    logger.info("✓ Environment created successfully")
-  except Exception as e:
-    logger.error(f"✗ Failed to create environment: {e}")
-    raise RuntimeError(f"Environment creation failed: {e}") from e
+        logger.info("✓ Environment created successfully")
+    except Exception as e:
+        logger.error(f"✗ Failed to create environment: {e}")
+        raise RuntimeError(f"Environment creation failed: {e}") from e
 
     try:
         # Log environment info

@@ -18,6 +18,7 @@ import numpy as np
 import gymnasium as gym
 
 from hydrogym.nek import NekEnv, NekParallelEnv
+from hydrogym.nek.nek_lib.nek_utils import NEK_INIT
 
 
 class CentralizedParallelWrapper(gym.Env):
@@ -116,21 +117,21 @@ def train_parallel_centralized(args):
     print("Approach: DIY centralized (single policy controls all agents)")
     print("=" * 70 + "\n")
 
-  # Create base environment with direct instantiation
-  print("Creating NekEnv...")
-  env_config = {
-      'environment_name': args.env,
-      'nproc': args.nproc,
-      'use_clean_cache': False,
-      'local_fallback_dir': args.local_dir,
-      'configuration_file': args.config_file,
-  }
-  base_env = NekEnv(env_config=env_config)
-  # [YW-MOD] Rewrite the par file to ensure the simulation configuration is correct
-  from hydrogym.nek.nek_lib.nek_utils import NEK_INIT
-  nek_init = NEK_INIT(nek=base_env.conf.simulation, drl=base_env.conf.runner, rank_folder=base_env.run_folder)
-  nek_init.rewrite_REA_v19() # Rewrite the par file, v19 corresponds to the new Nek5000 format
-  # [YW-MOD] End
+    # Create base environment with direct instantiation
+    print("Creating NekEnv...")
+    env_config = {
+        "environment_name": args.env,
+        "nproc": args.nproc,
+        "use_clean_cache": False,
+        "local_fallback_dir": args.local_dir,
+        "configuration_file": args.config_file,
+    }
+    base_env = NekEnv(env_config=env_config)
+
+    # Rewrite the parameter file to ensure the simulation configuration is correct, and
+    # complies with the v19 Nek5000 format
+    nek_init = NEK_INIT(nek=base_env.conf.simulation, drl=base_env.conf.runner, rank_folder=base_env.run_folder)
+    nek_init.rewrite_REA_v19()
 
     # Wrap with parallel interface (dict-based)
     print("Wrapping with NekParallelEnv (dict-based)...")

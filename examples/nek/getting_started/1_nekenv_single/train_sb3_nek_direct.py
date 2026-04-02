@@ -46,18 +46,19 @@ def train_single_agent(args):
     # 1. Safe Environment Creation Function
     def make_env():
         env_config = {
-            'environment_name': args.env,
-            'nproc': args.nproc,
-            'use_clean_cache': False,
-            'local_fallback_dir': args.local_dir,
-            'configuration_file': args.config_file,
+            "environment_name": args.env,
+            "nproc": args.nproc,
+            "use_clean_cache": False,
+            "local_fallback_dir": args.local_dir,
+            "configuration_file": args.config_file,
         }
         env = NekEnv(env_config=env_config)
 
         # Modify the par file to ensure the simulation configuration is correct before training
         from hydrogym.nek.nek_lib.nek_utils import NEK_INIT
+
         nek_init = NEK_INIT(nek=env.conf.simulation, drl=env.conf.runner, rank_folder=env.run_folder)
-        nek_init.rewrite_REA_v19() # Rewrite the par file, v19 corresponds to the new Nek5000 format
+        nek_init.rewrite_REA_v19()  # Rewrite the par file, v19 corresponds to the new Nek5000 format
         env = Monitor(env)  # CRITICAL: Enables episode reward/length logging
         return env
 
