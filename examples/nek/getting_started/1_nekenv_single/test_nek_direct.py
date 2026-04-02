@@ -25,9 +25,10 @@ Note:
     - Zero control: action = 0 (baseline test)
 """
 
-import sys
 import argparse
+import sys
 from pathlib import Path
+
 import numpy as np
 
 from hydrogym.nek import NekEnv
@@ -55,15 +56,14 @@ def main():
         "configuration_file": args.config_file,  # None = auto-detect
     }
 
-  # Direct instantiation
-  env = NekEnv(env_config=env_config)
+    # Direct instantiation
+    env = NekEnv(env_config=env_config)
 
-  # [YW-MOD] Modify the par file to ensure the simulation configuration is correct
-  from hydrogym.nek.nek_lib.nek_utils import NEK_INIT 
-  nek_init = NEK_INIT(nek=env.conf.simulation, drl=env.conf.runner, rank_folder=env.run_folder)
-  nek_init.rewrite_REA_v19() # Rewrite the par file, v19 corresponds to the new Nek5000 format
-  # The simulation will be reset anyway, so writting the par file at this point is a perfect timing 
-  # [YW-MOD] End
+    # Modify the par file to ensure the simulation configuration is correct
+    from hydrogym.nek.nek_lib.nek_utils import NEK_INIT 
+    nek_init = NEK_INIT(nek=env.conf.simulation, drl=env.conf.runner, rank_folder=env.run_folder)
+    nek_init.rewrite_REA_v19() # Rewrite the par file, v19 corresponds to the new Nek5000 format
+    # The simulation will be reset, so the par file is to be written out at this point 
 
     print("\nEnvironment info:")
     print("=" * 80)
