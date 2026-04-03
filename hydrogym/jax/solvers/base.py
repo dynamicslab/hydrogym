@@ -1,15 +1,15 @@
-import tree_math
-from typing import Callable, Iterable, Tuple, NamedTuple
+from typing import Callable, Iterable, NamedTuple, Tuple
+
+import jax
 import jax.numpy as jnp
 import numpy as np
-import jax
+import tree_math
 from jax import lax
 from jax.experimental import checkify
 
 from hydrogym.core import CallbackBase, PDEBase, TransientSolver
-from hydrogym.jax.utils.utils import *
+from hydrogym.jax.equation import IMEXEquation
 from hydrogym.jax.flow import FlowConfig
-from hydrogym.jax.equation import *
 
 _alpha_RK4 = [0, 0.1496590219993, 0.3704009573644, 0.6222557631345, 0.9582821306748, 1]
 _beta_RK4 = [0, -0.4178904745, -1.192151694643, -1.697784692471, -1.514183444257]
@@ -28,11 +28,11 @@ class RungeKuttaCrankNicolson(TransientSolver):
         self.dt = dt
         self.flow = flow
         self.equation = equation
-        # self.equation = PseudoSpectralNavierStokes2D(self.flow)
         super().__init__(flow, dt)
 
     def RK4_CN(self):
-        """Crank-Nicolson RK4 implicit-explicit time stepping scheme
+        """
+        Crank-Nicolson RK4 implicit-explicit time stepping scheme.
         Low storage scheme inspired by [1]. Method described in [2].
 
         Implicit-Explicit timestepping for an ODE of the form:
@@ -42,17 +42,17 @@ class RungeKuttaCrankNicolson(TransientSolver):
         [1] Kochkov, D., et. al. (2021) https://doi.org/10.1073/pnas.2101784118
         [2] PK Sweby, (1984). SIAM journal on numerical analysis 21, Appendix D.
         """
-        g = tree_math.unwrap(self.equation.nonlinear_terms)
-        l = tree_math.unwrap(self.equation.linear_terms)
+        unwrapped_nonlinear = tree_math.unwrap(self.equation.nonlinear_terms)
+        unwrapped_linear = tree_math.unwrap(self.equation.linear_terms)
         y = tree_math.unwrap(self.equation.implicit_timestep, vector_argnums=0)
 
         @tree_math.wrap
         def time_step_fn(u):
             h = 0
             for k in range(5):
-                h = g(u) + _beta_RK4[k] * h
+                h = unwrapped_nonlinear(u) + _beta_RK4[k] * h
                 mu = 0.5 * self.dt * (_alpha_RK4[k + 1] - _alpha_RK4[k])
-                yn = u + _gammas_RK4[k] * self.dt * h + mu * l(u)
+                yn = u + _gammas_RK4[k] * self.dt * h + mu * unwrapped_linear(u)
                 u = y(yn, mu)
             return u
 
@@ -91,11 +91,8 @@ class RungeKuttaCrankNicolson(TransientSolver):
         end_time = t_span[1]
         checkify.check(
             end_time < 1,
-            "This flow configuration requires the end time to be at least 1. Please adjust your t_span value and run again.",
+            "This flow configuration requires the end time to be at least 1. Please adjust t_span and run again.",
         )
-
-        # if end_time < 1:
-        #   raise ValueError("This flow configuration requires the end time to be at least 1. Please adjust your t_span value and run again.")
 
         initialization = flow.initialize_state()
         step_to_save = int(save_n // dt)
@@ -110,7 +107,8 @@ class RungeKuttaCrankNicolson(TransientSolver):
         final_state, outputs = lax.scan(outer_scan, initialization, xs=None, length=outer_steps)
         flow.vorticity = outputs
         # Dummy values for iter, t for hydrogym api callback function.
-        # Optimized iteration through JAX (with scan) is not the same as native python, and the iterations can not easily be tracked.
+        # Optimized iteration through JAX (with scan) is not the same as native python,
+        # and the iterations can not easily be tracked.
         for cb in callbacks:
             cb(flow)
         return final_state, outputs
