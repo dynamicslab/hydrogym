@@ -14,6 +14,7 @@ from pathlib import Path
 from datetime import datetime
 
 from hydrogym.nek import NekEnv
+from hydrogym.nek.nek_lib.nek_utils import NEK_INIT
 
 
 def train_with_from_hf(args):
@@ -35,6 +36,10 @@ def train_with_from_hf(args):
         local_fallback_dir=args.local_dir,
     )
 
+    # Rewrite the par file to ensure the simulation configuration is correct
+    nek_init = NEK_INIT(nek=env.conf.simulation, drl=env.conf.runner, rank_folder=env.run_folder)
+    nek_init.rewrite_REA_v19()
+
     print("\nEnvironment created:")
     print(f"  Observation space: {env.observation_space.shape}")
     print(f"  Action space: {env.action_space.shape}")
@@ -47,6 +52,7 @@ def train_with_from_hf(args):
         from stable_baselines3.common.callbacks import CheckpointCallback
 
         if args.algo == "PPO":
+            # NOTE: PPO is not used in the literature, so it is not guaranteed to work.
             from stable_baselines3 import PPO as Algorithm
         elif args.algo == "TD3":
             from stable_baselines3 import TD3 as Algorithm
@@ -60,6 +66,7 @@ def train_with_from_hf(args):
     print("Wrapping with Monitor, DummyVecEnv, VecNormalize...")
     env = Monitor(env)
     env = DummyVecEnv([lambda: env])
+    # NOTE: Add VecNormalize is not used in the literature, so it is not guaranteed to work.
     env = VecNormalize(env, norm_obs=True, norm_reward=True, clip_obs=10.0)
 
     print("Environment wrapped:")

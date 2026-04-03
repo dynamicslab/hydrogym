@@ -30,12 +30,12 @@ from pathlib import Path
 from typing import Optional
 
 import numpy as np
+from hydrogym.nek import NekEnv
+from hydrogym.nek.nek_lib.nek_utils import NEK_INIT
 
 # Force unbuffered output for MPMD mode
 sys.stdout = open(sys.stdout.fileno(), "w", buffering=1)
 sys.stderr = open(sys.stderr.fileno(), "w", buffering=1)
-
-from hydrogym.nek import NekEnv  # noqa: E402
 
 
 def setup_logging(verbose: bool = False) -> logging.Logger:
@@ -56,7 +56,7 @@ def create_controller(env, controller_type: str, logger: logging.Logger):
         def controller(t, obs, env):
             # Oppose the velocity at sensor location (obs is flattened 1D array)
             # For opposition control, use negative of observation values
-            return -obs[: env.action_space.shape[0]]
+            return -obs[1:]  # YW: Again note that we are opposing the wall-normal velocity (index = 1)
     elif controller_type.upper() == "BL":
         # Constant blowing
         def controller(t, obs, env):
@@ -138,6 +138,10 @@ def run_nek_test(
             env = NekEnv(conf=config, reward_agg="mean")
         else:
             raise ValueError("Must provide either --env (MAIA pattern) or --config (legacy pattern)")
+
+        # Rewrite the par file to ensure the simulation configuration is correct
+        nek_init = NEK_INIT(nek=env.conf.simulation, drl=env.conf.runner, rank_folder=env.run_folder)
+        nek_init.rewrite_REA_v19()
 
         logger.info("✓ Environment created successfully")
     except Exception as e:
