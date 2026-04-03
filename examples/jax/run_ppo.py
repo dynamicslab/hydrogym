@@ -5,30 +5,27 @@
 
 ###############################################################
 
+import os
+import pickle
+import sys
+from functools import partial
+from typing import Any, NamedTuple, Sequence
+
+import distrax
+import flax.linen as nn
+import flax.serialization
 import jax
 import jax.numpy as jnp
-import flax.linen as nn
+import matplotlib.pyplot as plt
 import numpy as np
 import optax
 from flax.linen.initializers import constant, orthogonal
-from typing import Sequence, NamedTuple, Any
 from flax.training.train_state import TrainState
-from functools import partial
-import distrax
-import sys, os
-import pickle
-import flax.serialization
-import matplotlib.pyplot as plt
 
+from hydrogym.jax.env_core import (ClipAction, LogWrapper,
+                                   NormalizeVecObservation, NormalizeVecReward,
+                                   VecEnv)
 from hydrogym.jax.envs.kolmogorov import KolmogorovFlow
-
-from hydrogym.jax.env_core import (
-    LogWrapper,
-    VecEnv,
-    NormalizeVecObservation,
-    NormalizeVecReward,
-    ClipAction,
-)
 
 env = KolmogorovFlow(env_config={}, flow_config={})
 env_params = env.default_params
