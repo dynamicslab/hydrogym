@@ -1,15 +1,19 @@
-import tree_math
-import jax.numpy as jnp
-import jax
+from typing import Callable, Dict, Iterable, NamedTuple, Optional, Tuple
 
-from typing import Callable, Iterable, Tuple, NamedTuple
+import chex
+import jax
+import jax.numpy as jnp
+import tree_math
+from flax import struct
+from gymnax.environments import environment, spaces
 from jax import lax
+
 from hydrogym.core import CallbackBase, PDEBase, TransientSolver
-from hydrogym.jax.utils.utils import *
-from hydrogym.jax.env_core import *
+from hydrogym.jax.env_core import EnvParams, JAXFlowEnvBase
 from hydrogym.jax.equation import IMEXEquation
 from hydrogym.jax.solvers.base import RungeKuttaCrankNicolson
-
+from hydrogym.jax.utils.utils import (compute_real_velocity_point, compute_tke,
+                                      compute_velocity_fft, dealiasing)
 
 #######################################################################################
 #                                                                                     #
@@ -56,8 +60,8 @@ class FlowConfig(PDEBase):
     def _calculate_velocity_point(self, state, k1, k2):
         # Calculate velocity point
         kx, ky = self.load_fft_mesh()
-        uhat, vhat = utils.compute_velocity_fft(state, kx, ky)
-        point_velocity = utils.compute_real_velocity_point(uhat, vhat, k1, k2)
+        uhat, vhat = compute_velocity_fft(state, kx, ky)
+        point_velocity = compute_real_velocity_point(uhat, vhat, k1, k2)
 
         return point_velocity
 
@@ -115,8 +119,8 @@ class FlowConfig(PDEBase):
         def dstream_func_dy(x, y):
             return -jnp.sin(y)
 
-        dudy = grad(dstream_func_dy, argnums=1)
-        dvdx = grad(dstream_func_dx, argnums=0)
+        dudy = jax.grad(dstream_func_dy, argnums=1)
+        dvdx = jax.grad(dstream_func_dx, argnums=0)
         du_dy = jnp.vectorize(dudy)(X, Y)
         dv_dx = jnp.vectorize(dvdx)(X, Y)
         vorticity = dv_dx - du_dy
@@ -189,11 +193,11 @@ class FlowConfig(PDEBase):
 
 class PseudoSpectralNavierStokes2D(IMEXEquation):
     """
-    Calculates the 2D Navier-Stokes equations using the pseudo-spectral solver. We transform the 2D Navier-Stokes equation to a vorticity equation:
+    Calculates the 2D Navier-Stokes equations using the pseudo-spectral solver.
+    We transform the 2D Navier-Stokes equation to a vorticity equation:
         ∂/∂t ω + u·∇ω = v ∇²ω + ƒ ;
         ω = - ∇²φ ;
     and solve in Fourier space
-
     """
 
     def __init__(self, flow: FlowConfig):
@@ -423,8 +427,8 @@ class KolmogorovFlow(JAXFlowEnvBase):
         return final_state, trajectory
 
     def _calculate_velocity_point(self, omega_hat: jnp.ndarray, i: int, j: int):
-        uhat, vhat = utils.compute_velocity_fft(omega_hat, self.kx, self.ky)
-        return utils.compute_real_velocity_point(uhat, vhat, i, j)
+        uhat, vhat = compute_velocity_fft(omega_hat, self.kx, self.ky)
+        return compute_real_velocity_point(uhat, vhat, i, j)
 
     def _trajectory_mean_obs(self, trajectory: jnp.ndarray) -> jnp.ndarray:
         stride_x = max(1, self.n // self.flow.obs_size)
@@ -450,7 +454,7 @@ class KolmogorovFlow(JAXFlowEnvBase):
 
     def _avg_tke(self, trajectory: jnp.ndarray) -> jnp.ndarray:
         def one(omega_hat):
-            return utils.compute_tke(omega_hat, self.kx, self.ky, self.n)
+            return compute_tke(omega_hat, self.kx, self.ky, self.n)
 
         return jnp.mean(jax.vmap(one)(trajectory))
 
