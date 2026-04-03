@@ -1,19 +1,21 @@
 import os
+from typing import Any, Dict, NamedTuple, Optional, Tuple
+
 import chex
 import jax
-
-jax.config.update("jax_enable_x64", True)
-
 import jax.numpy as jnp
 import numpy as np
-from typing import Optional, Tuple, Any, Dict
-
 from flax import struct
 from gymnax.environments import environment, spaces
-from hydrogym.jax.env_core import JAXFlowEnvBase, EnvParams as BaseEnvParams
-from hydrogym.jax.utils.utils import *
-from hydrogym.jax.equation import *
-from hydrogym.jax.solvers.base import *
+from jax import lax
+
+from hydrogym.jax.env_core import EnvParams as BaseEnvParams
+from hydrogym.jax.env_core import JAXFlowEnvBase
+from hydrogym.jax.equation import SplitEquation
+from hydrogym.jax.solvers.base import RungeKutta4, VelocityState
+from hydrogym.jax.utils.utils import cheb_D_matrices, dealias_mask_2_3
+
+jax.config.update("jax_enable_x64", True)
 
 #######################################################################################
 #                                                                                     #
@@ -292,7 +294,7 @@ class PseudoSpectralNavierStokes3D(SplitEquation):
         dpdz_top_hat = self.fft_xy(w_top)
 
         Nz = self.Nz
-        I = jnp.eye(Nz, dtype=self.dtype)
+        Nz_identity = jnp.eye(Nz, dtype=self.dtype)
         Dzz = self.Dzz.astype(self.dtype)
         Dz = self.Dz.astype(self.dtype)
 
@@ -300,7 +302,7 @@ class PseudoSpectralNavierStokes3D(SplitEquation):
         k2_flat = self.k2.reshape(-1)
         rhs_flat = rhs_hat.reshape(Nm, Nz)
 
-        A = Dzz[None, :, :] - k2_flat[:, None, None] * I[None, :, :]
+        A = Dzz[None, :, :] - k2_flat[:, None, None] * Nz_identity[None, :, :]
         A = A.at[:, 0, :].set(Dz[0, :][None, :])
         A = A.at[:, -1, :].set(Dz[-1, :][None, :])
 
@@ -420,11 +422,10 @@ class ChannelFlowSpectralEnv(JAXFlowEnvBase):
             save_n=1,
         )
 
-        #################
-        # NOTE: As of now, the easiest way to load the initial files is by downloading them off of hugging face and loading them directly #
-        # Otherwise, user is free to generate their own initial conditions #
-        # Once the JAX environments interface with huggingface more easily, this will be done automatically #
-        ##################
+        # NOTE: As of now, the easiest way to load the initial files is by downloading them
+        # off of hugging face and loading them directly
+        # Otherwise, user is free to generate their own initial conditions
+        # Once the JAX environments interface with huggingface more easily, this will be done automatically
 
         self.U0 = jnp.load("U_nocontrol.npy")
         self.V0 = jnp.load("V_nocontrol.npy")
@@ -474,9 +475,6 @@ class ChannelFlowSpectralEnv(JAXFlowEnvBase):
         )(action)
 
         reward = -wss
-        # Bonus variable = gradient term #
-        bonus = -jnp.vdot(action, grad_wss)
-        reward = reward  # + 1e2 * bonus
 
         time = state.time + params.nsteps
         terminal = time >= params.max_steps_in_episode
