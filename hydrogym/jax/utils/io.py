@@ -1,14 +1,13 @@
+from typing import Callable, Optional, Tuple
+
 import jax.numpy as jnp
-import numpy as np
-import matplotlib.pyplot as plt
 import matplotlib.animation as animation
-from matplotlib.animation import PillowWriter
 import matplotlib.pyplot as plt
+import numpy as np
 from jax import lax
 from matplotlib.animation import PillowWriter
 
 from hydrogym.core import CallbackBase
-from typing import Callable, Optional, Tuple
 
 
 class LogCallback(CallbackBase):
@@ -38,7 +37,7 @@ def create_animation(trajectory, gif_name, frame_interval_factor):
         gif_name: file name of gif file that will be saved
         interval: frame interval as related to the length of the trajectory.
     """
-    if type(trajectory) == str:
+    if type(trajectory) is str:
         trajectory = jnp.load(trajectory)
     simulation = jnp.fft.irfftn(trajectory, axes=(1, 2))
 
