@@ -2,11 +2,7 @@ import jax
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
 
-#####################################################
-# Import channel flow and environment configuration #
-#####################################################
-
-from hydrogym.jax.envs.channel import *
+from hydrogym.jax.envs.channel import ChannelFlowSpectralEnv
 
 env_config = {}
 env = ChannelFlowSpectralEnv(env_config)
