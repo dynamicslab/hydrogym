@@ -25,15 +25,20 @@ from gymnax.environments import environment, spaces
 
 from hydrogym.data_manager import HFDataManager, SOLVER_PROFILES  # noqa: F401
 
+
 class ConfigError(Exception):
     """Exception raised for configuration-related errors."""
+
     pass
 
+
 class EnvParams(environment.EnvParams):
-    config: dict 
+    config: dict
+
 
 EnvState = TypeVar("EnvState", bound=environment.EnvState)
-    
+
+
 class JAXFlowEnv(environment.Environment[EnvState, EnvParams]):
     """
     Base JAXFlowEnv with Hugging Face Hub integration for configuration management.
@@ -74,18 +79,16 @@ class JAXFlowEnv(environment.Environment[EnvState, EnvParams]):
         """
 
         # Initialize HF data manager
-        self.hf_repo_id = env_config.get('hf_repo_id', 'dynamicslab/HydroGym-environments')
-        self.local_fallback_dir = env_config.get('local_fallback_dir', None)
-        self.use_clean_cache = env_config.get('use_clean_cache', True)
+        self.hf_repo_id = env_config.get("hf_repo_id", "dynamicslab/HydroGym-environments")
+        self.local_fallback_dir = env_config.get("local_fallback_dir", None)
+        self.use_clean_cache = env_config.get("use_clean_cache", True)
 
         self.data_manager = HFDataManager(
-            repo_id=self.hf_repo_id,
-            local_fallback_dir=self.local_fallback_dir,
-            use_clean_cache=self.use_clean_cache
+            repo_id=self.hf_repo_id, local_fallback_dir=self.local_fallback_dir, use_clean_cache=self.use_clean_cache
         )
 
         # Environment identification
-        self.environment_name = env_config.get('environment_name')
+        self.environment_name = env_config.get("environment_name")
 
         if not self.environment_name:
             raise ConfigError("'environment_name' must be specified in env_config")
@@ -94,9 +97,7 @@ class JAXFlowEnv(environment.Environment[EnvState, EnvParams]):
         self.env_data_path = self._setup_environment_data()
 
         # Handle configuration file - support multiple ways of specifying it
-        self.configuration_file = self._resolve_configuration_file(
-            env_config.get('configuration_file')
-        )
+        self.configuration_file = self._resolve_configuration_file(env_config.get("configuration_file"))
 
         if not self.configuration_file:
             raise ConfigError(
@@ -112,7 +113,7 @@ class JAXFlowEnv(environment.Environment[EnvState, EnvParams]):
         # Update paths in configuration to use downloaded data
         self._update_configuration_paths()
 
-        self.runtime_property_file = os.path.join(self.env_data_path, 'properties_run.toml')
+        self.runtime_property_file = os.path.join(self.env_data_path, "properties_run.toml")
 
         self.num_substeps_per_iteration = self.cfg.jax.num_sim_substeps_per_actuation
         self.observation_type = self.cfg.jax.observation_type
@@ -120,7 +121,7 @@ class JAXFlowEnv(environment.Environment[EnvState, EnvParams]):
         self.num_inputs = self.cfg.jax.num_action_inputs * self.cfg.env.n_agents
         self.MAX_CONTROL = self.cfg.jax.max_control
         self.render = self.cfg.jax.render
-        self.compute_grad = self.cfg.compute_grad 
+        self.compute_grad = self.cfg.compute_grad
 
         # Read property file and extract parameters
         self.runtime_property_file_data = self._read_property_file(self.runtime_property_file)
@@ -130,16 +131,8 @@ class JAXFlowEnv(environment.Environment[EnvState, EnvParams]):
         self.Nx = self._get_property(self.runtime_property_file_data, "Nx")
         self.Ny = self._get_property(self.runtime_property_file_data, "Ny")
         self.nDim = self._get_property(self.runtime_property_file_data, "nDim")
-        self.zLength = (
-            self._get_property(self.runtime_property_file_data, "zLength")
-            if self.nDim == 3
-            else self.dX
-        )
-        self.Nz = (
-            self._get_property(self.runtime_property_file_data, "Nz")
-            if self.nDim == 3
-            else self.dX
-        )
+        self.zLength = self._get_property(self.runtime_property_file_data, "zLength") if self.nDim == 3 else self.dX
+        self.Nz = self._get_property(self.runtime_property_file_data, "Nz") if self.nDim == 3 else self.dX
 
     def _setup_environment_data(self) -> str:
         """
@@ -198,7 +191,7 @@ class JAXFlowEnv(environment.Environment[EnvState, EnvParams]):
                 raise ConfigError(f"Configuration file not found: {config_file_input}")
 
         # Case 3: Relative path from current directory (starts with ./ or ../)
-        if config_file_input.startswith('./') or config_file_input.startswith('../'):
+        if config_file_input.startswith("./") or config_file_input.startswith("../"):
             abs_path = os.path.abspath(config_file_input)
             if os.path.exists(abs_path):
                 print(f"Using config file from current directory: {abs_path}")
@@ -234,11 +227,11 @@ class JAXFlowEnv(environment.Environment[EnvState, EnvParams]):
         """
         # Look for specific configuration file names (most specific first)
         config_names = [
-            'config.yaml',
-            'environment_config.yaml',
-            'env_config.yaml',
-            'environment.yaml',
-            f'{self.environment_name}.yaml',
+            "config.yaml",
+            "environment_config.yaml",
+            "env_config.yaml",
+            "environment.yaml",
+            f"{self.environment_name}.yaml",
         ]
 
         # Check exact names first
@@ -249,7 +242,7 @@ class JAXFlowEnv(environment.Environment[EnvState, EnvParams]):
                 return file_path
 
         # Then try patterns (but be specific - avoid catching property files)
-        config_patterns = ['config_*.yaml', 'config_*.yml']
+        config_patterns = ["config_*.yaml", "config_*.yml"]
 
         for pattern in config_patterns:
             matches = glob.glob(os.path.join(self.env_data_path, pattern))
@@ -274,14 +267,14 @@ class JAXFlowEnv(environment.Environment[EnvState, EnvParams]):
 
         # Update paths that the CFD solver needs
         path_mappings = {
-            'maia.runtime_property_file': 'properties_run.toml',
+            "maia.runtime_property_file": "properties_run.toml",
         }
 
         for config_key, filename in path_mappings.items():
             file_path = os.path.join(self.env_data_path, filename)
             if os.path.exists(file_path):
                 # Update the configuration with absolute path
-                keys = config_key.split('.')
+                keys = config_key.split(".")
                 config_section = self.cfg
                 for key in keys[:-1]:
                     if key not in config_section:
@@ -302,10 +295,10 @@ class JAXFlowEnv(environment.Environment[EnvState, EnvParams]):
             Dictionary containing environment name, paths, and file information.
         """
         info = {
-            'environment_name': self.environment_name,
-            'local_cache_path': self.env_data_path,
-            'configuration_file': self.configuration_file,
-            'files': {}
+            "environment_name": self.environment_name,
+            "local_cache_path": self.env_data_path,
+            "configuration_file": self.configuration_file,
+            "files": {},
         }
 
         # List all files in the environment
@@ -314,9 +307,9 @@ class JAXFlowEnv(environment.Environment[EnvState, EnvParams]):
                 for file in files:
                     file_path = os.path.join(root, file)
                     rel_path = os.path.relpath(file_path, self.env_data_path)
-                    info['files'][rel_path] = {
-                        'absolute_path': file_path,
-                        'size_mb': round(os.path.getsize(file_path) / (1024 * 1024), 2)
+                    info["files"][rel_path] = {
+                        "absolute_path": file_path,
+                        "size_mb": round(os.path.getsize(file_path) / (1024 * 1024), 2),
                     }
 
         return info
@@ -325,9 +318,9 @@ class JAXFlowEnv(environment.Environment[EnvState, EnvParams]):
     def create_from_hf_env(
         cls,
         environment_name: str,
-        hf_repo_id: str = 'your-username/maiagym-envs',
+        hf_repo_id: str = "your-username/maiagym-envs",
         local_fallback_dir: Optional[str] = None,
-        **kwargs
+        **kwargs,
     ):
         """
         Create environment directly from HF environment name.
@@ -342,10 +335,10 @@ class JAXFlowEnv(environment.Environment[EnvState, EnvParams]):
             Configured MaiaFlowEnv instance.
         """
         env_config = {
-            'environment_name': environment_name,
-            'hf_repo_id': hf_repo_id,
-            'local_fallback_dir': local_fallback_dir,
-            **kwargs
+            "environment_name": environment_name,
+            "hf_repo_id": hf_repo_id,
+            "local_fallback_dir": local_fallback_dir,
+            **kwargs,
         }
 
         return cls(env_config)
@@ -367,15 +360,13 @@ class JAXFlowEnv(environment.Environment[EnvState, EnvParams]):
             force_download: Force re-download even if cached.
         """
         self.env_data_path = self.data_manager.download_environment(
-            self.environment_name,
-            force_download=force_download
+            self.environment_name, force_download=force_download
         )
         self._update_configuration_paths()
 
         # Reload configuration
         self.cfg = omegaconf.OmegaConf.load(self.configuration_file)
-        
-        
+
     def reset_env(self, key: chex.PRNGKey, params: EnvParams) -> Tuple[chex.Array, EnvState]:
         raise NotImplementedError
 
@@ -384,24 +375,27 @@ class JAXFlowEnv(environment.Environment[EnvState, EnvParams]):
 
     def is_terminal(self, state: EnvState, params: EnvParams) -> jnp.ndarray:
         return jnp.logical_or(state.terminal, state.time >= params.max_episode_steps)
-    
+
     def step_env(self, key: chex.PRNGKey, state: EnvState, action: jnp.array, params: EnvParams):
         raise NotImplementedError
 
-### NOTE: Issues with HF manager resulted in below minimal, HF-free class implementation for now. 
+
+### NOTE: Issues with HF manager resulted in below minimal, HF-free class implementation for now.
 ### Will re-integrate HF functionality.
+
 
 class JAXFlowEnvBase(environment.Environment[EnvState, EnvParams]):
     """
-        Base JAXFlowEnv without Hugging Face Hub integration. 
-        Contains core environment interface methods required by Gymnax.
-        
+    Base JAXFlowEnv without Hugging Face Hub integration.
+    Contains core environment interface methods required by Gymnax.
+
     """
+
     def __init__(self, env_config: Optional[dict] = None):
         self.env_config = env_config or {}
 
     def default_params(self) -> EnvParams:
-        self.max_episode_steps = self.env_config.get('max_episode_steps', 1000)
+        self.max_episode_steps = self.env_config.get("max_episode_steps", 1000)
         raise NotImplementedError
 
     def name(self) -> str:
@@ -428,14 +422,10 @@ class JAXFlowEnvBase(environment.Environment[EnvState, EnvParams]):
     def is_terminal(self, state: EnvState, params: EnvParams) -> jnp.ndarray:
         return jnp.logical_or(state.terminal, state.time >= params.max_episode_steps)
 
-    def reset_env(
-        self, key: chex.PRNGKey, params: EnvParams
-    ) -> Tuple[chex.Array, EnvState]:
+    def reset_env(self, key: chex.PRNGKey, params: EnvParams) -> Tuple[chex.Array, EnvState]:
         raise NotImplementedError
 
-    def get_obs(
-        self, state: EnvState, params: EnvParams, key=None
-    ) -> chex.Array:
+    def get_obs(self, state: EnvState, params: EnvParams, key=None) -> chex.Array:
         raise NotImplementedError
 
     def step_env(
@@ -450,10 +440,10 @@ class JAXFlowEnvBase(environment.Environment[EnvState, EnvParams]):
 
 ###############################################################
 
-# BELOW CODE FROM PUREJAXRL REPO [1] WITH SLIGHT MODIFICATIONS 
-# [1] https://github.com/luchris429/purejaxrl/ 
+# BELOW CODE FROM PUREJAXRL REPO [1] WITH SLIGHT MODIFICATIONS
+# [1] https://github.com/luchris429/purejaxrl/
 
-############################################################### 
+###############################################################
 
 
 class GymnaxWrapper(object):
@@ -466,6 +456,7 @@ class GymnaxWrapper(object):
     def __getattr__(self, name):
         return getattr(self._env, name)
 
+
 class FlattenObservationWrapper(GymnaxWrapper):
     """Flatten the observations of the environment."""
 
@@ -473,9 +464,7 @@ class FlattenObservationWrapper(GymnaxWrapper):
         super().__init__(env)
 
     def observation_space(self, params) -> spaces.Box:
-        assert isinstance(
-            self._env.observation_space(params), spaces.Box
-        ), "Only Box spaces are supported for now."
+        assert isinstance(self._env.observation_space(params), spaces.Box), "Only Box spaces are supported for now."
         return spaces.Box(
             low=self._env.observation_space(params).low,
             high=self._env.observation_space(params).high,
@@ -536,19 +525,15 @@ class LogWrapper(GymnaxWrapper):
         action: Union[int, float],
         params: Optional[environment.EnvParams] = None,
     ) -> Tuple[chex.Array, environment.EnvState, float, bool, dict]:
-        obs, env_state, reward, done, info = self._env.step(
-            key, state.env_state, action, params
-        )
+        obs, env_state, reward, done, info = self._env.step(key, state.env_state, action, params)
         new_episode_return = state.episode_returns + reward
         new_episode_length = state.episode_lengths + 1
         state = LogEnvState(
             env_state=env_state,
             episode_returns=new_episode_return * (1 - done),
             episode_lengths=new_episode_length * (1 - done),
-            returned_episode_returns=state.returned_episode_returns * (1 - done)
-            + new_episode_return * done,
-            returned_episode_lengths=state.returned_episode_lengths * (1 - done)
-            + new_episode_length * done,
+            returned_episode_returns=state.returned_episode_returns * (1 - done) + new_episode_return * done,
+            returned_episode_lengths=state.returned_episode_lengths * (1 - done) + new_episode_length * done,
             timestep=state.timestep + 1,
         )
         info["returned_episode_returns"] = state.returned_episode_returns
@@ -556,6 +541,7 @@ class LogWrapper(GymnaxWrapper):
         info["timestep"] = state.timestep
         info["returned_episode"] = done
         return obs, state, reward, done, info
+
 
 class NavixGymnaxWrapper:
     def __init__(self, env_name):
@@ -591,7 +577,7 @@ class ClipAction(GymnaxWrapper):
 
     def step(self, key, state, action, params=None):
         """TODO: In theory the below line should be the way to do this."""
-        #action = jnp.clip(action, self.env.action_space.low, self.env.action_space.high)
+        # action = jnp.clip(action, self.env.action_space.low, self.env.action_space.high)
         action = jnp.clip(action, self.low, self.high)
         return self._env.step(key, state, action, params)
 
@@ -671,9 +657,7 @@ class NormalizeVecObservation(GymnaxWrapper):
         return (obs - state.mean) / jnp.sqrt(state.var + 1e-8), state
 
     def step(self, key, state, action, params=None):
-        obs, env_state, reward, done, info = self._env.step(
-            key, state.env_state, action, params
-        )
+        obs, env_state, reward, done, info = self._env.step(key, state.env_state, action, params)
 
         batch_mean = jnp.mean(obs, axis=0)
         batch_var = jnp.var(obs, axis=0)
@@ -731,9 +715,7 @@ class NormalizeVecReward(GymnaxWrapper):
         return obs, state
 
     def step(self, key, state, action, params=None):
-        obs, env_state, reward, done, info = self._env.step(
-            key, state.env_state, action, params
-        )
+        obs, env_state, reward, done, info = self._env.step(key, state.env_state, action, params)
         return_val = state.return_val * self.gamma * (1 - done) + reward
 
         batch_mean = jnp.mean(return_val, axis=0)

@@ -1,6 +1,7 @@
 import os
 import chex
 import jax
+
 jax.config.update("jax_enable_x64", True)
 
 import jax.numpy as jnp
@@ -11,7 +12,7 @@ from flax import struct
 from gymnax.environments import environment, spaces
 from hydrogym.jax.env_core import JAXFlowEnvBase, EnvParams as BaseEnvParams
 from hydrogym.jax.utils.utils import *
-from hydrogym.jax.equation import * 
+from hydrogym.jax.equation import *
 from hydrogym.jax.solvers.base import *
 
 #######################################################################################
@@ -24,17 +25,18 @@ from hydrogym.jax.solvers.base import *
 @struct.dataclass
 class ChannelEnvParams(BaseEnvParams):
     """Extends base EnvParams with channel-specific settings."""
+
     action_dim: int = 24
     obs_subsample: int = 8
-    obs_include_components: int = 2   
-    k_det: int = 9                    
+    obs_include_components: int = 2
+    k_det: int = 9
 
     Nx: int = 72
     Ny: int = 72
     Nz: int = 72
 
     # DNS stepping
-    nsteps: int = 50 # DNS substeps per RL step
+    nsteps: int = 50  # DNS substeps per RL step
     dt: float = 2e-4
 
     # Episode horizon in RL steps
@@ -44,6 +46,7 @@ class ChannelEnvParams(BaseEnvParams):
     min_action: float = -1
     max_action: float = 1
 
+
 @struct.dataclass
 class ChannelEnvState(environment.EnvState):
     time: int
@@ -52,7 +55,8 @@ class ChannelEnvState(environment.EnvState):
     W: jnp.ndarray
     dt: jnp.ndarray
     terminal: jnp.bool_
-    
+
+
 class SpectralState(NamedTuple):
     u_hat: jnp.ndarray  # (Nx,Ny,Nz), complex
     v_hat: jnp.ndarray
@@ -65,6 +69,7 @@ def make_obs_grid_indices(Nx: int, Ny: int, n: int):
     Xi, Yi = jnp.meshgrid(xs, ys, indexing="ij")
     return Xi, Yi
 
+
 def get_obs_spectral_channel(
     state: ChannelEnvState,
     params: ChannelEnvParams,
@@ -75,6 +80,7 @@ def get_obs_spectral_channel(
     Usl = state.U[:, :, k]
     Wsl = state.W[:, :, k]
     return jnp.stack([Usl[Xi, Yi], Wsl[Xi, Yi]], axis=0).reshape(-1)
+
 
 def wss_compute(k, U, nu=1.9e-3, z=None):
     dz = z[k] - z[0]
@@ -108,10 +114,10 @@ class PseudoSpectralNavierStokes3D(SplitEquation):
         self.ky = ky
         self.ikx = (1j * kx)[:, None, None]
         self.iky = (1j * ky)[None, :, None]
-        self.k2 = (kx[:, None] ** 2 + ky[None, :] ** 2)#.astype(dtype)
+        self.k2 = kx[:, None] ** 2 + ky[None, :] ** 2  # .astype(dtype)
 
         self.z, self.Dz, self.Dzz = cheb_D_matrices(self.Nz, self.Lz)
-        self.dealias = dealias_mask_2_3(self.Nx, self.Ny)[:, :, None]#.astype(dtype)
+        self.dealias = dealias_mask_2_3(self.Nx, self.Ny)[:, :, None]  # .astype(dtype)
 
     def fft_xy(self, f):
         return jnp.fft.fftn(f, axes=(0, 1))
@@ -153,7 +159,7 @@ class PseudoSpectralNavierStokes3D(SplitEquation):
         jet_thickness=5,
         slit_length_x=3.0,
         slit_width_y=2.0,
-        x_span_frac=2/3,
+        x_span_frac=2 / 3,
         nx_jets=6,
         ny_jets=4,
     ):
@@ -175,9 +181,7 @@ class PseudoSpectralNavierStokes3D(SplitEquation):
 
         dx2 = (Xg - xc) ** 2
         dy2 = (Yg - yc) ** 2
-        jets = jnp.exp(
-            -0.5 * (dx2 / (slit_length_x ** 2) + dy2 / (slit_width_y ** 2))
-        )
+        jets = jnp.exp(-0.5 * (dx2 / (slit_length_x**2) + dy2 / (slit_width_y**2)))
 
         V = Vjets.reshape(nx_jets, ny_jets, 1, 1)
         mask = jnp.sum(V * jets, axis=(0, 1))
@@ -326,9 +330,7 @@ class PseudoSpectralNavierStokes3D(SplitEquation):
             self.ifft_xy(v_hat_new),
             self.ifft_xy(w_hat_new),
         )
-        u_new, v_new, w_new = self.enforce_noslip(
-            state_phys.u, state_phys.v, state_phys.w, action=action, t=t
-        )
+        u_new, v_new, w_new = self.enforce_noslip(state_phys.u, state_phys.v, state_phys.w, action=action, t=t)
 
         return VelocityState(
             self.fft_xy(u_new),
@@ -336,8 +338,12 @@ class PseudoSpectralNavierStokes3D(SplitEquation):
             self.fft_xy(w_new),
         )
 
+
 def run_channel_pseudospectral(
-    U0, V0, W0, action,
+    U0,
+    V0,
+    W0,
+    action,
     dt: float,
     equation: PseudoSpectralNavierStokes3D,
     integrator: RungeKutta4,
@@ -413,13 +419,13 @@ class ChannelFlowSpectralEnv(JAXFlowEnvBase):
             dt=float(self.default_params.dt),
             save_n=1,
         )
-        
+
         #################
         # NOTE: As of now, the easiest way to load the initial files is by downloading them off of hugging face and loading them directly #
         # Otherwise, user is free to generate their own initial conditions #
         # Once the JAX environments interface with huggingface more easily, this will be done automatically #
         ##################
-        
+
         self.U0 = jnp.load("U_nocontrol.npy")
         self.V0 = jnp.load("V_nocontrol.npy")
         self.W0 = jnp.load("W_nocontrol.npy")
@@ -429,16 +435,13 @@ class ChannelFlowSpectralEnv(JAXFlowEnvBase):
 
     @property
     def default_params(self) -> ChannelEnvParams:
-        return ChannelEnvParams(
-        )
+        return ChannelEnvParams()
 
     @property
     def name(self) -> str:
         return "ChannelFlowSpectralEnv"
 
-    def reset_env(
-        self, key: chex.PRNGKey, params: ChannelEnvParams
-    ) -> Tuple[chex.Array, ChannelEnvState]:
+    def reset_env(self, key: chex.PRNGKey, params: ChannelEnvParams) -> Tuple[chex.Array, ChannelEnvState]:
         state = ChannelEnvState(
             time=0,
             U=self.U0,
@@ -450,14 +453,10 @@ class ChannelFlowSpectralEnv(JAXFlowEnvBase):
         obs = self.get_obs(state, params, key)
         return obs, state
 
-    def get_obs(
-        self, state: ChannelEnvState, params: ChannelEnvParams, key=None
-    ) -> chex.Array:
+    def get_obs(self, state: ChannelEnvState, params: ChannelEnvParams, key=None) -> chex.Array:
         return get_obs_spectral_channel(state, params, self.Xi_obs, self.Yi_obs)
 
-    def is_terminal(
-        self, state: ChannelEnvState, params: ChannelEnvParams
-    ) -> jnp.ndarray:
+    def is_terminal(self, state: ChannelEnvState, params: ChannelEnvParams) -> jnp.ndarray:
         return jnp.logical_or(state.terminal, state.time >= params.max_steps_in_episode)
 
     def step_env(
@@ -475,9 +474,9 @@ class ChannelFlowSpectralEnv(JAXFlowEnvBase):
         )(action)
 
         reward = -wss
-        # Bonus variable = gradient term # 
+        # Bonus variable = gradient term #
         bonus = -jnp.vdot(action, grad_wss)
-        reward = reward #+ 1e2 * bonus
+        reward = reward  # + 1e2 * bonus
 
         time = state.time + params.nsteps
         terminal = time >= params.max_steps_in_episode
@@ -494,9 +493,7 @@ class ChannelFlowSpectralEnv(JAXFlowEnvBase):
         obs = self.get_obs(next_state, params, key)
         done = self.is_terminal(next_state, params)
 
-        return obs, next_state, reward, done, {
-            "discount": self.discount(next_state, params)
-        }
+        return obs, next_state, reward, done, {"discount": self.discount(next_state, params)}
 
     def action_space(self, params: Optional[ChannelEnvParams] = None) -> spaces.Box:
         params = params or self.default_params
@@ -508,7 +505,7 @@ class ChannelFlowSpectralEnv(JAXFlowEnvBase):
 
     def observation_space(self, params: Optional[ChannelEnvParams] = None) -> spaces.Box:
         params = params or self.default_params
-        obs_dim = params.obs_subsample ** 2 * params.obs_include_components
+        obs_dim = params.obs_subsample**2 * params.obs_include_components
         return spaces.Box(low=-jnp.inf, high=jnp.inf, shape=(obs_dim,))
 
     def _wss_with_aux(
@@ -517,9 +514,7 @@ class ChannelFlowSpectralEnv(JAXFlowEnvBase):
         action: jnp.ndarray,
         params: ChannelEnvParams,
     ):
-        state0 = self.equation.to_spectral(
-            VelocityState(state.U, state.V, state.W)
-        )
+        state0 = self.equation.to_spectral(VelocityState(state.U, state.V, state.W))
 
         def step_fn(state_hat, n):
             t = state.time + n
@@ -542,7 +537,7 @@ class ChannelFlowSpectralEnv(JAXFlowEnvBase):
             state0,
             xs=jnp.arange(params.nsteps),
         )
-        
+
         state_phys = self.equation.to_physical(stateT)
         U1, V1, W1 = state_phys.u, state_phys.v, state_phys.w
 

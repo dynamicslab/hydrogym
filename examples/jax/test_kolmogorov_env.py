@@ -58,6 +58,7 @@ def main():
     plt.tight_layout()
     outfile = "kolmogorov_comparison.png"
     plt.savefig(outfile, dpi=150, bbox_inches="tight")
-    
+
+
 if __name__ == "__main__":
     main()
