@@ -1,9 +1,6 @@
 import jax.numpy as jnp
-import matplotlib.pyplot as plt
 import matplotlib.animation as animation
-from matplotlib.animation import PillowWriter
 import matplotlib.pyplot as plt
-from ..flow import *
 from jax import lax
 from matplotlib.animation import PillowWriter
 
@@ -74,7 +71,6 @@ def compute_velocity_fft(omega_hat, kx, ky):
 
 def dealiasing(advection_term):
     """
-
     Adds the 2/3 aliasing technique to the velocity field, which
     sets the last 1/3 high frequency Fourier modes to 0.
     Reference: https://notes.yeshiwei.com/pseudo_spectral_method/algorithm.html
@@ -148,10 +144,10 @@ def compute_real_velocity_point(uhat, vhat, x_idx, y_idx):
 
 def compute_energy_dissipation(omega_hat, kx, ky, nu, n):
     """
-        Computes the energy dissipation of the system given the fft vorticity field.
-        The instantaneous energy dissipation rate can be estimated by:
-            Ɛ(x,t) = 2v<(S_ij S_ij)> [2]
-        where S_ij denotes the fluctuation strain-rate tensor and v denotes the kinematic viscosity [1,2].
+    Computes the energy dissipation of the system given the fft vorticity field.
+    The instantaneous energy dissipation rate can be estimated by:
+        Ɛ(x,t) = 2v<(S_ij S_ij)> [2]
+    where S_ij denotes the fluctuation strain-rate tensor and v denotes the kinematic viscosity [1,2].
     [1] Pope, 2000
     [2] Buaria et. al, eq 1.1 in doi: 10.1098/rsta.2021.0088
 
@@ -161,7 +157,6 @@ def compute_energy_dissipation(omega_hat, kx, ky, nu, n):
         ky: wavenumber y
         nu: kinematic viscosity
         n: grid length
-
     """
 
     uhat, vhat = compute_velocity_fft(omega_hat, kx, ky)
@@ -179,14 +174,13 @@ def compute_energy_dissipation(omega_hat, kx, ky, nu, n):
 
 def compute_tke(omega_hat, kx, ky, n):
     """
-        Computes the TKE of the system given the fft vorticity field.
+    Computes the TKE of the system given the fft vorticity field.
 
     Args:
         omega_hat: fft vorticity
         kx: wavenumber x
         ky: wavenumber y
         n: grid length
-
     """
 
     uhat, vhat = compute_velocity_fft(omega_hat, kx, ky)
@@ -202,7 +196,7 @@ def compute_tke(omega_hat, kx, ky, n):
 
 def compute_reward(omega_hat, kx, ky, nu, n, actions):
     """
-        Computes the energy dissipation of the system given the fft vorticity field.
+    Computes the energy dissipation of the system given the fft vorticity field.
 
     Args:
         omega_hat: fft vorticity
@@ -210,7 +204,6 @@ def compute_reward(omega_hat, kx, ky, nu, n, actions):
         ky: wavenumber y
         nu: kinematic viscosity
         n: grid length
-
     """
     tke = compute_tke(omega_hat, kx, ky, n)
     actions_cost = actions[0] + actions[1] + actions[2] + actions[3]
@@ -219,7 +212,7 @@ def compute_reward(omega_hat, kx, ky, nu, n, actions):
 
 def compute_divergence(omega_hat, kx, ky):
     """
-        Computes the divergence of the system given the fft vorticity field.
+    Computes the divergence of the system given the fft vorticity field.
 
     Args:
         omega_hat: fft vorticity
