@@ -12,8 +12,7 @@ from hydrogym.core import CallbackBase, PDEBase, TransientSolver
 from hydrogym.jax.env_core import EnvParams, JAXFlowEnvBase
 from hydrogym.jax.equation import IMEXEquation
 from hydrogym.jax.solvers.base import RungeKuttaCrankNicolson
-from hydrogym.jax.utils.utils import (compute_real_velocity_point, compute_tke,
-                                      compute_velocity_fft, dealiasing)
+from hydrogym.jax.utils.utils import compute_real_velocity_point, compute_tke, compute_velocity_fft, dealiasing
 
 #######################################################################################
 #                                                                                     #
