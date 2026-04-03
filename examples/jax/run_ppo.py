@@ -22,9 +22,7 @@ import optax
 from flax.linen.initializers import constant, orthogonal
 from flax.training.train_state import TrainState
 
-from hydrogym.jax.env_core import (ClipAction, LogWrapper,
-                                   NormalizeVecObservation, NormalizeVecReward,
-                                   VecEnv)
+from hydrogym.jax.env_core import ClipAction, LogWrapper, NormalizeVecObservation, NormalizeVecReward, VecEnv
 from hydrogym.jax.envs.kolmogorov import KolmogorovFlow
 
 env = KolmogorovFlow(env_config={}, flow_config={})
