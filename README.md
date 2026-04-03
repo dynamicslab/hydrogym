@@ -13,10 +13,6 @@
 
 **88 environments | 6 solver backends | 2D & 3D | Ready for RL training**
 
-<svg viewBox="0 0 100 20" width="100%">
-  <text x="0" y="15" font-size="15">88 environments | 6 solver backends | 2D & 3D | Ready for RL training</text>
-</svg>
-
 HydroGym is a comprehensive platform for applying reinforcement learning to fluid dynamics and flow control. With environments ranging from canonical benchmarks to turbulent flows, HydroGym provides a standardized Gymnasium-compatible interface for training RL agents on challenging CFD problems.
 
 ## Key Features
