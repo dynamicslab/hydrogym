@@ -179,7 +179,7 @@ def compute_energy_dissipation(omega_hat, kx, ky, nu, n):
 
 def compute_tke(omega_hat, kx, ky, n):
     """
-        Computes the TKE of the systen given the fft vorticity field.
+        Computes the TKE of the system given the fft vorticity field.
 
     Args:
         omega_hat: fft vorticity
@@ -219,7 +219,7 @@ def compute_reward(omega_hat, kx, ky, nu, n, actions):
 
 def compute_divergence(omega_hat, kx, ky):
     """
-        Computes the divergence of the systen given the fft vorticity field.
+        Computes the divergence of the system given the fft vorticity field.
 
     Args:
         omega_hat: fft vorticity
