@@ -82,6 +82,7 @@ all = [
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.15.8"
+isort = "^5.13.0"
 toml = "^0.10.2"
 tomli = "^2.0.1"
 codespell = "^2.2.6"
@@ -111,6 +112,11 @@ skip-magic-trailing-comma = false
 [tool.ruff.lint]
 select = ["E", "F"]
 ignore = ["F401", "E731"]
+
+[tool.isort]
+profile = "black"
+line_length = 120
+known_first_party = ["hydrogym"]
 
 [tool.codespell]
 skip = '*.svg,*.ipynb'
