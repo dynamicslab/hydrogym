@@ -64,7 +64,7 @@ cd "$WORK_DIR" || exit 1
 rm -f *.sch
 
 if [ -n "$POLICY_ROOT" ]; then
-    mpirun \
+    mpirun --use-hwthread-cpus\
         -np 1 python ../zeroshot_demo_pettingzoo.py \
             --env "$ENV_NAME" \
             --nproc ${NPROC_NEK} \
@@ -75,7 +75,7 @@ if [ -n "$POLICY_ROOT" ]; then
         : \
         -np ${NPROC_NEK} nek5000
 else
-    mpirun \
+    mpirun --use-hwthread-cpus\
         -np 1 python ../zeroshot_demo_pettingzoo.py \
             --env "$ENV_NAME" \
             --nproc ${NPROC_NEK} \

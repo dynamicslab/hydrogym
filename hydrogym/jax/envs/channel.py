@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from typing import Any, Dict, NamedTuple, Optional, Tuple
 
 import chex
@@ -9,6 +10,7 @@ from flax import struct
 from gymnax.environments import environment, spaces
 from jax import lax
 
+from hydrogym.data_manager import HFDataManager
 from hydrogym.jax.env_core import EnvParams as BaseEnvParams
 from hydrogym.jax.env_core import JAXFlowEnvBase
 from hydrogym.jax.equation import SplitEquation
@@ -422,14 +424,23 @@ class ChannelFlowSpectralEnv(JAXFlowEnvBase):
             save_n=1,
         )
 
-        # NOTE: As of now, the easiest way to load the initial files is by downloading them
-        # off of hugging face and loading them directly
-        # Otherwise, user is free to generate their own initial conditions
-        # Once the JAX environments interface with huggingface more easily, this will be done automatically
+        # Load initial fields from HuggingFace (downloaded/cached via HFDataManager).
+        # env_config may override with:
+        #   - "initial_field_dir": path to a directory containing U/V/W_nocontrol.npy
+        #   - "local_fallback_dir": passed to HFDataManager for offline use
+        if "initial_field_dir" in env_config:
+            initial_field_dir = Path(env_config["initial_field_dir"])
+        else:
+            dm = HFDataManager(
+                local_fallback_dir=env_config.get("local_fallback_dir"),
+                fallback_profile="JAX",
+            )
+            env_path = dm.get_environment_path("Channel_3D_Retau180")
+            initial_field_dir = Path(env_path) / "initial_field"
 
-        self.U0 = jnp.load("U_nocontrol.npy")
-        self.V0 = jnp.load("V_nocontrol.npy")
-        self.W0 = jnp.load("W_nocontrol.npy")
+        self.U0 = jnp.load(str(initial_field_dir / "U.npy"))
+        self.V0 = jnp.load(str(initial_field_dir / "V.npy"))
+        self.W0 = jnp.load(str(initial_field_dir / "W.npy"))
 
         p = self.default_params
         self.Xi_obs, self.Yi_obs = make_obs_grid_indices(p.Nx, p.Ny, p.obs_subsample)
@@ -530,10 +541,11 @@ class ChannelFlowSpectralEnv(JAXFlowEnvBase):
 
         step_fn = jax.checkpoint(step_fn)
 
+        nsteps = int(self.default_params.nsteps)
         stateT, _ = jax.lax.scan(
             step_fn,
             state0,
-            xs=jnp.arange(params.nsteps),
+            xs=jnp.arange(nsteps),
         )
 
         state_phys = self.equation.to_physical(stateT)
