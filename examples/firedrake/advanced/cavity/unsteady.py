@@ -18,6 +18,7 @@ Physical setup:
 """
 
 import os
+
 import firedrake as fd
 import psutil
 

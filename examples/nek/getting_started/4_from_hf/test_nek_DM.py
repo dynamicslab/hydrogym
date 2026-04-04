@@ -21,9 +21,10 @@ Note:
     - Opposition control: action = -observation
 """
 
-import sys
 import argparse
+import sys
 from pathlib import Path
+
 import numpy as np
 
 from hydrogym.nek import NekEnv

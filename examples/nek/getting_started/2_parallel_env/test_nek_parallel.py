@@ -23,9 +23,10 @@ Note:
     - Each agent receives observations from sensors near its actuator
 """
 
-import sys
 import argparse
+import sys
 from pathlib import Path
+
 import numpy as np
 
 from hydrogym.nek import NekEnv

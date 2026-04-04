@@ -41,8 +41,8 @@ import numpy as np
 import psutil  # For memory tracking
 import scipy.io as sio
 
-from hydrogym.firedrake.utils.pd import PDController
 import hydrogym.firedrake as hgym
+from hydrogym.firedrake.utils.pd import PDController
 
 output_dir = "output"
 if not os.path.exists(output_dir):

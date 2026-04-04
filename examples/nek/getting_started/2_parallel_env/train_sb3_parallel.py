@@ -10,12 +10,13 @@ Educational approach: Shows how the conversion works under the hood.
 For production, see chapter 3 (PettingZoo + SuperSuit).
 """
 
-import sys
 import argparse
-from pathlib import Path
+import sys
 from datetime import datetime
-import numpy as np
+from pathlib import Path
+
 import gymnasium as gym
+import numpy as np
 
 from hydrogym.nek import NekEnv, NekParallelEnv
 from hydrogym.nek.nek_lib.nek_utils import NEK_INIT
@@ -149,9 +150,9 @@ def train_parallel_centralized(args):
 
     # Import SB3
     try:
+        from stable_baselines3.common.callbacks import CheckpointCallback
         from stable_baselines3.common.monitor import Monitor
         from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
-        from stable_baselines3.common.callbacks import CheckpointCallback
 
         if args.algo == "PPO":
             from stable_baselines3 import PPO as Algorithm

@@ -167,8 +167,8 @@ def run_firedrake_test(
     # Import hydrogym (FlowEnv wrapper + firedrake)
     logger.info("Importing hydrogym...")
     try:
-        from hydrogym import FlowEnv
         import hydrogym.firedrake as firedrake
+        from hydrogym import FlowEnv
     except ImportError as e:
         logger.error(f"✗ Failed to import: {e}")
         logger.error("Make sure Firedrake is installed: https://www.firedrakeproject.org/download.html")
@@ -296,7 +296,7 @@ def run_firedrake_test(
 
     # --- CALLBACK CONFIGURATION ---
     # List of callbacks for logging, checkpointing, visualization
-    from hydrogym.firedrake.utils.io import CheckpointCallback, ParaviewCallback, LogCallback
+    from hydrogym.firedrake.utils.io import CheckpointCallback, LogCallback, ParaviewCallback
 
     callbacks = [
         # 1. Paraview visualization - save every 5 steps

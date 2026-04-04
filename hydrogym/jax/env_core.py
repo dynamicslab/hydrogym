@@ -9,21 +9,21 @@ with Hugging Face Hub integration for configuration management.
 
 import glob
 import os
-import jax
+from functools import partial
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Union, TypeVar
+from typing import Dict, List, Optional, Tuple, TypeVar, Union
 
-import omegaconf
-import toml
 import chex
+import jax
 import jax.numpy as jnp
 import navix as nx
 import numpy as np
+import omegaconf
+import toml
 from flax import struct
-from functools import partial
 from gymnax.environments import environment, spaces
 
-from hydrogym.data_manager import HFDataManager, SOLVER_PROFILES  # noqa: F401
+from hydrogym.data_manager import SOLVER_PROFILES, HFDataManager  # noqa: F401
 
 
 class ConfigError(Exception):

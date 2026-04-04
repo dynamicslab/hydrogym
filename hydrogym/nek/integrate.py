@@ -1,13 +1,13 @@
-from typing import Callable, Iterable, Optional, Tuple, Dict
 import os
 import time
+from typing import Callable, Dict, Iterable, Optional, Tuple
 
 import numpy as np
 import scipy.io as sio
 
 from hydrogym.core import CallbackBase
 
-from .nek_lib.nek_utils import show_title, show_end
+from .nek_lib.nek_utils import show_end, show_title
 
 
 def integrate(

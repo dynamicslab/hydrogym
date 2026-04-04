@@ -20,6 +20,7 @@ Note: At Re=7500, the flow is turbulent, but this solver finds the unstable
 """
 
 import os
+
 import firedrake as fd
 
 import hydrogym.firedrake as hgym

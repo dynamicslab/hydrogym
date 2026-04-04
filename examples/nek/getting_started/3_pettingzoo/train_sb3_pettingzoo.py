@@ -9,10 +9,10 @@ approach for multi-agent environments with SB3.
 Educational approach (DIY wrapper): See chapter 2
 """
 
-import sys
 import argparse
-from pathlib import Path
+import sys
 from datetime import datetime
+from pathlib import Path
 
 from hydrogym.nek import NekEnv, make_pettingzoo_env
 
@@ -51,8 +51,8 @@ def train_pettingzoo_with_supersuit(args):
 
     # Convert to SB3-compatible format using SuperSuit
     try:
-        from supersuit import black_death_v3, pad_observations_v0, pad_action_space_v0
         from pettingzoo.utils import parallel_to_aec
+        from supersuit import black_death_v3, pad_action_space_v0, pad_observations_v0
     except ImportError:
         print("✗ Error: PettingZoo/SuperSuit not installed!")
         print("Install with: pip install pettingzoo supersuit")
@@ -60,10 +60,10 @@ def train_pettingzoo_with_supersuit(args):
 
     try:
         import numpy as np
-        from stable_baselines3.common.monitor import Monitor
-        from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize, VecEnvWrapper
         from stable_baselines3.common.callbacks import CheckpointCallback
+        from stable_baselines3.common.monitor import Monitor
         from stable_baselines3.common.noise import NormalActionNoise
+        from stable_baselines3.common.vec_env import DummyVecEnv, VecEnvWrapper, VecNormalize
 
         if args.algo == "PPO":
             from stable_baselines3 import PPO as Algorithm

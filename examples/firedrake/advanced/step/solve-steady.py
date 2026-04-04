@@ -20,6 +20,7 @@ Note: The steady state at Re=600 may be unstable, exhibiting vortex shedding
 """
 
 import os
+
 import firedrake as fd
 import numpy as np
 

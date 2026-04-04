@@ -1,6 +1,6 @@
-import pytest
 import firedrake as fd
 import numpy as np
+import pytest
 
 import hydrogym.firedrake as hgym
 from hydrogym.firedrake.utils.pd import PDController

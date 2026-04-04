@@ -23,9 +23,10 @@ Note:
     - Actions and observations are dicts with agent names as keys
 """
 
-import sys
 import argparse
+import sys
 from pathlib import Path
+
 import numpy as np
 
 from hydrogym.nek import NekEnv

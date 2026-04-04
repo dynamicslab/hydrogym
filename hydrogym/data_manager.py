@@ -48,14 +48,14 @@ Usage::
     paths = dm.prepare_working_directory(env_path, './run_dir')
 """
 
+import logging
 import os
 import shutil
 from pathlib import Path
 from typing import Dict, List, Optional, Union
-import logging
 
 try:
-    from huggingface_hub import snapshot_download, HfApi
+    from huggingface_hub import HfApi, snapshot_download
 
     HF_AVAILABLE = True
 except ImportError:

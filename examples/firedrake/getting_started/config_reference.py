@@ -14,12 +14,13 @@ License: MIT
 """
 
 import numpy as np
+
 import hydrogym.firedrake as hgym
 from hydrogym import FlowEnv
 from hydrogym.firedrake.utils.io import (
     CheckpointCallback,
-    ParaviewCallback,
     LogCallback,
+    ParaviewCallback,
     SnapshotCallback,
 )
 
