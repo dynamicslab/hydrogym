@@ -19,7 +19,9 @@ Note: Pinball flow exhibits rich dynamics even at moderate Reynolds numbers.
 """
 
 import os
+
 import firedrake as fd
+
 import hydrogym.firedrake as hgym
 
 output_dir = "output"

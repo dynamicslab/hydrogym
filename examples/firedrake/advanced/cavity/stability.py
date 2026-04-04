@@ -8,7 +8,6 @@ mpiexec -np 20 python stability.py --output-dir eig_output --sigma 1.0+11j
 
 import argparse
 import os
-
 from typing import NamedTuple
 
 import firedrake as fd

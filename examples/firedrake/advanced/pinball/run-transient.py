@@ -23,8 +23,10 @@ Note: The controller function is defined but commented out in the integration ca
 """
 
 import os
+
 import numpy as np
 import psutil
+
 import hydrogym.firedrake as hgym
 
 # Create output directory for checkpoints and data

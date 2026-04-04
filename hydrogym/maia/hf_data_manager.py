@@ -17,13 +17,13 @@ Usage:
     data_manager = HFDataManager(use_clean_cache=False)
 """
 
+import logging
 import os
 import shutil
-from typing import Optional, List, Union
-import logging
+from typing import List, Optional, Union
 
 try:
-    from huggingface_hub import snapshot_download, HfApi
+    from huggingface_hub import HfApi, snapshot_download
 
     HF_AVAILABLE = True
 except ImportError:

@@ -1,6 +1,8 @@
 import jax.numpy as jnp
 from jax import grad, lax
+
 from hydrogym.core import PDEBase
+
 from .utils import utils
 
 

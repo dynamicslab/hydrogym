@@ -4,10 +4,10 @@ Train SB3 agent on NEK5000 single-agent environment (NekEnv).
 Includes Monitor, DummyVecEnv, TensorBoard, and VecNormalize best practices.
 """
 
-import sys
 import argparse
-from pathlib import Path
+import sys
 from datetime import datetime
+from pathlib import Path
 
 from hydrogym.nek import NekEnv
 
@@ -28,9 +28,9 @@ def train_single_agent(args):
 
     # Import SB3 components
     try:
+        from stable_baselines3.common.callbacks import CheckpointCallback
         from stable_baselines3.common.monitor import Monitor
         from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
-        from stable_baselines3.common.callbacks import CheckpointCallback
 
         if args.algo == "PPO":
             from stable_baselines3 import PPO as Algorithm

@@ -1,6 +1,6 @@
 import firedrake_adjoint as fda
-from ufl import sin
 import pytest
+from ufl import sin
 
 import hydrogym.firedrake as hgym
 

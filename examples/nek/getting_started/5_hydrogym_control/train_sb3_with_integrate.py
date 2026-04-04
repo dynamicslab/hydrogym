@@ -18,13 +18,14 @@ Usage:
     mpirun -np 1 python train_sb3_with_integrate.py --config config.yml --nproc 10 : -np 10 nek5000
 """
 
-import sys
 import argparse
-from pathlib import Path
+import sys
 from datetime import datetime
+from pathlib import Path
 from typing import Optional
 
 import numpy as np
+
 from hydrogym.nek import NekEnv, integrate
 
 
@@ -62,6 +63,7 @@ def create_environment(
         # Legacy pattern with config file
         print(f"  Using legacy pattern with config: {config_path}")
         from omegaconf import OmegaConf
+
         from hydrogym.nek.configs import Config
 
         config = OmegaConf.merge(

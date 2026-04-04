@@ -8,10 +8,10 @@ with minimal configuration. This is the recommended pattern for most users.
 Pattern: NekEnv.from_hf(env_name, nproc, ...)
 """
 
-import sys
 import argparse
-from pathlib import Path
+import sys
 from datetime import datetime
+from pathlib import Path
 
 from hydrogym.nek import NekEnv
 from hydrogym.nek.nek_lib.nek_utils import NEK_INIT
@@ -47,9 +47,9 @@ def train_with_from_hf(args):
 
     # Import SB3
     try:
+        from stable_baselines3.common.callbacks import CheckpointCallback
         from stable_baselines3.common.monitor import Monitor
         from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
-        from stable_baselines3.common.callbacks import CheckpointCallback
 
         if args.algo == "PPO":
             # NOTE: PPO is not used in the literature, so it is not guaranteed to work.

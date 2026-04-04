@@ -23,13 +23,14 @@ Arguments:
     --local-dir: Local fallback directory for environments
 """
 
-import sys
 import argparse
 import logging
+import sys
 from pathlib import Path
 from typing import Optional
 
 import numpy as np
+
 from hydrogym.nek import NekEnv
 from hydrogym.nek.nek_lib.nek_utils import NEK_INIT
 
@@ -119,6 +120,7 @@ def run_nek_test(
             # Legacy pattern with config file
             logger.info(f"Using legacy pattern with config file: {config_path}")
             from omegaconf import OmegaConf
+
             from hydrogym.nek.configs import Config
 
             # Load config

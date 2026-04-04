@@ -10,6 +10,7 @@ Usage:
 """
 
 import argparse
+
 from hydrogym.maia.workspace import prepare_maia_workspace  # avoids mpi4py init
 
 if __name__ == "__main__":
