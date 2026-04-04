@@ -69,7 +69,7 @@ const examplePanels: ExamplePanel[] = [
         airfoil.
       </>
     ),
-    img: '@site/static/img/La2_200k_animation-2.gif',
+    img: '/img/La2_200k_animation-2.gif',
   },
   {
     title: 'Fluidic Pinball',
@@ -79,7 +79,7 @@ const examplePanels: ExamplePanel[] = [
         three cylinders demonstrates chaos suppression.
       </>
     ),
-    img: '@site/static/img/pinball.gif',
+    img: '/img/pinball.gif',
   },
   {
     title: 'Turbulent Boundary Layer',
@@ -89,7 +89,7 @@ const examplePanels: ExamplePanel[] = [
         wave control for Re<sub>τ</sub> = 200, 1550, and 2200
       </>
     ),
-    img: '@site/static/img/tbl_lambda2_sliced-ezgif.com-video-to-gif-converter.gif',
+    img: '/img/tbl_lambda2_sliced-ezgif.com-video-to-gif-converter.gif',
   },
   {
     title: 'Cylinder',
@@ -99,7 +99,7 @@ const examplePanels: ExamplePanel[] = [
         jet actuation. Achieves more than 20% drag reduction.
       </>
     ),
-    img: '@site/static/img/cylinder.gif',
+    img: '/img/cylinder.gif',
   },
   {
     title: 'Turbulent Channel Flow (Differentiable)',
@@ -109,7 +109,7 @@ const examplePanels: ExamplePanel[] = [
         training with JAX for efficient optimization.
       </>
     ),
-    img: '@site/static/img/controlled_animation.gif',
+    img: '/img/controlled_animation.gif',
   },
   {
     title: 'NACA 0012 Airfoil',
@@ -119,7 +119,7 @@ const examplePanels: ExamplePanel[] = [
         load alleviation strategies.
       </>
     ),
-    img: '@site/static/img/naca.gif',
+    img: '/img/naca.gif',
   },
   {
     title: 'Kolmogorov Flow (Differentiable)',
@@ -129,7 +129,7 @@ const examplePanels: ExamplePanel[] = [
         and enhance mixing efficiency.
       </>
     ),
-    img: '@site/static/img/kolmogorov.gif',
+    img: '/img/kolmogorov.gif',
   },
   {
     title: 'Open Cavity Flow',
@@ -139,7 +139,7 @@ const examplePanels: ExamplePanel[] = [
         Acoustic feedback disruption through leading-edge control.
       </>
     ),
-    img: '@site/static/img/cavity.gif',
+    img: '/img/cavity.gif',
   },
 ];
 
