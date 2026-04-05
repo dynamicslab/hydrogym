@@ -11,19 +11,19 @@
 
 # HydroGym: Reinforcement Learning for Fluid Dynamics
 
-**88 environments | 6 solver backends | 2D & 3D | Ready for RL training**
+**61+ environments | 6 solver backends | 2D & 3D | Ready for RL training**
 
 HydroGym is a comprehensive platform for applying reinforcement learning to fluid dynamics and flow control. With environments ranging from canonical benchmarks to turbulent flows, HydroGym provides a standardized Gymnasium-compatible interface for training RL agents on challenging CFD problems.
 
 ## Key Features
 
-- **Diverse Environments**: 88 pre-configured environments across 6 CFD solvers
+- **Diverse Environments**: 61+ pre-configured environments across 6 CFD solvers
 - **Standard RL Interface**: Gymnasium-compatible API works with Stable-Baselines3, RLlib, and other RL libraries
 - **Compute Efficient**: Highly optimized GPU & CPU backends for efficient RL deployment ranging from local workstations to exascale HPC systems
 - **Scalable**: MPI-parallelized solvers with distributed RL training support
 - **Multiple Backends**: Finite Element (Firedrake), Lattice Boltzmann (MAIA LBM), Finite Volume (MAIA FV), Spectral Element (NEK5000), Fully Differentiable solvers (JAX-Fluids)
 - **2D & 3D**: From simple 2D benchmarks to complex 3D turbulent flows (Re up to 400,000)
-- **Research-Ready**: Includes checkpoints, observation strategies, and reward formulations managed by a complementary HuggingFace repository
+- **Research-Ready**: Managed by a complementary HuggingFace repository
 
 ## Quick Start with Docker (Recommended)
 
@@ -31,26 +31,28 @@ HydroGym is a comprehensive platform for applying reinforcement learning to flui
 
 ```bash
 # For NVIDIA GPUs (CUDA)
-docker pull clagemann/maia-cuda-12.8.1:latest
+docker pull clagemann/hydrogym-nvhpc-26.1_cuda-12.9_hopper_blackwell:latest
+# or
+docker pull clagemann/hydrogym-nvhpc-26.1_cuda-12.9_turing_ampere:latest
 
 # For AMD GPUs (ROCm)
-docker pull clagemann/maia-rocm-6.3.3:latest
+docker pull clagemann/hydrogym-rocm-6.3.3:latest
 
 # Run container
-docker run -it --gpus all clagemann/maia-cuda-12.8.1:latest
+docker run -it --gpus all clagemann/hydrogym-nvhpc-26.1_cuda-12.9_turing_ampere:latest
 ```
 ## Available Environments
 
-HydroGym provides **88 environments** across 6 solver backends:
+HydroGym provides **61 environments** across 6 solver backends:
 
 | Solver Backend | Count | Description | Dimensions |
 |----------------|-------|-------------|------------|
 | **Firedrake** (FEM) | 20 | Canonical flow control benchmarks | 2D |
 | **MAIA LBM** | 55 | Lattice Boltzmann method environments | 2D, 3D |
 | **MAIA Structured FV** | 8 | High-Reynolds turbulent boundary layers | 3D |
-| **NEK5000** | 1 | Spectral element turbulent channel flow | 3D |
+| **NEK5000** | 2 | Spectral element turbulent channel flow | 3D |
 | **JAX** | 2 | Differentiable fluid dynamics | 2D, 3D |
-| **JAX-Fluids** | 2 | Compressible jet engine control | 2D, 3D |
+| **JAX-Fluids** | 2 | Compressible shock vector control | 2D, 3D |
 
 ### Environment Categories
 
@@ -63,25 +65,25 @@ HydroGym provides **88 environments** across 6 solver backends:
 - Square cylinder (Re=200-3900, 2D/3D)
 - Sphere (Re=300-3700, 3D)
 - Cube (Re=300-3700, 3D)
-- Turbulent channel flow (Re_tau=180, 3D)
+- Turbulent channel flow (Re_tau=206, 3D)
 
 **Airfoil Control**:
 - NACA0012 steady (Re=100-50000, AOA=12-40°, 2D/3D)
 - NACA0012 with gust disturbance (Re=100-50000, 2D/3D)
 
 **High Reynolds Number Flows**:
-- Zero-pressure-gradient turbulent boundary layer with jet/surface wave actuation (Re_Tau=1000-5000, 3D)
+- Zero-pressure-gradient turbulent boundary layer with jet/surface wave actuation (Re_Tau=180-2200, 3D)
 - DRA2303 airfoil with jet/surface wave actuation (Re=400000, Ma=0.2-0.7, 3D)
+- NACA0012 airfoil with jet actuation (Re=200000, 3D)
 
 **Fully Differentiable Flows**:
-- Jet engine thrust vectoring (TVC/TVD, Ma=2.2, 2D/3D)
-- Kolmogorov flow (Re=1000, 2D)
-
-See [`existing_environments.yaml`](existing_environments.yaml) for complete list with exact naming conventions.
+- Shock-Vector Control in single divergent nozzle (SVC, Ma>1.0, 2D/3D)
+- Turbulent channel flow (Re_tau=180, 3D)
+- Kolmogorov flow (up to Re=1000, 2D)
 
 ## Examples
 
-HydroGym includes comprehensive examples for each solver backend:
+HydroGym includes comprehensive examples for each solver backend (internet connection required). We highly recommend using our provided docker containers:
 
 ### Firedrake Examples
 
@@ -91,10 +93,10 @@ See [examples/firedrake/getting_started/](examples/firedrake/getting_started/) f
 cd examples/firedrake/getting_started
 
 # Test environment interactively
-python test_firedrake_env.py --environment cylinder --num-steps 10
+./run_example_docker.sh
 
 # Train with Stable-Baselines3
-python train_sb3_firedrake.py --env cylinder --algo PPO --total-timesteps 100000
+./run_example_docker.sh train
 ```
 
 ### MAIA Examples
@@ -104,12 +106,12 @@ See [examples/maia/getting_started/](examples/maia/getting_started/) for MPMD co
 ```bash
 cd examples/maia/getting_started
 
-# Prepare workspace (downloads from Hugging Face Hub)
-python prepare_workspace.py --env Cylinder_2D_Re200 --work-dir ./test_run
+# Prepare workspace (downloads from Hugging Face Hub) and 
+# Run with MPMD execution (1 Python + 1 MAIA process on GPU)
+./run_example_docker.sh
 
-# Run with MPMD execution (1 Python + 1 MAIA process)
-cd test_run
-mpirun -np 1 python ../test_maia_env.py --environment Cylinder_2D_Re200 : -np 1 maia properties.toml
+# Prepare workspace and train with Stable-Baselines3
+./run_example_docker.sh train
 ```
 
 ### NEK5000 Examples
@@ -117,13 +119,39 @@ mpirun -np 1 python ../test_maia_env.py --environment Cylinder_2D_Re200 : -np 1 
 See [examples/nek/getting_started/](examples/nek/getting_started/) for interface patterns.
 
 ```bash
-cd examples/nek/getting_started/1_nekenv_single
+cd examples/nek/getting_started
 
 # Test single-agent environment
-mpirun -np 1 python test_nek_direct.py --steps 100 : -np 10 nek5000
+cd 1_nekenv_single
+./run_nekenv_docker.sh
 
-# Train with SB3
-mpirun -np 1 python train_sb3_nek_direct.py --env TCFmini_3D_Re180 --algo PPO : -np 10 nek5000
+# ... or train with pettinzoo wrapper and SB3
+cd 3_pettingzoo
+./run_pettingzoo_docker.sh train
+
+# ... or run zero-shot transfer learning
+cd 6_zeroshot_wing_demo
+./run_pettingzoo_docker.sh
+```
+
+### JAX Examples
+
+See [examples/jax/getting_started/](examples/jax/getting_started/) for detailed documentation.
+
+```bash
+cd examples/jax/getting_started
+
+# Test Kolmogorov flow environment
+cd 1_kolmogorov
+./run_nekenv_docker.sh
+
+# ... or test channel flow environment
+cd 2_channel
+./run_channel_docker.sh strong_actuation
+
+# ... or run zero-shot transfer learning
+cd 3_ppo
+./run_ppo_docker.sh --env channel --num-envs 1 --num-steps 10 --num-minibatches 5
 ```
 
 ## Training RL Agents
@@ -155,6 +183,8 @@ env = VecNormalize(env, norm_obs=True, norm_reward=True)
 model = PPO("MlpPolicy", env, verbose=1)
 model.learn(total_timesteps=100000)
 ```
+
+See also provided [examples/](examples/) for more details how to leverage individual solver backends for training.
 
 ## Advanced Features
 

@@ -12,7 +12,7 @@ import shutil
 from pathlib import Path
 from typing import Dict, Optional, Tuple
 
-from .hf_data_manager import HFDataManager
+from hydrogym.data_manager import HFDataManager
 
 
 class MaiaWorkspace:
