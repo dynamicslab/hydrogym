@@ -81,6 +81,10 @@ HydroGym provides **61 environments** across 6 solver backends:
 - Turbulent channel flow (Re_tau=180, 3D)
 - Kolmogorov flow (up to Re=1000, 2D)
 
+## Environment Checkpoints
+
+All required environment checkpoints are available via [HuggingFace](https://huggingface.co/datasets/dynamicslab/HydroGym-environments/tree/main) and are downloaded on the fly when an environment is first created (internet connection required). If no internet connection is available at runtime — e.g. on compute nodes in HPC clusters — you can pre-download the environment files as outlined in [examples/maia/README.md](examples/maia/README.md).
+
 ## Examples
 
 HydroGym includes comprehensive examples for each solver backend (internet connection required). We highly recommend using our provided docker containers:
