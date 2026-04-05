@@ -37,6 +37,9 @@
 
 set -e
 
+module purge
+module load Python/3.12.3-GCCcore-13.3.0
+
 # Activate Python environment
 source /home/easybuild/venvs/hydrogym_gpu/bin/activate
 
