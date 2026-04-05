@@ -2,7 +2,7 @@
 sidebar_position: 5
 ---
 
-# Deploy your site
+# JAX-Fluids
 
 Docusaurus is a **static-site-generator** (also called **[Jamstack](https://jamstack.org/)**).
 

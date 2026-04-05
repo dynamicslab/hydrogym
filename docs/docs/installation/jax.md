@@ -2,7 +2,7 @@
 sidebar_position: 4
 ---
 
-# Markdown Features
+# JAX
 
 Docusaurus supports **[Markdown](https://daringfireball.net/projects/markdown/syntax)** and a few **additional features**.
 
@@ -25,19 +25,6 @@ slug: /my-custom-url
 Markdown text with [links](./hello.md)
 ```
 
-## Links
-
-Regular Markdown links are supported, using url paths or relative file paths.
-
-```md
-Let's see how to [Create a page](/create-a-page).
-```
-
-```md
-Let's see how to [Create a page](./create-a-page.md).
-```
-
-**Result:** Let's see how to [Create a page](./create-a-page.md).
 
 ## Images
 

@@ -66,8 +66,14 @@ const config: Config = {
         {
           type: 'docSidebar',
           sidebarId: 'tutorialSidebar',
-          position: 'left',
-          label: 'Tutorial',
+          position: 'right',
+          label: 'Get Started',
+        },
+        {
+          type: 'docSidebar',
+          sidebarId: 'tutorialSidebar',
+          position: 'right',
+          label: 'Documentation',
         },
         {
           href: 'https://github.com/dynamicslab/hydrogym',
@@ -83,8 +89,20 @@ const config: Config = {
           title: 'Docs',
           items: [
             {
-              label: 'Tutorial',
-              to: '/docs/intro',
+              label: 'Get Started',
+              to: '/docs/quickstart',
+            },
+            {
+              label: 'Installation',
+              to: '/docs/category/installation',
+            },
+            {
+              label: 'Examples',
+              to: '/docs/examples',
+            },
+            {
+              label: 'API Reference',
+              to: '/docs/api-reference',
             },
           ],
         },
