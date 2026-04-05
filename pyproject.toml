@@ -119,7 +119,7 @@ line_length = 120
 known_first_party = ["hydrogym"]
 
 [tool.codespell]
-skip = '*.svg,*.ipynb,docs/package-lock.json'
+skip = '*.svg,*.ipynb,./docs/package-lock.json'
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
