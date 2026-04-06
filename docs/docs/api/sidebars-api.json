@@ -1,0 +1,156 @@
+{
+  "items": [
+    {
+      "items": [
+        {
+          "items": [
+            {
+              "items": [
+                "api/firedrake/envs/cavity/flow"
+              ],
+              "label": "hydrogym.firedrake.envs.cavity",
+              "type": "category"
+            },
+            {
+              "items": [
+                "api/firedrake/envs/cylinder/flow"
+              ],
+              "label": "hydrogym.firedrake.envs.cylinder",
+              "type": "category"
+            },
+            {
+              "items": [
+                "api/firedrake/envs/pinball/flow"
+              ],
+              "label": "hydrogym.firedrake.envs.pinball",
+              "type": "category"
+            },
+            {
+              "items": [
+                "api/firedrake/envs/step/flow"
+              ],
+              "label": "hydrogym.firedrake.envs.step",
+              "type": "category"
+            }
+          ],
+          "label": "hydrogym.firedrake.envs",
+          "type": "category"
+        },
+        {
+          "items": [
+            "api/firedrake/solvers/base"
+          ],
+          "label": "hydrogym.firedrake.solvers",
+          "type": "category"
+        },
+        {
+          "items": [
+            "api/firedrake/utils/eig",
+            "api/firedrake/utils/io",
+            "api/firedrake/utils/linalg",
+            "api/firedrake/utils/modeling",
+            "api/firedrake/utils/stability",
+            "api/firedrake/utils/utils"
+          ],
+          "label": "hydrogym.firedrake.utils",
+          "type": "category"
+        },
+        "api/firedrake/actuator",
+        "api/firedrake/flow"
+      ],
+      "label": "hydrogym.firedrake",
+      "type": "category"
+    },
+    {
+      "items": [
+        {
+          "items": [
+            "api/jax/envs/channel",
+            "api/jax/envs/kolmogorov"
+          ],
+          "label": "hydrogym.jax.envs",
+          "type": "category"
+        },
+        {
+          "items": [
+            "api/jax/solvers/base"
+          ],
+          "label": "hydrogym.jax.solvers",
+          "type": "category"
+        },
+        {
+          "items": [
+            "api/jax/utils/io",
+            "api/jax/utils/utils"
+          ],
+          "label": "hydrogym.jax.utils",
+          "type": "category"
+        },
+        "api/jax/env_core",
+        "api/jax/flow"
+      ],
+      "label": "hydrogym.jax",
+      "type": "category"
+    },
+    {
+      "items": [
+        {
+          "items": [
+            "api/maia/envs/cavity",
+            "api/maia/envs/cube",
+            "api/maia/envs/cylinder",
+            "api/maia/envs/dra2303",
+            "api/maia/envs/naca0012",
+            "api/maia/envs/pinball",
+            "api/maia/envs/sphere",
+            "api/maia/envs/square_cylinder",
+            "api/maia/envs/turbulent_boundary_layer"
+          ],
+          "label": "hydrogym.maia.envs",
+          "type": "category"
+        },
+        "api/maia/env_core",
+        "api/maia/hf_data_manager",
+        "api/maia/mpmd_interface",
+        "api/maia/workspace"
+      ],
+      "label": "hydrogym.maia",
+      "type": "category"
+    },
+    {
+      "items": [
+        {
+          "items": [
+            "api/nek/nek_lib/lglnodes",
+            "api/nek/nek_lib/nek_utils",
+            "api/nek/nek_lib/reward_logger",
+            "api/nek/nek_lib/writer_int_pos"
+          ],
+          "label": "hydrogym.nek.nek_lib",
+          "type": "category"
+        },
+        {
+          "items": [
+            "api/nek/utils/utils"
+          ],
+          "label": "hydrogym.nek.utils",
+          "type": "category"
+        },
+        "api/nek/AFC",
+        "api/nek/__init__",
+        "api/nek/configs",
+        "api/nek/env",
+        "api/nek/integrate",
+        "api/nek/parallel_env",
+        "api/nek/pettingzoo_env"
+      ],
+      "label": "hydrogym.nek",
+      "type": "category"
+    },
+    "api/__init__",
+    "api/core",
+    "api/data_manager"
+  ],
+  "label": "hydrogym",
+  "type": "category"
+}
