@@ -7,7 +7,7 @@ import type * as Preset from '@docusaurus/preset-classic';
 const config: Config = {
   title: 'HydroGym',
   tagline: 'A Reinforcement Learning Platform for Fluid Dynamics',
-  favicon: 'img/favicon.ico',
+  favicon: 'img/hydrogym.ico',
 
   // Future flags, see https://docusaurus.io/docs/api/docusaurus-config#future
   future: {
@@ -56,7 +56,7 @@ const config: Config = {
 
   themeConfig: {
     // Replace with your project's social card
-    image: 'img/docusaurus-social-card.jpg',
+    image: 'img/hydrogym-social-card.jpg',
     colorMode: {
       respectPrefersColorScheme: true,
     },
