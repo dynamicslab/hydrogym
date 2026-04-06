@@ -24,6 +24,13 @@ jobs:
           cache: npm
           cache-dependency-path: docs/package-lock.json
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install pydoc-markdown
+        run: pip install pydoc-markdown
+
       - name: Install dependencies
         run: npm ci
       - name: Build website
