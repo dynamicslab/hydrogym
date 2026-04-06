@@ -5,7 +5,7 @@
   "scripts": {
     "docusaurus": "docusaurus",
     "start": "docusaurus start",
-    "generate-api": "cd .. && pydoc-markdown && cp -r docs/docs/api/hydrogym/* docs/docs/api/ && rm -rf docs/docs/api/hydrogym && find docs/docs/api -name '*.md' -exec sed -i 's/{\\([a-z_]*\\)}/`{\\1}`/g' {} \\; && sed -i 's|api/hydrogym/|api/|g' docs/docs/api/sidebars-api.json && python3 -c \"import json; f=open('docs/docs/api/sidebars-api.json'); d=json.load(f); f.close(); f=open('docs/docs/api/sidebars-api.json','w'); json.dump(d['items'][0], f, indent=2)\"",
+    "generate-api": "cd .. && pydoc-markdown && cp -r docs/docs/api/hydrogym/* docs/docs/api/ && rm -rf docs/docs/api/hydrogym && find docs/docs/api -name '*.md' -exec sed -i '' 's/{\\([a-z_]*\\)}/`{\\1}`/g' {} \\; && sed -i '' 's|api/hydrogym/|api/|g' docs/docs/api/sidebars-api.json && python3 -c \"import json; f=open('docs/docs/api/sidebars-api.json'); d=json.load(f); f.close(); f=open('docs/docs/api/sidebars-api.json','w'); json.dump(d['items'][0], f, indent=2)\"",
     "build": "npm run generate-api && docusaurus build",
     "swizzle": "docusaurus swizzle",
     "deploy": "docusaurus deploy",
