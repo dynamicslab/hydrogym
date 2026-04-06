@@ -98,11 +98,11 @@ const config: Config = {
             },
             {
               label: 'Examples',
-              to: '/docs/examples',
+              to: '/docs/category/examples',
             },
             {
               label: 'API Reference',
-              to: '/docs/api-reference',
+              to: '/docs/category/api-reference',
             },
           ],
         },

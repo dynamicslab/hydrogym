@@ -25,7 +25,7 @@ function HomepageHeader() {
           <div className={styles.buttons}>
             <Link
               className={clsx('button button--lg', styles.heroCta)}
-              to="/docs/intro">
+              to="/docs/introduction">
               Getting Started
             </Link>
           </div>
