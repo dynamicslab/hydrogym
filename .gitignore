@@ -133,3 +133,4 @@ dmypy.json
 .pyre/
 
 .DS_store
+examples/firedrake/getting_started/output/

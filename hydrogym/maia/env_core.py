@@ -18,7 +18,7 @@ import toml
 from einops import rearrange
 from mpi4py import MPI
 
-from hydrogym.maia.hf_data_manager import HFDataManager
+from hydrogym.data_manager import HFDataManager
 from hydrogym.maia.mpmd_interface import MaiaInterface
 
 

@@ -5,6 +5,7 @@
 
 ###############################################################
 
+import argparse
 import os
 import pickle
 import sys
@@ -23,10 +24,23 @@ from flax.linen.initializers import constant, orthogonal
 from flax.training.train_state import TrainState
 
 from hydrogym.jax.env_core import ClipAction, LogWrapper, NormalizeVecObservation, NormalizeVecReward, VecEnv
-from hydrogym.jax.envs.kolmogorov import KolmogorovFlow
 
-env = KolmogorovFlow(env_config={}, flow_config={})
-env_params = env.default_params
+
+def make_env(config):
+    """Instantiate the environment selected by config["ENV_NAME"]."""
+    env_name = config.get("ENV_NAME", "kolmogorov").lower()
+    if env_name == "kolmogorov":
+        from hydrogym.jax.envs.kolmogorov import KolmogorovFlow
+
+        env = KolmogorovFlow(env_config={}, flow_config={})
+    elif env_name == "channel":
+        from hydrogym.jax.envs.channel import ChannelFlowSpectralEnv
+
+        env = ChannelFlowSpectralEnv(env_config={})
+    else:
+        raise ValueError(f"Unknown ENV_NAME: {env_name!r}. Choose 'kolmogorov' or 'channel'.")
+    return env, env.default_params
+
 
 config = {
     "LR": 1e-4,  # try 3e-4 - 1e-5 (play around with it) 1e-4
@@ -100,7 +114,7 @@ class Transition(NamedTuple):
     info: jnp.ndarray
 
 
-def rollout(env, params, env_params, num_steps=10, num_envs=4):
+def rollout(env, params, env_params, num_steps=10, num_envs=4, activation="tanh"):
     rng = jax.random.PRNGKey(30)
     rng, _rng = jax.random.split(rng)
     reset_rng = jax.random.split(_rng, num_envs)
@@ -108,32 +122,24 @@ def rollout(env, params, env_params, num_steps=10, num_envs=4):
     actions = []
     rewards = []
     dones = []
-    trajectories = []
 
-    # Initialize the environment
-    obs, env_state = env.reset(reset_rng, env_params)
+    # Wrap before reset so the wrapped env is used throughout
     env = ClipAction(env)
 
-    network = ActorCritic(env.action_space(env_params).shape[0], activation=config["ACTIVATION"])
+    obs, env_state = env.reset(reset_rng, env_params)
+
+    network = ActorCritic(env.action_space(env_params).shape[0], activation=activation)
 
     for _ in range(num_steps):
-        # Record the observation
         observations.append(obs)
 
-        # Sample action from the policy
         rng, action_rng = jax.random.split(rng)
         pi, _ = network.apply(params, obs)
         action = pi.sample(seed=action_rng)
-
-        # Record the action
         actions.append(action)
 
-        # Step the environment
         rng, step_rng = jax.random.split(rng)
         obs, env_state, reward, done, _ = env.step(step_rng, env_state, action, env_params)
-        trajectories.append(env_state.trajectory)
-
-        # Record reward and done flag
         rewards.append(reward)
         dones.append(done)
 
@@ -141,15 +147,22 @@ def rollout(env, params, env_params, num_steps=10, num_envs=4):
         "observations": jnp.array(observations),
         "actions": jnp.array(actions),
         "rewards": jnp.array(rewards),
-        "trajectories": jnp.array(trajectories),
+        "dones": jnp.array(dones),
     }
 
 
 def make_train(config):
+    total_batch = config["NUM_ENVS"] * config["NUM_STEPS"]
+    if total_batch % config["NUM_MINIBATCHES"] != 0:
+        raise ValueError(
+            f"NUM_ENVS * NUM_STEPS ({config['NUM_ENVS']} * {config['NUM_STEPS']} = {total_batch}) "
+            f"must be divisible by NUM_MINIBATCHES ({config['NUM_MINIBATCHES']}). "
+            f"Valid NUM_MINIBATCHES values for your settings: "
+            f"{[d for d in range(1, total_batch + 1) if total_batch % d == 0]}"
+        )
     config["NUM_UPDATES"] = config["TOTAL_TIMESTEPS"] // config["NUM_STEPS"] // config["NUM_ENVS"]
-    config["MINIBATCH_SIZE"] = config["NUM_ENVS"] * config["NUM_STEPS"] // config["NUM_MINIBATCHES"]
-    env = KolmogorovFlow(env_config={}, flow_config={})
-    env_params = env.default_params
+    config["MINIBATCH_SIZE"] = total_batch // config["NUM_MINIBATCHES"]
+    env, env_params = make_env(config)
     env = LogWrapper(env)
     env = ClipAction(env)
     env = VecEnv(env)
@@ -284,9 +297,6 @@ def make_train(config):
                 train_state, traj_batch, advantages, targets, rng = update_state
                 rng, _rng = jax.random.split(rng)
                 batch_size = config["MINIBATCH_SIZE"] * config["NUM_MINIBATCHES"]
-                assert batch_size == config["NUM_STEPS"] * config["NUM_ENVS"], (
-                    "batch size must be equal to number of steps * number of envs"
-                )
                 permutation = jax.random.permutation(_rng, batch_size)
                 batch = (traj_batch, advantages, targets)
                 batch = jax.tree_util.tree_map(lambda x: x.reshape((batch_size,) + x.shape[2:]), batch)
@@ -308,11 +318,23 @@ def make_train(config):
             if config.get("DEBUG"):
 
                 def callback(info):
-                    print("Info: ", info)
-                    return_values = info["returned_episode_returns"][info["returned_episode"]]
-                    timesteps = info["timestep"][info["returned_episode"]] * config["NUM_ENVS"]
-                    for t in range(len(timesteps)):
-                        print(f"global step={timesteps[t]}, episodic return={return_values[t]}")
+                    step = int(info["timestep"].max())
+                    total = config["TOTAL_TIMESTEPS"]
+                    pct = 100.0 * step / total
+
+                    # Extra env-specific metrics
+                    extras = []
+                    if "mean_tke" in info:
+                        extras.append(f"mean_tke={float(info['mean_tke'].mean()):.4f}")
+
+                    # Completed episodes in this rollout batch
+                    done_mask = info["returned_episode"]
+                    if done_mask.any():
+                        mean_return = float(info["returned_episode_returns"][done_mask].mean())
+                        extras.append(f"return={mean_return:.4f}")
+
+                    extra_str = "  " + "  ".join(extras) if extras else ""
+                    print(f"  step {step:>6}/{total}  ({pct:5.1f}%){extra_str}")
 
                 jax.debug.callback(callback, metric)
 
@@ -328,26 +350,55 @@ def make_train(config):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="PPO training for HydroGym JAX environments")
+    parser.add_argument(
+        "--env",
+        default="kolmogorov",
+        choices=["kolmogorov", "channel"],
+        help="Environment to train on (default: kolmogorov)",
+    )
+    parser.add_argument("--total-timesteps", type=int, default=4000)
+    parser.add_argument("--num-envs", type=int, default=4)
+    parser.add_argument("--num-steps", type=int, default=10)
+    parser.add_argument("--num-minibatches", type=int, default=8, help="Must divide NUM_ENVS * NUM_STEPS (default: 8)")
+    parser.add_argument("--lr", type=float, default=1e-4)
+    parser.add_argument("--model-save-path", default=None, help="Path to save trained model (.pkl)")
+    parser.add_argument("--plot-path", default=None, help="Path to save reward plot (.png)")
+    args = parser.parse_args()
+
+    model_save_path = args.model_save_path or f"trained_model_{args.env}.pkl"
+    plot_path = args.plot_path or f"plot_reward_{args.env}.png"
+
     config = {
-        "LR": 1e-4,  # try 3e-4 - 1e-5 (play around with it) 1e-4
-        "NUM_ENVS": 4,
-        "NUM_STEPS": 10,  # 40
-        "TOTAL_TIMESTEPS": 4000,  # 4000
-        "UPDATE_EPOCHS": 10,  # 10
-        "NUM_MINIBATCHES": 8,  # 8
+        "ENV_NAME": args.env,
+        "LR": args.lr,
+        "NUM_ENVS": args.num_envs,
+        "NUM_STEPS": args.num_steps,
+        "TOTAL_TIMESTEPS": args.total_timesteps,
+        "UPDATE_EPOCHS": 10,
+        "NUM_MINIBATCHES": args.num_minibatches,
         "GAMMA": 0.99,
-        "GAE_LAMBDA": 0.985,  # can tune to go up to 0.995. 0.98
+        "GAE_LAMBDA": 0.985,
         "CLIP_EPS": 0.2,
-        "ENT_COEF": 0.1,  # can be increased to approx 0.1 or stay the same
+        "ENT_COEF": 0.1,
         "VF_COEF": 0.5,
         "MAX_GRAD_NORM": 0.5,
-        "ACTIVATION": "tanh",  # mish activation function is good to try
-        "ANNEAL_LR": False,  # can try
+        "ACTIVATION": "tanh",
+        "ANNEAL_LR": False,
         "NORMALIZE_ENV": False,
         "DEBUG": True,
-        "MODEL_SAVE_PATH": "trained_model.pkl",
-        "PLOT_TRAINING_PATH": "plot_reward.png",
+        "MODEL_SAVE_PATH": model_save_path,
+        "PLOT_TRAINING_PATH": plot_path,
     }
+
+    print(f"=== PPO Training: {args.env} environment ===")
+    print(f"  Total timesteps : {config['TOTAL_TIMESTEPS']}")
+    print(f"  Num envs        : {config['NUM_ENVS']}")
+    print(f"  Num steps       : {config['NUM_STEPS']}")
+    print(f"  Learning rate   : {config['LR']}")
+    print(f"  Model save path : {model_save_path}")
+    print(f"  Plot save path  : {plot_path}")
+    print("")
 
     rng = jax.random.PRNGKey(30)
     # train_jit = make_train(config)

@@ -406,10 +406,17 @@ class KolmogorovFlow(JAXFlowEnvBase):
         """
         equation = self._make_equation(control_field)
 
-        save_n = params.save_time
+        # params fields become abstract traced arrays inside JIT, so lax.scan's
+        # length (computed from dt/save_time/action_time) must be derived from
+        # concrete Python scalars stored at construction time.
+        default = self.default_params
+        dt = float(default.dt)
+        save_n = int(default.save_time)
+        action_time = float(default.action_time)
+
         integrator = self.integrator_cls(
             flow=self.flow,
-            dt=params.dt,
+            dt=dt,
             save_n=save_n,
             equation=equation,
         )
@@ -418,10 +425,10 @@ class KolmogorovFlow(JAXFlowEnvBase):
         self.flow.initialize_state = lambda: omega_hat0
 
         final_state, trajectory = integrator.solve(
-            dt=params.dt,
+            dt=dt,
             flow=self.flow,
-            t_span=(0.0, params.action_time),
-            save_n=params.save_time,
+            t_span=(0.0, action_time),
+            save_n=save_n,
         )
         return final_state, trajectory
 

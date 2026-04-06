@@ -107,14 +107,21 @@ SOLVER_PROFILES: Dict[str, dict] = {
         },
         "workspace_dirs": {},
     },
-    # Profiles for future solvers — fill in required_files/workspace_files when ready
     "JAX": {
         "sentinel": ".JAX",
-        "required_files": [],
-        "required_dirs": [],
+        "required_files": [
+            "environment_config.yaml",
+            "properties_run.toml",
+        ],
+        "required_dirs": ["initial_field"],
         "optional_files": [],
-        "workspace_files": {},
-        "workspace_dirs": {},
+        "workspace_files": {
+            "environment_config.yaml": "environment_config.yaml",
+            "properties_run.toml": "properties_run.toml",
+        },
+        "workspace_dirs": {
+            "initial_field": "initial_field",
+        },
     },
     "JAXFLUIDS": {
         "sentinel": ".JAXFLUIDS",

@@ -7,4 +7,3 @@ getting_started/*/train_run/
 *.npz
 core.*
 SESSION.NAME
-configs/

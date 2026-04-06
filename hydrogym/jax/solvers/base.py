@@ -5,7 +5,6 @@ import jax.numpy as jnp
 import numpy as np
 import tree_math
 from jax import lax
-from jax.experimental import checkify
 
 from hydrogym.core import CallbackBase, PDEBase, TransientSolver
 from hydrogym.jax.equation import IMEXEquation
@@ -89,10 +88,10 @@ class RungeKuttaCrankNicolson(TransientSolver):
         save_n: int = 1,
     ) -> PDEBase:
         end_time = t_span[1]
-        checkify.check(
-            end_time < 1,
-            "This flow configuration requires the end time to be at least 1. Please adjust t_span and run again.",
-        )
+        if end_time < 1:
+            raise ValueError(
+                "This flow configuration requires the end time to be at least 1. Please adjust t_span and run again."
+            )
 
         initialization = flow.initialize_state()
         step_to_save = int(save_n // dt)
