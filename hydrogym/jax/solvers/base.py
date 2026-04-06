@@ -90,8 +90,7 @@ class RungeKuttaCrankNicolson(TransientSolver):
         end_time = t_span[1]
         if end_time < 1:
             raise ValueError(
-                "This flow configuration requires the end time to be at least 1. "
-                "Please adjust t_span and run again."
+                "This flow configuration requires the end time to be at least 1. Please adjust t_span and run again."
             )
 
         initialization = flow.initialize_state()
