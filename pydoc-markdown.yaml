@@ -1,0 +1,18 @@
+loaders:
+  - type: python
+    search_path: [.]
+    packages:
+      - hydrogym
+
+processors:
+  - type: filter
+    skip_empty_modules: true
+  - type: google
+  - type: crossref
+
+renderer:
+  type: docusaurus
+  docs_base_path: docs/docs
+  relative_output_path: api
+  relative_sidebar_path: sidebars-api.json
+  sidebar_top_level_label: 'API Reference'
