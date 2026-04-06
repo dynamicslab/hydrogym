@@ -1,15 +1,18 @@
+---
+sidebar_position: 7
+---
+
 # Zero-Shot Wing Deployment (Multi-Policy MARL)
 
 Zero-shot deployment demo for the small NACA4412 wing case: multiple control policies are mapped to actuator subsets and executed together in one PettingZoo rollout.
 
-__This is a deployment/evaluation demo only (no training). The template and controllers are intended for demonstration and should not be used to draw physical conclusions.__
+**This is a deployment/evaluation demo only (no training). The template and controllers are intended for demonstration and should not be used to draw physical conclusions.**
 
 > NOTE: The provided Nek5000 executable is pre-compiled for this chapter, so this demo focuses on the DRL-style rollout/deployment workflow.
 
 ## What the script does
 
 `test_nek_pettingzoo.py`:
-
 - loads a base `NekEnv` via `NekEnv.from_hf(...)` and wraps it with `make_pettingzoo_env(...)`
 - builds one controller per entry in `POLICY_SPECS` (from `meta_policy_small_wing_template.py`)
 - assigns each controller to actuator agents by `x_range` and `side` (`SS` means `y > 0`, `PS` means `y < 0`)
@@ -42,7 +45,6 @@ obs_dict, rewards_dict, terminations, truncations, infos = env.step(actions)
 ## Usage
 
 ### Recommended: use the runner script
-
 From `6_zeroshot_wing_demo/`:
 
 ```bash
@@ -58,7 +60,6 @@ mpirun -np 1 python test_nek_pettingzoo.py : -np 12 nek5000
 ```
 
 Legacy policy template + run root:
-
 ```bash
 mpirun -np 1 python test_nek_pettingzoo.py \
   --policy-template ./meta_policy_small_wing_template.py \
@@ -68,7 +69,6 @@ mpirun -np 1 python test_nek_pettingzoo.py \
 ```
 
 Useful overrides:
-
 - `--policy-template PATH` (defaults to `./meta_policy_small_wing_template.py`)
 - `--env ENV_NAME` (defaults from template `ENV_NAME`)
 - `--nproc NPROC` (defaults from template `NPROC`)
@@ -82,7 +82,6 @@ Useful overrides:
 The template defines a lightweight legacy-`MetaPolicy.py`-style configuration.
 
 Required top-level variables:
-
 - `ENV_NAME`
 - `NPROC`
 - `NUM_STEPS`
@@ -90,10 +89,9 @@ Required top-level variables:
 - `POLICY_SPECS` (list of policy group dicts)
 
 Each `POLICY_SPECS` entry supports:
-
 - `name`
 - `x_range: [x_min, x_max]`
-- `side: "SS"` (y>0) or `"PS"` (y<0)
+- `side: "SS"` (y > 0) or `"PS"` (y < 0)
 - `algorithm: "PPO" | "TD3" | "DDPG" | "BL" | "ZERO"`
 - `drl_step` (action refresh interval; actions are held between refreshes)
 - `action_bounds: [min, max]`
@@ -101,7 +99,6 @@ Each `POLICY_SPECS` entry supports:
 - RL algorithms only: `agent_run_name`, `policy`, and/or `model_path`
 
 Algorithm semantics:
-
 - `ZERO` outputs an all-zero action (no model needed)
 - `BL` outputs a constant action equal to `action_max` (no model needed)
 - `PPO`/`TD3`/`DDPG` load a Stable-Baselines3 model from `model_path`/`POLICY_ROOT`
@@ -122,3 +119,4 @@ For RL policies (`PPO`, `TD3`, `DDPG`), if `model_path` is not set, the default 
 - `drl_step` controls when the controller is queried; between refreshes, the last action is held for the whole group.
 - `u_tau` is used to normalize observations before calling the controller (the code comments note that solver-side normalization by `u_tau` should be kept consistent with how the policies were trained).
 - This demo uses deterministic controller calls (`controller.predict(..., deterministic=True)`), and displays a reward summary to help compare controller configurations.
+
