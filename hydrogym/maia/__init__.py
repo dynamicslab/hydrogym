@@ -30,6 +30,7 @@ Available Functions:
 # ── Always available — no MPI required ────────────────────────────────────────
 # Safe to import standalone (e.g. prepare_workspace.py outside of mpirun).
 from hydrogym.data_manager import HFDataManager
+
 from .workspace import MaiaWorkspace, prepare_maia_workspace
 
 # ── MPI-dependent names ────────────────────────────────────────────────────────

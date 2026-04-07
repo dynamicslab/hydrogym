@@ -41,6 +41,7 @@ def make_env(config):
         raise ValueError(f"Unknown ENV_NAME: {env_name!r}. Choose 'kolmogorov' or 'channel'.")
     return env, env.default_params
 
+
 config = {
     "LR": 1e-4,  # try 3e-4 - 1e-5 (play around with it) 1e-4
     "NUM_ENVS": 4,
@@ -359,8 +360,7 @@ if __name__ == "__main__":
     parser.add_argument("--total-timesteps", type=int, default=4000)
     parser.add_argument("--num-envs", type=int, default=4)
     parser.add_argument("--num-steps", type=int, default=10)
-    parser.add_argument("--num-minibatches", type=int, default=8,
-                        help="Must divide NUM_ENVS * NUM_STEPS (default: 8)")
+    parser.add_argument("--num-minibatches", type=int, default=8, help="Must divide NUM_ENVS * NUM_STEPS (default: 8)")
     parser.add_argument("--lr", type=float, default=1e-4)
     parser.add_argument("--model-save-path", default=None, help="Path to save trained model (.pkl)")
     parser.add_argument("--plot-path", default=None, help="Path to save reward plot (.png)")
