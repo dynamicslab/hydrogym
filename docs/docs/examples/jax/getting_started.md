@@ -16,18 +16,6 @@ HydroGym's JAX backend provides pseudo-spectral Navier-Stokes solvers written en
 
 The JAX environments follow the [gymnax](https://github.com/RobertTLange/gymnax) interface (`reset_env` / `step_env` with explicit `params`) and include wrappers (`VecEnv`, `LogWrapper`, `ClipAction`, `NormalizeVecObservation`, `NormalizeVecReward`) for RL training.
 
-## Directory Structure
-
-```
-examples/jax/
-├── README.md                    # Package overview
-└── getting_started/             # START HERE
-    ├── README.md                # Detailed guide and comparison table
-    ├── 1_kolmogorov/            # 2D Kolmogorov flow (Re=200)
-    ├── 2_channel/               # 3D turbulent channel flow (Re_tau=180)
-    └── 3_ppo/                   # Pure-JAX PPO training (both environments)
-```
-
 ## Quick Start
 
 ```bash
