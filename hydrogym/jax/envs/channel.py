@@ -101,7 +101,7 @@ def wss_compute(k, U, nu=1.9e-3, z=None):
 
 
 class PseudoSpectralNavierStokes3D(SplitEquation):
-    def __init__(self, Nx, Ny, Nz, Lx, Ly, Lz, nu):
+    def __init__(self, Nx, Ny, Nz, Lx, Ly, Lz, nu, dtype=jnp.float32):
         self.Nx = Nx
         self.Ny = Ny
         self.Nz = Nz
@@ -109,19 +109,42 @@ class PseudoSpectralNavierStokes3D(SplitEquation):
         self.Ly = Ly
         self.Lz = Lz
         self.nu = nu
-        self.dtype = jnp.float32
+        self.dtype = dtype
 
         kx = jnp.fft.fftfreq(self.Nx, d=self.Lx / self.Nx) * 2.0 * jnp.pi
         ky = jnp.fft.fftfreq(self.Ny, d=self.Ly / self.Ny) * 2.0 * jnp.pi
 
-        self.kx = kx
-        self.ky = ky
-        self.ikx = (1j * kx)[:, None, None]
-        self.iky = (1j * ky)[None, :, None]
-        self.k2 = kx[:, None] ** 2 + ky[None, :] ** 2  # .astype(dtype)
+        self.kx = kx.astype(self.dtype)
+        self.ky = ky.astype(self.dtype)
+        self.ikx = (1j * self.kx)[:, None, None]
+        self.iky = (1j * self.ky)[None, :, None]
+        self.k2 = self.kx[:, None] ** 2 + self.ky[None, :] ** 2
 
         self.z, self.Dz, self.Dzz = cheb_D_matrices(self.Nz, self.Lz)
-        self.dealias = dealias_mask_2_3(self.Nx, self.Ny)[:, :, None]  # .astype(dtype)
+        self.Dz = self.Dz.astype(self.dtype)
+        self.Dzz = self.Dzz.astype(self.dtype)
+        self.dealias = dealias_mask_2_3(self.Nx, self.Ny)[:, :, None].astype(self.dtype)
+
+        # ===================================
+        # Pre-compute Pressure Inverse Matrix
+        # ===================================
+        Nz_identity = jnp.eye(self.Nz, dtype=self.dtype)
+        Dzz = self.Dzz
+        Dz = self.Dz
+        k2_flat = self.k2.reshape(-1)
+
+        # Assemble constant matrix A
+        A = Dzz[None, :, :] - k2_flat[:, None, None] * Nz_identity[None, :, :]
+        A = A.at[:, 0, :].set(Dz[0, :][None, :])
+        A = A.at[:, -1, :].set(Dz[-1, :][None, :])
+
+        # Handle the zero-wavenumber singularity (mean pressure)
+        mid = self.Nz // 2
+        A0 = A[0].at[mid, :].set(0.0).at[mid, mid].set(1.0)
+        A = A.at[0].set(A0)
+
+        # Precompute the inverse
+        self.A_inv = jax.vmap(jnp.linalg.inv)(A)
 
     def fft_xy(self, f):
         return jnp.fft.fftn(f, axes=(0, 1))
@@ -295,31 +318,20 @@ class PseudoSpectralNavierStokes3D(SplitEquation):
         dpdz_bot_hat = self.fft_xy(w_bot)
         dpdz_top_hat = self.fft_xy(w_top)
 
-        Nz = self.Nz
-        Nz_identity = jnp.eye(Nz, dtype=self.dtype)
-        Dzz = self.Dzz.astype(self.dtype)
-        Dz = self.Dz.astype(self.dtype)
-
         Nm = self.Nx * self.Ny
-        k2_flat = self.k2.reshape(-1)
-        rhs_flat = rhs_hat.reshape(Nm, Nz)
-
-        A = Dzz[None, :, :] - k2_flat[:, None, None] * Nz_identity[None, :, :]
-        A = A.at[:, 0, :].set(Dz[0, :][None, :])
-        A = A.at[:, -1, :].set(Dz[-1, :][None, :])
-
+        rhs_flat = rhs_hat.reshape(Nm, self.Nz)
+        
         rhs = rhs_flat
         rhs = rhs.at[:, 0].set(dpdz_bot_hat.reshape(-1))
         rhs = rhs.at[:, -1].set(dpdz_top_hat.reshape(-1))
-
-        mid = Nz // 2
-        A0 = A[0].at[mid, :].set(0.0).at[mid, mid].set(1.0)
+        
+        mid = self.Nz // 2
         b0 = rhs[0].at[mid].set(0.0)
-        A = A.at[0].set(A0)
         rhs = rhs.at[0].set(b0)
 
-        p_flat = jax.vmap(jnp.linalg.solve, in_axes=(0, 0))(A, rhs)
-        p_hat = p_flat.reshape(self.Nx, self.Ny, Nz)
+        # Use the pre-computed inverse!
+        p_flat = jax.vmap(jnp.dot)(self.A_inv, rhs)
+        p_hat = p_flat.reshape(self.Nx, self.Ny, self.Nz)
 
         u_hat_new = u_hat - dt * (self.ikx * p_hat)
         v_hat_new = v_hat - dt * (self.iky * p_hat)
@@ -409,6 +421,9 @@ class ChannelFlowSpectralEnv(JAXFlowEnvBase):
         self.Ny = 72
         self.Nz = 72
 
+        dtype_str = env_config.get("dtype", "float32")
+        self.dtype = jnp.float64 if dtype_str == "float64" else jnp.float32
+
         self.equation = PseudoSpectralNavierStokes3D(
             Nx=self.Nx,
             Ny=self.Ny,
@@ -417,6 +432,7 @@ class ChannelFlowSpectralEnv(JAXFlowEnvBase):
             Ly=self.Ly,
             Lz=self.Lz,
             nu=self.nu,
+            dtype=self.dtype,
         )
         self.integrator = RungeKutta4(
             equation=self.equation,
@@ -438,9 +454,9 @@ class ChannelFlowSpectralEnv(JAXFlowEnvBase):
             env_path = dm.get_environment_path("Channel_3D_Retau180")
             initial_field_dir = Path(env_path) / "initial_field"
 
-        self.U0 = jnp.load(str(initial_field_dir / "U.npy"))
-        self.V0 = jnp.load(str(initial_field_dir / "V.npy"))
-        self.W0 = jnp.load(str(initial_field_dir / "W.npy"))
+        self.U0 = jnp.load(str(initial_field_dir / "U.npy")).astype(self.dtype)
+        self.V0 = jnp.load(str(initial_field_dir / "V.npy")).astype(self.dtype)
+        self.W0 = jnp.load(str(initial_field_dir / "W.npy")).astype(self.dtype)
 
         p = self.default_params
         self.Xi_obs, self.Yi_obs = make_obs_grid_indices(p.Nx, p.Ny, p.obs_subsample)

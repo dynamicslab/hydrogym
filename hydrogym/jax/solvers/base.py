@@ -29,7 +29,7 @@ class RungeKuttaCrankNicolson(TransientSolver):
         self.equation = equation
         super().__init__(flow, dt)
 
-    def RK4_CN(self):
+    def RK4_CN(self, control_field=None):
         """
         Crank-Nicolson RK4 implicit-explicit time stepping scheme.
         Low storage scheme inspired by [1]. Method described in [2].
@@ -41,7 +41,8 @@ class RungeKuttaCrankNicolson(TransientSolver):
         [1] Kochkov, D., et. al. (2021) https://doi.org/10.1073/pnas.2101784118
         [2] PK Sweby, (1984). SIAM journal on numerical analysis 21, Appendix D.
         """
-        unwrapped_nonlinear = tree_math.unwrap(self.equation.nonlinear_terms)
+        nonlinear_with_control = lambda u: self.equation.nonlinear_terms(u, control_field)
+        unwrapped_nonlinear = tree_math.unwrap(nonlinear_with_control)
         unwrapped_linear = tree_math.unwrap(self.equation.linear_terms)
         y = tree_math.unwrap(self.equation.implicit_timestep, vector_argnums=0)
 
@@ -57,7 +58,7 @@ class RungeKuttaCrankNicolson(TransientSolver):
 
         return time_step_fn
 
-    def step(self, flow: FlowConfig, dt: float, save_n: int, callbacks: Callable):
+    def step(self, flow: FlowConfig, dt: float, save_n: int, callbacks: Callable, control_field=None):
         """
         Lax.scan to iteratively apply a function given an initial value
 
@@ -69,7 +70,7 @@ class RungeKuttaCrankNicolson(TransientSolver):
                                               this drastically reduces the memory requirements.
 
         """
-        func = self.RK4_CN()
+        func = self.RK4_CN(control_field=control_field)
 
         def inner_scan(initialization):
             f = lambda init, inputs: (func(init), init)
@@ -86,6 +87,8 @@ class RungeKuttaCrankNicolson(TransientSolver):
         callbacks: Iterable[CallbackBase] = [],
         controller: Callable = None,
         save_n: int = 1,
+        initial_state=None,
+        control_field=None,
     ) -> PDEBase:
         end_time = t_span[1]
         if end_time < 1:
@@ -94,13 +97,13 @@ class RungeKuttaCrankNicolson(TransientSolver):
                 "Please adjust t_span and run again."
             )
 
-        initialization = flow.initialize_state()
+        initialization = flow.initialize_state() if initial_state is None else initial_state
         step_to_save = int(save_n // dt)
 
         total_steps = int(end_time // dt)
         outer_steps = int(total_steps // step_to_save)
 
-        inner_scan = self.step(flow, dt, step_to_save, callbacks)
+        inner_scan = self.step(flow, dt, step_to_save, callbacks, control_field=control_field)
 
         outer_scan = lambda init, inputs: (inner_scan(init), inner_scan(init))
 
