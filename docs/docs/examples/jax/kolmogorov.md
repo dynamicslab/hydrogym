@@ -114,7 +114,7 @@ plt.show()
 
 ### GIF Generation
 
-We can furthermore summarize the evolution of the flow in time with a GIF utilzing the [imageio](https://imageio.readthedocs.io/en/stable/) library.
+We can furthermore summarize the evolution of the flow in time with a GIF utilizing the [imageio](https://imageio.readthedocs.io/en/stable/) library.
 
 ```python
 import numpy as np
