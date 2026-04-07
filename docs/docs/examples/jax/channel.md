@@ -8,7 +8,7 @@ HydroGym contains a 3D channel flow written in the differentiable programming la
 
 ## Initializing the Environment
 
-To begin setting up the environment, we firt have to import JAX, the necessary modules from HydroGym. Then we will be able to construct the environment, and work with it.
+To begin setting up the environment, we first have to import JAX, the necessary modules from HydroGym. Then we will be able to construct the environment, and work with it.
 
 ```python
 import jax
