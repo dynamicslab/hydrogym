@@ -18,13 +18,13 @@ import sys
 
 # Must be set before JAX initializes — check sys.argv directly
 import jax
+
 jax.config.update("jax_enable_x64", "float32" not in sys.argv)
 
 import jax.numpy as jnp
 import numpy as np
 
 from hydrogym.jax.envs.kolmogorov import KolmogorovFlow
-
 
 # ── Mode definitions ────────────────────────────────────────────────────────
 
