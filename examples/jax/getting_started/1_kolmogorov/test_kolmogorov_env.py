@@ -18,13 +18,12 @@ import sys
 
 # Must be set before JAX initializes — check sys.argv directly
 import jax
-
-jax.config.update("jax_enable_x64", "float32" not in sys.argv)
-
 import jax.numpy as jnp
 import numpy as np
 
 from hydrogym.jax.envs.kolmogorov import KolmogorovFlow
+
+jax.config.update("jax_enable_x64", "float32" not in sys.argv)
 
 # ── Mode definitions ────────────────────────────────────────────────────────
 
@@ -61,6 +60,7 @@ MODE_CONFIGS = {
 
 # ── Helpers ─────────────────────────────────────────────────────────────────
 
+
 def to_real(omega_hat):
     return np.asarray(jnp.fft.irfftn(omega_hat))
 
@@ -68,7 +68,6 @@ def to_real(omega_hat):
 def run_steps(env, params, action, num_steps):
     jit_reset = jax.jit(env.reset_env)
     jit_step = jax.jit(env.step_env)
-
 
     key = jax.random.PRNGKey(0)
 
@@ -131,6 +130,7 @@ def save_plot(env, params, action_actuated, outfile="kolmogorov_comparison.png")
 
 
 # ── Main ────────────────────────────────────────────────────────────────────
+
 
 def main():
     parser = argparse.ArgumentParser(description="Kolmogorov flow JAX environment runner")
