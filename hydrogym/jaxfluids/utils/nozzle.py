@@ -667,11 +667,6 @@ def plot_flowfield_3d(
     # Plot
     plotter = plot_slice(grid_levelset, grid)
 
-    if path_save is not None and image_i is not None:
-        filename = path_save / f"flowfield_{image_i:04d}.png"
-        plotter.show(screenshot=str(filename), auto_close=False)
-        plotter.clear()
-
     return plotter
 
 
