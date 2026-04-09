@@ -1,0 +1,9 @@
+jaxfluids:
+  resolution: "coarse"
+  secondary_pressure_ratio: 0.9
+  is_pressure_probes: true
+  target_fn: "step"
+  steps_per_action: 100
+  is_scale_observations: true
+  ngpus: 1
+  render_mode: "SAVE"

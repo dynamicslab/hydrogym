@@ -1,8 +1,13 @@
+import os
+
 from hydrogym.jaxfluids import Nozzle2D
 
 
 def main():
-    env_config = {"environment_name": "Nozzle2D_coarse"}
+    env_config = {
+        "environment_name": "Nozzle2D_coarse",
+        "configuration_file": os.path.abspath("environment_config.yaml")
+    }
 
     env = Nozzle2D(env_config=env_config)
 
@@ -15,7 +20,7 @@ def main():
         # action = env.action_space.sample()       
 
         # Fixed action
-        action = [1.0, 0.0]                  
+        action = [0.0, 0.5]                  
 
         observation, reward, terminated, truncated, info = env.step(action)
 
