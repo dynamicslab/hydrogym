@@ -48,14 +48,14 @@ Usage::
     paths = dm.prepare_working_directory(env_path, './run_dir')
 """
 
+import logging
 import os
 import shutil
 from pathlib import Path
 from typing import Dict, List, Optional, Union
-import logging
 
 try:
-    from huggingface_hub import snapshot_download, HfApi
+    from huggingface_hub import HfApi, snapshot_download
 
     HF_AVAILABLE = True
 except ImportError:
@@ -107,14 +107,21 @@ SOLVER_PROFILES: Dict[str, dict] = {
         },
         "workspace_dirs": {},
     },
-    # Profiles for future solvers — fill in required_files/workspace_files when ready
     "JAX": {
         "sentinel": ".JAX",
-        "required_files": [],
-        "required_dirs": [],
+        "required_files": [
+            "environment_config.yaml",
+            "properties_run.toml",
+        ],
+        "required_dirs": ["initial_field"],
         "optional_files": [],
-        "workspace_files": {},
-        "workspace_dirs": {},
+        "workspace_files": {
+            "environment_config.yaml": "environment_config.yaml",
+            "properties_run.toml": "properties_run.toml",
+        },
+        "workspace_dirs": {
+            "initial_field": "initial_field",
+        },
     },
     "JAXFLUIDS": {
         "sentinel": ".JAXFLUIDS",
@@ -124,15 +131,18 @@ SOLVER_PROFILES: Dict[str, dict] = {
         "workspace_files": {},
         "workspace_dirs": {},
     },
-    "NEK5000": {
+    "NEK5000_v19": {
         "sentinel": ".NEK5000",
         # Runtime-only files (assumes nek5000 executable is pre-compiled)
         "required_files": [
             "environment_config.yaml",  # Environment configuration (REQUIRED for MAIA pattern)
-            "phill.re2",  # Mesh file (read at runtime)
-            "phill.ma2",  # Material properties (read at runtime)
-            "phill.par",  # Parameter file (read at runtime, overridable)
             "int_pos",  # Time series probe positions (required for TSRS module)
+        ],
+        # Flexible required files: allow case-by-case names
+        "required_any_files": [
+            ["*.re2"],  # Mesh file
+            ["*.ma2"],  # Material properties
+            ["*.par"],  # Parameter file (old versions use .rea)
         ],
         "required_dirs": [
             "restart_files",  # Initial condition files (read at startup)
@@ -143,12 +153,61 @@ SOLVER_PROFILES: Dict[str, dict] = {
         ],
         # Workspace: runtime files symlinked to run directory
         "workspace_files": {
-            "phill.re2": "phill.re2",
-            "phill.ma2": "phill.ma2",
-            "phill.par": "phill.par",
-            "int_pos": "int_pos",
             "environment_config.yaml": "environment_config.yaml",
         },
+        # Link one set per pattern group (prefer .par over .rea when both exist)
+        "workspace_glob_groups": [
+            ["*.re2"],
+            ["*.ma2"],
+            ["*.par"],
+        ],
+        "workspace_dirs": {
+            "restart_files": "restart_files",  # Link restart files directly
+        },
+    },
+    "NEK5000_v17": {
+        "sentinel": ".NEK5000_v17",
+        # Runtime-only files (assumes nek5000 executable is pre-compiled)
+        "required_files": [
+            "environment_config.yaml",  # Environment configuration (REQUIRED for MAIA pattern)
+            "stat_pts.in",  # Time series probe positions (required for TSRS module)
+            "forparam.i",  # Tripping parameter file
+        ],
+        # Flexible required files: allow case-by-case names
+        "required_any_files": [
+            ["*.re2"],  # Mesh file
+            ["*.ma2"],  # Material properties
+            ["*.rea"],  # Parameter file (old versions use .rea)
+            ["*.map"],  # Map file
+            ["*.wall"],  # Wall file
+            ["*.restart"],  # Restart file
+            ["mask_*"],  # Mask file
+            ["*.sch"],  # Stop file
+        ],
+        "required_dirs": [
+            "restart_files",  # Initial condition files (read at startup)
+        ],
+        "optional_files": [
+            "config.yaml",  # Alternative config name (legacy support)
+            "README.md",  # Documentation
+        ],
+        # Workspace: runtime files symlinked to run directory
+        "workspace_files": {
+            "environment_config.yaml": "environment_config.yaml",
+            "stat_pts.in": "stat_pts.in",
+            "forparam.i": "forparam.i",
+        },
+        # Link one set per pattern group (prefer .par over .rea when both exist)
+        "workspace_glob_groups": [
+            ["*.re2"],
+            ["*.ma2"],
+            ["*.rea"],
+            ["*.map"],
+            ["*.wall"],
+            ["*.restart"],
+            ["mask_*"],
+            ["*.sch"],
+        ],
         "workspace_dirs": {
             "restart_files": "restart_files",  # Link restart files directly
         },
@@ -402,6 +461,24 @@ class HFDataManager:
             else:
                 self.logger.warning(f"Workspace source not found, skipping: {source_path}")
 
+        # Flexible workspace files for NEK5000 v17 and v19
+        workspace_glob_groups = solver.get("workspace_glob_groups", [])
+        if workspace_glob_groups:
+            env_path_obj = Path(env_path)
+            for pattern_group in workspace_glob_groups:
+                matched_paths: List[Path] = []
+                for pattern in pattern_group:
+                    matches = sorted([p for p in env_path_obj.glob(pattern) if p.is_file()])
+                    if matches:
+                        matched_paths = matches
+                        break
+                if not matched_paths:
+                    self.logger.warning(f"Workspace glob group has no matches: {pattern_group}")
+                    continue
+                for source_path in matched_paths:
+                    target_path = work_path / source_path.name
+                    self._link_path(source_path, target_path)
+
         for source_name, target_rel in workspace_dirs.items():
             source_path = Path(env_path) / source_name
             target_path = work_path / target_rel
@@ -603,6 +680,19 @@ class HFDataManager:
             if not os.path.exists(file_path):
                 self.logger.warning(f"Missing required file: {file_path}")
                 return False
+
+        required_any_files = solver.get("required_any_files", [])
+        if required_any_files:
+            env_path_obj = Path(env_dir)
+            for pattern_group in required_any_files:
+                group_match = False
+                for pattern in pattern_group:
+                    if any(p.is_file() for p in env_path_obj.glob(pattern)):
+                        group_match = True
+                        break
+                if not group_match:
+                    self.logger.warning(f"Missing required file matching any of: {pattern_group}")
+                    return False
 
         for dir_name in solver["required_dirs"]:
             dir_path = os.path.join(env_dir, dir_name)
