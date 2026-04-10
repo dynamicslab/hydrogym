@@ -430,17 +430,17 @@ class KolmogorovFlow(JAXFlowEnvBase):
         def obs_one_state(omega_hat):
             # 1. Compute velocity in Fourier space for the whole grid ONCE
             uhat, vhat = compute_velocity_fft(omega_hat, self.kx, self.ky)
-            
+
             # 2. Inverse FFT for the whole grid ONCE
             ureal = jnp.fft.irfftn(uhat)
             vreal = jnp.fft.irfftn(vhat)
-            
+
             # 3. Slice exactly at the stride indices to match the 64 grid points
             u_sampled = ureal[::stride_x, ::stride_y]
             v_sampled = vreal[::stride_x, ::stride_y]
-            
+
             # 4. Compute magnitude and flatten to 1D array
-            obs_matrix = jnp.sqrt(jnp.abs(u_sampled)**2 + jnp.abs(v_sampled)**2)
+            obs_matrix = jnp.sqrt(jnp.abs(u_sampled) ** 2 + jnp.abs(v_sampled) ** 2)
             return obs_matrix.flatten()
 
         return jnp.mean(jax.vmap(obs_one_state)(trajectory), axis=0)

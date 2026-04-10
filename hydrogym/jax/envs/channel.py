@@ -320,11 +320,11 @@ class PseudoSpectralNavierStokes3D(SplitEquation):
 
         Nm = self.Nx * self.Ny
         rhs_flat = rhs_hat.reshape(Nm, self.Nz)
-        
+
         rhs = rhs_flat
         rhs = rhs.at[:, 0].set(dpdz_bot_hat.reshape(-1))
         rhs = rhs.at[:, -1].set(dpdz_top_hat.reshape(-1))
-        
+
         mid = self.Nz // 2
         b0 = rhs[0].at[mid].set(0.0)
         rhs = rhs.at[0].set(b0)
