@@ -4,7 +4,8 @@ import numpy as np
 
 from hydrogym.core import CallbackBase
 
-from .utils import is_rank_zero as is_rank_zero_func, print as print_func
+from .utils import is_rank_zero as is_rank_zero_func
+from .utils import print as print_func
 
 
 class LogCallback(CallbackBase):

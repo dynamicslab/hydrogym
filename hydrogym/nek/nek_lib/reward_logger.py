@@ -3,13 +3,14 @@ Real-time Reward Logger for NEK5000 DRL Environment
 @yuningw
 """
 
-import os
 import csv
+import os
 import time
-import numpy as np
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 from typing import Dict, List, Optional, Union
+
+import numpy as np
 
 
 class RewardLogger:

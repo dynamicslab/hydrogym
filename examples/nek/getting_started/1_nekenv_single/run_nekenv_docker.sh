@@ -42,9 +42,10 @@ if [ "$MODE" == "train" ]; then
         --work-dir "$WORK_DIR" \
         --cache-dir "$HOME/.cache/hydrogym"
 
+
     cd "$WORK_DIR" || exit 1
 
-    mpirun \
+    mpirun --use-hwthread-cpus\
         -np 1 python ../train_sb3_nek_direct.py \
             --env "$ENV_NAME" \
             --local-dir "$LOCAL_DIR" \
@@ -63,11 +64,12 @@ else
         --local-dir "$LOCAL_DIR" \
         --env "$ENV_NAME" \
         --work-dir "$WORK_DIR" \
-        --cache-dir "$HOME/.cache/hydrogym"
+        --cache-dir "$HOME/.cache/hydrogym" \
+        --restart-index 1
 
     cd "$WORK_DIR" || exit 1
 
-    mpirun \
+    mpirun --use-hwthread-cpus\
         -np 1 python ../test_nek_direct.py \
             --env "$ENV_NAME" \
             --local-dir "$LOCAL_DIR" \

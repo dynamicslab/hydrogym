@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 #
 # Run NEK5000 PettingZoo tests with MPMD coupling.
+# Config is loaded automatically from HuggingFace (environment_config.yaml).
 #
 # Usage:
 #     ./run_pettingzoo_docker.sh                    # Test only
@@ -44,7 +45,7 @@ if [ "$MODE" == "train" ]; then
 
     cd "$WORK_DIR" || exit 1
 
-    mpirun \
+    mpirun --use-hwthread-cpus\
         -np 1 python ../train_sb3_pettingzoo.py \
             --env "$ENV_NAME" \
             --local-dir "$LOCAL_DIR" \
@@ -66,7 +67,7 @@ else
 
     cd "$WORK_DIR" || exit 1
 
-    mpirun \
+    mpirun --use-hwthread-cpus\
         -np 1 python ../test_nek_pettingzoo.py \
             --env "$ENV_NAME" \
             --local-dir "$LOCAL_DIR" \

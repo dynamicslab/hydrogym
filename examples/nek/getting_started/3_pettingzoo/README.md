@@ -38,6 +38,46 @@ mpirun -np 1 python test_nek_pettingzoo.py --steps 100 : -np 10 nek5000
 mpirun -np 1 python train_sb3_pettingzoo.py --env MiniChannel_Re180 --algo PPO --total-timesteps 100000 : -np 10 nek5000
 ```
 
+## Configuration-Driven Tutorial (Recommended for Reproducibility)
+
+Use a fixed YAML config to lock simulation + runner settings across runs.
+
+### 1) Prepare a workspace
+```bash
+python ../prepare_workspace.py \
+  --local-dir ../../../packaged_envs \
+  --env TCFmini_3D_Re180 \
+  --work-dir ./train_run
+```
+
+### 2) Train with a config file
+```bash
+cd train_run
+mpirun -np 1 python ../train_sb3_pettingzoo.py \
+  --env TCFmini_3D_Re180 \
+  --nproc 10 \
+  --config-file ../configs/pettingzoo_tcfmini_re180.yml \
+  --algo TD3 \
+  --total-timesteps 5000000 \
+  : -np 10 nek5000
+```
+
+### 3) Evaluate (PettingZoo rollouts)
+```bash
+cd train_run
+mpirun -np 1 python ../test_nek_pettingzoo.py \
+  --env TCFmini_3D_Re180 \
+  --nproc 10 \
+  --config-file ../configs/pettingzoo_tcfmini_re180.yml \
+  --steps 2500 \
+  : -np 10 nek5000
+```
+
+Notes:
+- The config lives in `examples/nek/configs/pettingzoo_tcfmini_re180.yml`.
+- Run from the workspace (`train_run`) so `compile_path: "."` resolves to case files.
+- Ensure `--nproc` matches `simulation.nproc` in the config.
+
 ## When to Use
 
 - **Production SB3 training** on multi-agent environments
