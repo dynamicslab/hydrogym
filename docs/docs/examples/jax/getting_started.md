@@ -66,3 +66,9 @@ obs, state, reward, done, info = env.step_env(key, state, action, params)
 - JAX with GPU support (`jax[cuda12]` or equivalent)
 - `flax`, `optax`, `distrax` for PPO training
 - Internet access on first run (channel flow initial field download)
+
+---
+
+**Last Updated**: April 2026
+**HydroGym Version**: 1.0+
+**Maintainer**: HydroGym Team

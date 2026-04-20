@@ -35,11 +35,13 @@ observations, rewards, terminated, truncated, infos = env.step(actions)
 ## Usage
 
 ### Test Environment
+
 ```bash
 mpirun -np 1 python test_nek_parallel.py --steps 100 : -np 10 nek5000
 ```
 
 ### Train RL Agent (DIY Centralized Approach)
+
 ```bash
 mpirun -np 1 python train_sb3_parallel.py --env MiniChannel_Re180 --algo PPO --total-timesteps 100000 : -np 10 nek5000
 ```
@@ -72,3 +74,9 @@ mpirun -np 1 python train_sb3_parallel.py --env MiniChannel_Re180 --algo PPO --t
 - Each agent receives local observations
 - Rewards can be per-agent or shared
 - For simple centralized control, just use `NekEnv` directly (Chapter 1)
+
+---
+
+**Last Updated**: April 2026
+**HydroGym Version**: 1.0+
+**Maintainer**: HydroGym Team

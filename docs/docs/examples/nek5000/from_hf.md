@@ -33,11 +33,13 @@ obs, reward, terminated, truncated, info = env.step(action)
 ## Usage
 
 ### Test Environment
+
 ```bash
 mpirun -np 1 python test_nek_DM.py --steps 100 : -np 10 nek5000
 ```
 
 ### Train RL Agent
+
 ```bash
 mpirun -np 1 python train_sb3_from_hf.py --env MiniChannel_Re180 --algo PPO --total-timesteps 100000 : -np 10 nek5000
 ```
@@ -53,7 +55,7 @@ mpirun -np 1 python train_sb3_from_hf.py --env MiniChannel_Re180 --algo PPO --to
 ## Comparison with Other Patterns
 
 | Pattern | Configuration | Use Case |
-|---------|--------------|----------|
+| ------- | ------------ | -------- |
 | **from_hf()** (Chapter 4) | Minimal (name + nproc) | Recommended default |
 | **Direct instantiation** (Chapter 1) | env_config dict | Full control needed |
 | **Legacy config** | YAML + OmegaConf | Backwards compatibility |
@@ -72,3 +74,9 @@ mpirun -np 1 python train_sb3_from_hf.py --env MiniChannel_Re180 --algo PPO --to
 - `use_clean_cache=False` reuses existing prepared workspace
 - `local_fallback_dir` allows using local environment packages, e.g. for HPC system usage
 - For advanced configuration, use direct instantiation (Chapter 1)
+
+---
+
+**Last Updated**: April 2026
+**HydroGym Version**: 1.0+
+**Maintainer**: HydroGym Team

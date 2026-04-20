@@ -445,3 +445,9 @@ plt.show()
 plt.savefig(config["PLOT_TRAINING_PATH"], format="png")
 jnp.save("rewardovertime", out["metrics"]["returned_episode_returns"].mean(-1).reshape(-1))
 ```
+
+---
+
+**Last Updated**: April 2026
+**HydroGym Version**: 1.0+
+**Maintainer**: HydroGym Team

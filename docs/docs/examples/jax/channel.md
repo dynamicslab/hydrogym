@@ -164,3 +164,9 @@ plt.show()
 ```
 
 ![Channel flow visualization with control](img/channel_2.png)
+
+---
+
+**Last Updated**: April 2026
+**HydroGym Version**: 1.0+
+**Maintainer**: HydroGym Team

@@ -15,6 +15,7 @@ The open cavity is a classic CFD benchmark problem demonstrating recirculating f
 ## Physical Description
 
 **Configuration:**
+
 - Open square cavity (1×1) with moving top wall
 - Inlet velocity: U = 1.0 
 - All other walls: no-slip (U = 0)
@@ -49,6 +50,7 @@ python solve-steady.py
 **What it does:** Computes steady base flow for high-Re cavity
 **Uses ramping:** 500 → 1000 → 2000 → 4000 → 7500 for convergence
 **Outputs:**
+
 - `output/7500_steady.h5` - Steady flow checkpoint for restart
 - `output/7500_steady.pvd` - Paraview visualization
 **Prerequisites:** None
@@ -84,8 +86,13 @@ python unsteady.py
 
 **MPI Parallelization:**
 All scripts support parallel execution:
+
 ```bash
 mpirun -np 4 python <script-name>.py
 ```
 
+---
 
+**Last Updated**: April 2026
+**HydroGym Version**: 1.0+
+**Maintainer**: HydroGym Team

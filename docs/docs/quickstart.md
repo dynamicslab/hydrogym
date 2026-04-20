@@ -159,3 +159,9 @@ model.learn(total_timesteps=100000)
 model.save("ppo_cylinder")
 env.save("vec_normalize.pkl")
 ```
+
+---
+
+**Last Updated**: April 2026
+**HydroGym Version**: 1.0+
+**Maintainer**: HydroGym Team

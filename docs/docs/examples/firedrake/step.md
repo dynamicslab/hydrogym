@@ -15,12 +15,14 @@ Flow over a backward-facing step demonstrates separated flow and reattachment.
 ## Physical Description
 
 **Configuration:**
+
 - Channel with sudden expansion (backward-facing step)
 - Step height creates separation zone
 - Uniform inflow from left
 - Reynolds number Re = 600 (default)
 
 **Observations:**
+
 - Kinetic energy (KE)
 - Turbulent kinetic energy (TKE)
 - Reattachment point location
@@ -37,6 +39,7 @@ python run-transient.py
 
 **What it does:** Simulates separated flow from perturbed base state
 **Outputs:**
+
 - `output/stats.dat` - Time series of CFL, KE, TKE
 - Console shows KE, TKE evolution
 - Long time integration (1000 time units)
@@ -53,6 +56,7 @@ python solve-steady.py
 **What it does:** Computes steady base flow for separated step flow
 **Uses ramping:** 100 → 200 → 300 → 400 → 500 → 600 for convergence
 **Outputs:**
+
 - `output/600_steady.h5` - Steady checkpoint for restart
 - `output/600_steady.pvd` - Paraview visualization of recirculation zone
 **Prerequisites:** None
@@ -89,8 +93,13 @@ python step-control.py
 
 **MPI Parallelization:**
 All scripts support parallel execution:
+
 ```bash
 mpirun -np 4 python <script-name>.py
 ```
 
+---
 
+**Last Updated**: April 2026
+**HydroGym Version**: 1.0+
+**Maintainer**: HydroGym Team

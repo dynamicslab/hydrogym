@@ -176,3 +176,9 @@ plt.show()
 For comparison, here is the uncontrolled Kolmogorov flow from earlier in the example:
 
 ![Uncontrolled Kolmogorov Flow](img/kolmogorov_1.png)
+
+---
+
+**Last Updated**: April 2026
+**HydroGym Version**: 1.0+
+**Maintainer**: HydroGym Team

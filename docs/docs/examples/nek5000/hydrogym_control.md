@@ -123,3 +123,9 @@ integrate(env_eval, controller=model, num_steps=1000)
 - RL policies need the same normalization wrapper used during training
 - Classical controllers don't need normalization wrappers
 - Use for evaluation and comparison, not for training
+
+---
+
+**Last Updated**: April 2026
+**HydroGym Version**: 1.0+
+**Maintainer**: HydroGym Team

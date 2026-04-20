@@ -15,12 +15,14 @@ Flow around three cylinders in triangular arrangement - a challenging benchmark 
 ## Physical Description
 
 **Configuration:**
+
 - Three cylinders in equilateral triangle arrangement
 - Cylinder radius: 0.5
 - Uniform inflow from left (U∞ = 1.0)
 - Reynolds number Re = 30-150
 
 **Key Phenomena:**
+
 - **Re = 30:** Steady symmetric flow
 - **Re = 150:** Complex unsteady wake with three-body interactions
 - Wake can exhibit mode switching between symmetric/asymmetric states
@@ -38,6 +40,7 @@ python run-transient.py
 
 **What it does:** Simulates flow around three cylinders showing wake interactions
 **Outputs:**
+
 - `coeffs.dat` - Time series of CL for all three cylinders
 - Console shows forces on each cylinder
 **Prerequisites:** None
@@ -53,6 +56,7 @@ python solve-steady.py
 **What it does:** Computes steady state (or unstable equilibrium) for stability analysis
 **Uses ramping:** 40 → 60 → 80 for better convergence
 **Outputs:**
+
 - `output/pinball_Re80_steady.h5` - Checkpoint for restart
 - Paraview files for visualization
 - Force coefficients for all three cylinders
@@ -76,7 +80,13 @@ python unsteady.py
 
 **MPI Parallelization:**
 All scripts support parallel execution:
+
 ```bash
 mpirun -np 4 python <script-name>.py
 ```
 
+---
+
+**Last Updated**: April 2026
+**HydroGym Version**: 1.0+
+**Maintainer**: HydroGym Team

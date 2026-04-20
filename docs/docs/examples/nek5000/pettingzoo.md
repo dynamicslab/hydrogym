@@ -2,11 +2,13 @@
 sidebar_position: 4
 ---
 
-# PettingZoo Interface
+# The PettingZoo Interface
 
-PettingZoo-compatible wrapper for ecosystem integration and production-ready SB3 training via SuperSuit.
+To enable multi-agent interactions, HydroGym enables the interfacing with the Farama Foundation's [PettingZoo standard](https://pettingzoo.farama.org/) for multi-agent reinforcement learning. Training itself can then be performed with the production-ready SB3 via [SuperSuit](https://pettingzoo.farama.org/api/wrappers/supersuit_wrappers/).
 
 ## Interface
+
+To set up the multi-agent environment, we begin by first constructing the environment in the usual manner, before converting it into a multi-agent environment with the `make_petting_zoo` wrapper:
 
 ```python
 from hydrogym.nek import NekEnv, make_pettingzoo_env
@@ -17,8 +19,11 @@ base_env = NekEnv(env_config=env_config)
 
 # Wrap with PettingZoo interface
 env = make_pettingzoo_env(base_env)
+```
 
-# PettingZoo parallel API
+At which point we can then utilize PettingZoo's parallel API to interact with the environment
+
+```python
 observations, infos = env.reset()
 actions = {agent: policy(obs) for agent, obs in observations.items()}
 observations, rewards, terminated, truncated, infos = env.step(actions)
@@ -26,27 +31,34 @@ observations, rewards, terminated, truncated, infos = env.step(actions)
 
 ## Files
 
-- `test_nek_pettingzoo.py` - Test PettingZoo interface
-- `train_sb3_pettingzoo.py` - **SB3 training with SuperSuit** (production approach)
-- `run_pettingzoo_docker.sh` - Docker/MPI execution
+Just like with the other examples, 3 main files are provided with the example:
+
+- [`test_nek_pettingzoo.py`](https://github.com/dynamicslab/hydrogym/blob/main/examples/nek/getting_started/3_pettingzoo/test_nek_pettingzoo.py): Test PettingZoo interface
+- [`train_sb3_pettingzoo.py`](https://github.com/dynamicslab/hydrogym/blob/main/examples/nek/getting_started/3_pettingzoo/train_sb3_pettingzoo.py): **SB3 training with SuperSuit** (production approach)
+- [`run_pettingzoo_docker.sh`](https://github.com/dynamicslab/hydrogym/blob/main/examples/nek/getting_started/3_pettingzoo/run_pettingzoo_docker.sh): Docker/MPI execution
 
 ## Usage
 
-### Test Environment
+### Testing the Environment
+
+To test the environment, and its interaction with the Nek solver we utilize the `test_nek_pettingzoo` script:
+
 ```bash
 mpirun -np 1 python test_nek_pettingzoo.py --steps 100 : -np 10 nek5000
 ```
 
 ### Train RL Agent (SuperSuit Production Approach)
+
+After whuch we can then train the reinforcement learning agent following the recommended approach by [SuperSuit](https://pettingzoo.farama.org/api/wrappers/supersuit_wrappers/). Here we will utilize the pettingzoo training helper script, which we can configure on the command line:
+
 ```bash
 mpirun -np 1 python train_sb3_pettingzoo.py --env MiniChannel_Re180 --algo PPO --total-timesteps 100000 : -np 10 nek5000
 ```
 
 ## Configuration-Driven Tutorial (Recommended for Reproducibility)
 
-Use a fixed YAML config to lock simulation + runner settings across runs.
+While the command line is highly useful for quick iterations in testing, once we move to structured experimental studies, we want to be able to rerun experiments more quickly, and in a scripted fashion. For this purpose, we provide the option to utilize a YAML configuration file to lock the simulation, and runner settings across runs. To utilize the YAML file-based approach we first have to begin by preparing the workspace:
 
-### 1) Prepare a workspace
 ```bash
 python ../prepare_workspace.py \
   --local-dir ../../../packaged_envs \
@@ -54,7 +66,8 @@ python ../prepare_workspace.py \
   --work-dir ./train_run
 ```
 
-### 2) Train with a config file
+Before we can then train with a configuration file
+
 ```bash
 cd train_run
 mpirun -np 1 python ../train_sb3_pettingzoo.py \
@@ -66,7 +79,8 @@ mpirun -np 1 python ../train_sb3_pettingzoo.py \
   : -np 10 nek5000
 ```
 
-### 3) Evaluate (PettingZoo rollouts)
+And can then perform rollouts for evaluation
+
 ```bash
 cd train_run
 mpirun -np 1 python ../test_nek_pettingzoo.py \
@@ -77,10 +91,11 @@ mpirun -np 1 python ../test_nek_pettingzoo.py \
   : -np 10 nek5000
 ```
 
-Notes:
-- The config lives in `examples/nek/configs/pettingzoo_tcfmini_re180.yml`.
-- Run from the workspace (`train_run`) so `compile_path: "."` resolves to case files.
-- Ensure `--nproc` matches `simulation.nproc` in the config.
+**Notes:**
+
+> - The config lives in `examples/nek/configs/pettingzoo_tcfmini_re180.yml`.
+> - Run from the workspace (`train_run`) so `compile_path: "."` resolves to case files.
+> - Ensure `--nproc` matches `simulation.nproc` in the config.
 
 ## When to Use
 
@@ -94,28 +109,19 @@ Notes:
 **SuperSuit** is PettingZoo's official wrapper library for converting multi-agent envs to SB3-compatible format.
 
 ### Installation
+
 ```bash
 pip install pettingzoo supersuit
 ```
 
 ### SuperSuit Wrappers Used
+
 1. `pad_observations_v0` - Pad observations to uniform size
 2. `pad_action_space_v0` - Pad action spaces to uniform size
 3. `black_death_v3` - Handle agent termination
 4. `pettingzoo_env_to_vec_env_v1` - Convert to vectorized Gym env
 
-### Comparison with Chapter 2
+**Notes:**
 
-| Aspect | Chapter 2 (DIY) | Chapter 3 (SuperSuit) |
-|--------|-----------------|----------------------|
-| Purpose | Educational | Production |
-| Dependencies | None extra | pettingzoo, supersuit |
-| Code complexity | ~50 lines wrapper | ~5 lines SuperSuit |
-| Maintenance | DIY | Ecosystem-maintained |
-| Use when | Learning | Deploying |
-
-## Notes
-
-- SuperSuit is the **recommended** approach for production
-- Chapter 2 (DIY wrapper) is for understanding how it works
-- PettingZoo API ensures compatibility with many MARL tools
+> - SuperSuit is the **recommended** approach for production
+> - PettingZoo API ensures compatibility with many MARL tools

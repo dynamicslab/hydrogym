@@ -4,16 +4,14 @@ sidebar_position: 1
 
 # Getting Started
 
-✅ **START HERE** for standard RL interface examples using MAIA solver with `env.reset()` and `env.step()`.
+This example walks you through examples and utilities for HydroGym's MAIA-based flow environments using the **standard RL interface** with **MPMD coupling**. It utilizes the standard RL interface examples using MAIA solver with `env.reset()` and `env.step()`.
 
-This directory contains examples and utilities for HydroGym's MAIA-based flow environments using the **standard RL interface** with **MPMD coupling**.
+## Files to Get Started
 
-## Files
+### Testing the MAIA Environment
 
-### [`test_maia_env.py`](https://github.com/dynamicslab/hydrogym/blob/main/examples/maia/getting_started/test_maia_env.py)
-**Interactive test script** - Test MAIA environments with command-line arguments via MPMD execution.
+HydroGym's MAIA environment provides a utility function to test the environment. This file is [`test_maia_env.py`](https://github.com/dynamicslab/hydrogym/blob/main/examples/maia/getting_started/test_maia_env.py), which is an _interactive_ test script to test the MAIA environments with command-line arguments via MPMD execution. It can be used the following way:
 
-Usage:
 ```bash
 # Basic usage (1 Python + 1 MAIA process)
 mpirun -np 1 python test_maia_env.py --environment Cylinder_2D_Re200 : -np 1 maia properties.toml
@@ -22,16 +20,23 @@ mpirun -np 1 python test_maia_env.py --environment Cylinder_2D_Re200 : -np 1 mai
 mpirun -np 1 python test_maia_env.py --environment Cylinder_2D_Re200 : -np 4 maia properties.toml
 ```
 
-### [`train_sb3_maia.py`](https://github.com/dynamicslab/hydrogym/blob/main/examples/maia/getting_started/train_sb3_maia.py)
-**SB3 training script** - Train reinforcement learning agents (PPO/TD3/SAC) with Stable-Baselines3.
+### Training with Stable Baselines 3
 
-Features:
+To train a first reinforcement learnining agent such as
+
+- [Proximal Policy Optimization (PPO)](https://arxiv.org/abs/1707.06347)
+- [Temporal Differences 3 (TD3)](https://arxiv.org/abs/1802.09477)
+- [Soft Actor-Critic (SAC)](https://arxiv.org/abs/1801.01290)
+
+with Stable Baselines 3, we provide a training script [`train_sb3_maia.py`](https://github.com/dynamicslab/hydrogym/blob/main/examples/maia/getting_started/train_sb3_maia.py), which offers the following features:
+
 - Monitor wrapper for episode statistics
 - VecNormalize for observation/reward normalization
 - Checkpoint saving with normalization stats
 - TensorBoard logging
 
-Usage:
+It is to be used the following way:
+
 ```bash
 # First, prepare workspace
 python prepare_workspace.py --env Cylinder_2D_Re200 --work-dir ./train_run
@@ -44,18 +49,18 @@ mpirun -np 1 python ../train_sb3_maia.py --env Cylinder_2D_Re200 --algo PPO --to
 tensorboard --logdir logs/
 ```
 
-### [`prepare_workspace.py`](https://github.com/dynamicslab/hydrogym/blob/main/examples/maia/getting_started/prepare_workspace.py)
-**Workspace setup utility** - Downloads environment data and creates workspace for HPC jobs.
+### Preparing the Workspace
 
-Usage:
+To prepare the workspace for HydroGym and create the requisite folders while warming up the caches, we provide a utility script named [`prepare_workspace.py`](https://github.com/dynamicslab/hydrogym/blob/main/examples/maia/getting_started/prepare_workspace.py). In short, it downloads the environment data from the linked [HuggingFace dataset](https://huggingface.co/datasets/dynamicslab/HydroGym-environments), and then creates the workspace for HPC jobs. Its usage syntax is the following:
+
 ```bash
 python prepare_workspace.py --env Cylinder_2D_Re200 --work-dir ./my_workspace
 ```
 
-### [`run_example_docker.sh`](https://github.com/dynamicslab/hydrogym/blob/main/examples/maia/getting_started/run_example_docker.sh)
-**Docker runner script** - Run MAIA examples in Docker with automatic setup.
+### Running with Docker
 
-Usage:
+A direct way to circumvent the sometimes intricate installation procedure of MAIA, and to just get started with RL training is to utilize the provided Docker images. Likewise, they come with their own utility script [`run_example_docker.sh`](https://github.com/dynamicslab/hydrogym/blob/main/examples/maia/getting_started/run_example_docker.sh) which automates the setup. Its usage is done as follows:
+
 ```bash
 # Test environment
 ./run_example_docker.sh
@@ -77,6 +82,7 @@ python prepare_workspace.py --env Cylinder_2D_Re200 --work-dir ./test_run_000
 ```
 
 This creates:
+
 - `test_run_000/` - working directory
 - `test_run_000/properties.toml` - MAIA configuration file (symlink)
 - `test_run_000/grid` - mesh file (symlink)
@@ -90,6 +96,7 @@ mpirun -np 1 python ../test_maia_env.py --environment Cylinder_2D_Re200 --num-st
 ```
 
 This runs:
+
 - 1 Python process (RL environment)
 - 1 MAIA process (CFD solver)
 - Communication via MPI
@@ -145,6 +152,7 @@ env.close()
 ```
 
 **Important:** This script must be run with MPMD:
+
 ```bash
 mpirun -np 1 python your_script.py : -np 4 maia properties.toml
 ```
@@ -184,6 +192,7 @@ env.save("vec_normalize.pkl")
 ```
 
 **Run with MPMD:**
+
 ```bash
 cd work_dir
 mpirun -np 1 python ../train_sb3_maia.py --env Cylinder_2D_Re200 --algo PPO : -np 1 maia properties.toml
@@ -316,6 +325,6 @@ mpirun -np 1 python ../my_rl_script.py : -np 4 maia properties.toml
 
 ---
 
-**Last Updated**: March 2026
+**Last Updated**: April 2026
 **HydroGym Version**: 1.0+
 **Maintainer**: HydroGym Team

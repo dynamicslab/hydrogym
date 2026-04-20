@@ -15,18 +15,19 @@ Flow around a circular cylinder is a canonical benchmark in fluid mechanics and 
 ## Physical Description
 
 **Configuration:**
+
 - Circular cylinder (radius = 0.5) in 2D
 - Uniform inflow from left (U∞ = 1.0)
 - Reynolds number Re = 100 (default)
 
 **Actuation:**
+
 - **Jet blowing/suction (Cylinder class):** Two 10° jets at ±90° from stagnation point
   - Used in: `solve-steady.py`, `unsteady.py`, `step_input.py`, `pressure-probes.py`
 - **Rotary control (RotaryCylinder class):** Tangential velocity on cylinder surface
   - Used in: `run-transient.py`, `pd-control.py`, `pd-phase-sweep.py`, `lti_system.py`
 
 **Note:** Both actuation types can suppress vortex shedding, but use different physical mechanisms.
-
 
 ## Quick Start
 
@@ -94,6 +95,7 @@ python pd-control.py
 
 **MPI Parallelization:**
 All scripts support parallel execution:
+
 ```bash
 mpirun -np 4 python <script-name>.py
 ```
@@ -103,7 +105,7 @@ mpirun -np 4 python <script-name>.py
 ## Complete Script Reference
 
 | Script | Purpose | Key Features | Prerequisites |
-|--------|---------|--------------|---------------|
+| -------- | --------- | -------------- | --------------- |
 | **solve-steady.py** | Compute steady-state flow | Newton solver, Reynolds ramping | None |
 | **unsteady.py** | Steady→unsteady transition | Two-stage: Newton + transient | None |
 | **run-transient.py** | Basic time integration | Simple vortex shedding demo | None |
@@ -114,4 +116,8 @@ mpirun -np 4 python <script-name>.py
 | **pd-phase-sweep.py** | Controller tuning | Sweeps phase angles for optimal gain | **Requires** run-transient.py checkpoint |
 | **lti_system.py** | Model linearization | Extracts base flow + control influence | None |
 
+---
 
+**Last Updated**: April 2026
+**HydroGym Version**: 1.0+
+**Maintainer**: HydroGym Team

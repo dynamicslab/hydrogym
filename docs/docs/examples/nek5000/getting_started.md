@@ -15,6 +15,7 @@ This directory contains comprehensive examples for using HydroGym's NEK5000-base
 Each subdirectory demonstrates a specific interface pattern with complete examples:
 
 ### 1. [`1_nekenv_single/`](https://github.com/dynamicslab/hydrogym/tree/main/examples/nek/getting_started/1_nekenv_single) - Single Agent (Standard Gym)
+
 **Interface:** `NekEnv` - Standard Gymnasium single-agent interface
 **Use Case:** Single actuator/sensor scenarios
 **SB3 Compatible:** ✅ Direct (no wrapper needed)
@@ -39,6 +40,7 @@ model.learn(total_timesteps=100000)
 ```
 
 **Files:**
+
 - `test_nek_direct.py` - Basic environment test with zero control
 - `train_sb3_nek_direct.py` - SB3 training with Monitor & VecNormalize
 - `run_nekenv_docker.sh` - Docker/MPI execution script
@@ -46,6 +48,7 @@ model.learn(total_timesteps=100000)
 ---
 
 ### 2. [`2_parallel_env/`](https://github.com/dynamicslab/hydrogym/tree/main/examples/nek/getting_started/2_parallel_env) - Multi-Agent Parallel (PettingZoo)
+
 **Interface:** `parallel_env` - PettingZoo parallel multi-agent
 **Use Case:** Multiple independent agents with simultaneous actions
 **SB3 Compatible:** ⚠️ Requires wrapper (SuperSuit or custom)
@@ -66,6 +69,7 @@ obs, rewards, terminations, truncations, infos = env.step(actions)
 ```
 
 **Files:**
+
 - `test_nek_parallel.py` - Multi-agent environment test
 - `train_sb3_parallel.py` - SB3 training with SuperSuit wrappers
 - `run_parallel_docker.sh` - Docker/MPI execution script
@@ -73,6 +77,7 @@ obs, rewards, terminations, truncations, infos = env.step(actions)
 ---
 
 ### 3. [`3_pettingzoo/`](https://github.com/dynamicslab/hydrogym/tree/main/examples/nek/getting_started/3_pettingzoo) - PettingZoo AEC Interface
+
 **Interface:** PettingZoo AEC (Agent Environment Cycle)
 **Use Case:** Turn-based multi-agent scenarios
 **Configuration file:** YAML configs are used to lock simulation and runner settings for reproducible training. 
@@ -94,6 +99,7 @@ for agent in env.agent_iter():
 ```
 
 **Files:**
+
 - `test_nek_pettingzoo.py` - AEC interface test
 - `train_sb3_pettingzoo.py` - Training with turn-based agents
 - `run_pettingzoo_docker.sh` - Docker/MPI execution script
@@ -101,6 +107,7 @@ for agent in env.agent_iter():
 ---
 
 ### 4. [`4_from_hf/`](https://github.com/dynamicslab/hydrogym/tree/main/examples/nek/getting_started/4_from_hf) - HuggingFace Data Manager
+
 **Interface:** Load pre-packaged environments from HuggingFace Hub or local directories
 **Use Case:** Using standardized, version-controlled environment configurations
 **SB3 Compatible:** ✅ Works with any env type
@@ -122,6 +129,7 @@ env = NekEnv(env_config=config)
 ```
 
 **Files:**
+
 - `test_nek_DM.py` - Data manager test
 - `train_sb3_from_hf.py` - Training with HF environments
 - `run_from_hf_docker.sh` - Docker/MPI execution script
@@ -129,6 +137,7 @@ env = NekEnv(env_config=config)
 ---
 
 ### 5. [`5_hydrogym_control/`](https://github.com/dynamicslab/hydrogym/tree/main/examples/nek/getting_started/5_hydrogym_control) - HydroGym Controllers + Integrate
+
 **Interface:** Using `hgym.integrate()` for time-stepping with controllers
 **Use Case:** Classical control, RL deployment, or hybrid control strategies
 **SB3 Compatible:** ✅ Pass trained model as controller
@@ -151,6 +160,7 @@ integrate(
 ```
 
 **Files:**
+
 - `test_nek_env_controller.py` - Environment with controller test
 - `train_sb3_with_integrate.py` - Training + deployment with integrate
 - `run_control_docker.sh` - Docker/MPI execution script
@@ -158,6 +168,7 @@ integrate(
 ---
 
 ### 6. [`6_zeroshot_wing_demo/`](https://github.com/dynamicslab/hydrogym/tree/main/examples/nek/getting_started/6_zeroshot_wing_demo) - Zero-Shot Wing Deployment
+
 **Interface:** `NekEnv` + PettingZoo rollout with deployment controllers
 **Use Case:** Deploy pre-trained/legacy DRL policies on small wing without new training
 **SB3 Compatible:** ✅ For loading trained policies; demo script is rollout-only
@@ -171,6 +182,7 @@ env = make_pettingzoo_env(base_env)
 ```
 
 **Files:**
+
 - `test_nek_pettingzoo.py` - zero-shot wing rollout demo
 - `meta_policy_small_wing_template.py` - template for explicit legacy `MetaPolicy.py` usage
 - `run_pettingzoo_docker.sh` - Docker/MPI execution script
@@ -180,7 +192,9 @@ env = make_pettingzoo_env(base_env)
 ## Quick Start
 
 ### 1. Choose Your Interface
+
 Pick the directory that matches your use case:
+
 - **Single agent?** → Start with `1_nekenv_single/`
 - **Multiple agents?** → Try `2_parallel_env/`
 - **Pre-packaged environments?** → Use `4_from_hf/`
@@ -188,12 +202,14 @@ Pick the directory that matches your use case:
 - **Zero-shot wing deployment?** → See `6_zeroshot_wing_demo/`
 
 ### 2. Test the Environment
+
 ```bash
 cd 1_nekenv_single/
 mpirun -np 1 python test_nek_direct.py --steps 100 : -np 10 nek5000
 ```
 
 ### 3. Train an RL Agent
+
 ```bash
 mpirun -np 1 python train_sb3_nek_direct.py \
     --env TCFmini_3D_Re180 \
@@ -205,7 +221,7 @@ mpirun -np 1 python train_sb3_nek_direct.py \
 ## Comparison Table
 
 | Directory | Interface | Obs Format | Action Format | SB3 Direct | Best For |
-|-----------|-----------|------------|---------------|------------|----------|
+| --------- | --------- | ---------- | ------------- | ---------- | -------- |
 | **1_nekenv_single** | `NekEnv` | Array | Array | ✅ Yes | Single actuator, simple baseline |
 | **2_parallel_env** | `parallel_env` | Dict | Dict | ⚠️ Wrapper | Independent multi-agent scenarios |
 | **3_pettingzoo** | AEC | Sequential | Sequential | ⚠️ Wrapper | Turn-based agents |
@@ -216,6 +232,7 @@ mpirun -np 1 python train_sb3_nek_direct.py \
 ## Requirements
 
 ### NEK5000 Setup
+
 NEK5000 must be compiled and the `nek5000` executable must be in your PATH or specified in the environment configuration. We highly recommend using the provided Docker container.
 
 ```bash
@@ -229,8 +246,9 @@ env_config = {
     'nproc': 10,
 }
 ```
+
 ---
 
-**Last Updated**: March 2026
+**Last Updated**: April 2026
 **HydroGym Version**: 1.0+
 **Maintainer**: HydroGym Team
