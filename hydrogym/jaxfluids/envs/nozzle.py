@@ -1,39 +1,37 @@
 from abc import abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, ClassVar, Callable, NamedTuple
+from typing import Any, Callable, ClassVar, NamedTuple
 
+import gymnasium as gym
 import jax
-from jax import Array
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
-from mpl_toolkits.axes_grid1 import make_axes_locatable
 import numpy as np
-import gymnasium as gym
-
+from jax import Array
 from jaxfluids.data_types import JaxFluidsBuffers
 from jaxfluids.data_types.ml_buffers import (
     CallablesSetup,
-    ParametersSetup,
-    LevelSetSetup,
     InterfaceFluxCallablesSetup,
     InterfaceFluxParametersSetup,
+    LevelSetSetup,
+    ParametersSetup,
 )
 from jaxfluids.domain.helper_functions import (
     reassemble_buffer_np,
     reassemble_cell_centers,
-    reassemble_cell_sizes
+    reassemble_cell_sizes,
 )
 from jaxfluids_rl.jxf_env import RenderMode
-
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 from hydrogym.jaxfluids.env_core import JAXFluidsFlowEnv
 from hydrogym.jaxfluids.utils.nozzle import (
     InjectorGeometry,
     ObsData,
     PressureRatios,
-    TVCSpec,
     TargetThrustAngleFn,
+    TVCSpec,
     build_tvc_env_options,
     build_tvc_runtime_setup,
     compute_thrust,
@@ -42,16 +40,11 @@ from hydrogym.jaxfluids.utils.nozzle import (
 )
 
 
-Array = jax.Array
-
-
 class NozzleBase(JAXFluidsFlowEnv):
-
     SPEC: ClassVar[TVCSpec]
     TARGET_FNS: ClassVar[dict[str, TargetThrustAngleFn]] = {}
 
     def __init__(self, env_config: dict) -> None:
-
         self._init_from_hf(env_config)
 
         env_options = build_tvc_env_options(
@@ -95,7 +88,7 @@ class NozzleBase(JAXFluidsFlowEnv):
         )
 
         self.default_action_reset = np.zeros(self.num_actuators)
-        
+
         if self.is_pressure_probes:
             self.probe_locations = self._compute_probe_locations()
             self.num_probes = self.probe_locations.shape[0]
@@ -113,7 +106,7 @@ class NozzleBase(JAXFluidsFlowEnv):
     def _is_terminated(self, action: np.ndarray, jxf_buffers: JaxFluidsBuffers, info: dict) -> bool:
         physical_simulation_time = jxf_buffers.time_control_variables.physical_simulation_time
         return physical_simulation_time >= self.SPEC.t_end
-    
+
     def _is_truncated(self, jxf_buffers: JaxFluidsBuffers, info: dict) -> bool:
         return False
 
@@ -131,9 +124,7 @@ class NozzleBase(JAXFluidsFlowEnv):
             specific_gas_constant=self.SPEC.specific_gas_constant,
             sim_manager=self.sim_manager,
         )
-        levelset_setup = LevelSetSetup(
-            fluid_solid=InterfaceFluxCallablesSetup(interface_flux_fn)
-        )
+        levelset_setup = LevelSetSetup(fluid_solid=InterfaceFluxCallablesSetup(interface_flux_fn))
         return CallablesSetup(levelset=levelset_setup)
 
     def _build_action_space(self) -> gym.spaces.Box:
@@ -156,7 +147,10 @@ class NozzleBase(JAXFluidsFlowEnv):
             high = np.array([1.0] * (2 * num_angles) + [1.0] * self.num_probes, dtype=np.float32)
         else:
             low = np.array([-np.pi] * (2 * num_angles) + [0.0] * self.num_probes, dtype=np.float32)
-            high = np.array([np.pi] * (2 * num_angles) + [np.inf] * self.num_probes, dtype=np.float32)
+            high = np.array(
+                [np.pi] * (2 * num_angles) + [np.inf] * self.num_probes,
+                dtype=np.float32,
+            )
 
         return gym.spaces.Box(
             low=low,
@@ -169,7 +163,6 @@ class NozzleBase(JAXFluidsFlowEnv):
         return ParametersSetup(levelset=levelset_setup)
 
     def _get_obs(self) -> np.ndarray:
-        
         jxf_buffers, _ = self._require_state()
         obs_data = self.compute_obs(jxf_buffers)
 
@@ -205,16 +198,15 @@ class NozzleBase(JAXFluidsFlowEnv):
         }
 
     def _after_step(
-            self,
-            action: np.ndarray,
-            observation: np.ndarray,
-            reward: float,
-            terminated: bool,
-            truncated: bool,
-            info: dict,
-            jxf_buffers: JaxFluidsBuffers
-        ) -> None:
-
+        self,
+        action: np.ndarray,
+        observation: np.ndarray,
+        reward: float,
+        terminated: bool,
+        truncated: bool,
+        info: dict,
+        jxf_buffers: JaxFluidsBuffers,
+    ) -> None:
         t = float(jxf_buffers.time_control_variables.physical_simulation_time)
         self._append_history(
             time=t,
@@ -229,14 +221,13 @@ class NozzleBase(JAXFluidsFlowEnv):
                 self._compute_obs,
                 axis_name="i",
                 in_axes=(JaxFluidsBuffers(0, None, None, None),),
-                out_axes=None
+                out_axes=None,
             )(jxf_buffers)
 
         else:
             return jax.jit(self._compute_obs)(jxf_buffers)
 
     def _compute_obs(self, jxf_buffers: JaxFluidsBuffers) -> ObsData:
-
         current_angle = self.compute_thrust_angle(jxf_buffers)
 
         sim_time = jxf_buffers.time_control_variables.physical_simulation_time
@@ -279,20 +270,22 @@ class NozzleBase(JAXFluidsFlowEnv):
         if self.SPEC.dim == 2:
             current_angle = jnp.atan2(thrust[1], thrust[0])
         else:
-            current_angle = jnp.stack([
-                jnp.atan2(thrust[1], thrust[0]),    # Pitch
-                jnp.atan2(thrust[2], thrust[0]),    # Yaw
-            ])
+            current_angle = jnp.stack(
+                [
+                    jnp.atan2(thrust[1], thrust[0]),  # Pitch
+                    jnp.atan2(thrust[2], thrust[0]),  # Yaw
+                ]
+            )
 
         return current_angle
 
     def compute_pressure_probes(self, jxf_buffers: JaxFluidsBuffers) -> Array:
-        x_p = self.probe_locations[:,0]
-        y_p = self.probe_locations[:,1]
-        z_p = self.probe_locations[:,2]
+        x_p = self.probe_locations[:, 0]
+        y_p = self.probe_locations[:, 1]
+        z_p = self.probe_locations[:, 2]
 
         domain_information = self.sim_manager.domain_information
-        
+
         cell_centers = domain_information.get_device_cell_centers()
         x, y, z = [xi.flatten() for xi in cell_centers]
 
@@ -302,7 +295,7 @@ class NozzleBase(JAXFluidsFlowEnv):
         if self.SPEC.dim == 3:
             z_id = jnp.searchsorted(z, z_p, side="left", method="scan_unrolled")
         else:
-            z_id = 0         
+            z_id = 0
 
         nhx, nhy, nhz = domain_information.domain_slices_conservatives
         pressure = jxf_buffers.simulation_buffers.material_fields.primitives[4, nhx, nhy, nhz]
@@ -310,10 +303,10 @@ class NozzleBase(JAXFluidsFlowEnv):
 
         if domain_information.is_parallel:
             device_domain_size = domain_information.get_device_domain_size()
-            
+
             mask = 1
             for i in range(domain_information.dim):
-                xi = self.probe_locations[:,i]
+                xi = self.probe_locations[:, i]
                 mask *= (device_domain_size[i][0] <= xi) & (xi < device_domain_size[i][1])
 
             pressure_probes = jax.lax.psum(mask * pressure_probes, axis_name="i")
@@ -335,11 +328,8 @@ class NozzleBase(JAXFluidsFlowEnv):
         ]
 
         if domain_information.is_parallel:
-            fields = [
-                reassemble_buffer_np(field, domain_information.split_factors)
-                for field in fields
-            ]
-        
+            fields = [reassemble_buffer_np(field, domain_information.split_factors) for field in fields]
+
         fields = [field.squeeze() for field in fields]
         return tuple(fields)
 
@@ -348,7 +338,7 @@ class NozzleBase(JAXFluidsFlowEnv):
         cell_centers = domain_information.get_global_cell_centers()
         if domain_information.is_parallel:
             cell_centers = reassemble_cell_centers(cell_centers, domain_information.split_factors)
-       
+
         x, y, _ = [xi.flatten() for xi in cell_centers]
         return np.meshgrid(x, y, indexing="ij")
 
@@ -359,7 +349,7 @@ class NozzleBase(JAXFluidsFlowEnv):
     def render(self) -> None:
         if self.render_mode is None:
             return
-        
+
         self._plot_flow_field()
         self._plot_observations()
 
@@ -396,7 +386,7 @@ class Nozzle2D(NozzleBase):
 
     TARGET_FNS = {
         "sine": lambda t: (t > 5e-4) * (10.0 / 180.0 * jnp.pi) * jnp.sin(2 * jnp.pi * (t - 5e-4) / 4e-3),
-        "step": lambda t: (t > 5e-4) * (5.0 / 180.0 * jnp.pi)
+        "step": lambda t: (t > 5e-4) * (5.0 / 180.0 * jnp.pi),
     }
 
     def _compute_probe_locations(self) -> np.ndarray:
@@ -411,11 +401,9 @@ class Nozzle2D(NozzleBase):
             x_probes = np.array([x, x])
             y_probes = np.array([y, -y])
             z_probes = np.zeros_like(x_probes)
-            probe_locations.append(
-                np.stack([x_probes, y_probes, z_probes], axis=1)
-            )
+            probe_locations.append(np.stack([x_probes, y_probes, z_probes], axis=1))
 
-        return np.concatenate(probe_locations, axis=0)          
+        return np.concatenate(probe_locations, axis=0)
 
     def _get_reward(self, action: np.ndarray) -> float:
         error = np.abs(self.target_angle - self.thrust_angle)
@@ -429,7 +417,7 @@ class Nozzle2D(NozzleBase):
         D_throat = self.SPEC.nozzle_geometry.D_throat
         X = X / D_throat
         Y = Y / D_throat
-        
+
         physical_simulation_time = jxf_buffers.time_control_variables.physical_simulation_time
 
         rho = primitives[0]
@@ -446,14 +434,15 @@ class Nozzle2D(NozzleBase):
         fig.suptitle(f"Env Step: {self.env_step}, Time: {physical_simulation_time * 1e3:.3f} ms")
 
         quants = (M, p / self.SPEC.p0)
-        vmins = (0.0, 0.0); vmaxs = (3.0, 1.0)
+        vmins = (0.0, 0.0)
+        vmaxs = (3.0, 1.0)
         for axi, quant, vmin, vmax in zip(ax, quants, vmins, vmaxs):
             pci = axi.pcolormesh(X, Y, quant, cmap="Spectral_r", vmin=vmin, vmax=vmax, shading="auto")
             axi.contour(X, Y, M, levels=[1.0], linewidths=0.5, colors="k", linestyles="-")
 
             divider = make_axes_locatable(axi)
-            cax = divider.append_axes('right', size='5%', pad=0.05)
-            fig.colorbar(pci, cax=cax, orientation='vertical')
+            cax = divider.append_axes("right", size="5%", pad=0.05)
+            fig.colorbar(pci, cax=cax, orientation="vertical")
 
         titles = ("Mach number", "Pressure p / p_0")
         for axi, title in zip(ax, titles):
@@ -466,7 +455,12 @@ class Nozzle2D(NozzleBase):
 
         if self.is_pressure_probes:
             for axi in ax:
-                axi.scatter(self.probe_locations[:,0] / D_throat, self.probe_locations[:,1] / D_throat, s=2, c="black")
+                axi.scatter(
+                    self.probe_locations[:, 0] / D_throat,
+                    self.probe_locations[:, 1] / D_throat,
+                    s=2,
+                    c="black",
+                )
 
         if self.render_mode is RenderMode.SHOW:
             plt.show()
@@ -476,7 +470,6 @@ class Nozzle2D(NozzleBase):
             raise ValueError(f"RenderMode {self.render_mode} is not valid.")
         plt.close(fig)
 
-    
     def _plot_observations(self) -> None:
         jxf_buffers, _ = self._require_state()
         physical_simulation_time = jxf_buffers.time_control_variables.physical_simulation_time
@@ -497,7 +490,7 @@ class Nozzle2D(NozzleBase):
         if len(t) > 0:
             ax[0].plot(t * 1e3, np.rad2deg(thrust_angle), "k", label="current")
             for actuator_i in range(self.num_actuators):
-                ax[1].plot(t * 1e3, action[:,actuator_i], label=f"Inj. {actuator_i:02d}")
+                ax[1].plot(t * 1e3, action[:, actuator_i], label=f"Inj. {actuator_i:02d}")
 
         ax[1].set_ylim(-0.05, 1.05)
 
@@ -506,7 +499,11 @@ class Nozzle2D(NozzleBase):
             pressure_probes /= self.SPEC.p0
             for probe_i in range(self.num_probes // 2):
                 ax[2].plot(t * 1e3, pressure_probes[:, probe_i], label=f"Probe 0{probe_i:d}")
-                ax[3].plot(t * 1e3, pressure_probes[:, probe_i + self.num_probes // 2], label=f"Probe 1{probe_i:d}")
+                ax[3].plot(
+                    t * 1e3,
+                    pressure_probes[:, probe_i + self.num_probes // 2],
+                    label=f"Probe 1{probe_i:d}",
+                )
             ax[2].set_ylim(0.0, 0.5)
             ax[3].set_ylim(0.0, 0.5)
 
@@ -557,14 +554,18 @@ class Nozzle3D(NozzleBase):
     )
 
     TARGET_FNS = {
-        "sine": lambda t: jnp.array([
-            (t > 1e-3) * (10.0 / 180.0 * jnp.pi) * jnp.sin(2 * jnp.pi * (t - 1e-3) / 4e-3),
-            jnp.zeros_like(t),
-        ]),
-        "step": lambda t: jnp.array([
-            (t > 1e-3) * (5.0 / 180.0 * jnp.pi),
-            jnp.zeros_like(t),
-        ]),
+        "sine": lambda t: jnp.array(
+            [
+                (t > 1e-3) * (10.0 / 180.0 * jnp.pi) * jnp.sin(2 * jnp.pi * (t - 1e-3) / 4e-3),
+                jnp.zeros_like(t),
+            ]
+        ),
+        "step": lambda t: jnp.array(
+            [
+                (t > 1e-3) * (5.0 / 180.0 * jnp.pi),
+                jnp.zeros_like(t),
+            ]
+        ),
     }
 
     def _compute_probe_locations(self) -> np.ndarray:
@@ -581,20 +582,16 @@ class Nozzle3D(NozzleBase):
             x_probes = np.full_like(theta, x)
             y_probes = R * np.cos(theta)
             z_probes = -R * np.sin(theta)
-            probe_locations.append(
-                np.stack([x_probes, y_probes, z_probes], axis=1)
-            )
-        return np.concatenate(probe_locations, axis=0)          
+            probe_locations.append(np.stack([x_probes, y_probes, z_probes], axis=1))
+        return np.concatenate(probe_locations, axis=0)
 
     def _get_reward(self, action: np.ndarray) -> float:
-        error = jnp.sqrt(jnp.sum((self.target_angle - self.thrust_angle)**2))
+        error = jnp.sqrt(jnp.sum((self.target_angle - self.thrust_angle) ** 2))
         return float(-error)
 
     def _plot_flow_field(self) -> None:
         jxf_buffers, _ = self._require_state()
         primitives, levelset, _ = self._get_fields_for_plotting(jxf_buffers)
-
-        physical_simulation_time = jxf_buffers.time_control_variables.physical_simulation_time
 
         domain_information = self.sim_manager.domain_information
         cell_centers = domain_information.get_global_cell_centers()
@@ -644,11 +641,10 @@ class Nozzle3D(NozzleBase):
 
         t = np.array(self.history["time"])
         thrust_angle = np.array(self.history["thrust_angle"])
-        action = np.array(self.history["action"])
 
         if len(t) > 0:
-            ax[0].plot(t * 1e3, np.rad2deg(thrust_angle[:,0]), "k", label="current")
-            ax[1].plot(t * 1e3, np.rad2deg(thrust_angle[:,1]), "k", label="current")
+            ax[0].plot(t * 1e3, np.rad2deg(thrust_angle[:, 0]), "k", label="current")
+            ax[1].plot(t * 1e3, np.rad2deg(thrust_angle[:, 1]), "k", label="current")
 
             ax[0].set_ylim(-10.0, 10.0)
             ax[1].set_ylim(-10.0, 10.0)
@@ -663,7 +659,11 @@ class Nozzle3D(NozzleBase):
             pressure_probes /= self.SPEC.p0
             for probe_i in range(self.num_probes // 2):
                 ax[2].plot(t * 1e3, pressure_probes[:, probe_i], label=f"Probe 0{probe_i:d}")
-                ax[3].plot(t * 1e3, pressure_probes[:, probe_i + self.num_probes // 2], label=f"Probe 1{probe_i:d}")
+                ax[3].plot(
+                    t * 1e3,
+                    pressure_probes[:, probe_i + self.num_probes // 2],
+                    label=f"Probe 1{probe_i:d}",
+                )
             ax[2].set_ylim(0.0, 0.5)
             ax[3].set_ylim(0.0, 0.5)
 
@@ -671,7 +671,7 @@ class Nozzle3D(NozzleBase):
             "Thrust angle" + r"$\delta_0$" + "[deg]",
             "Thrust angle" + r"$\delta_1$" + "[deg]",
             "Pressure probes downstream loc 0",
-            "Pressure probes downstream loc 1"
+            "Pressure probes downstream loc 1",
         )
         for axi, title in zip(ax, titles):
             axi.set_box_aspect(1.0)
