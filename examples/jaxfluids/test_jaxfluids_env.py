@@ -8,7 +8,7 @@ All JAX-Fluids-based hydrogym environments inherit from JAXFluidsFlowEnv,
 which serves as the common base class.
 
 JAXFluidsFlowEnv has the following arguments:
-    - environment_name: Required. Name of the enviroment.
+    - environment_name: Required. Name of the environment.
     - hf_repo_id: Hugging Face repository (default: 'dynamicslab/HydroGym-environments')
 
     - use_clean_cache: Use clean cache directory (default: True)
