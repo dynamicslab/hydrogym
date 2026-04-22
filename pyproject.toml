@@ -84,6 +84,7 @@ flax = { version = "*", optional = true }
 gitpython = { version = "*", optional = true }
 h5py = { version = "*", optional = true }
 optax = { version = "*", optional = true }
+pyvista = { version = "*", optional = true }
 
 
 [tool.poetry.extras]
