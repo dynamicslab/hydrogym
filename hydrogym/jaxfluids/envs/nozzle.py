@@ -1,42 +1,39 @@
 from abc import abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, ClassVar, Callable, NamedTuple
+from typing import Any, Callable, ClassVar, NamedTuple
 
+import gymnasium as gym
 import jax
-from jax import Array
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
-from mpl_toolkits.axes_grid1 import make_axes_locatable
 import numpy as np
-import gymnasium as gym
-
+from jax import Array
 from jaxfluids.data_types import JaxFluidsBuffers
 from jaxfluids.data_types.ml_buffers import (
     CallablesSetup,
-    ParametersSetup,
-    LevelSetSetup,
     InterfaceFluxCallablesSetup,
     InterfaceFluxParametersSetup,
+    LevelSetSetup,
+    ParametersSetup,
 )
 from jaxfluids.domain.helper_functions import reassemble_buffer_np, reassemble_cell_centers, reassemble_cell_sizes
 from jaxfluids_rl.jxf_env import RenderMode
-
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 from hydrogym.jaxfluids.env_core import JAXFluidsFlowEnv
 from hydrogym.jaxfluids.utils.nozzle import (
     InjectorGeometry,
     ObsData,
     PressureRatios,
-    TVCSpec,
     TargetThrustAngleFn,
+    TVCSpec,
     build_tvc_env_options,
     build_tvc_runtime_setup,
     compute_thrust,
     initialize_injector_flux_fn,
     plot_flowfield_3d,
 )
-
 
 Array = jax.Array
 
