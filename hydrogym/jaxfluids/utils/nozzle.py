@@ -12,11 +12,6 @@ import jax.numpy as jnp
 import numpy as np
 import pyvista as pv
 from jax import Array
-from numpy import ndarray
-
-pv.global_theme.allow_empty_mesh = True
-
-
 from jaxfluids import SimulationManager
 from jaxfluids_thirdparty.gas_dynamics.core import (
     density_from_pressure_temperature,
@@ -28,6 +23,9 @@ from jaxfluids_thirdparty.gas_dynamics.isentropic import (
     mach_number_from_pressure_ratio_isentropic,
     pressure_ratio_isentropic,
 )
+from numpy import ndarray
+
+pv.global_theme.allow_empty_mesh = True
 
 TargetThrustAngle = Array | float
 TargetThrustAngleFn = Callable[[Array | float], TargetThrustAngle]
@@ -151,7 +149,9 @@ def build_tvc_env_options(
     num_actuators = env_config.get("num_actuators")
     if spec.fixed_num_actuators is not None:
         if num_actuators is not None:
-            raise ValueError(f"{cls_name} requires {spec.fixed_num_actuators} actuators.")
+            raise ValueError(
+                f"{cls_name} requires {spec.fixed_num_actuators} actuators."
+            )
         num_actuators = spec.fixed_num_actuators
     else:
         if num_actuators is None:
@@ -171,11 +171,15 @@ def build_tvc_env_options(
 
     secondary_pressure_ratio = env_config.get("secondary_pressure_ratio", 0.7)
     if secondary_pressure_ratio < 0.7 or secondary_pressure_ratio > 0.9:
-        raise ValueError(f"secondary_pressure_ratio must be >= 0.7 and <= 0.9.Got {secondary_pressure_ratio}.")
+        raise ValueError(
+            f"secondary_pressure_ratio must be >= 0.7 and <= 0.9.Got {secondary_pressure_ratio}."
+        )
 
     resolution = env_config.get("resolution", "fine")
     if resolution not in spec.grid_resolutions:
-        raise ValueError(f"Resolution {resolution} is not supported. Please choose from {spec.grid_resolutions}.")
+        raise ValueError(
+            f"Resolution {resolution} is not supported. Please choose from {spec.grid_resolutions}."
+        )
 
     ngpus = env_config.get("ngpus", 1)
     if not isinstance(ngpus, int):
@@ -185,15 +189,21 @@ def build_tvc_env_options(
 
     is_pressure_probes = env_config.get("is_pressure_probes", False)
     if not isinstance(is_pressure_probes, bool):
-        raise ValueError(f"is_pressure_probes must be of type bool. Got {type(is_pressure_probes)}")
+        raise ValueError(
+            f"is_pressure_probes must be of type bool. Got {type(is_pressure_probes)}"
+        )
 
     is_scale_observations = env_config.get("is_scale_observations", True)
     if not isinstance(is_scale_observations, bool):
-        raise ValueError(f"is_scale_observations needs to be of type bool. Got {type(is_scale_observations)}.")
+        raise ValueError(
+            f"is_scale_observations needs to be of type bool. Got {type(is_scale_observations)}."
+        )
 
     target_key = env_config.get("target_fn", "sine")
     if target_key not in target_fns:
-        raise ValueError(f"Unknown target_fn {target_key!r}. Please choose from {tuple(target_fns)}.")
+        raise ValueError(
+            f"Unknown target_fn {target_key!r}. Please choose from {tuple(target_fns)}."
+        )
 
     return TVCEnvOptions(
         num_actuators=num_actuators,
@@ -225,7 +235,9 @@ def build_tvc_runtime_setup(
         raise FileNotFoundError(f"Could not find case setup file {case_setup_path}.")
 
     if not numerical_setup_path.exists():
-        raise FileNotFoundError(f"Could not find numerical setup file {numerical_setup_path}.")
+        raise FileNotFoundError(
+            f"Could not find numerical setup file {numerical_setup_path}."
+        )
 
     if not restart_file_path.exists():
         raise FileNotFoundError(f"Could not find restart file {restart_file_path}.")
@@ -268,7 +280,9 @@ def compute_thrust(
     cell_face_area = dx_min if DIM == 2 else dx_min**2
 
     # interpolate primitives to cell face
-    primitives_cf = jnp.concatenate([primitives[:, 0:1], primitives, primitives[:, -1:]], axis=1)
+    primitives_cf = jnp.concatenate(
+        [primitives[:, 0:1], primitives, primitives[:, -1:]], axis=1
+    )
     primitives_cf = (primitives_cf[:, 1:] + primitives_cf[:, :-1]) / 2
 
     x_cf = jnp.concatenate([x - dx / 2, x[-1:] + dx[-1:] / 2], axis=0)
@@ -364,7 +378,11 @@ def _compute_injector_plane_params(
 
 
 def _compute_injector_mask(
-    mesh_grid: tuple[Array], IW: float, injector_params: InjectorPlaneParameters, dim: int, dx: float
+    mesh_grid: tuple[Array],
+    IW: float,
+    injector_params: InjectorPlaneParameters,
+    dim: int,
+    dx: float,
 ) -> Array:
     position = injector_params.positions
     tangent = injector_params.tangents
@@ -403,12 +421,9 @@ def _compute_injector_mask(
 
         R_inj = IW / 2
 
-        mask_injector = (
-            (s_x**2 + s_theta**2 <= R_inj**2)
-            & (
-                jnp.abs(d) <= 5 * dx
-            )  # NOTE large safety offset in normal direction given that nozzle exit surface is curved around circumference
-        )
+        mask_injector = (s_x**2 + s_theta**2 <= R_inj**2) & (
+            jnp.abs(d) <= 5 * dx
+        )  # NOTE large safety offset in normal direction given that nozzle exit surface is curved around circumference
 
     else:
         raise ValueError
@@ -429,12 +444,19 @@ def _compute_choked_state(
 
 
 def _compute_unchoked_state(
-    p_local: float, rho_total_injector: float, p_ratio: float, specific_heat_ratio: float
+    p_local: float,
+    rho_total_injector: float,
+    p_ratio: float,
+    specific_heat_ratio: float,
 ) -> tuple[float, float, float]:
     # NOTE if p_ratio_unchoked <= 1.0 -> no injection. We clip to prevent negative sqrt.
     p_ratio_unchoked = jnp.clip(p_ratio, 0.0, 1.0)
-    M_unchoked = mach_number_from_pressure_ratio_isentropic(p_ratio_unchoked, specific_heat_ratio)
-    rho_unchoked = rho_total_injector * density_ratio_isentropic(M_unchoked, specific_heat_ratio)
+    M_unchoked = mach_number_from_pressure_ratio_isentropic(
+        p_ratio_unchoked, specific_heat_ratio
+    )
+    rho_unchoked = rho_total_injector * density_ratio_isentropic(
+        M_unchoked, specific_heat_ratio
+    )
     u_unchoked = M_unchoked * speed_of_sound(p_local, rho_unchoked, specific_heat_ratio)
     E_unchoked = total_energy(p_local, rho_unchoked, u_unchoked, specific_heat_ratio)
     return rho_unchoked, u_unchoked, E_unchoked
@@ -464,7 +486,11 @@ def initialize_injector_flux_fn(
     injector_params = _compute_injector_plane_params(injector_geometry)
 
     def compute_interface_flux(
-        primitives: Array, interface_length: Array, normal: Array, mesh_grid: Array, actuator: Array
+        primitives: Array,
+        interface_length: Array,
+        normal: Array,
+        mesh_grid: Array,
+        actuator: Array,
     ) -> tuple[Array, Array, Array]:
         """Computes the interface flux for each injector."""
 
@@ -525,7 +551,9 @@ def initialize_injector_flux_fn(
                 mesh_grid,
                 IW,
                 InjectorPlaneParameters(
-                    injector_params.positions[i], injector_params.tangents[i], injector_params.normals[i]
+                    injector_params.positions[i],
+                    injector_params.tangents[i],
+                    injector_params.normals[i],
                 ),
                 dim,
                 dx,
@@ -535,9 +563,18 @@ def initialize_injector_flux_fn(
             u_injector_n = jnp.sum(u_injector_vec * normal, axis=0)
 
             mass_flux += rho_injector * u_injector_n * interface_length * mask_injector
-            momentum_flux_i = (rho_injector * u_injector_n * u_injector_vec + p_injector * normal) * interface_length
-            momentum_flux = momentum_flux * (1 - mask_injector) + momentum_flux_i * mask_injector
-            energy_flux += (E_injector + p_injector) * u_injector_n * interface_length * mask_injector
+            momentum_flux_i = (
+                rho_injector * u_injector_n * u_injector_vec + p_injector * normal
+            ) * interface_length
+            momentum_flux = (
+                momentum_flux * (1 - mask_injector) + momentum_flux_i * mask_injector
+            )
+            energy_flux += (
+                (E_injector + p_injector)
+                * u_injector_n
+                * interface_length
+                * mask_injector
+            )
 
         return mass_flux, momentum_flux, energy_flux
 
@@ -567,7 +604,9 @@ def plot_flowfield_3d(
             mesh_grid.reshape(3, -1),
             IW,
             InjectorPlaneParameters(
-                injector_params.positions[i], injector_params.tangents[i], injector_params.normals[i]
+                injector_params.positions[i],
+                injector_params.tangents[i],
+                injector_params.normals[i],
             ),
             3,
             min_dx,
@@ -634,7 +673,9 @@ def clip_grids(grid, grid_levelset):
     mask_grid = (r < 0.044) & (x < 0.25) & (grid.point_data["levelset"] > 2)
 
     # --- extract in one pass ---
-    grid_levelset_clipped = grid_levelset.extract_points(mask_levelset, adjacent_cells=True)
+    grid_levelset_clipped = grid_levelset.extract_points(
+        mask_levelset, adjacent_cells=True
+    )
 
     grid_clipped = grid.extract_points(mask_grid, adjacent_cells=True)
 
