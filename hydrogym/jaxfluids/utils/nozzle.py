@@ -423,7 +423,7 @@ def _compute_injector_mask(
 
         mask_injector = (s_x**2 + s_theta**2 <= R_inj**2) & (
             jnp.abs(d) <= 5 * dx
-        )  # NOTE large safety offset in normal direction given that nozzle exit surface is curved around circumference
+        )  # Large safety offset in normal direction given that nozzle exit surface is curved around circumference
 
     else:
         raise ValueError
