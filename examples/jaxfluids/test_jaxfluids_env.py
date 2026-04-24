@@ -8,7 +8,7 @@ All JAX-Fluids-based hydrogym environments inherit from JAXFluidsFlowEnv,
 which serves as the common base class.
 
 JAXFluidsFlowEnv has the following arguments:
-    - environment_name: Required. Name of the enviroment.
+    - environment_name: Required. Name of the environment.
     - hf_repo_id: Hugging Face repository (default: 'dynamicslab/HydroGym-environments')
 
     - use_clean_cache: Use clean cache directory (default: True)
@@ -68,7 +68,7 @@ from hydrogym.jaxfluids import Nozzle2D
 def main():
     env_config = {
         "environment_name": "Nozzle2D_coarse",
-        "configuration_file": os.path.abspath("environment_config.yaml")
+        "configuration_file": os.path.abspath("environment_config.yaml"),
     }
 
     env = Nozzle2D(env_config=env_config)
@@ -79,10 +79,10 @@ def main():
     for i in range(1000):
 
         # Random action
-        # action = env.action_space.sample()       
+        # action = env.action_space.sample()
 
         # Fixed action
-        action = [0.0, 0.5]                  
+        action = [0.0, 0.5]
 
         observation, reward, terminated, truncated, info = env.step(action)
 
@@ -97,3 +97,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
