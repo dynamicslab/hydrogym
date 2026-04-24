@@ -6,6 +6,7 @@ import numpy as np
 import scipy.io as sio
 
 from hydrogym.core import CallbackBase
+from hydrogym.nek.nek_lib.nek_utils import show_end, show_title
 
 
 def integrate(

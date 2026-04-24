@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 #
 # Run NEK5000 PettingZoo tests with MPMD coupling.
+# Config is loaded automatically from HuggingFace (environment_config.yaml).
 #
 # Usage:
 #     ./run_pettingzoo_docker.sh                    # Test only
