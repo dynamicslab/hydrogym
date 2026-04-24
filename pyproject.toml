@@ -28,7 +28,7 @@ classifiers=[
     "Topic :: Scientific/Engineering :: Hydrology",
     "Topic :: Scientific/Engineering :: Physics",
 ]
-documentation = "dynamicslab.github.io/hydrogym"
+documentation = "https://dynamicslab.github.io/hydrogym"
 repository = "https://github.com/dynamicslab/hydrogym"
 keywords = [
     "Reinforcement Learning",
