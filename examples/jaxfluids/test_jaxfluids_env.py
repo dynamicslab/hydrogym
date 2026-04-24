@@ -46,7 +46,7 @@ Available environments:
                 are part of the observation
             - is_scale_observations: Optional. Boolean indicating whether observations are scaled to [0, 1].
             - target_fn: Optional. Target thrust vector function. Choose either 'sine' or 'step'.
-        
+
         The Nozzle3D environment has the following additional arguments:
             - num_actuators: Required. Integer number of actuators. Must be between 4 and 12.
             - secondary_pressure_ratio: Optional. Float, must be between 0.7 and 0.9.
@@ -57,7 +57,7 @@ Available environments:
                 are part of the observation
             - is_scale_observations: Optional. Boolean indicating whether observations are scaled to [0, 1].
             - target_fn: Optional. Target thrust vector function. Choose either 'sine' or 'step'.
-    
+
 """
 
 import os
@@ -77,7 +77,6 @@ def main():
     env.render()
 
     for i in range(1000):
-
         # Random action
         # action = env.action_space.sample()
 
@@ -97,4 +96,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

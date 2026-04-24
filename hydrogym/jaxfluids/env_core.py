@@ -34,11 +34,8 @@ class JAXFluidsFlowEnv(JAXFluidsEnv):
     """
 
     def _init_from_hf(self, env_config: dict) -> None:
-
         # Initialize HF data manager
-        self.hf_repo_id = env_config.get(
-            "hf_repo_id", "dynamicslab/HydroGym-environments"
-        )
+        self.hf_repo_id = env_config.get("hf_repo_id", "dynamicslab/HydroGym-environments")
         self.local_fallback_dir = env_config.get("local_fallback_dir", None)
         self.use_clean_cache = env_config.get("use_clean_cache", True)
 
@@ -59,9 +56,7 @@ class JAXFluidsFlowEnv(JAXFluidsEnv):
         self.env_data_path = self._setup_environment_data()
 
         # Resolve and load configuration file
-        self.configuration_file = self._resolve_configuration_file(
-            env_config.get("configuration_file")
-        )
+        self.configuration_file = self._resolve_configuration_file(env_config.get("configuration_file"))
 
         if not self.configuration_file:
             raise ConfigError(
@@ -96,13 +91,9 @@ class JAXFluidsFlowEnv(JAXFluidsEnv):
             print(f"Using environment data from: {env_path}")
             return env_path
         except Exception as e:
-            raise ConfigError(
-                f"Failed to setup environment data for {self.environment_name}: {e}"
-            )
+            raise ConfigError(f"Failed to setup environment data for {self.environment_name}: {e}")
 
-    def _resolve_configuration_file(
-        self, config_file_input: Optional[str]
-    ) -> Optional[str]:
+    def _resolve_configuration_file(self, config_file_input: Optional[str]) -> Optional[str]:
         """
         Resolve configuration file path from various input formats.
 
@@ -189,9 +180,7 @@ class JAXFluidsFlowEnv(JAXFluidsEnv):
         for pattern in config_patterns:
             matches = glob.glob(os.path.join(self.env_data_path, pattern))
             if matches:
-                print(
-                    f"Auto-detected configuration file: {os.path.basename(matches[0])}"
-                )
+                print(f"Auto-detected configuration file: {os.path.basename(matches[0])}")
                 return matches[0]
 
         # Not found
@@ -200,4 +189,3 @@ class JAXFluidsFlowEnv(JAXFluidsEnv):
             print(f"Available files: {os.listdir(self.env_data_path)}")
 
         return None
-
