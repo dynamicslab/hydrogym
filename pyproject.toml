@@ -69,19 +69,41 @@ pymech = { version = "^1.4.0", optional = true }
 pettingzoo = { version = "^1.24.0", optional = true }
 stable-baselines3 = { version = "^2.7.1", optional = true }
 supersuit = { version = "3.10.0", optional = true }
+tensorboard = { version = "^2.0.0", optional = true }
+
+# JAX solver optional dependencies
+jax = { version = "*", optional = true }
+jaxlib = { version = "*", optional = true }
+chex = { version = "*", optional = true }
+navix = { version = "*", optional = true }
+gymnax = { version = "*", optional = true }
+tree-math = { version = "*", optional = true }
+
+# JAX-Fluids solver optional dependencies
+flax = { version = "*", optional = true }
+gitpython = { version = "*", optional = true }
+h5py = { version = "*", optional = true }
+optax = { version = "*", optional = true }
+pyvista = { version = "*", optional = true }
+
 
 [tool.poetry.extras]
 firedrake = ["gmsh", "psutil"]
 maia = ["mpi4py", "omegaconf", "einops", "toml"]
-nek = ["mpi4py", "omegaconf", "pymech", "pettingzoo", "stable-baselines3", "supersuit"]
+nek = ["mpi4py", "omegaconf", "pymech", "pettingzoo", "stable-baselines3", "supersuit", "tensorboard"]
+jax = ["jax", "jaxlib", "chex", "navix", "gymnax", "tree-math", "flax", "omegaconf", "toml"]
+jaxfluids = ["jax", "jaxlib", "flax", "gitpython", "h5py", "optax"]
 all = [
   "gmsh", "psutil",
   "mpi4py", "omegaconf", "einops", "toml",
-  "pymech", "pettingzoo", "stable-baselines3", "supersuit"
+  "pymech", "pettingzoo", "stable-baselines3", "supersuit", "tensorboard",
+  "jax", "jaxlib", "chex", "navix", "gymnax", "tree-math",
+  "flax", "gitpython", "h5py", "optax"
 ]
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.15.8"
+isort = "^5.13.0"
 toml = "^0.10.2"
 tomli = "^2.0.1"
 codespell = "^2.2.6"
@@ -112,8 +134,13 @@ skip-magic-trailing-comma = false
 select = ["E", "F"]
 ignore = ["F401", "E731"]
 
+[tool.isort]
+profile = "black"
+line_length = 120
+known_first_party = ["hydrogym"]
+
 [tool.codespell]
-skip = '*.svg,*.ipynb'
+skip = '*.svg,*.ipynb,./docs/package-lock.json'
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

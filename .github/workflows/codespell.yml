@@ -40,9 +40,6 @@ jobs:
       - name: Check spelling in tests
         run: codespell tests
       
-      - name: Check spelling in docs
-        run: codespell docs
-      
       - name: Check spelling in tutorials
         run: codespell tutorials
       

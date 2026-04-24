@@ -29,7 +29,8 @@ Available Functions:
 
 # ── Always available — no MPI required ────────────────────────────────────────
 # Safe to import standalone (e.g. prepare_workspace.py outside of mpirun).
-from .hf_data_manager import HFDataManager
+from hydrogym.data_manager import HFDataManager
+
 from .workspace import MaiaWorkspace, prepare_maia_workspace
 
 # ── MPI-dependent names ────────────────────────────────────────────────────────
@@ -81,22 +82,22 @@ def _load_mpi_deps() -> None:
     _mod = sys.modules[__name__]
 
     from .env_core import (
-        MaiaFlowEnv,
         ConfigError,
+        MaiaFlowEnv,
         from_hf,
         list_available_environments,
         list_registered_types,
     )
-    from .mpmd_interface import MaiaInterface
-    from .envs.cylinder import Cylinder, RotaryCylinder
     from .envs.cavity import Cavity, Cavity3Jet
-    from .envs.pinball import Pinball, JetPinball
-    from .envs.naca0012 import NACA0012, NACA0012Gust
-    from .envs.square_cylinder import SquareCylinder
     from .envs.cube import Cube
-    from .envs.sphere import Sphere
-    from .envs.turbulent_boundary_layer import ZPGTBLBase, ZPGTBLJet, ZPGTBLSurfaceWave
+    from .envs.cylinder import Cylinder, RotaryCylinder
     from .envs.dra2303 import DRA2303Base, DRA2303Jet, DRA2303SurfaceWave
+    from .envs.naca0012 import NACA0012, NACA0012Gust
+    from .envs.pinball import JetPinball, Pinball
+    from .envs.sphere import Sphere
+    from .envs.square_cylinder import SquareCylinder
+    from .envs.turbulent_boundary_layer import ZPGTBLBase, ZPGTBLJet, ZPGTBLSurfaceWave
+    from .mpmd_interface import MaiaInterface
 
     for _name, _obj in [
         ("MaiaFlowEnv", MaiaFlowEnv),

@@ -40,11 +40,12 @@ Application:
 """
 
 import os
+
 import numpy as np
 import psutil
 
-from hydrogym.firedrake.utils.pd import PDController
 import hydrogym.firedrake as hgym
+from hydrogym.firedrake.utils.pd import PDController
 
 output_dir = "output"
 if not os.path.exists(output_dir):

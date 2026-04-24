@@ -6,16 +6,17 @@ This package contains specific CFD environment implementations for the Maia solv
 All environments are automatically registered with the factory system.
 """
 
+from .cavity import Cavity, Cavity3Jet
+from .cube import Cube
+
 # Import all environment classes to trigger registration
 from .cylinder import Cylinder, RotaryCylinder
-from .cavity import Cavity, Cavity3Jet
-from .pinball import Pinball, JetPinball
-from .naca0012 import NACA0012, NACA0012Gust
-from .square_cylinder import SquareCylinder
-from .cube import Cube
-from .sphere import Sphere
-from .turbulent_boundary_layer import ZPGTBLBase, ZPGTBLJet, ZPGTBLSurfaceWave
 from .dra2303 import DRA2303Base, DRA2303Jet, DRA2303SurfaceWave
+from .naca0012 import NACA0012, NACA0012Gust
+from .pinball import JetPinball, Pinball
+from .sphere import Sphere
+from .square_cylinder import SquareCylinder
+from .turbulent_boundary_layer import ZPGTBLBase, ZPGTBLJet, ZPGTBLSurfaceWave
 
 __all__ = [
     "Cylinder",
