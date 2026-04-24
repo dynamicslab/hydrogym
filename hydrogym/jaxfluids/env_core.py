@@ -3,11 +3,10 @@ import os
 from pathlib import Path
 from typing import Dict, Optional, Tuple, Union
 
+from jaxfluids_rl.jxf_env import JAXFluidsEnv, RenderMode
 from omegaconf import OmegaConf
 
 from hydrogym.data_manager import HFDataManager
-
-from jaxfluids_rl.jxf_env import JAXFluidsEnv, RenderMode
 
 
 class ConfigError(Exception):

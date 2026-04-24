@@ -1,32 +1,33 @@
-from dataclasses import dataclass
 import os
-from pathlib import Path
 import platform
+from dataclasses import dataclass
+from pathlib import Path
+
 if platform.machine().lower() in {"aarch64", "arm64"}:
     os.environ["VTK_DEFAULT_OPENGL_WINDOW"] = "vtkOSOpenGLRenderWindow"
+import json
 from typing import Callable, NamedTuple
 
-from jax import Array
 import jax.numpy as jnp
-import json
-from numpy import ndarray
 import numpy as np
 import pyvista as pv
+from jax import Array
+from numpy import ndarray
+
 pv.global_theme.allow_empty_mesh = True
 
 
 from jaxfluids import SimulationManager
-from jaxfluids_thirdparty.gas_dynamics.isentropic import (
-    pressure_ratio_isentropic,
-    density_ratio_isentropic,
-    mach_number_from_pressure_ratio_isentropic,
-)
 from jaxfluids_thirdparty.gas_dynamics.core import (
+    density_from_pressure_temperature,
     speed_of_sound,
     total_energy,
-    density_from_pressure_temperature,
 )
-
+from jaxfluids_thirdparty.gas_dynamics.isentropic import (
+    density_ratio_isentropic,
+    mach_number_from_pressure_ratio_isentropic,
+    pressure_ratio_isentropic,
+)
 
 TargetThrustAngle = Array | float
 TargetThrustAngleFn = Callable[[Array | float], TargetThrustAngle]
