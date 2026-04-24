@@ -3,11 +3,10 @@ import os
 from pathlib import Path
 from typing import Dict, Optional, Tuple, Union
 
+from jaxfluids_rl.jxf_env import JAXFluidsEnv, RenderMode
 from omegaconf import OmegaConf
 
 from hydrogym.data_manager import HFDataManager
-
-from jaxfluids_rl.jxf_env import JAXFluidsEnv, RenderMode
 
 
 class ConfigError(Exception):
@@ -21,7 +20,7 @@ class JAXFluidsFlowEnv(JAXFluidsEnv):
     Base JAXFluidsFlowEnv with Hugging Face Hub integration for configuration management.
 
     Arguments:
-        - environment_name: Required. Name of the enviroment.
+        - environment_name: Required. Name of the environment.
         - hf_repo_id: Hugging Face repository (default: 'dynamicslab/HydroGym-environments')
 
         - use_clean_cache: Use clean cache directory (default: True)
@@ -35,7 +34,6 @@ class JAXFluidsFlowEnv(JAXFluidsEnv):
     """
 
     def _init_from_hf(self, env_config: dict) -> None:
-
         # Initialize HF data manager
         self.hf_repo_id = env_config.get("hf_repo_id", "dynamicslab/HydroGym-environments")
         self.local_fallback_dir = env_config.get("local_fallback_dir", None)
@@ -45,7 +43,7 @@ class JAXFluidsFlowEnv(JAXFluidsEnv):
             repo_id=self.hf_repo_id,
             local_fallback_dir=self.local_fallback_dir,
             use_clean_cache=self.use_clean_cache,
-            fallback_profile="JAXFLUIDS"
+            fallback_profile="JAXFLUIDS",
         )
 
         # Environment identification
@@ -53,7 +51,7 @@ class JAXFluidsFlowEnv(JAXFluidsEnv):
 
         if not self.environment_name:
             raise ConfigError("'environment_name' must be specified in env_config")
-        
+
         # Download/get environment configuration
         self.env_data_path = self._setup_environment_data()
 
@@ -65,10 +63,9 @@ class JAXFluidsFlowEnv(JAXFluidsEnv):
                 f"No configuration file found for environment '{self.environment_name}'. "
                 f"Expected config.yaml in: {self.env_data_path}"
             )
-        
+
         # Load configuration from HF
         self.conf = OmegaConf.load(self.configuration_file)
-
 
     def _setup_environment_data(self) -> str:
         """
@@ -95,7 +92,6 @@ class JAXFluidsFlowEnv(JAXFluidsEnv):
             return env_path
         except Exception as e:
             raise ConfigError(f"Failed to setup environment data for {self.environment_name}: {e}")
-        
 
     def _resolve_configuration_file(self, config_file_input: Optional[str]) -> Optional[str]:
         """
@@ -154,7 +150,7 @@ class JAXFluidsFlowEnv(JAXFluidsEnv):
             f"  - Current directory: {os.getcwd()}\n"
             f"  - Environment directory: {self.env_data_path}"
         )
-    
+
     def _find_configuration_file(self) -> Optional[str]:
         """
         Auto-detect configuration file in the environment data directory.
