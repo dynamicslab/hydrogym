@@ -30,11 +30,11 @@ jax/
 # Activate the GPU environment
 source /home/easybuild/venvs/hydrogym_gpu/bin/activate
 
-# Test Kolmogorov flow
+# Test Kolmogorov flow (float64, 10 steps)
 cd getting_started/1_kolmogorov
 ./run_kolmogorov_docker.sh
 
-# Test channel flow
+# Test channel flow (float32, 5 steps)
 cd getting_started/2_channel
 ./run_channel_docker.sh
 
@@ -45,10 +45,46 @@ cd getting_started/3_ppo
 
 ## Available Environments
 
-| Environment | Solver | Grid | Action | Observation | Reward |
-|---|---|---|---|---|---|
-| `KolmogorovFlow` | 2D pseudo-spectral | 64×64 | 4 body-force modes | 8×8 velocity probes | -(α·TKE + action penalty) |
-| `ChannelFlowSpectralEnv` | 3D pseudo-spectral | 72×72×72 | 24 wall jets | 8×8×2 near-wall velocities | -WSS (drag) |
+| Environment | Solver | Grid | Action | Observation | Reward | Default dtype |
+|---|---|---|---|---|---|---|
+| `KolmogorovFlow` | 2D pseudo-spectral | 64×64 | 4 body-force modes | 8×8 velocity probes | -(α·TKE + action penalty) | float64 |
+| `ChannelFlowSpectralEnv` | 3D pseudo-spectral | 72×72×72 | 24 wall jets | 8×8×2 near-wall velocities | -WSS (drag) | float32 |
+
+## JIT Compilation
+
+Both environments are JIT-compiled via `jax.jit` in the runner scripts, which compiles the full DNS rollout into a single GPU kernel:
+
+```python
+jit_reset = jax.jit(env.reset_env)
+jit_step  = jax.jit(env.step_env)
+
+obs, state = jit_reset(key, params)           # triggers compilation
+obs, state, reward, done, info = jit_step(key, state, action, params)  # full GPU speed
+```
+
+The first call compiles (takes ~1–2 minutes); all subsequent calls run at full GPU speed.
+
+## Floating-Point Precision
+
+| Environment | Recommended | Notes |
+|---|---|---|
+| `KolmogorovFlow` | `float64` | Pseudo-spectral 2D NS requires fp64 for JIT stability; fp32 may produce NaNs under XLA reordering |
+| `ChannelFlowSpectralEnv` | `float32` | Stable at fp32 with JIT; fp64 available but ~2x slower on A100 |
+
+Override via `env_config`:
+```python
+# Kolmogorov: float64 is the default and required for JIT stability
+env = KolmogorovFlow(env_config={"dt": 5e-4})          # smaller dt for fp32 experiments
+
+# Channel: toggle precision
+env = ChannelFlowSpectralEnv(env_config={"dtype": "float64"})
+```
+
+Or via the bash scripts:
+```bash
+./run_kolmogorov_docker.sh minimize_tke 100 float32   # float32 (may diverge)
+./run_channel_docker.sh drag_reduction 10 float64     # float64
+```
 
 ## Typical Usage
 
@@ -57,14 +93,19 @@ import jax
 import jax.numpy as jnp
 from hydrogym.jax.envs.kolmogorov import KolmogorovFlow
 
+jax.config.update("jax_enable_x64", True)  # required for Kolmogorov + JIT
+
 env = KolmogorovFlow(env_config={}, flow_config={})
 params = env.default_params
 
+jit_reset = jax.jit(env.reset_env)
+jit_step  = jax.jit(env.step_env)
+
 key = jax.random.PRNGKey(0)
-obs, state = env.reset_env(key, params)
+obs, state = jit_reset(key, params)
 
 action = jnp.zeros((params.action_dim,))
-obs, state, reward, done, info = env.step_env(key, state, action, params)
+obs, state, reward, done, info = jit_step(key, state, action, params)
 ```
 
 **Note:** The channel flow environment downloads a fully turbulent initial field from Hugging Face Hub (`dynamicslab/HydroGym-environments`) on the first run and caches it at `~/.cache/hydrogym/`.
