@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "hydrogym"
-version = "0.1.2.3"
+version = "1.0.0"
 authors = [
     "HydroGym Team"
 ]
@@ -9,7 +9,7 @@ maintainers = [
     "Ludger Paehler <paehlerludger@gmail.com>",
     "Jared Callaham <jared.callaham@gmail.com>",
 ]
-description = "A Reinforcement Learning Benchmarking Environment for Fluid Dynamics (with Firedrake, MAIA, and NEK5000 solver support)"
+description = "A Reinforcement Learning Benchmarking Environment for Fluid Dynamics (with Firedrake, JAX-Fluids, MAIA, and NEK5000 solver support)"
 license = "MIT"
 readme = "README.md"
 classifiers=[
@@ -22,6 +22,7 @@ classifiers=[
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Topic :: Scientific/Engineering :: Atmospheric Science",
     "Topic :: Scientific/Engineering :: Hydrology",
