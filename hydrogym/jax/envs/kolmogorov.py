@@ -219,12 +219,13 @@ class PseudoSpectralNavierStokes2D(IMEXEquation):
         double_derivative = (2j * jnp.pi) ** 2 * (self.kx**2 + self.ky**2)
         return 1 / (1 - time_step * self.flow.nu * double_derivative) * omega_hat
 
-    def nonlinear_terms(self, omega_hat):
+    def nonlinear_terms(self, omega_hat, control_field=None):
         """Computes the explicit (nonlinear) terms in the vorticity equation.
         Uses the stream function to compute velocity components in Fourier space.
 
         Args:
             omega_hat: fft of vorticity
+            control_field: tuple (cfx, cfy) of physical-space forcing arrays, or None
 
         Returns:
             terms: Nonlinear terms of the equation.
@@ -249,23 +250,22 @@ class PseudoSpectralNavierStokes2D(IMEXEquation):
         advection_hat = jnp.fft.rfftn(advection)
 
         forcing_hat = self.forcing_term()
-        control_hat = self.control_term(omega_hat)
+        control_hat = self.control_term(omega_hat, control_field=control_field)
         advection_hat = dealiasing(advection_hat)  # 2/3 dealiasing rule
 
         terms = advection_hat + forcing_hat + control_hat
         return terms
 
-    def control_term(self, omega_hat):
+    def control_term(self, omega_hat, control_field=None):
         """Computes the user-specified forcing term of the vorticity equation
         Args:
           omega_hat: Fourier transformed vorticity term
-          forcing: Forcing function as specified by environment or user
+          control_field: tuple (cfx, cfy) of physical-space forcing arrays, or None
         """
-        cfx, cfy = self.flow.control_function
-
-        if cfx is None:
+        if control_field is None:
             return jnp.zeros_like(omega_hat)
 
+        cfx, cfy = control_field
         cfx_hat = jnp.fft.rfftn(cfx)
         cfy_hat = jnp.fft.rfftn(cfy)
 
@@ -340,12 +340,21 @@ class KolmogorovFlow(JAXFlowEnvBase):
         super().__init__(env_config)
 
         self.flow = FlowConfig(**(flow_config or {}))
-        self.equation_cls = PseudoSpectralNavierStokes2D
-        self.integrator_cls = RungeKuttaCrankNicolson
 
         self.n, self.m = self.flow.grid_size
         self.x, self.y = self.flow.load_mesh("")
         self.kx, self.ky = self.flow.load_fft_mesh()
+
+        self._dt_override = (env_config or {}).get("dt", None)
+
+        default = self.default_params
+        self.equation = PseudoSpectralNavierStokes2D(self.flow)
+        self.integrator = RungeKuttaCrankNicolson(
+            flow=self.flow,
+            dt=float(default.dt),
+            save_n=int(default.save_time),
+            equation=self.equation,
+        )
 
     @property
     def name(self) -> str:
@@ -353,10 +362,11 @@ class KolmogorovFlow(JAXFlowEnvBase):
 
     @property
     def default_params(self) -> KolmogorovFlowParams:
-        return KolmogorovFlowParams(
-            action_dim=4,
-            obs_dim=self.flow.obs_size**2,
-        )
+        dt_override = getattr(self, "_dt_override", None)
+        kwargs = dict(action_dim=4, obs_dim=self.flow.obs_size**2)
+        if dt_override is not None:
+            kwargs["dt"] = float(dt_override)
+        return KolmogorovFlowParams(**kwargs)
 
     def action_space(self, params: Optional[KolmogorovFlowParams] = None):
         params = params or self.default_params
@@ -384,16 +394,6 @@ class KolmogorovFlow(JAXFlowEnvBase):
         forcing_y = jnp.zeros_like(self.y)
         return forcing_x, forcing_y
 
-    def _make_equation(
-        self,
-        control_field: Optional[Tuple[jnp.ndarray, jnp.ndarray]] = None,
-    ):
-        if control_field is None:
-            self.flow.control_function = (None, None)
-        else:
-            self.flow.control_function = control_field
-        return self.equation_cls(self.flow)
-
     def _rollout(
         self,
         omega_hat0: jnp.ndarray,
@@ -404,31 +404,18 @@ class KolmogorovFlow(JAXFlowEnvBase):
         Returns:
             final_state_hat, trajectory
         """
-        equation = self._make_equation(control_field)
-
-        # params fields become abstract traced arrays inside JIT, so lax.scan's
-        # length (computed from dt/save_time/action_time) must be derived from
-        # concrete Python scalars stored at construction time.
         default = self.default_params
         dt = float(default.dt)
         save_n = int(default.save_time)
         action_time = float(default.action_time)
 
-        integrator = self.integrator_cls(
-            flow=self.flow,
-            dt=dt,
-            save_n=save_n,
-            equation=equation,
-        )
-
-        # important: solve() uses flow.initialize_state(), so patch flow state first
-        self.flow.initialize_state = lambda: omega_hat0
-
-        final_state, trajectory = integrator.solve(
+        final_state, trajectory = self.integrator.solve(
             dt=dt,
             flow=self.flow,
             t_span=(0.0, action_time),
             save_n=save_n,
+            initial_state=omega_hat0,
+            control_field=control_field,
         )
         return final_state, trajectory
 
@@ -441,12 +428,20 @@ class KolmogorovFlow(JAXFlowEnvBase):
         stride_y = max(1, self.m // self.flow.obs_size)
 
         def obs_one_state(omega_hat):
-            pts = [
-                self._calculate_velocity_point(omega_hat, i, j)
-                for i in range(0, self.n, stride_x)
-                for j in range(0, self.m, stride_y)
-            ]
-            return jnp.asarray(pts)
+            # 1. Compute velocity in Fourier space for the whole grid ONCE
+            uhat, vhat = compute_velocity_fft(omega_hat, self.kx, self.ky)
+
+            # 2. Inverse FFT for the whole grid ONCE
+            ureal = jnp.fft.irfftn(uhat)
+            vreal = jnp.fft.irfftn(vhat)
+
+            # 3. Slice exactly at the stride indices to match the 64 grid points
+            u_sampled = ureal[::stride_x, ::stride_y]
+            v_sampled = vreal[::stride_x, ::stride_y]
+
+            # 4. Compute magnitude and flatten to 1D array
+            obs_matrix = jnp.sqrt(jnp.abs(u_sampled) ** 2 + jnp.abs(v_sampled) ** 2)
+            return obs_matrix.flatten()
 
         return jnp.mean(jax.vmap(obs_one_state)(trajectory), axis=0)
 

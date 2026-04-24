@@ -27,7 +27,6 @@ from numpy import ndarray
 
 pv.global_theme.allow_empty_mesh = True
 
-
 TargetThrustAngle = Array | float
 TargetThrustAngleFn = Callable[[Array | float], TargetThrustAngle]
 

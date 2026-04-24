@@ -66,9 +66,12 @@
 #
 # ── Usage ───────────────────────────────────────────────────────────────────
 #
-#     ./run_channel_docker.sh                    # Baseline: no actuation
-#     ./run_channel_docker.sh drag_reduction     # Small uniform suction
-#     ./run_channel_docker.sh strong_actuation   # Near-max amplitude jets
+#     ./run_channel_docker.sh [mode] [num_steps] [dtype]
+#
+#     ./run_channel_docker.sh                              # no actuation, 5 steps, float32
+#     ./run_channel_docker.sh drag_reduction               # small uniform suction
+#     ./run_channel_docker.sh strong_actuation 20          # near-max jets, 20 steps
+#     ./run_channel_docker.sh no_actuation 10 float64      # float64 precision
 #
 # ── Output ──────────────────────────────────────────────────────────────────
 #
@@ -87,125 +90,7 @@ source /home/easybuild/venvs/hydrogym_gpu/bin/activate
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MODE="${1:-no_actuation}"
-NUM_STEPS=5      # RL steps (each = 50 DNS sub-steps at dt=2e-4)
+NUM_STEPS="${2:-5}"
+DTYPE="${3:-float32}"
 
-echo "=== 3D Turbulent Channel Flow JAX Environment (Re_tau=180) ==="
-echo "Mode:      $MODE"
-echo "RL steps:  $NUM_STEPS  (= $((NUM_STEPS * 50)) DNS sub-steps, Δt_DNS=2e-4)"
-echo ""
-
-case "$MODE" in
-
-  no_actuation)
-    echo "Baseline: zero actuation — free turbulent evolution"
-    echo "  action = 0 (all 24 jet amplitudes set to zero)"
-    echo "  Shows natural WSS fluctuations without control."
-    echo ""
-    python - <<PYEOF
-import jax
-import jax.numpy as jnp
-from hydrogym.jax.envs.channel import ChannelFlowSpectralEnv
-
-# HF download happens here on first run (cached afterwards)
-env = ChannelFlowSpectralEnv(env_config={})
-params = env.default_params
-
-key = jax.random.PRNGKey(0)
-obs, state = env.reset_env(key, params)
-
-# Zero action: no wall jets, passive turbulence evolution
-action = jnp.zeros((params.action_dim,))
-
-print(f"{'Step':>5}  {'WSS':>12}  {'reward':>12}")
-print("-" * 35)
-for i in range($NUM_STEPS):
-    key, subkey = jax.random.split(key)
-    obs, state, reward, done, info = env.step_env(subkey, state, action, params)
-    # reward = -WSS, so WSS = -reward
-    print(f"{i:>5}  {float(-reward):>12.6f}  {float(reward):>12.6f}")
-PYEOF
-    ;;
-
-  drag_reduction)
-    echo "Drag reduction: small uniform suction at the walls"
-    echo "  action = 0.01 (uniform positive amplitude across all 24 jets)"
-    echo "  Gentle blowing/suction perturbs near-wall streaks to reduce drag."
-    echo "  Expected: WSS decreases relative to the no-actuation baseline."
-    echo ""
-    python - <<PYEOF
-import jax
-import jax.numpy as jnp
-from hydrogym.jax.envs.channel import ChannelFlowSpectralEnv
-
-env = ChannelFlowSpectralEnv(env_config={})
-params = env.default_params
-
-key = jax.random.PRNGKey(0)
-obs, state = env.reset_env(key, params)
-
-# Uniform low-amplitude suction across all jet locations.
-# The mean is subtracted internally (mass-flux neutral), so this
-# effectively creates a spatially uniform suction pattern.
-action = 0.01 * jnp.ones((params.action_dim,))
-
-print(f"{'Step':>5}  {'WSS':>12}  {'reward':>12}")
-print("-" * 35)
-for i in range($NUM_STEPS):
-    key, subkey = jax.random.split(key)
-    obs, state, reward, done, info = env.step_env(subkey, state, action, params)
-    print(f"{i:>5}  {float(-reward):>12.6f}  {float(reward):>12.6f}")
-PYEOF
-    ;;
-
-  strong_actuation)
-    echo "Strong actuation: alternating high-amplitude jets"
-    echo "  action alternates ±0.5 across the 6×4 jet grid"
-    echo "  Stress-tests the actuator: large perturbations to near-wall flow."
-    echo "  NOTE: very large actions may destabilize the simulation."
-    echo ""
-    python - <<PYEOF
-import jax
-import jax.numpy as jnp
-from hydrogym.jax.envs.channel import ChannelFlowSpectralEnv
-
-env = ChannelFlowSpectralEnv(env_config={})
-params = env.default_params
-
-key = jax.random.PRNGKey(0)
-obs, state = env.reset_env(key, params)
-
-# Checkerboard pattern: alternating +0.5 / -0.5 across the 6×4 jet grid.
-# After mean subtraction inside apply_jets_v this creates a spanwise-varying
-# forcing that targets the large-scale near-wall streaks.
-nx_jets, ny_jets = 6, 4
-i_idx = jnp.arange(nx_jets)[:, None]
-j_idx = jnp.arange(ny_jets)[None, :]
-pattern = jnp.where((i_idx + j_idx) % 2 == 0, 0.5, -0.5)
-action = pattern.reshape(-1)   # shape (24,)
-
-print(f"{'Step':>5}  {'WSS':>12}  {'reward':>12}")
-print("-" * 35)
-for i in range($NUM_STEPS):
-    key, subkey = jax.random.split(key)
-    obs, state, reward, done, info = env.step_env(subkey, state, action, params)
-    print(f"{i:>5}  {float(-reward):>12.6f}  {float(reward):>12.6f}")
-PYEOF
-    ;;
-
-  *)
-    echo "Unknown mode: $MODE"
-    echo "Usage: $0 [no_actuation|drag_reduction|strong_actuation]"
-    exit 1
-    ;;
-esac
-
-EXIT_CODE=$?
-
-echo ""
-if [ $EXIT_CODE -eq 0 ]; then
-    echo "Completed successfully."
-else
-    echo "Failed with exit code: $EXIT_CODE"
-fi
-
-exit $EXIT_CODE
+python "$SCRIPT_DIR/test_channel_env.py" "$MODE" --num-steps "$NUM_STEPS" --dtype "$DTYPE"

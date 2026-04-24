@@ -19,9 +19,12 @@
 #   unnecessarily large actuations and promotes efficient controllers.
 #
 # Usage:
-#     ./run_kolmogorov_docker.sh                      # Objective 1: minimize TKE
-#     ./run_kolmogorov_docker.sh maximize_tke         # Objective 2: maximize TKE
-#     ./run_kolmogorov_docker.sh no_actuation         # Baseline: zero action
+#     ./run_kolmogorov_docker.sh [mode] [num_steps] [dtype]
+#
+#     ./run_kolmogorov_docker.sh                           # minimize TKE, 10 steps, float64
+#     ./run_kolmogorov_docker.sh maximize_tke              # maximize TKE
+#     ./run_kolmogorov_docker.sh no_actuation 500          # baseline, 500 steps
+#     ./run_kolmogorov_docker.sh minimize_tke 1000 float32 # float32 (fast, may diverge)
 #
 # Actuation:
 #     The control input is the amplitude of four sinusoidal body-force modes
@@ -30,9 +33,9 @@
 #     with wavenumbers k1,k2,k3,k4 = 4,5,6,7 (above the base forcing wavenumber).
 #     Actions are clipped to [-0.5, 0.5].
 #
-# Output:
-#     kolmogorov_<mode>.png  --  vorticity snapshots comparing baseline vs
-#                                actuated trajectories
+# Precision:
+#     float64 (default) -- required for JIT stability; matches non-JIT behavior
+#     float32           -- faster but may produce NaNs due to solver instability under XLA
 #
 
 set -e
@@ -45,114 +48,7 @@ source /home/easybuild/venvs/hydrogym_gpu/bin/activate
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MODE="${1:-minimize_tke}"
-NUM_STEPS=10
+NUM_STEPS="${2:-10}"
+DTYPE="${3:-float64}"
 
-echo "=== Kolmogorov Flow JAX Environment ==="
-echo "Mode: $MODE"
-echo "Steps per run: $NUM_STEPS"
-echo ""
-
-case "$MODE" in
-
-  minimize_tke)
-    echo "Objective: Minimize TKE (suppress energy bursts)"
-    echo "  reward_alpha =  1.0  ->  reward = -(TKE + action_penalty)"
-    echo "  Action: small forcing to damp energy transfer"
-    echo ""
-    python - <<PYEOF
-import jax
-import jax.numpy as jnp
-from hydrogym.jax.envs.kolmogorov import KolmogorovFlow
-
-env = KolmogorovFlow(env_config={}, flow_config={})
-
-# reward_alpha > 0: penalize TKE -> agent learns to suppress energy bursts
-params = env.default_params.replace(reward_alpha=1.0)
-
-key = jax.random.PRNGKey(0)
-obs, state = env.reset_env(key, params)
-
-action = jnp.array([-0.25, -0.03, 0.02, 0.01])
-
-print(f"{'Step':>5}  {'mean_TKE':>12}  {'reward':>12}")
-print("-" * 35)
-for i in range($NUM_STEPS):
-    key, subkey = jax.random.split(key)
-    obs, state, reward, done, info = env.step_env(subkey, state, action, params)
-    print(f"{i:>5}  {float(info['mean_tke']):>12.4f}  {float(reward):>12.4f}")
-PYEOF
-    ;;
-
-  maximize_tke)
-    echo "Objective: Maximize TKE (enhance turbulent mixing)"
-    echo "  reward_alpha = -1.0  ->  reward = TKE - action_penalty"
-    echo "  Action: forcing to drive the flow into a more turbulent regime"
-    echo ""
-    python - <<PYEOF
-import jax
-import jax.numpy as jnp
-from hydrogym.jax.envs.kolmogorov import KolmogorovFlow
-
-env = KolmogorovFlow(env_config={}, flow_config={})
-
-# reward_alpha < 0: reward proportional to TKE -> agent learns to increase mixing
-params = env.default_params.replace(reward_alpha=-1.0)
-
-key = jax.random.PRNGKey(0)
-obs, state = env.reset_env(key, params)
-
-action = jnp.array([0.25, 0.03, -0.02, -0.01])
-
-print(f"{'Step':>5}  {'mean_TKE':>12}  {'reward':>12}")
-print("-" * 35)
-for i in range($NUM_STEPS):
-    key, subkey = jax.random.split(key)
-    obs, state, reward, done, info = env.step_env(subkey, state, action, params)
-    print(f"{i:>5}  {float(info['mean_tke']):>12.4f}  {float(reward):>12.4f}")
-PYEOF
-    ;;
-
-  no_actuation)
-    echo "Baseline: zero actuation (free turbulence evolution)"
-    echo "  reward_alpha = 1.0, action = [0, 0, 0, 0]"
-    echo "  Shows natural energy bursts without control"
-    echo ""
-    python - <<PYEOF
-import jax
-import jax.numpy as jnp
-from hydrogym.jax.envs.kolmogorov import KolmogorovFlow
-
-env = KolmogorovFlow(env_config={}, flow_config={})
-params = env.default_params.replace(reward_alpha=1.0)
-
-key = jax.random.PRNGKey(0)
-obs, state = env.reset_env(key, params)
-
-action = jnp.zeros((params.action_dim,))
-
-print(f"{'Step':>5}  {'mean_TKE':>12}  {'reward':>12}")
-print("-" * 35)
-for i in range($NUM_STEPS):
-    key, subkey = jax.random.split(key)
-    obs, state, reward, done, info = env.step_env(subkey, state, action, params)
-    print(f"{i:>5}  {float(info['mean_tke']):>12.4f}  {float(reward):>12.4f}")
-PYEOF
-    ;;
-
-  *)
-    echo "Unknown mode: $MODE"
-    echo "Usage: $0 [minimize_tke|maximize_tke|no_actuation]"
-    exit 1
-    ;;
-esac
-
-EXIT_CODE=$?
-
-echo ""
-if [ $EXIT_CODE -eq 0 ]; then
-    echo "Completed successfully."
-else
-    echo "Failed with exit code: $EXIT_CODE"
-fi
-
-exit $EXIT_CODE
+python "$SCRIPT_DIR/test_kolmogorov_env.py" "$MODE" --num-steps "$NUM_STEPS" --dtype "$DTYPE"
