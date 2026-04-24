@@ -19,7 +19,9 @@ Note: At Re=100, the steady state is linearly unstable (vortex shedding).
 """
 
 import os
+
 import firedrake as fd
+
 import hydrogym.firedrake as hgym
 
 output_dir = "output"

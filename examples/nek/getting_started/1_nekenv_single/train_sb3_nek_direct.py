@@ -4,10 +4,10 @@ Train SB3 agent on NEK5000 single-agent environment (NekEnv).
 Includes Monitor, DummyVecEnv, TensorBoard, and VecNormalize best practices.
 """
 
-import sys
 import argparse
-from pathlib import Path
+import sys
 from datetime import datetime
+from pathlib import Path
 
 from hydrogym.nek import NekEnv
 
@@ -28,9 +28,9 @@ def train_single_agent(args):
 
     # Import SB3 components
     try:
+        from stable_baselines3.common.callbacks import CheckpointCallback
         from stable_baselines3.common.monitor import Monitor
         from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
-        from stable_baselines3.common.callbacks import CheckpointCallback
 
         if args.algo == "PPO":
             from stable_baselines3 import PPO as Algorithm
@@ -53,6 +53,12 @@ def train_single_agent(args):
             "configuration_file": args.config_file,
         }
         env = NekEnv(env_config=env_config)
+
+        # Modify the par file to ensure the simulation configuration is correct before training
+        from hydrogym.nek.nek_lib.nek_utils import NEK_INIT
+
+        nek_init = NEK_INIT(nek=env.conf.simulation, drl=env.conf.runner, rank_folder=env.run_folder)
+        nek_init.rewrite_REA_v19()  # Rewrite the par file, v19 corresponds to the new Nek5000 format
         env = Monitor(env)  # CRITICAL: Enables episode reward/length logging
         return env
 
@@ -61,6 +67,8 @@ def train_single_agent(args):
 
     # 3. Apply VecNormalize (Crucial for Fluid Dynamics)
     # This scales inputs to mean 0, std 1 so the Neural Net learns faster.
+    # VecNormalize is not used in the literature, so it is not guaranteed to work.
+    # Please see MARL set for more details.
     env = VecNormalize(env, norm_obs=True, norm_reward=True, clip_obs=10.0)
 
     print("Environment created (Wrapped in Monitor, DummyVecEnv, VecNormalize):")

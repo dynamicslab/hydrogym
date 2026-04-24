@@ -84,6 +84,7 @@ flax = { version = "*", optional = true }
 gitpython = { version = "*", optional = true }
 h5py = { version = "*", optional = true }
 optax = { version = "*", optional = true }
+pyvista = { version = "*", optional = true }
 
 
 [tool.poetry.extras]
@@ -139,7 +140,7 @@ line_length = 120
 known_first_party = ["hydrogym"]
 
 [tool.codespell]
-skip = '*.svg,*.ipynb'
+skip = '*.svg,*.ipynb,./docs/package-lock.json'
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

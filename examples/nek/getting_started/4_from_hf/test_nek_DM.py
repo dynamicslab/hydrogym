@@ -21,12 +21,14 @@ Note:
     - Opposition control: action = -observation
 """
 
-import sys
 import argparse
+import sys
 from pathlib import Path
+
 import numpy as np
 
 from hydrogym.nek import NekEnv
+from hydrogym.nek.nek_lib.nek_utils import NEK_INIT
 
 
 def main():
@@ -45,6 +47,10 @@ def main():
         use_clean_cache=False,
         local_fallback_dir=args.local_dir,
     )
+
+    # Rewrite the par file to ensure the simulation configuration is correct
+    nek_init = NEK_INIT(nek=env.conf.simulation, drl=env.conf.runner, rank_folder=env.run_folder)
+    nek_init.rewrite_REA_v19()
 
     print("\nEnvironment info:")
     print("=" * 80)

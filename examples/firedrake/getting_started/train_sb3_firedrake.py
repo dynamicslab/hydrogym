@@ -31,10 +31,10 @@ Recommended dt by environment:
     - step: 1e-2 to 1e-3
 """
 
-import sys
 import argparse
-from pathlib import Path
+import sys
 from datetime import datetime
+from pathlib import Path
 from typing import Optional
 
 import numpy as np
@@ -56,9 +56,9 @@ def train_single_agent(args):
 
     # Import SB3 components
     try:
+        from stable_baselines3.common.callbacks import CheckpointCallback
         from stable_baselines3.common.monitor import Monitor
         from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
-        from stable_baselines3.common.callbacks import CheckpointCallback
 
         if args.algo == "PPO":
             from stable_baselines3 import PPO as Algorithm
@@ -74,8 +74,8 @@ def train_single_agent(args):
 
     # Import Firedrake components
     try:
-        from hydrogym import FlowEnv
         import hydrogym.firedrake as firedrake
+        from hydrogym import FlowEnv
     except ImportError as e:
         print(f"✗ Error importing Firedrake: {e}")
         print("Make sure Firedrake is installed: https://www.firedrakeproject.org/download.html")

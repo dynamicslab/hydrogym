@@ -24,7 +24,9 @@ Note: This uses RotaryCylinder (with tangential actuation capability),
 """
 
 import os
+
 import psutil
+
 import hydrogym.firedrake as hgym
 
 # Create output directory for checkpoints

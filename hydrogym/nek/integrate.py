@@ -1,13 +1,11 @@
-from typing import Callable, Iterable, Optional, Tuple, Dict
 import os
 import time
+from typing import Callable, Dict, Iterable, Optional, Tuple
 
 import numpy as np
 import scipy.io as sio
 
 from hydrogym.core import CallbackBase
-
-from .nek_lib.nek_utils import show_title, show_end
 
 
 def integrate(
@@ -36,7 +34,6 @@ def integrate(
     Returns:
       The environment after integration
     """
-    show_title()
     t_start, t_end = t_span
     iter = 0
     t = t_start
@@ -274,5 +271,4 @@ def integrate(
         sio.savemat(filename, agent_dict)
         print(f"[INTEGRATE] SAVED RECORD to {filename}", flush=True)
 
-    show_end()
     return env

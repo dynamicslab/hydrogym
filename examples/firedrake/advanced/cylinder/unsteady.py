@@ -21,8 +21,10 @@ Physical setup:
 """
 
 import os
+
 import firedrake as fd
 import psutil
+
 import hydrogym.firedrake as hgym
 
 Re = 100

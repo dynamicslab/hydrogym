@@ -44,7 +44,7 @@ if [ "$MODE" == "train" ]; then
 
     cd "$WORK_DIR" || exit 1
 
-    mpirun \
+    mpirun --use-hwthread-cpus\
         -np 1 python ../train_sb3_from_hf.py \
             --env "$ENV_NAME" \
             --local-dir "$LOCAL_DIR" \
@@ -66,7 +66,7 @@ else
 
     cd "$WORK_DIR" || exit 1
 
-    mpirun \
+    mpirun --use-hwthread-cpus\
         -np 1 python ../test_nek_DM.py \
             --env "$ENV_NAME" \
             --local-dir "$LOCAL_DIR" \

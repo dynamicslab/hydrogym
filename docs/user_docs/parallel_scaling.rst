@@ -1,2 +1,0 @@
-Determining Scaling Behaviour
-=============================

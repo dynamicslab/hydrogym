@@ -1,6 +1,50 @@
 {
-    "name": "hydrogym-docs",
-    "scripts": {
-        "build": "make html"
-    }
+  "name": "HydroGym Documentation",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "docusaurus": "docusaurus",
+    "start": "docusaurus start",
+    "generate-api": "cd .. && pydoc-markdown && cp -r docs/docs/api/hydrogym/* docs/docs/api/ && rm -rf docs/docs/api/hydrogym && find docs/docs/api -name '*.md' -exec sed -i.bak 's/{\\([a-z_]*\\)}/`{\\1}`/g' {} \\; && find docs/docs/api -name '*.bak' -delete && sed -i.bak 's|api/hydrogym/|api/|g' docs/docs/api/sidebars-api.json && rm -f docs/docs/api/sidebars-api.json.bak && python3 -c \"import json; f=open('docs/docs/api/sidebars-api.json'); d=json.load(f); f.close(); f=open('docs/docs/api/sidebars-api.json','w'); json.dump(d['items'][0], f, indent=2)\"",
+    "build": "npm run generate-api && docusaurus build",
+    "swizzle": "docusaurus swizzle",
+    "deploy": "docusaurus deploy",
+    "clear": "docusaurus clear",
+    "serve": "docusaurus serve",
+    "write-translations": "docusaurus write-translations",
+    "write-heading-ids": "docusaurus write-heading-ids",
+    "typecheck": "tsc"
+  },
+  "dependencies": {
+    "@docusaurus/core": "3.9.2",
+    "@docusaurus/preset-classic": "3.9.2",
+    "@mdx-js/react": "^3.0.0",
+    "clsx": "^2.0.0",
+    "prism-react-renderer": "^2.3.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "rehype-katex": "^7",
+    "remark-math": "^6"
+  },
+  "devDependencies": {
+    "@docusaurus/module-type-aliases": "3.9.2",
+    "@docusaurus/tsconfig": "3.9.2",
+    "@docusaurus/types": "3.9.2",
+    "typescript": "~5.6.2"
+  },
+  "browserslist": {
+    "production": [
+      ">0.5%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 3 chrome version",
+      "last 3 firefox version",
+      "last 5 safari version"
+    ]
+  },
+  "engines": {
+    "node": ">=20.0"
+  }
 }

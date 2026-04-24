@@ -23,12 +23,14 @@ Note:
     - Each agent receives observations from sensors near its actuator
 """
 
-import sys
 import argparse
+import sys
 from pathlib import Path
+
 import numpy as np
 
 from hydrogym.nek import NekEnv
+from hydrogym.nek.nek_lib.nek_utils import NEK_INIT
 from hydrogym.nek.parallel_env import NekParallelEnv
 
 
@@ -56,6 +58,10 @@ def main():
     }
 
     base_env = NekEnv(env_config=env_config)
+    nek_init = NEK_INIT(nek=base_env.conf.simulation, drl=base_env.conf.runner, rank_folder=base_env.run_folder)
+
+    # Rewrite the par file, v19 corresponds to the new Nek5000 format
+    nek_init.rewrite_REA_v19()
 
     # Wrap with parallel multi-agent environment
     env = NekParallelEnv(base_env)
@@ -98,8 +104,8 @@ def main():
         # Strategy 2: Uniform blowing (uncomment to test)
         # actions = {agent: np.ones(1, dtype=np.float32) * 0.01 for agent in env.agents}
 
-        # Strategy 3: Opposition control per agent (uncomment to test)
-        # actions = {agent: -obs_dict[agent][:1] for agent in env.agents}
+        # Strategy 3: Opposition control per agent, opposing the wall-normal velocity in this case
+        actions = {agent: -obs_dict[agent][1:] for agent in env.agents}
 
         # Step environment
         obs_dict, rewards_dict, terminated_dict, truncated_dict, infos_dict = env.step(actions)

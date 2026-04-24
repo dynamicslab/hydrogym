@@ -45,7 +45,7 @@ V17_PARAM_MAPPING = {
 
 
 class NEK_INIT:
-    def __init__(self, nek: nek, drl: drl, rank_folder) -> None:
+    def __init__(self, nek: nek, drl: drl, rank_folder):
         """
         A class for initialization of NEK Dependencies
         nek:[dataclass]Simulation config
@@ -56,16 +56,11 @@ class NEK_INIT:
         self.drl = drl
         self.rank_folder = rank_folder
         self.is_done = []
-        # -- Show title --
-        show_title()
-
-    # -----------------------------------------
 
     def _is_v17(self) -> bool:
         version = getattr(self.nek, "solver_version", "v19")
         return "v17" in str(version).lower()
 
-    # -----------------------------------------
     def get_Case_Files(self):
         """
         Get required case files for running simulation
@@ -135,7 +130,6 @@ class NEK_INIT:
 
         return True
 
-    # -----------------------------------------
     def write_SESSION_NAME(self):
         """Write the session name and where the code should be executed"""
 
@@ -153,16 +147,14 @@ class NEK_INIT:
         print("[IO] SESSION NAME WRITTEN", flush=True)
         return True
 
-    # -----------------------------------------
     def rewrite_REA_v17(self):
         """
         Re-Write parameter files for NEK version <= 17.
         For the controllable params, please see config.
         """
-        file_path = os.path.join(self.nek.compile_path, f"{self.nek.CASENAME}.rea")
         output_path = os.path.join(self.rank_folder, f"{self.nek.CASENAME}.rea")
 
-        with open(file_path, "r") as f:
+        with open(output_path, "r") as f:
             lines = f.readlines()
             updated_lines = []
             for line in lines:
@@ -181,7 +173,6 @@ class NEK_INIT:
 
         return True
 
-    # -----------------------------------------
     def rewrite_REA_v19(self):
         """
         Write parameter files for NEK version >= 19
@@ -191,9 +182,7 @@ class NEK_INIT:
         with open(fname, "w") as fpar:
             fpar.write("# nek parameter file\n")
 
-            # ------------------------
             # General Setup
-            # ------------------------
             fpar.write("[GENERAL]\n")
             if self.nek.stopAt is not None:
                 fpar.write("stopAt = %s   \n" % self.nek.stopAt)
@@ -212,9 +201,7 @@ class NEK_INIT:
             fpar.write("filterCutoffRatio = %f \n" % self.nek.filterCutoffRatio)
             fpar.write("\n")
 
-            # ---------------------------
             # DRL SETUP
-            # ---------------------------
             userp = 1
             fpar.write("#------DRL SETUP-------\n")
             fpar.write("userParam%02d = %s \n" % (userp, self.nek.ndrl))  # Number of DRL step
@@ -233,23 +220,20 @@ class NEK_INIT:
             # userp+ = 1
             fpar.write("#---------------------\n")
             fpar.write("\n")
-            # ------------------------
+
             # Problem Type
-            # ------------------------
             fpar.write("[PROBLEMTYPE]\n")
             fpar.write("stressFormulation = %s\n" % self.nek.stressFormulation)
             fpar.write("variableProperties = %s\n" % self.nek.variableProperties)
             fpar.write("\n")
-            # ------------------------
+
             # PRESSURE
-            # ------------------------
             fpar.write("[PRESSURE]\n")
             fpar.write("residualTol = %e\n" % self.nek.p_residualTol)
             fpar.write("residualProj = %s\n" % self.nek.p_residualProj)
             fpar.write("\n")
-            # ------------------------
+
             # VELOCITY
-            # ------------------------
             fpar.write("[VELOCITY]\n")
             fpar.write("residualTol = %e\n" % self.nek.v_residualTol)
             fpar.write("residualProj = %s\n" % self.nek.v_residualProj)
@@ -257,46 +241,39 @@ class NEK_INIT:
             fpar.write("viscosity = %f\n" % self.nek.viscosity)
             fpar.write("advection = %s\n" % self.nek.advection)
             fpar.write("\n")
-            # ------------------------
+
             # _RUNPAR
-            # ------------------------
             fpar.write("[_RUNPAR]\n")
             fpar.write("PARFWRITE = %s\n" % self.nek.PARFWRITE)
             fpar.write("outparfile = %s\n" % self.nek.PARFNAME)
             fpar.write("\n")
-            # ------------------------
+
             # MONITOR
-            # ------------------------
             fpar.write("[_MONITOR]\n")
             fpar.write("LOGLEVEL = %d\n" % self.nek.LOGLEVEL)
             fpar.write("WALLTIME = %s\n" % self.nek.WALLTIME)
             fpar.write("\n")
-            # ------------------------
+
             # _CHECKPOINT
-            # ------------------------
             fpar.write("[_CHKPOINT]\n")
             fpar.write("READCHKPT = %s\n" % self.nek.READCHKPT)
             fpar.write("CHKPFNUMBER = %d\n" % self.nek.CHKPFNUMBER)
             fpar.write("CHKPINTERVAL = %d\n" % self.nek.CHKPINTERVAL)
             fpar.write("\n")
-            # ------------------------
+
             # _STAT
-            # ------------------------
             fpar.write("[_STAT]\n")
             fpar.write("AVSTEP = %d\n" % self.nek.AVSTEP)
             fpar.write("IOSTEP = %d\n" % self.nek.IOSTEP)
             fpar.write("\n")
-            # ------------------------
+
             # _STAT
-            # ------------------------
             fpar.write("[_TSRS]\n")
             fpar.write("SMPSTEP = %d\n" % self.nek.SMPSTEP)
             fpar.write("\n")
             fpar.close()
             print(f"[IO] WRITTEN .par file: {fname}", flush=True)
         return True
-
-    # -----------------------------------------
 
     def init_restart(self):
         """Copy the restart file to the target folder only if RSTART NOT EXIST"""
@@ -334,7 +311,6 @@ class NEK_INIT:
 
         return True
 
-    # -----------------------------------------
     def write_timeSeries(self):
         """Write the int_pos file for the case file"""
         is_done = write_channel(
@@ -348,8 +324,6 @@ class NEK_INIT:
             lx1=self.nek.lx1,
         )
         return is_done
-
-    # -----------------------------------------
 
     def main(self):
         # -- Initialize Nek --
@@ -377,33 +351,4 @@ def remove_sch(current_path):
     if len(file_list) > 0:
         for f in file_list:
             os.remove(os.path.join(current_path, f))
-    return
-
-
-def show_title():
-    text_ = """
---------------------------------------------------------
-███╗   ██╗███████╗██╗  ██╗    ██████╗ ██████╗ ██╗     
-████╗  ██║██╔════╝██║ ██╔╝    ██╔══██╗██╔══██╗██║     
-██╔██╗ ██║█████╗  █████╔╝     ██║  ██║██████╔╝██║     
-██║╚██╗██║██╔══╝  ██╔═██╗     ██║  ██║██╔══██╗██║     
-██║ ╚████║███████╗██║  ██╗    ██████╔╝██║  ██║███████╗
-            NEK5000 Reinforcement Learning
-                    HydroGym-dev
-                    Yuning Wang
---------------------------------------------------------
-
-"""
-    print(text_, flush=True)
-    return
-
-
-def show_end():
-    text_ = """
-▗▖  ▗▖▗▄▄▄▖▗▖ ▗▖    ▗▄▄▄ ▗▄▄▖ ▗▖       ▗▄▄▄▖▗▖  ▗▖▗▄▄▄ 
-▐▛▚▖▐▌▐▌   ▐▌▗▞▘    ▐▌  █▐▌ ▐▌▐▌       ▐▌   ▐▛▚▖▐▌▐▌  █
-▐▌ ▝▜▌▐▛▀▀▘▐▛▚▖     ▐▌  █▐▛▀▚▖▐▌       ▐▛▀▀▘▐▌ ▝▜▌▐▌  █
-▐▌  ▐▌▐▙▄▄▖▐▌ ▐▌    ▐▙▄▄▀▐▌ ▐▌▐▙▄▄▖    ▐▙▄▄▖▐▌  ▐▌▐▙▄▄▀
-"""
-    print(text_, flush=True)
     return

@@ -22,7 +22,7 @@ WORK_DIR="./train_run"
 LOCAL_DIR="/workspace/hydrogym/packaged_envs"
 ENV_NAME="TCFmini_3D_Re180"
 NPROC_NEK=10
-NUM_STEPS=100
+NUM_STEPS=1000
 TOTAL_TIMESTEPS=50000
 MODE="${1:-test}"  # test or train
 
@@ -44,7 +44,7 @@ if [ "$MODE" == "train" ]; then
 
     cd "$WORK_DIR" || exit 1
 
-    mpirun \
+    mpirun --use-hwthread-cpus\
         -np 1 python ../train_sb3_parallel.py \
             --env "$ENV_NAME" \
             --local-dir "$LOCAL_DIR" \
@@ -66,7 +66,7 @@ else
 
     cd "$WORK_DIR" || exit 1
 
-    mpirun \
+    mpirun --use-hwthread-cpus\
         -np 1 python ../test_nek_parallel.py \
             --env "$ENV_NAME" \
             --local-dir "$LOCAL_DIR" \
