@@ -1,0 +1,107 @@
+/**
+ * CSS files with the .module.css suffix will be treated as CSS modules
+ * and scoped locally.
+ *
+ * Hero background matches https://smokbel.github.io/TheHydroGymProject/ —
+ * logo SVG as cover image plus a light scrim (same as their inline styles).
+ */
+
+.heroBanner {
+  padding: 4rem 0;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  min-height: 500px;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: #fff;
+}
+
+.heroBanner::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url('/img/logo.svg');
+  background-size: cover;
+  background-position: center;
+  z-index: 0;
+}
+
+.heroBanner::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.04);
+  z-index: 1;
+}
+
+.heroBanner :global(.container) {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  justify-content: center;
+}
+
+/* Matches .hero-box on https://smokbel.github.io/TheHydroGymProject/ */
+.heroBox {
+  position: relative;
+  z-index: 2;
+  background: rgba(9, 34, 36, 0.352);
+  padding: 3.5rem 4rem;
+  text-align: center;
+  color: #fff;
+  max-width: 560px;
+  width: 100%;
+}
+
+.heroRule {
+  border: none;
+  border-top: 1.5px solid rgba(255, 255, 255, 0.55);
+  margin: 0 auto 1.4rem;
+  width: 70%;
+}
+
+.heroRuleBottom {
+  margin: 1.4rem auto 0;
+}
+
+.heroTitle,
+.heroSubtitle {
+  color: #fff;
+}
+
+.heroSubtitle {
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.heroCta {
+  border: 1.5px solid rgba(255, 255, 255, 0.75);
+  background: transparent;
+  color: #fff;
+}
+
+.heroCta:hover {
+  background: #fff;
+  color: #222;
+  border-color: #fff;
+}
+
+@media screen and (max-width: 996px) {
+  .heroBanner {
+    padding: 2rem;
+  }
+
+  .heroBox {
+    padding: 2rem 1.5rem;
+  }
+}
+
+.buttons {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 2rem;
+}

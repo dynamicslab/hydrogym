@@ -7,8 +7,6 @@ import scipy.io as sio
 
 from hydrogym.core import CallbackBase
 
-from .nek_lib.nek_utils import show_end, show_title
-
 
 def integrate(
     env,
@@ -36,7 +34,6 @@ def integrate(
     Returns:
       The environment after integration
     """
-    show_title()
     t_start, t_end = t_span
     iter = 0
     t = t_start
@@ -274,5 +271,4 @@ def integrate(
         sio.savemat(filename, agent_dict)
         print(f"[INTEGRATE] SAVED RECORD to {filename}", flush=True)
 
-    show_end()
     return env

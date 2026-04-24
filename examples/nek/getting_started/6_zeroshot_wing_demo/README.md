@@ -9,6 +9,7 @@ __This is a deployment/evaluation demo only (no training). The template and cont
 ## What the script does
 
 `test_nek_pettingzoo.py`:
+
 - loads a base `NekEnv` via `NekEnv.from_hf(...)` and wraps it with `make_pettingzoo_env(...)`
 - builds one controller per entry in `POLICY_SPECS` (from `meta_policy_small_wing_template.py`)
 - assigns each controller to actuator agents by `x_range` and `side` (`SS` means `y > 0`, `PS` means `y < 0`)
@@ -41,6 +42,7 @@ obs_dict, rewards_dict, terminations, truncations, infos = env.step(actions)
 ## Usage
 
 ### Recommended: use the runner script
+
 From `6_zeroshot_wing_demo/`:
 
 ```bash
@@ -56,6 +58,7 @@ mpirun -np 1 python test_nek_pettingzoo.py : -np 12 nek5000
 ```
 
 Legacy policy template + run root:
+
 ```bash
 mpirun -np 1 python test_nek_pettingzoo.py \
   --policy-template ./meta_policy_small_wing_template.py \
@@ -65,6 +68,7 @@ mpirun -np 1 python test_nek_pettingzoo.py \
 ```
 
 Useful overrides:
+
 - `--policy-template PATH` (defaults to `./meta_policy_small_wing_template.py`)
 - `--env ENV_NAME` (defaults from template `ENV_NAME`)
 - `--nproc NPROC` (defaults from template `NPROC`)
@@ -78,6 +82,7 @@ Useful overrides:
 The template defines a lightweight legacy-`MetaPolicy.py`-style configuration.
 
 Required top-level variables:
+
 - `ENV_NAME`
 - `NPROC`
 - `NUM_STEPS`
@@ -85,6 +90,7 @@ Required top-level variables:
 - `POLICY_SPECS` (list of policy group dicts)
 
 Each `POLICY_SPECS` entry supports:
+
 - `name`
 - `x_range: [x_min, x_max]`
 - `side: "SS"` (y>0) or `"PS"` (y<0)
@@ -95,6 +101,7 @@ Each `POLICY_SPECS` entry supports:
 - RL algorithms only: `agent_run_name`, `policy`, and/or `model_path`
 
 Algorithm semantics:
+
 - `ZERO` outputs an all-zero action (no model needed)
 - `BL` outputs a constant action equal to `action_max` (no model needed)
 - `PPO`/`TD3`/`DDPG` load a Stable-Baselines3 model from `model_path`/`POLICY_ROOT`

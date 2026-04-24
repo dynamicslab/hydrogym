@@ -134,3 +134,6 @@ dmypy.json
 
 .DS_store
 examples/firedrake/getting_started/output/
+
+# VSCode
+.vscode/
