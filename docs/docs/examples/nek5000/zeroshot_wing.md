@@ -2,27 +2,30 @@
 sidebar_position: 7
 ---
 
-# Zero-Shot Wing Deployment (Multi-Policy MARL)
+# Zero-Shot Wing Deployment
 
-Zero-shot deployment demo for the small NACA4412 wing case: multiple control policies are mapped to actuator subsets and executed together in one PettingZoo rollout.
+This demo shows how to deploy multiple pre-trained control policies simultaneously on the NACA4412 small-wing NEK5000 case using a PettingZoo rollout. Different policies are mapped to spatially distinct subsets of the wing actuators by chordwise position and pressure/suction side, and executed together in a single simulation without any additional training.
 
-**This is a deployment/evaluation demo only (no training). The template and controllers are intended for demonstration and should not be used to draw physical conclusions.**
+:::warning[Deployment only]
+This is an evaluation demo. No training is performed. The controllers and template values are illustrative and should not be used to draw physical conclusions about the wing case.
+:::
 
-> NOTE: The provided Nek5000 executable is pre-compiled for this chapter, so this demo focuses on the DRL-style rollout/deployment workflow.
+All scripts live in [`examples/nek/getting_started/6_zeroshot_wing_demo/`](https://github.com/dynamicslab/hydrogym/tree/main/examples/nek/getting_started/6_zeroshot_wing_demo).
 
-## What the script does
+## What the demo does
 
-`test_nek_pettingzoo.py`:
-- loads a base `NekEnv` via `NekEnv.from_hf(...)` and wraps it with `make_pettingzoo_env(...)`
-- builds one controller per entry in `POLICY_SPECS` (from `meta_policy_small_wing_template.py`)
-- assigns each controller to actuator agents by `x_range` and `side` (`SS` means `y > 0`, `PS` means `y < 0`)
-- refreshes each group's actions every `drl_step` steps (refresh at step `0`; otherwise actions are held)
-- clips actions to `action_bounds`
-- computes an “inverted” + scaled reward summary for display (deployment-only)
+[`zeroshot_demo_pettingzoo.py`](https://github.com/dynamicslab/hydrogym/blob/main/examples/nek/getting_started/6_zeroshot_wing_demo/zeroshot_demo_pettingzoo.py):
 
-Unassigned actuator agents receive zero action.
+1. Loads a base [`NekEnv`](../../api/nek/env) via `NekEnv.from_hf("NACA4412_3D_Re75000_AOA5", nproc=12)` and wraps it with [`make_pettingzoo_env`](../../api/nek/pettingzoo_env).
+2. Reads the `POLICY_SPECS` list from the policy template (default: `meta_policy_small_wing_template.py`).
+3. Assigns each policy entry to the actuator agents whose chordwise coordinate falls within `x_range` and whose side matches `"SS"` (suction side, y > 0) or `"PS"` (pressure side, y < 0).
+4. Queries each controller every `drl_step` environment steps; between refreshes the last action is held constant for the assigned actuator group.
+5. Clips all actions to `action_bounds` before passing them to the environment.
+6. Prints a reward summary table at the end to help compare controller configurations.
 
-## Interface (PettingZoo rollout)
+Actuator agents not assigned to any policy entry receive a zero action throughout the rollout.
+
+## PettingZoo rollout interface
 
 ```python
 from hydrogym.nek import NekEnv
@@ -36,87 +39,86 @@ actions = {agent: controller(obs_dict[agent]) for agent in env.agents}
 obs_dict, rewards_dict, terminations, truncations, infos = env.step(actions)
 ```
 
-## Files
+## Example scripts
 
-- `test_nek_pettingzoo.py` - zero-shot multi-policy rollout demo (deployment only)
-- `meta_policy_small_wing_template.py` - template defining `ENV_NAME`, `NPROC`, and `POLICY_SPECS`
-- `run_pettingzoo_docker.sh` - runner script (module load + workspace prep + `mpirun`)
+| File | Purpose |
+|------|---------|
+| [`zeroshot_demo_pettingzoo.py`](https://github.com/dynamicslab/hydrogym/blob/main/examples/nek/getting_started/6_zeroshot_wing_demo/zeroshot_demo_pettingzoo.py) | Multi-policy rollout demo |
+| [`meta_policy_small_wing_template.py`](https://github.com/dynamicslab/hydrogym/blob/main/examples/nek/getting_started/6_zeroshot_wing_demo/meta_policy_small_wing_template.py) | Template defining `ENV_NAME`, `NPROC`, and `POLICY_SPECS` |
+| [`run_pettingzoo_docker.sh`](https://github.com/dynamicslab/hydrogym/blob/main/examples/nek/getting_started/6_zeroshot_wing_demo/run_pettingzoo_docker.sh) | Docker/MPI launcher |
 
-## Usage
+## Running the demo
 
-### Recommended: use the runner script
-From `6_zeroshot_wing_demo/`:
+The runner script is the recommended entry point — it handles module loading and workspace preparation automatically:
 
 ```bash
+# Default template
 ./run_pettingzoo_docker.sh
+
+# Specify a root directory containing pre-trained model runs
 ./run_pettingzoo_docker.sh --policy-root /workspace/legacy_runs
 ```
 
-### Direct: run the Python deployment script
+To invoke the Python script directly:
 
-Default template:
 ```bash
-mpirun -np 1 python test_nek_pettingzoo.py : -np 12 nek5000
-```
+# Default template
+mpirun -np 1 python zeroshot_demo_pettingzoo.py : -np 12 nek5000
 
-Legacy policy template + run root:
-```bash
-mpirun -np 1 python test_nek_pettingzoo.py \
+# Custom template and policy root
+mpirun -np 1 python zeroshot_demo_pettingzoo.py \
   --policy-template ./meta_policy_small_wing_template.py \
   --policy-root /path/to/legacy_runs \
   --steps 3000 \
   : -np 12 nek5000
 ```
 
-Useful overrides:
-- `--policy-template PATH` (defaults to `./meta_policy_small_wing_template.py`)
-- `--env ENV_NAME` (defaults from template `ENV_NAME`)
-- `--nproc NPROC` (defaults from template `NPROC`)
-- `--steps NUM_STEPS` (defaults from template `NUM_STEPS`)
-- `--policy-root PATH` (where RL model run folders live)
-- `--local-dir PATH` (optional fallback dir for packaged envs)
-- `--log-every N` (reward table frequency)
+Available command-line overrides:
 
-## Policy Template (`meta_policy_small_wing_template.py`)
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--policy-template PATH` | `./meta_policy_small_wing_template.py` | Path to the policy template |
+| `--env ENV_NAME` | From template `ENV_NAME` | Override the environment name |
+| `--nproc NPROC` | From template `NPROC` | Number of solver processes |
+| `--steps NUM_STEPS` | From template `NUM_STEPS` | Total rollout steps |
+| `--policy-root PATH` | From template `POLICY_ROOT` | Root directory for RL model run folders |
+| `--local-dir PATH` | — | Optional local fallback for packaged environments |
+| `--log-every N` | — | Reward table print frequency |
 
-The template defines a lightweight legacy-`MetaPolicy.py`-style configuration.
+## Policy template format
 
-Required top-level variables:
-- `ENV_NAME`
-- `NPROC`
-- `NUM_STEPS`
-- `POLICY_ROOT` (default for `--policy-root`)
-- `POLICY_SPECS` (list of policy group dicts)
+`meta_policy_small_wing_template.py` defines the following top-level variables:
 
-Each `POLICY_SPECS` entry supports:
-- `name`
-- `x_range: [x_min, x_max]`
-- `side: "SS"` (y > 0) or `"PS"` (y < 0)
-- `algorithm: "PPO" | "TD3" | "DDPG" | "BL" | "ZERO"`
-- `drl_step` (action refresh interval; actions are held between refreshes)
-- `action_bounds: [min, max]`
-- optional scaling knobs: `u_tau`, `baseline_dudy`
-- RL algorithms only: `agent_run_name`, `policy`, and/or `model_path`
+| Variable | Type | Description |
+|----------|------|-------------|
+| `ENV_NAME` | `str` | Environment name for `NekEnv.from_hf()` |
+| `NPROC` | `int` | Number of NEK5000 solver processes |
+| `NUM_STEPS` | `int` | Total rollout length |
+| `POLICY_ROOT` | `str` | Default root directory for RL model checkpoints |
+| `POLICY_SPECS` | `list[dict]` | List of policy group definitions |
 
-Algorithm semantics:
-- `ZERO` outputs an all-zero action (no model needed)
-- `BL` outputs a constant action equal to `action_max` (no model needed)
-- `PPO`/`TD3`/`DDPG` load a Stable-Baselines3 model from `model_path`/`POLICY_ROOT`
+Each entry in `POLICY_SPECS` supports:
 
-For overlapping actuator regions, the last-assigned policy takes precedence.
+| Key | Description |
+|-----|-------------|
+| `name` | Human-readable label for the policy group |
+| `x_range` | `[x_min, x_max]` — chordwise range of assigned actuators |
+| `side` | `"SS"` (suction side, y > 0) or `"PS"` (pressure side, y < 0) |
+| `algorithm` | `"PPO"`, `"TD3"`, `"DDPG"`, `"BL"` (constant max action), or `"ZERO"` |
+| `drl_step` | Action refresh interval; actions are held between refreshes |
+| `action_bounds` | `[min, max]` — clipping applied to controller output |
+| `u_tau` | Optional: friction velocity used to normalise observations before calling the controller |
+| `baseline_dudy` | Optional: baseline velocity gradient for normalisation |
+| `agent_run_name` | RL only: identifier for the training run folder |
+| `policy` | RL only: checkpoint identifier within the run folder |
+| `model_path` | RL only: explicit path to the model file (overrides the default convention) |
 
-## Default RL Model Path Convention
+### Default RL model path convention
 
-For RL policies (`PPO`, `TD3`, `DDPG`), if `model_path` is not set, the default expected path is:
+When `model_path` is not set, the model is resolved from:
 
-```text
+```
 <POLICY_ROOT>/<agent_run_name>/logs/<agent_run_name>-<policy>
 ```
 
-## Notes
-
-- Deployment-only (evaluation). No training happens in this chapter.
-- `drl_step` controls when the controller is queried; between refreshes, the last action is held for the whole group.
-- `u_tau` is used to normalize observations before calling the controller (the code comments note that solver-side normalization by `u_tau` should be kept consistent with how the policies were trained).
-- This demo uses deterministic controller calls (`controller.predict(..., deterministic=True)`), and displays a reward summary to help compare controller configurations.
-
+For overlapping `x_range` regions, the last-listed policy in `POLICY_SPECS` takes precedence.

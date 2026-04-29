@@ -4,71 +4,66 @@ sidebar_position: 3
 
 # Parallel Multi-Agent Interface
 
-Dict-based multi-agent interface where each actuator is treated as a separate agent.
+[`NekParallelEnv`](../../api/nek/parallel_env) wraps a base [`NekEnv`](../../api/nek/env) and exposes a dictionary-based multi-agent API in which each actuator is treated as an independent agent. Every agent receives its own observation array, produces its own scalar action, and can be assigned a per-agent reward signal.
 
-## Interface
+All scripts live in [`examples/nek/getting_started/2_parallel_env/`](https://github.com/dynamicslab/hydrogym/tree/main/examples/nek/getting_started/2_parallel_env).
+
+## Creating an environment
 
 ```python
 from hydrogym.nek import NekEnv, NekParallelEnv
 
-# Create base environment
 env_config = {'environment_name': 'TCFmini_3D_Re180', 'nproc': 10}
 base_env = NekEnv(env_config=env_config)
 
-# Wrap with parallel interface
 env = NekParallelEnv(base_env)
 
-# Dict-based API
 observations, infos = env.reset()
-# observations: {'agent_0': array, 'agent_1': array, ...}
+# observations: {'agent_0': array([...]), 'agent_1': array([...]), ...}
 
 actions = {agent: policy(obs) for agent, obs in observations.items()}
 observations, rewards, terminated, truncated, infos = env.step(actions)
 ```
 
-## Files
+Each `'agent_N'` key corresponds to one actuator degree of freedom in the underlying NEK5000 case.
 
-- `test_nek_parallel.py` - Test parallel environment with dict-based interface
-- `train_sb3_parallel.py` - SB3 training with **DIY centralized wrapper** (educational)
-- `run_parallel_docker.sh` - Docker/MPI execution script
+## Example scripts
 
-## Usage
+| File | Purpose |
+|------|---------|
+| [`test_nek_parallel.py`](https://github.com/dynamicslab/hydrogym/blob/main/examples/nek/getting_started/2_parallel_env/test_nek_parallel.py) | Runs the dict-based multi-agent interface with random actions, printing per-agent observations and rewards |
+| [`train_sb3_parallel.py`](https://github.com/dynamicslab/hydrogym/blob/main/examples/nek/getting_started/2_parallel_env/train_sb3_parallel.py) | Demonstrates a DIY centralised wrapper that concatenates all agents into a single array, enabling direct SB3 training |
+| [`run_parallel_docker.sh`](https://github.com/dynamicslab/hydrogym/blob/main/examples/nek/getting_started/2_parallel_env/run_parallel_docker.sh) | Docker/MPI launcher |
 
-### Test Environment
+## Running the examples
+
 ```bash
+# Test the parallel environment
 mpirun -np 1 python test_nek_parallel.py --steps 100 : -np 10 nek5000
+
+# Train with DIY centralised wrapper
+mpirun -np 1 python train_sb3_parallel.py \
+    --env TCFmini_3D_Re180 \
+    --algo PPO \
+    --total-timesteps 100000 \
+    : -np 10 nek5000
 ```
 
-### Train RL Agent (DIY Centralized Approach)
-```bash
-mpirun -np 1 python train_sb3_parallel.py --env MiniChannel_Re180 --algo PPO --total-timesteps 100000 : -np 10 nek5000
-```
+## SB3 integration
 
-## When to Use
+`NekParallelEnv` is **not** directly compatible with SB3 because SB3 expects a flat NumPy array for observations, not a dictionary. Two approaches are shown in the examples:
 
-- Multiple agents with independent observation/action spaces
-- Dict-based multi-agent interface needed
-- True MARL scenarios (with RLlib or custom frameworks)
-- Per-agent reward inspection
+**DIY centralised wrapper** (shown in [`train_sb3_parallel.py`](https://github.com/dynamicslab/hydrogym/blob/main/examples/nek/getting_started/2_parallel_env/train_sb3_parallel.py)) — manually concatenates all agent observations into one array and splits the policy output back into per-agent actions. This is an educational approach that makes the data flow explicit, at the cost of ~50 lines of wrapper code.
 
-## SB3 Integration
+**SuperSuit** (shown in the [PettingZoo](./pettingzoo) page) — the production-ready approach. SuperSuit provides a single `pettingzoo_env_to_vec_env_v1` call that handles observation padding, action-space normalisation, and agent-termination logic, converting the multi-agent environment into an SB3-compatible vectorised environment in a few lines.
 
-**parallel_env is NOT directly compatible with SB3** (SB3 expects arrays, not dicts).
+If you are building a new training pipeline, the [PettingZoo + SuperSuit](./pettingzoo) approach is recommended. The DIY wrapper is most useful when you need fine-grained control over how agent data is aggregated, or when learning how the conversion works.
 
-**Solutions:**
+## When to use this interface
 
-1. **DIY Centralized Wrapper** (Chapter 2 - Educational)
-   - Shown in `train_sb3_parallel.py`
-   - Manually concatenates all agents → single array
-   - Educational: shows how conversion works
+- Multiple actuators that each need an independent observation and reward
+- True MARL scenarios where per-agent credit assignment is important
+- Frameworks (RLlib, MARLlib) that natively consume PettingZoo parallel environments
+- Inspecting per-agent reward distributions during debugging
 
-2. **SuperSuit** (Chapter 3 - Production)
-   - See chapter 3 for PettingZoo + SuperSuit approach
-   - Production-ready ecosystem solution
-
-## Notes
-
-- Each agent controls one actuator (scalar action)
-- Each agent receives local observations
-- Rewards can be per-agent or shared
-- For simple centralized control, just use `NekEnv` directly (Chapter 1)
+For a single centralised policy that handles all actuators, the [Single Agent](./single_environment) interface is simpler.
