@@ -4,79 +4,78 @@ sidebar_position: 4
 
 # Pinball
 
-⚠️ **NOTE**: These are **advanced workflow examples** showing direct solver access and specialized workflows. They do NOT use the standard RL interface.
+:::note[Advanced workflow examples]
+The scripts on this page access the Firedrake solver directly — they do not use the standard `env.reset()` / `env.step()` interface. For RL training, see [Getting Started](./getting_started).
+:::
 
-**Looking for standard RL examples?** See [Getting Started](./getting_started) for `env.reset()` / `env.step()` interface.
+The fluidic pinball is a multi-body benchmark consisting of three circular cylinders arranged in an equilateral triangle. The configuration is an influential test case for multi-input flow control: each cylinder can be actuated independently via rotation, giving the controller three degrees of freedom to shape a wake that exhibits rich dynamics including mode switching, asymmetry, and chaos at moderate Reynolds numbers.
 
----
+All scripts live in [`examples/firedrake/advanced/pinball/`](https://github.com/dynamicslab/hydrogym/tree/main/examples/firedrake/advanced/pinball).
 
-Flow around three cylinders in triangular arrangement - a challenging benchmark for flow control.
+## Physical setup
 
-## Physical Description
+- **Geometry:** three cylinders of radius 0.5 in an equilateral triangle, separated by one diameter
+- **Inflow:** uniform velocity U∞ = 1.0 from the left boundary
+- **Reynolds number:** Re = 30 – 150
 
-**Configuration:**
-- Three cylinders in equilateral triangle arrangement
-- Cylinder radius: 0.5
-- Uniform inflow from left (U∞ = 1.0)
-- Reynolds number Re = 30-150
+The flow behaviour changes qualitatively across this range:
 
-**Key Phenomena:**
-- **Re = 30:** Steady symmetric flow
-- **Re = 150:** Complex unsteady wake with three-body interactions
-- Wake can exhibit mode switching between symmetric/asymmetric states
-- Chaotic dynamics possible at higher Re
+- **Re ≈ 30:** near-steady, weakly asymmetric wake
+- **Re ≈ 80:** onset of periodic vortex shedding
+- **Re ≈ 150:** complex unsteady wake with three-body interactions; mode switching between symmetric and asymmetric states, with chaotic dynamics at the upper end
 
-## Quick Start
+## Workflow overview
 
-### 1. Basic Simulation
+### Step 1 — Compute the steady base flow
 
-Run unsteady pinball flow at Re=30:
-
-```bash
-python run-transient.py
-```
-
-**What it does:** Simulates flow around three cylinders showing wake interactions
-**Outputs:**
-- `coeffs.dat` - Time series of CL for all three cylinders
-- Console shows forces on each cylinder
-**Prerequisites:** None
-
-### 2. Find Steady State
-
-Solve for steady flow at Re=80 using Newton iteration:
+Solve for the steady equilibrium at Re = 80 using Newton iteration. Direct convergence from Re = 80 is difficult, so the solver ramps through intermediate Reynolds numbers:
 
 ```bash
 python solve-steady.py
 ```
 
-**What it does:** Computes steady state (or unstable equilibrium) for stability analysis
-**Uses ramping:** 40 → 60 → 80 for better convergence
-**Outputs:**
-- `output/pinball_Re80_steady.h5` - Checkpoint for restart
-- Paraview files for visualization
-- Force coefficients for all three cylinders
-**Prerequisites:** None
+**Source:** [`solve-steady.py`](https://github.com/dynamicslab/hydrogym/blob/main/examples/firedrake/advanced/pinball/solve-steady.py)
 
-### 3. Observe Wake Dynamics
+Reynolds ramping schedule: 40 → 60 → 80. Outputs:
 
-Two-stage simulation: steady solve + perturbed transient:
+- `output/pinball_Re80_steady.h5` — restart checkpoint
+- Paraview files for visualisation
+- Force coefficients for all three cylinders at the steady state
+
+### Step 2 — Run a transient simulation
+
+Simulate the unsteady three-cylinder wake and observe the inter-body interactions:
+
+```bash
+python run-transient.py
+```
+
+**Source:** [`run-transient.py`](https://github.com/dynamicslab/hydrogym/blob/main/examples/firedrake/advanced/pinball/run-transient.py)
+
+The console prints the lift coefficient time series for each cylinder. The output file `coeffs.dat` records the full CL history for post-processing.
+
+### Step 3 — Observe wake transition
+
+`unsteady.py` chains an internal steady solve with a long transient integration, demonstrating the full sequence from equilibrium to complex unsteady dynamics in one run:
 
 ```bash
 python unsteady.py
 ```
 
-**What it does:** Demonstrates transition from steady state to complex wake dynamics
-**Stage 1:** Solve steady state with Reynolds ramping (40 → 60 → 80 → 100)
-**Stage 2:** Add perturbation and run transient (Tf=200)
-**Outputs:** Time series, Paraview animations, force data for all cylinders
-**Prerequisites:** None (computes steady state internally)
+**Source:** [`unsteady.py`](https://github.com/dynamicslab/hydrogym/blob/main/examples/firedrake/advanced/pinball/unsteady.py)
 
----
+- **Stage 1:** Newton solver with Reynolds ramping (40 → 60 → 80 → 100)
+- **Stage 2:** Perturbed transient integration for T_f = 200 time units
+- **Outputs:** time series, Paraview animations, force data for all three cylinders
 
-**MPI Parallelization:**
-All scripts support parallel execution:
+This script has no prerequisites and provides a self-contained end-to-end demonstration.
+
+## MPI parallelisation
+
+All scripts support MPI-parallel execution:
+
 ```bash
-mpirun -np 4 python <script-name>.py
+mpirun -np 4 python solve-steady.py
+mpirun -np 4 python run-transient.py
+mpirun -np 4 python unsteady.py
 ```
-
