@@ -4,93 +4,91 @@ sidebar_position: 5
 
 # Backward-Facing Step
 
-⚠️ **NOTE**: These are **advanced workflow examples** showing direct solver access and specialized workflows. They do NOT use the standard RL interface.
+:::note[Advanced workflow examples]
+The scripts on this page access the Firedrake solver directly — they do not use the standard `env.reset()` / `env.step()` interface. For RL training, see [Getting Started](./getting_started).
+:::
 
-**Looking for standard RL examples?** See [Getting Started](./getting_started) for `env.reset()` / `env.step()` interface.
+The backward-facing step is a fundamental benchmark for separated flow control. When the incoming channel flow encounters the step, it separates at the corner, forming a recirculation zone that reattaches some distance downstream. The reattachment length is sensitive to forcing, making this configuration well-suited for studying how actuation can reshape a separated shear layer.
 
----
+All scripts live in [`examples/firedrake/advanced/step/`](https://github.com/dynamicslab/hydrogym/tree/main/examples/firedrake/advanced/step).
 
-Flow over a backward-facing step demonstrates separated flow and reattachment.
+## Physical setup
 
-## Physical Description
+- **Geometry:** 2-D channel with a sudden downward step
+- **Inflow:** uniform velocity from the left boundary
+- **Reynolds number:** Re = 600 (default)
+- **Observations:** kinetic energy (KE), turbulent kinetic energy (TKE), and reattachment point location
 
-**Configuration:**
-- Channel with sudden expansion (backward-facing step)
-- Step height creates separation zone
-- Uniform inflow from left
-- Reynolds number Re = 600 (default)
+At Re = 600 the uncontrolled flow is unsteady: the separated shear layer undergoes Kelvin-Helmholtz instability and the reattachment point oscillates in time.
 
-**Observations:**
-- Kinetic energy (KE)
-- Turbulent kinetic energy (TKE)
-- Reattachment point location
+## Workflow overview
 
-## Quick Start
+### Step 1 — Compute the steady base flow
 
-### 1. Basic Simulation
-
-Run transient step flow at Re=600:
-
-```bash
-python run-transient.py
-```
-
-**What it does:** Simulates separated flow from perturbed base state
-**Outputs:**
-- `output/stats.dat` - Time series of CFL, KE, TKE
-- Console shows KE, TKE evolution
-- Long time integration (1000 time units)
-**Prerequisites:** Requires steady state checkpoint from solve-steady.py
-
-### 2. Find Steady State
-
-Solve for steady flow using Newton iteration with Reynolds ramping:
+The unsteady step flow has an unstable steady equilibrium that serves as the starting point for stability analysis and for initialising long transient simulations. Solve for it with Reynolds ramping to ensure convergence:
 
 ```bash
 python solve-steady.py
 ```
 
-**What it does:** Computes steady base flow for separated step flow
-**Uses ramping:** 100 → 200 → 300 → 400 → 500 → 600 for convergence
-**Outputs:**
-- `output/600_steady.h5` - Steady checkpoint for restart
-- `output/600_steady.pvd` - Paraview visualization of recirculation zone
-**Prerequisites:** None
+**Source:** [`solve-steady.py`](https://github.com/dynamicslab/hydrogym/blob/main/examples/firedrake/advanced/step/solve-steady.py)
 
-### 3. Observe Instability
+Reynolds ramping schedule: 100 → 200 → 300 → 400 → 500 → 600. Outputs:
 
-Two-stage simulation: steady solve + perturbed transient:
+- `output/600_steady.h5` — restart checkpoint
+- `output/600_steady.pvd` — Paraview visualisation of the recirculation zone
+
+### Step 2 — Run a long transient simulation
+
+Starting from the perturbed steady state, advance the flow for 1 000 time units to obtain a statistically converged unsteady trajectory:
+
+```bash
+python run-transient.py
+```
+
+**Source:** [`run-transient.py`](https://github.com/dynamicslab/hydrogym/blob/main/examples/firedrake/advanced/step/run-transient.py)
+
+**Prerequisite:** `solve-steady.py` must have been run to provide the restart checkpoint.
+
+The output file `output/stats.dat` records the CFL number, KE, and TKE at every logged timestep. This long integration is used to characterise the baseline uncontrolled flow statistics.
+
+### Step 3 — Observe the transition to unsteadiness
+
+`unsteady.py` combines an internal steady solve with a subsequent transient integration, demonstrating the growth of the separated-flow instability from the equilibrium in a single run:
 
 ```bash
 python unsteady.py
 ```
 
-**What it does:** Demonstrates transition from steady to unsteady separated flow
-**Stage 1:** Solve steady state with Reynolds ramping
-**Stage 2:** Add perturbation and run long transient (Tf=1000)
-**Outputs:** Time series, Paraview animations, TKE evolution
-**Prerequisites:** None (computes steady state internally)
+**Source:** [`unsteady.py`](https://github.com/dynamicslab/hydrogym/blob/main/examples/firedrake/advanced/step/unsteady.py)
 
-### 4. Test Control Response
+- **Stage 1:** Newton solver with Reynolds ramping
+- **Stage 2:** Perturbed transient for T_f = 1 000 time units
+- **Outputs:** time series data, Paraview animations, TKE evolution
 
-Apply step input actuation:
+### Step 4 — Measure the step response
+
+Apply a constant actuation after an initial uncontrolled period and measure how the flow responds. This is a standard system-identification experiment used to calibrate linear models for control design:
 
 ```bash
 python step-control.py
 ```
 
-**What it does:** Applies step change in actuation to measure flow response
-**Control:** Off until t=50, then constant actuation
-**Purpose:** System identification - measure step response
-**Outputs:** Time series showing response to actuation
-**Prerequisites:** None (uses internal initial condition)
+**Source:** [`step-control.py`](https://github.com/dynamicslab/hydrogym/blob/main/examples/firedrake/advanced/step/step-control.py)
 
----
+- **Control law:** zero actuation for t < 50, then constant blowing/suction for t ≥ 50
+- **Output:** time series showing the flow's response to the step change in forcing
+- **Purpose:** system identification — extract the static gain and dominant time constant
 
-**MPI Parallelization:**
-All scripts support parallel execution:
+This script uses an internal initial condition and has no prerequisites.
+
+## MPI parallelisation
+
+All scripts support MPI-parallel execution:
+
 ```bash
-mpirun -np 4 python <script-name>.py
+mpirun -np 4 python solve-steady.py
+mpirun -np 4 python run-transient.py
+mpirun -np 4 python unsteady.py
+mpirun -np 4 python step-control.py
 ```
-
-
