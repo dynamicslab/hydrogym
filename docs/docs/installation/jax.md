@@ -4,136 +4,87 @@ sidebar_position: 4
 
 # JAX
 
-Docusaurus supports **[Markdown](https://daringfireball.net/projects/markdown/syntax)** and a few **additional features**.
+[JAX](https://jax.readthedocs.io/) is a high-performance array computing library from Google that combines NumPy-compatible array operations with automatic differentiation, JIT compilation via XLA, and native support for CPUs, GPUs, and TPUs. HydroGym's JAX backend provides fully differentiable spectral solvers for 2-D Kolmogorov turbulence and 3-D turbulent channel flow — examples that are feasible to run on a laptop without any GPU.
 
-## Front Matter
+## Installing JAX
 
-Markdown documents have metadata at the top called [Front Matter](https://jekyllrb.com/docs/front-matter/):
+### CPU (all platforms)
 
-```text title="my-doc.md"
-// highlight-start
----
-id: my-doc-id
-title: My document title
-description: My document description
-slug: /my-custom-url
----
-// highlight-end
-
-## Markdown heading
-
-Markdown text with [links](./hello.md)
+```bash
+pip install -U jax
 ```
 
+This is sufficient for running the Kolmogorov and channel flow examples and for training small agents on a workstation.
 
-## Images
+### NVIDIA GPU
 
-Regular Markdown images are supported.
+JAX provides pre-built CUDA wheels for Linux x86_64 and Linux aarch64. Choose the wheel that matches your installed CUDA toolkit:
 
-You can use absolute paths to reference images in the static directory (`static/img/docusaurus.png`):
+```bash
+# CUDA 12 (driver ≥ 525 on Linux)
+pip install -U "jax[cuda12]"
 
-```md
-![Docusaurus logo](/img/docusaurus.png)
+# CUDA 13 (driver ≥ 580 on Linux)
+pip install -U "jax[cuda13]"
 ```
 
-![Docusaurus logo](/img/docusaurus.png)
+The CUDA 12 wheel is built against CUDA 12.3 and is compatible with any CUDA ≥ 12.1 installation. The CUDA 13 wheel requires CUDA ≥ 13.0. JAX installs its own CUDA and cuDNN libraries via pip, so a matching system CUDA toolkit is not strictly required — the NVIDIA driver is the only system-level dependency.
 
-You can reference images relative to the current file as well. This is particularly useful to colocate images close to the Markdown files using them:
-
-```md
-![Docusaurus logo](./img/docusaurus.png)
-```
-
-## Code Blocks
-
-Markdown code blocks are supported with Syntax highlighting.
-
-````md
-```jsx title="src/components/HelloDocusaurus.js"
-function HelloDocusaurus() {
-  return <h1>Hello, Docusaurus!</h1>;
-}
-```
-````
-
-```jsx title="src/components/HelloDocusaurus.js"
-function HelloDocusaurus() {
-  return <h1>Hello, Docusaurus!</h1>;
-}
-```
-
-## Admonitions
-
-Docusaurus has a special syntax to create admonitions and callouts:
-
-```md
-:::tip My tip
-
-Use this awesome feature option
-
+:::note
+CUDA-enabled JAX wheels are available for Linux only. macOS does not support CUDA; use the CPU installation on Apple hardware.
 :::
 
-:::danger Take care
+### AMD GPU (ROCm)
 
-This action is dangerous
-
-:::
+```bash
+pip install -U "jax[rocm7-local]"
 ```
 
-:::tip My tip
+ROCm support on Windows WSL2 is experimental. See the [JAX installation documentation](https://docs.jax.dev/en/latest/installation.html) for the current compatibility matrix.
 
-Use this awesome feature option
+### Google TPU
 
-:::
-
-:::danger Take care
-
-This action is dangerous
-
-:::
-
-## MDX and React Components
-
-[MDX](https://mdxjs.com/) can make your documentation more **interactive** and allows using any **React components inside Markdown**:
-
-```jsx
-export const Highlight = ({children, color}) => (
-  <span
-    style={{
-      backgroundColor: color,
-      borderRadius: '20px',
-      color: '#fff',
-      padding: '10px',
-      cursor: 'pointer',
-    }}
-    onClick={() => {
-      alert(`You clicked the color ${color} with label ${children}`)
-    }}>
-    {children}
-  </span>
-);
-
-This is <Highlight color="#25c2a0">Docusaurus green</Highlight> !
-
-This is <Highlight color="#1877F2">Facebook blue</Highlight> !
+```bash
+pip install -U "jax[tpu]"
 ```
 
-export const Highlight = ({children, color}) => (
-  <span
-    style={{
-      backgroundColor: color,
-      borderRadius: '20px',
-      color: '#fff',
-      padding: '10px',
-      cursor: 'pointer',
-    }}
-    onClick={() => {
-      alert(`You clicked the color ${color} with label ${children}`);
-    }}>
-    {children}
-  </span>
-);
+## Installing the HydroGym Python package
 
-This is <Highlight color="#25c2a0">Docusaurus green</Highlight> !
+After installing JAX, install the HydroGym JAX extras:
 
-This is <Highlight color="#1877F2">Facebook blue</Highlight> !
+```bash
+pip install hydrogym[jax]
+```
+
+This adds `jax`, `jaxlib`, `chex`, `navix`, `gymnax`, `tree-math`, `flax`, `omegaconf`, and `toml` alongside the core package. If JAX is already installed with GPU support, the `jax` and `jaxlib` pins in `hydrogym[jax]` will not downgrade it.
+
+## Platform support
+
+| Platform | CPU | CUDA GPU | ROCm GPU | TPU |
+|---|---|---|---|---|
+| Linux x86_64 | ✅ | ✅ | ✅ | ✅ |
+| Linux aarch64 | ✅ | ✅ | — | — |
+| macOS (Apple ARM) | ✅ | — | — | — |
+| Windows x86_64 | ✅ | Experimental | Experimental | — |
+
+Windows users may need the [Microsoft Visual Studio 2019 Redistributable](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist) for the CPU build.
+
+## Verify the installation
+
+```python
+import jax
+import jax.numpy as jnp
+
+print(jax.devices())            # lists available devices
+x = jnp.ones((3, 3))
+print(jnp.linalg.norm(x))      # basic computation check
+```
+
+## Quick start
+
+```bash
+cd examples/jax/getting_started/1_kolmogorov/
+python test_kolmogorov_env.py
+```
+
+No MPI or MPMD launch is required — JAX environments run in a single Python process.
