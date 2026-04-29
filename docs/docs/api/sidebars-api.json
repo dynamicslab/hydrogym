@@ -96,6 +96,27 @@
       "items": [
         {
           "items": [
+            "api/jaxfluids/envs/nozzle"
+          ],
+          "label": "hydrogym.jaxfluids.envs",
+          "type": "category"
+        },
+        {
+          "items": [
+            "api/jaxfluids/utils/nozzle"
+          ],
+          "label": "hydrogym.jaxfluids.utils",
+          "type": "category"
+        },
+        "api/jaxfluids/env_core"
+      ],
+      "label": "hydrogym.jaxfluids",
+      "type": "category"
+    },
+    {
+      "items": [
+        {
+          "items": [
             "api/maia/envs/cavity",
             "api/maia/envs/cube",
             "api/maia/envs/cylinder",

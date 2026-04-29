@@ -11,8 +11,8 @@ sidebar_position: 1
 The fastest way to get a working Firedrake + HydroGym environment is to pull the pre-built Docker image:
 
 ```bash
-docker pull lpaehler/hydrogym-env:stable
-docker run -it lpaehler/hydrogym-env:stable
+docker pull clagemann/hydrogym-nvhpc-26.1_cuda-12.9_hopper_blackwell
+docker run -it clagemann/hydrogym-nvhpc-26.1_cuda-12.9_hopper_blackwell
 ```
 
 Inside the container, activate the Firedrake virtual environment and install HydroGym:
@@ -33,7 +33,7 @@ Developer images tracking the latest commits are available as `firedrake-vanilla
 
 ## Option 2: Native installation
 
-### System requirements
+For a native installation of Firedrake, we have to follow [Firedrake's Installation Guide](https://www.firedrakeproject.org/install.html). The installation is supported on the following systems:
 
 | | |
 |---|---|
@@ -126,59 +126,10 @@ export HDF5_MPI=ON
 |-------|----------------|------|
 | SLEPc | `pip install 'firedrake[check,slepc]'` | Eigenvalue solvers for stability analysis |
 | VTK | `pip install 'firedrake[check,vtk]'` | Paraview export support |
-| PyTorch | `pip install 'firedrake[check,torch]' --extra-index-url https://download.pytorch.org/whl/cpu` | PyTorch integration |
-| JAX | `pip install 'firedrake[check,jax]'` | JAX integration |
 
-Always pass `--no-binary h5py` when installing Firedrake extras to avoid binary HDF5 conflicts with the MPI-enabled HDF5 built by PETSc.
+Firedrake also distributes versions which are ready for the interfacing with PyTorch, and JAX. As we do not use these features at present, they are omitted from this tabular breakdown. Always pass `--no-binary h5py` when installing Firedrake extras to avoid binary HDF5 conflicts with the MPI-enabled HDF5 built by PETSc.
 
 ## Troubleshooting
 
-**`petscvariables` file not found after install**
+If any issues with Firedrake arise, please refer to the official [Troubleshooting Guide](https://www.firedrakeproject.org/install.html#common-installation-issues) of Firedrake.
 
-The `PETSC_DIR` and `PETSC_ARCH` environment variables were not exported before `pip install`. Run:
-
-```bash
-pip cache purge
-export $(python3 firedrake-configure --show-env)
-pip install --no-binary h5py 'firedrake[check]'
-```
-
-**Missing symbols or import errors**
-
-Deactivate and recreate the virtual environment from scratch, then reinstall:
-
-```bash
-deactivate
-rm -r venv-firedrake
-pip cache purge
-python3 -m venv venv-firedrake
-. venv-firedrake/bin/activate
-export $(python3 firedrake-configure --show-env)
-pip install --no-binary h5py 'firedrake[check]'
-```
-
-**macOS: PETSc configure fails with "Cannot use scalapack without Fortran"**
-
-Your Homebrew or Xcode installation is out of date. Run `brew doctor` and follow the suggested remediation steps before retrying.
-
-**macOS + Python 3.14: VTK incompatibility**
-
-Use Python 3.13 or earlier until VTK publishes a 3.14-compatible wheel.
-
-## Updating
-
-```bash
-# Activate the environment, then:
-export $(python3 firedrake-configure --show-env)
-pip install --upgrade firedrake
-firedrake-clean
-```
-
-To update PETSc to the version expected by the new Firedrake release:
-
-```bash
-cd /path/to/petsc
-git fetch
-git checkout -b $(python3 /path/to/firedrake-configure --show-petsc-version)
-make
-```

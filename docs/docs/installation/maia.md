@@ -4,20 +4,24 @@ sidebar_position: 2
 
 # MAIA
 
-[m-AIA](https://git.rwth-aachen.de/aia/m-AIA/m-AIA) (Multi-physics Aachen code — formerly ZFS) is a high-performance CFD framework developed at the Institute of Aerodynamics (AIA) at RWTH Aachen University. It couples finite-volume, discontinuous Galerkin, Lattice Boltzmann (LBM), and level-set methods on Cartesian meshes and targets massively parallel simulations on systems ranging from single workstations to leadership-class GPU clusters. HydroGym's MAIA backend supports both the LBM and structured finite-volume solvers and provides over 60 flow-control environments in 2-D and 3-D.
+[m-AIA](https://git.rwth-aachen.de/aia/m-AIA/m-AIA) (Multi-physics Aachen code) is a high-performance CFD framework developed at the Institute of Aerodynamics (AIA) at RWTH Aachen University. It couples finite-volume, discontinuous Galerkin, Lattice Boltzmann (LBM), and level-set methods on Cartesian meshes and targets massively parallel simulations on systems ranging from single workstations to leadership-class GPU clusters. HydroGym's MAIA backend supports both the LBM and structured finite-volume solvers and provides over 60 flow-control environments in 2-D and 3-D.
 
 ## Option 1: Docker (recommended)
 
 Pre-built images ship m-AIA together with all MPI, CUDA/ROCm, and HydroGym dependencies:
 
 ```bash
-# NVIDIA GPU (CUDA 12)
-docker pull clagemann/maia-cuda-12.8.1:latest
-docker run -it --gpus all clagemann/maia-cuda-12.8.1:latest
+# NVIDIA GPU (CUDA 12.9 Hopper & Blackwell)
+docker pull clagemann/hydrogym-nvhpc-26.1_cuda-12.9_hopper_blackwell
+docker run -it --gpus all clagemann/hydrogym-nvhpc-26.1_cuda-12.9_hopper_blackwell
+
+# NVIDIA GPU (CUDA 12.9 Turing & Ampere)
+docker pull clagemann/hydrogym-nvhpc-26.1_cuda-12.9_turing_ampere
+docker run -it --gpus all clagemann/hydrogym-nvhpc-26.1_cuda-12.9_turing_ampere
 
 # AMD GPU (ROCm 6.3)
-docker pull clagemann/maia-rocm-6.3.3:latest
-docker run -it clagemann/maia-rocm-6.3.3:latest
+docker pull clagemann/hydrogym-rocm-6.3.3:latest
+docker run -it clagemann/hydrogym-rocm-6.3.3:latest
 ```
 
 Inside the container HydroGym and m-AIA are already installed and on the PATH.
@@ -27,13 +31,13 @@ Inside the container HydroGym and m-AIA are already installed and on the PATH.
 Most HPC clusters do not allow Docker. The MAIA Docker images can be converted to the Apptainer SIF format on any machine that has Docker and Apptainer available:
 
 ```bash
-apptainer pull docker://clagemann/maia-cuda-12.8.1:latest
+apptainer pull docker://clagemann/hydrogym-nvhpc-26.1_cuda-12.9_hopper_blackwell
 ```
 
-This produces `maia-cuda-12.8.1_latest.sif`. To run the container with GPU access and the current directory mounted as `/workspace`:
+This produces `clagemann/hydrogym-nvhpc-26.1_cuda-12.9_hopper_blackwell.sif`. To run the container with GPU access and the current directory mounted as `/workspace`:
 
 ```bash
-apptainer run --nv --bind $(pwd):/workspace maia-cuda-12.8.1_latest.sif
+apptainer run --nv --bind $(pwd):/workspace clagemann/hydrogym-nvhpc-26.1_cuda-12.9_hopper_blackwell.sif
 ```
 
 :::note
@@ -58,7 +62,7 @@ You can then connect your local ParaView client (version 5.13) to `localhost:111
 
 ## Installing the HydroGym Python package
 
-Once m-AIA is available in your environment (either via Docker or a native build), install the HydroGym MAIA extras:
+If a local version of m-AIA is available in your environment (either via Docker or a native build), you can install the HydroGym MAIA extras:
 
 ```bash
 pip install hydrogym[maia]

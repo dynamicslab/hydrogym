@@ -4,7 +4,7 @@ sidebar_position: 4
 
 # JAX
 
-[JAX](https://jax.readthedocs.io/) is a high-performance array computing library from Google that combines NumPy-compatible array operations with automatic differentiation, JIT compilation via XLA, and native support for CPUs, GPUs, and TPUs. HydroGym's JAX backend provides fully differentiable spectral solvers for 2-D Kolmogorov turbulence and 3-D turbulent channel flow — examples that are feasible to run on a laptop without any GPU.
+[JAX](https://jax.readthedocs.io/) is a high-performance array computing library from Google that combines NumPy-compatible array operations with automatic differentiation, JIT compilation via XLA, and native support for CPUs, GPUs, and TPUs. HydroGym's JAX backend provides fully differentiable spectral solvers for 2-D Kolmogorov turbulence and 3-D turbulent channel flow — examples that are feasible to run on a laptop without any GPU, but run very fast and allow for direct experimentation on a capable GPU.
 
 ## Installing JAX
 
@@ -42,21 +42,15 @@ pip install -U "jax[rocm7-local]"
 
 ROCm support on Windows WSL2 is experimental. See the [JAX installation documentation](https://docs.jax.dev/en/latest/installation.html) for the current compatibility matrix.
 
-### Google TPU
+## Installing HydroGym
 
-```bash
-pip install -U "jax[tpu]"
-```
-
-## Installing the HydroGym Python package
-
-After installing JAX, install the HydroGym JAX extras:
+After installing JAX and verifying its correct working, install the HydroGym JAX extras:
 
 ```bash
 pip install hydrogym[jax]
 ```
 
-This adds `jax`, `jaxlib`, `chex`, `navix`, `gymnax`, `tree-math`, `flax`, `omegaconf`, and `toml` alongside the core package. If JAX is already installed with GPU support, the `jax` and `jaxlib` pins in `hydrogym[jax]` will not downgrade it.
+This will install all required packages for the correct running of the JAX-based examples. If JAX is already installed with GPU supportm the `jax` and `jaxlib` pins in `hydrogym[jax]` will not downgrade it.
 
 ## Platform support
 
@@ -68,17 +62,6 @@ This adds `jax`, `jaxlib`, `chex`, `navix`, `gymnax`, `tree-math`, `flax`, `omeg
 | Windows x86_64 | ✅ | Experimental | Experimental | — |
 
 Windows users may need the [Microsoft Visual Studio 2019 Redistributable](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist) for the CPU build.
-
-## Verify the installation
-
-```python
-import jax
-import jax.numpy as jnp
-
-print(jax.devices())            # lists available devices
-x = jnp.ones((3, 3))
-print(jnp.linalg.norm(x))      # basic computation check
-```
 
 ## Quick start
 

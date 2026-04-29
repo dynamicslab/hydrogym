@@ -56,7 +56,7 @@ ssh USER@REMOTE.WORKSTATION.ADDRESS.EDU -L 11111:XXXXX:11111
 
 You should now be able to connect from your local ParaView client — the local port will be connected to the remote workstation port, allowing post-processing using the remote workstation’s compute with all your MAIA save files.
 
-## Run environments {#run-environments}
+## Run environments
 
 HydroGym provides **88 environments** across 6 solver backends:
 
@@ -119,11 +119,13 @@ HydroGym also contains a number of interactive test scripts that can easily be r
 mpirun -np 1 python test_maia_env.py --environment Cylinder_2D_Re200 : -np 1 maia properties.toml
 ```
 
-## RL training {#rl-training}
+## RL training
 
 The MAIA environments can be customised by passing arguments to the `.from_hf()` function. For instance, an SB3 script with the Cylinder 2D environment and custom probe locations:
 
 ### Basic training loop
+
+The basic training loop takes the following shape:
 
 ```python
 # See examples/maia/getting_started/train_sb3_maia.py for full implementation
@@ -159,3 +161,4 @@ model.learn(total_timesteps=100000)
 model.save("ppo_cylinder")
 env.save("vec_normalize.pkl")
 ```
+

@@ -62,15 +62,6 @@ cd JAXFLUIDS && pip install . && cd ..
 pip install hydrogym[jaxfluids]
 ```
 
-## Verify the installation
-
-```python
-import jax
-import jaxfluids
-
-print(jax.devices())
-```
-
 ## Quick start
 
 ```bash
