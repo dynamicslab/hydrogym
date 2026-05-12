@@ -150,6 +150,13 @@ const config: Config = {
       ],
       copyright: `Copyright © ${new Date().getFullYear()} HydroGym Project.`,
     },
+    algolia: {
+      appId: 'KLP3S9F9ZZ',
+      apiKey: 'f1924b74902281f67c30b820e76a0ead',
+      indexName: 'HydroGym',
+      contextualSearch: true,
+      searchPagePath: 'search',
+    },
     prism: {
       theme: prismThemes.github,
       darkTheme: prismThemes.dracula,
