@@ -137,3 +137,7 @@ examples/firedrake/getting_started/output/
 
 # VSCode
 .vscode/
+
+# HydroGym Nix packaging: nix/lib/ must not be ignored despite the `lib/` pattern above
+!nix/lib/
+!nix/lib/**
