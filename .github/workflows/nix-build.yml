@@ -1,0 +1,37 @@
+name: Nix Flake
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nix-build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  flake-check:
+    name: nix flake check (eval only)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: cachix/install-nix-action@v27
+        with:
+          nix_path: nixpkgs=channel:nixos-24.05
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+
+      - name: nix flake show
+        run: nix flake show --no-write-lock-file
+
+      - name: nix flake check (evaluation only, no GPU builds)
+        run: nix flake check --no-build --no-write-lock-file
+
+  # GPU-output builds require a self-hosted GPU runner; not part of this
+  # workflow. The Phase 3 task adds a CPU `nek-cpu-MiniChannel` build
+  # step here once that output exists.
