@@ -40,11 +40,18 @@
           pkgs.callPackage ./nix/backends/jax/default.nix {
             inherit mkBackendShell cudaTarget;
           };
+
+        mkJaxFluidsShell = cudaTarget:
+          pkgs.callPackage ./nix/backends/jaxfluids/default.nix {
+            inherit mkBackendShell cudaTarget;
+          };
       in
       {
         devShells = {
           jax-cuda-hopper-blackwell = mkJaxShell cudaTargets.hopper-blackwell;
           jax-cuda-turing-ampere    = mkJaxShell cudaTargets.turing-ampere;
+          jaxfluids-cuda-hopper-blackwell = mkJaxFluidsShell cudaTargets.hopper-blackwell;
+          jaxfluids-cuda-turing-ampere    = mkJaxFluidsShell cudaTargets.turing-ampere;
         };
 
         # Default shell falls back to the most common GPU family.
