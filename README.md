@@ -41,6 +41,36 @@ docker pull clagemann/hydrogym-rocm-6.3.3:latest
 # Run container
 docker run -it --gpus all clagemann/hydrogym-nvhpc-26.1_cuda-12.9_turing_ampere:latest
 ```
+
+## Deterministic builds with Nix (new)
+
+For bit-reproducible environments — pinned via a single `flake.lock` —
+HydroGym ships a minimal base Docker image plus per-backend Nix dev
+shells. Available outputs:
+
+- `.#jax-cuda-hopper-blackwell` / `.#jax-cuda-turing-ampere`
+- `.#jaxfluids-cuda-hopper-blackwell` / `.#jaxfluids-cuda-turing-ampere`
+- `.#nek-cpu-MiniChannel`
+
+Firedrake and MAIA are not yet migrated — keep using the
+`lpaehler/hydrogym-*:stable` and `clagemann/hydrogym-*` images above.
+
+```bash
+# Build the base image (one-time)
+docker build -f .packaging/Dockerfile.base -t hydrogym/base:dev .
+
+# Run with GPU pass-through
+docker run --gpus all -it -v $PWD:/opt/hydrogym hydrogym/base:dev
+
+# Inside the container — enter the dev shell for your backend × GPU arch
+cd /opt/hydrogym
+nix develop .#jax-cuda-hopper-blackwell
+python examples/jax/getting_started/1_kolmogorov/test_kolmogorov_env.py
+```
+
+See [`nix/README.md`](nix/README.md) for the architecture and
+[`.packaging/README.md`](.packaging/README.md) for image build details.
+
 ## Available Environments
 
 HydroGym provides **61 environments** across 6 solver backends:
