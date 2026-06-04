@@ -23,7 +23,15 @@ stdenv.mkDerivation rec {
   nativeBuildInputs = [ autoPatchelfHook ];
 
   # Runtime libs the patched ELFs need to resolve at load time.
-  buildInputs = [ zlib glibc libGL ];
+  # stdenv.cc.cc.lib supplies libgcc_s.so.1 / libstdc++.so.6, required by
+  # the cublas/cusparse/cusolver/cufft/cutensor math libraries.
+  buildInputs = [ zlib glibc libGL stdenv.cc.cc.lib ];
+
+  # Nsight Compute (profilers/.../Nsight_Compute) drags in optional Qt UI
+  # plugins (libqxcb, libqwayland-*), InfiniBand RDMA libs (libib*), and
+  # libnvidia-ml (host driver lib, never in the store). None of these are
+  # on the JAX runtime path — let autoPatchelfHook warn instead of error.
+  autoPatchelfIgnoreMissingDeps = true;
 
   dontConfigure = true;
   dontBuild = true;

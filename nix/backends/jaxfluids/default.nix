@@ -34,15 +34,16 @@ mkBackendShell {
   ];
 
   extraShellHook = ''
+    # The mkBackendShell venv is already activated; pip installs land there.
+    # Match the JAX backend's pin (0.10.x covers sm_90/sm_100/sm_120).
     if ! python -c "import jax" 2>/dev/null; then
-      echo "Installing jax[cuda12-local] + JAX ecosystem from PyPI..."
-      pip install --user --quiet \
-        "jax[cuda12-local]==0.4.34" \
+      echo "Installing jax[cuda12] + JAX ecosystem from PyPI..."
+      pip install --quiet \
+        "jax[cuda12]==0.10.1" \
         "flax" \
         "optax" \
         "control" \
         "dmsuite"
     fi
-    export PATH="$HOME/.local/bin:$PATH"
   '';
 }

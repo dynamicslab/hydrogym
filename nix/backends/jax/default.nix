@@ -6,10 +6,11 @@
 #   jax, jaxlib, chex, navix, gymnax, tree-math, flax, omegaconf, toml
 # Plus numpy/scipy/pandas which are core HydroGym deps.
 #
-# jaxlib comes from the official jax[cuda12-local] PyPI wheel installed by
-# pip on shell entry — nixpkgs jaxlib is not built against CUDA 12.9 at
-# time of writing. The wheel discovers system CUDA libs at runtime via
-# LD_LIBRARY_PATH set by mkBackendShell.
+# jaxlib comes from the official jax[cuda12] PyPI wheel installed by
+# pip on shell entry. The wheel bundles cuBLAS/cuDNN/cuFFT/cuSPARSE/NCCL
+# (NVHPC SDK 26.1 ships everything except cuDNN, so we let the wheel own
+# the JAX-side CUDA stack rather than mixing sources). NVHPC's nvcc and
+# nvfortran remain on PATH for native-code workflows.
 
 { pkgs, lib, mkBackendShell, cudaTarget }:
 
@@ -38,12 +39,15 @@ mkBackendShell {
   ];
 
   extraShellHook = ''
-    # jax + jaxlib (CUDA 12 local) installed into the user's home so the
-    # editable HydroGym install can find them. Nix-provided python has pip.
+    # The mkBackendShell venv is already activated; pip installs land there.
+    # JAX 0.10 is the first stable line whose bundled ptxas/libdevice ship
+    # sm_120 kernels (Blackwell consumer / RTX 5090). H100 sm_90 and
+    # B100/B200 sm_100 are also covered. Pinned to keep the pip layer
+    # deterministic alongside the Nix-pinned NVHPC and nixpkgs.
     if ! python -c "import jax" 2>/dev/null; then
-      echo "Installing jax[cuda12-local] + JAX ecosystem from PyPI..."
-      pip install --user --quiet \
-        "jax[cuda12-local]==0.4.34" \
+      echo "Installing jax[cuda12] + JAX ecosystem from PyPI..."
+      pip install --quiet \
+        "jax[cuda12]==0.10.1" \
         "chex" \
         "flax" \
         "control" \
@@ -52,6 +56,5 @@ mkBackendShell {
         "gymnax" \
         "tree-math"
     fi
-    export PATH="$HOME/.local/bin:$PATH"
   '';
 }
