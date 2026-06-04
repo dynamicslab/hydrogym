@@ -17,10 +17,12 @@ mkBackendShell {
 
   pythonDeps = pyPkgs: with pyPkgs; [
     # Core HydroGym
-    numpy scipy pandas gymnasium huggingface-hub control dmsuite
-    # JAX-Fluids extras
-    flax gitpython h5py optax
-    # Required to install jax[cuda12-local] on shell entry
+    numpy scipy pandas gymnasium huggingface-hub
+    # JAX-Fluids extras (flax + optax come from pip — nixpkgs flax pulls
+    # in a Py3.12-incompatible einops→jupyter→qtconsole chain)
+    gitpython h5py
+    # Required to install jax[cuda12-local] (+ flax, optax, control, dmsuite)
+    # on shell entry
     pip setuptools wheel
     # Vendored
     jaxfluidsRl
@@ -33,8 +35,13 @@ mkBackendShell {
 
   extraShellHook = ''
     if ! python -c "import jax" 2>/dev/null; then
-      echo "Installing jax[cuda12-local] from PyPI..."
-      pip install --user --quiet "jax[cuda12-local]==0.4.34"
+      echo "Installing jax[cuda12-local] + JAX ecosystem from PyPI..."
+      pip install --user --quiet \
+        "jax[cuda12-local]==0.4.34" \
+        "flax" \
+        "optax" \
+        "control" \
+        "dmsuite"
     fi
     export PATH="$HOME/.local/bin:$PATH"
   '';

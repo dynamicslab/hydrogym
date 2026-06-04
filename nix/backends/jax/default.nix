@@ -21,12 +21,12 @@ mkBackendShell {
   pythonDeps = pyPkgs: with pyPkgs; [
     # Core HydroGym runtime
     numpy scipy pandas gymnasium
-    huggingface-hub control dmsuite
-    # JAX extra
-    chex flax
+    huggingface-hub
     # Config + serialization
     omegaconf toml
-    # Pip itself, so jax[cuda12-local] can install on shell entry
+    # Pip itself, so the full JAX ecosystem can install on shell entry.
+    # chex + flax are pip-installed (the nixpkgs flax pulls in a broken
+    # einops→jupyter→qtconsole→ipython-genutils chain on Py 3.12).
     pip setuptools wheel
     # SB3 + friends are common in JAX RL workflows but not required
     # by the JAX extras list; users add them with `pip install`.
@@ -41,9 +41,13 @@ mkBackendShell {
     # jax + jaxlib (CUDA 12 local) installed into the user's home so the
     # editable HydroGym install can find them. Nix-provided python has pip.
     if ! python -c "import jax" 2>/dev/null; then
-      echo "Installing jax[cuda12-local] from PyPI..."
+      echo "Installing jax[cuda12-local] + JAX ecosystem from PyPI..."
       pip install --user --quiet \
         "jax[cuda12-local]==0.4.34" \
+        "chex" \
+        "flax" \
+        "control" \
+        "dmsuite" \
         "navix" \
         "gymnax" \
         "tree-math"
