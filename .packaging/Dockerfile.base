@@ -1,0 +1,79 @@
+# syntax=docker/dockerfile:1.7
+
+# Base image for HydroGym: Ubuntu 22.04 with multi-user Nix installed.
+# The image is NOT the reproducibility anchor — flake.lock is. This image
+# can be rebuilt freely; only the pinned Nix installer version matters.
+
+FROM ubuntu:22.04
+
+ARG NIX_VERSION=2.34.7
+ARG NIX_SHA256=eafe5042404e818505e28c5ca3d0885f3ec45c31f955489a25bb38258f87560e
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    LC_ALL=C.UTF-8 \
+    LANG=C.UTF-8
+
+# Minimal apt set: enough to bootstrap Nix and run typical dev tooling.
+# Anything solver-specific (Python, CUDA, MPI) belongs in the flake, not here.
+RUN apt-get update \
+ && apt-get -y install --no-install-recommends \
+        ca-certificates curl xz-utils sudo locales \
+        git openssh-client vim tini \
+ && locale-gen en_US.UTF-8 \
+ && rm -rf /var/lib/apt/lists/*
+
+# Create unprivileged user `hydrogym`. Multi-user Nix daemon runs as root.
+RUN useradd -m -s /bin/bash -G sudo hydrogym \
+ && echo "hydrogym ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+
+# Install multi-user Nix from a pinned tarball (offline-friendly, hash-verified).
+RUN curl -fsSL -o /tmp/nix.tar.xz \
+        "https://releases.nixos.org/nix/nix-${NIX_VERSION}/nix-${NIX_VERSION}-x86_64-linux.tar.xz" \
+ && echo "${NIX_SHA256}  /tmp/nix.tar.xz" | sha256sum -c - \
+ && mkdir -p /tmp/nix-install \
+ && tar -xJf /tmp/nix.tar.xz -C /tmp/nix-install --strip-components=1 \
+ && /tmp/nix-install/install --daemon --yes --no-channel-add \
+ && rm -rf /tmp/nix.tar.xz /tmp/nix-install
+
+# Enable flakes and the new `nix` CLI by default.
+RUN mkdir -p /etc/nix \
+ && printf 'experimental-features = nix-command flakes\nbuild-users-group = nixbld\n' \
+      > /etc/nix/nix.conf
+
+# Entrypoint shim: start the Nix daemon (multi-user installs need it running)
+# before handing control to the user's command. Idempotent — re-entry into the
+# same container will skip restart if the socket is already up.
+RUN cat > /usr/local/bin/entrypoint.sh <<'EOF' \
+ && chmod 0755 /usr/local/bin/entrypoint.sh
+#!/usr/bin/env bash
+set -euo pipefail
+
+SOCKET=/nix/var/nix/daemon-socket/socket
+if [ ! -S "$SOCKET" ]; then
+    sudo -n bash -c '/nix/var/nix/profiles/default/bin/nix-daemon >/var/log/nix-daemon.log 2>&1' &
+    for _ in $(seq 1 50); do
+        [ -S "$SOCKET" ] && break
+        sleep 0.1
+    done
+fi
+
+exec "$@"
+EOF
+
+# HydroGym source is baked at /opt/hydrogym; users override at run time with
+# `-v $PWD:/opt/hydrogym`. The clone targets the dynamicslab repository at
+# build time; rebuilds pick up new commits.
+RUN git clone https://github.com/dynamicslab/hydrogym.git /opt/hydrogym \
+ && chown -R hydrogym:hydrogym /opt/hydrogym
+
+# HF cache mount point. Users mount their host cache here for offline use.
+RUN install -d -o hydrogym -g hydrogym /home/hydrogym/.cache/hydrogym
+
+USER hydrogym
+WORKDIR /opt/hydrogym
+
+# Source the Nix profile so `nix` is on PATH in interactive shells.
+RUN echo '. /etc/profile.d/nix.sh' >> /home/hydrogym/.bashrc
+
+ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/entrypoint.sh"]
+CMD ["/bin/bash"]
