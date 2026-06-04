@@ -85,15 +85,19 @@ pkgs.mkShell {
     VENV_DIR="''${HYDROGYM_VENV_DIR:-$HOME/.cache/hydrogym/${name}-venv}"
     if [ ! -d "$VENV_DIR" ]; then
       ${pythonEnv}/bin/python -m venv "$VENV_DIR"
-      # `--system-site-packages` only inherits from the *unwrapped* python3
-      # site-packages, not from python.withPackages's wrapped env. Use a
-      # .pth file instead so the wrapped env's site-packages (omegaconf,
-      # huggingface-hub, etc.) is searched AFTER the venv's own — that way
-      # pip-upgrades inside the venv take precedence and we still get
-      # Nix-provided packages for free when no pip version is present.
-      echo "${pythonEnv}/${python.sitePackages}" \
-        > "$VENV_DIR/${python.sitePackages}/nix-env.pth"
     fi
+    # `--system-site-packages` only inherits from the *unwrapped* python3
+    # site-packages, not from python.withPackages's wrapped env. Use a
+    # .pth file instead so the wrapped env's site-packages (omegaconf,
+    # huggingface-hub, etc.) is searched AFTER the venv's own — that way
+    # pip-upgrades inside the venv take precedence and we still get
+    # Nix-provided packages for free when no pip version is present.
+    #
+    # Refresh on EVERY entry (not just venv creation) because the
+    # pythonEnv store path changes whenever pythonDeps changes, and a
+    # stale .pth would point at a no-longer-existent old env.
+    echo "${pythonEnv}/${python.sitePackages}" \
+      > "$VENV_DIR/${python.sitePackages}/nix-env.pth"
     # shellcheck disable=SC1091
     source "$VENV_DIR/bin/activate"
 
