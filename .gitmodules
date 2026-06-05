@@ -1,3 +1,6 @@
 [submodule "third_party/firedrake"]
 	path = third_party/firedrake
 	url = https://github.com/firedrakeproject/firedrake
+[submodule "third_party/nek5000"]
+	path = third_party/nek5000
+	url = https://github.com/Nek5000/Nek5000
