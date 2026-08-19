@@ -1,0 +1,29 @@
+{
+  "name": "FULL: GPU stack (maia-gpu + jax-gpu)",
+  "build": {
+    "dockerfile": "base/Dockerfile.base",
+    "args": {
+      "PSTL_PRESET": "ada",
+      "BUILD_TYPE": "production"
+    }
+  },
+  "features": {
+    "./features/maia-gpu": {
+      "pstlPreset": "ada",
+      "buildType": "production"
+    },
+    "./features/hydrogym-gpu": {
+      "hydrogymExtras": "maia,jax"
+    }
+  },
+  "runArgs": [
+    "--gpus=all",
+    "--net=host",
+    "--ipc=host",
+    "--hostname=LocalGPU",
+    "--cap-add=SYS_ADMIN"
+  ],
+  "workspaceMount": "source=/home/christian/maia_solver,target=/workspace,type=bind",
+  "workspaceFolder": "/workspace",
+  "remoteUser": "root"
+}

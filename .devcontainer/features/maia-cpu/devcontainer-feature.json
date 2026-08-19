@@ -1,0 +1,25 @@
+{
+  "name": "MAIA CPU Solver",
+  "description": "Builds MAIA CFD solver with GCC + OpenMPI (gompi-like toolchain). For CPU-only development and testing.",
+  "version": "1.0.0",
+  "options": {
+    "buildType": {
+      "type": "string",
+      "enum": ["debug", "production", "extreme"],
+      "default": "production",
+      "description": "MAIA build type"
+    },
+    "enableComponents": {
+      "type": "string",
+      "default": "",
+      "description": "Comma-separated list of components to enable (avg,dg,lbm,particle,structured). Empty = all enabled."
+    },
+    "disableComponents": {
+      "type": "string",
+      "default": "",
+      "description": "Comma-separated list of components to disable (avg,dg,lbm,particle,structured)"
+    }
+  },
+  "dependsOn": [],
+  "postCreateCommand": "bash /workspace/hydrogym/.devcontainer/features/maia-cpu/postCreateCommand.sh"
+}

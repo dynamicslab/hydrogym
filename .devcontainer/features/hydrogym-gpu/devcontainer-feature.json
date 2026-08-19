@@ -1,0 +1,21 @@
+{
+  "name": "HydroGym GPU (JAX/PyTorch)",
+  "description": "Installs HydroGym GPU venv with JAX-Fluids and HydroGym[maia,jax] extras. Requires python-ml feature.",
+  "version": "1.0.0",
+  "options": {
+    "hydrogymExtras": {
+      "type": "string",
+      "default": "maia,jax",
+      "description": "HydroGym extras to install"
+    },
+    "jaxfluidsRepo": {
+      "type": "string",
+      "default": "https://github.com/tumaer/JAXFLUIDS.git",
+      "description": "JAX-Fluids repository URL"
+    }
+  },
+  "dependsOn": {
+    "./features/python-ml": {}
+  },
+  "postCreateCommand": "bash /workspace/hydrogym/.devcontainer/features/hydrogym-gpu/postCreateCommand.sh"
+}

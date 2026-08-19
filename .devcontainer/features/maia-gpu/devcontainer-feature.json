@@ -1,0 +1,31 @@
+{
+  "name": "MAIA GPU Solver",
+  "description": "Builds MAIA CFD solver with NVHPC + CUDA (stdpar) for NVIDIA GPUs. Includes regression testing and profiling tools.",
+  "version": "1.0.0",
+  "options": {
+    "pstlPreset": {
+      "type": "string",
+      "enum": ["ada", "hopper", "blackwell", "blackwell_consumer", "turing", "ampere", "volta", "multicore", "HOST"],
+      "default": "ada",
+      "description": "GPU architecture preset for NVHPC stdpar (-gpu=ccXX)"
+    },
+    "buildType": {
+      "type": "string",
+      "enum": ["debug", "production", "extreme"],
+      "default": "production",
+      "description": "MAIA build type"
+    },
+    "enableComponents": {
+      "type": "string",
+      "default": "",
+      "description": "Comma-separated list of components to enable (avg,dg,lbm,particle,structured). Empty = all enabled."
+    },
+    "disableComponents": {
+      "type": "string",
+      "default": "",
+      "description": "Comma-separated list of components to disable (avg,dg,lbm,particle,structured)"
+    }
+  },
+  "dependsOn": [],
+  "postCreateCommand": "bash /workspace/hydrogym/.devcontainer/features/maia-gpu/postCreateCommand.sh"
+}

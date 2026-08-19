@@ -1,0 +1,23 @@
+{
+  "name": "TEST: nek5000 only",
+  "build": {
+    "dockerfile": "base/Dockerfile.base",
+    "args": {
+      "PSTL_PRESET": "ada",
+      "BUILD_TYPE": "production"
+    }
+  },
+  "features": {
+    "./features/nek5000": {}
+  },
+  "runArgs": [
+    "--gpus=all",
+    "--net=host",
+    "--ipc=host",
+    "--hostname=LocalGPU",
+    "--cap-add=SYS_ADMIN"
+  ],
+  "workspaceMount": "source=/home/christian/maia_solver,target=/workspace,type=bind",
+  "workspaceFolder": "/workspace",
+  "remoteUser": "root"
+}

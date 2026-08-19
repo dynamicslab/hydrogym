@@ -1,0 +1,14 @@
+{
+  "name": "Nek5000 Spectral Element Solver",
+  "description": "Builds Nek5000 for HydroGym's 4 pre-configured DRL cases (mini_channel, large_channel, naca0012_200k, small_wing) from the in-repo third_party/nek5000 submodules and case sources. Uses GCC + OpenMPI from base.",
+  "version": "2.0.0",
+  "options": {
+    "cases": {
+      "type": "string",
+      "default": "mini_channel,large_channel,naca0012_200k,small_wing",
+      "description": "Comma-separated list of cases to build"
+    }
+  },
+  "dependsOn": [],
+  "postCreateCommand": "bash /workspace/hydrogym/.devcontainer/features/nek5000/postCreateCommand.sh"
+}

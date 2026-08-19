@@ -1,0 +1,30 @@
+{
+  "name": "FULL: CPU stack (maia-cpu + firedrake + nek5000 + jax-cpu)",
+  "build": {
+    "dockerfile": "base/Dockerfile.base",
+    "args": {
+      "PSTL_PRESET": "ada",
+      "BUILD_TYPE": "production"
+    }
+  },
+  "features": {
+    "./features/maia-cpu": {
+      "buildType": "production"
+    },
+    "./features/nek5000": {},
+    "./features/petsc": {},
+    "./features/firedrake": {
+      "hydrogymExtras": "maia,firedrake,nek,jax"
+    }
+  },
+  "runArgs": [
+    "--gpus=all",
+    "--net=host",
+    "--ipc=host",
+    "--hostname=LocalGPU",
+    "--cap-add=SYS_ADMIN"
+  ],
+  "workspaceMount": "source=/home/christian/maia_solver,target=/workspace,type=bind",
+  "workspaceFolder": "/workspace",
+  "remoteUser": "root"
+}

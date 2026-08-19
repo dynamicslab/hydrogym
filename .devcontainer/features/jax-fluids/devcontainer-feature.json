@@ -1,0 +1,21 @@
+{
+  "name": "JAX-Fluids Standalone",
+  "description": "Installs JAX-Fluids CFD solver in the python-ml venv. Requires python-ml feature.",
+  "version": "1.0.0",
+  "options": {
+    "jaxfluidsRepo": {
+      "type": "string",
+      "default": "https://github.com/tumaer/JAXFLUIDS.git",
+      "description": "JAX-Fluids repository URL"
+    },
+    "jaxfluidsBranch": {
+      "type": "string",
+      "default": "main",
+      "description": "JAX-Fluids branch to install"
+    }
+  },
+  "dependsOn": {
+    "./features/python-ml": {}
+  },
+  "postCreateCommand": "bash /workspace/hydrogym/.devcontainer/features/jax-fluids/postCreateCommand.sh"
+}

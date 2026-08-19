@@ -1,0 +1,133 @@
+# Base image for MAIA + HydroGym modular devcontainer
+# NVHPC 26.5 with CUDA 13.2 on Ubuntu 24.04
+# Provides: NVHPC compiler, HPCX OpenMPI 5, Parallel-NetCDF, Parallel HDF5, FFTW3 (MPI+OpenMP+threads)
+
+FROM nvcr.io/nvidia/nvhpc:26.5-devel-cuda_multi-ubuntu24.04
+
+# ============================================
+# System packages
+# ============================================
+RUN apt-get update && apt-get install -y \
+    cmake ninja-build build-essential libtool autoconf zlib1g-dev wget git curl \
+    python3 python3-pip python3-venv python3-dev \
+    gfortran libopenmpi-dev openmpi-bin \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# ============================================
+# Environment variables
+# ============================================
+ENV MAIA_LIB_HOME=/opt/maia_deps \
+    MAIA_LIB_HOME_GNU=/opt/maia_deps_gnu \
+    CUDA_HOME=/opt/nvidia/hpc_sdk/Linux_x86_64/26.5/cuda \
+    NVHPC_ROOT=/opt/nvidia/hpc_sdk/Linux_x86_64/26.5 \
+    HPCX_ROOT=/opt/nvidia/hpc_sdk/Linux_x86_64/26.5/comm_libs/13.2/hpcx/hpcx-2.50/ompi5
+
+ENV PATH=${HPCX_ROOT}/bin:${CUDA_HOME}/bin:${NVHPC_ROOT}/compilers/bin:${PATH}
+ENV LD_LIBRARY_PATH=${MAIA_LIB_HOME}/hdf5-1.14.5/lib:${MAIA_LIB_HOME}/parallel-netcdf-1.14.0/lib:${MAIA_LIB_HOME}/fftw-3.3.10/lib:${CUDA_HOME}/lib64:${HPCX_ROOT}/lib:${NVHPC_ROOT}/math_libs/lib64:${LD_LIBRARY_PATH}
+ENV UCX_TLS=cuda_copy,cuda_ipc,shm,self,sm,tcp
+
+# ============================================
+# Build Parallel-NetCDF 1.14.0
+# ============================================
+WORKDIR /tmp/build_pnetcdf
+RUN wget -q https://parallel-netcdf.github.io/Release/pnetcdf-1.14.0.tar.gz && \
+    tar -xzf pnetcdf-1.14.0.tar.gz && cd pnetcdf-1.14.0 && \
+    export CC=mpicc CXX=mpicxx FC=mpifort F77=mpif77 && \
+    export CFLAGS="-O3 -fPIC" CXXFLAGS="-O3 -fPIC" FCFLAGS="-O3 -fPIC" FFLAGS="-O3 -fPIC" && \
+    ./configure --prefix=${MAIA_LIB_HOME}/parallel-netcdf-1.14.0 --enable-shared --disable-fortran && \
+    make -j16 && make install && \
+    rm -rf /tmp/build_pnetcdf
+
+# ============================================
+# Build Parallel HDF5 1.14.5
+# ============================================
+WORKDIR /tmp/build_hdf5
+RUN wget -q https://github.com/HDFGroup/hdf5/archive/refs/tags/hdf5_1.14.5.tar.gz -O hdf5-1.14.5.tar.gz && \
+    tar -xzf hdf5-1.14.5.tar.gz && cd hdf5-hdf5_1.14.5 && \
+    export CC=mpicc CXX=mpicxx FC=mpifort F77=mpif77 && \
+    export CFLAGS="-O3 -fPIC" CXXFLAGS="-O3 -fPIC" FCFLAGS="-O3 -fPIC" FFLAGS="-O3 -fPIC" && \
+    ./autogen.sh && \
+    ./configure --prefix=${MAIA_LIB_HOME}/hdf5-1.14.5 --enable-parallel --enable-shared --enable-fortran && \
+    make -j16 && make install && \
+    rm -rf /tmp/build_hdf5
+
+# ============================================
+# Build FFTW 3.3.10 (MPI + OpenMP + threads)
+# ============================================
+WORKDIR /tmp/build_fftw
+RUN wget -q https://www.fftw.org/fftw-3.3.10.tar.gz && \
+    tar -xzf fftw-3.3.10.tar.gz && cd fftw-3.3.10 && \
+    export CC=mpicc CXX=mpicxx FC=mpifort F77=mpif77 && \
+    export CFLAGS="-O3 -fPIC" CXXFLAGS="-O3 -fPIC" FCFLAGS="-O3 -fPIC" FFLAGS="-O3 -fPIC" && \
+    ./configure --prefix=${MAIA_LIB_HOME}/fftw-3.3.10 \
+        --enable-shared --enable-mpi --enable-openmp --enable-threads \
+        --enable-fortran && \
+    make -j16 && make install && \
+    rm -rf /tmp/build_fftw
+
+# ============================================
+# Build a SECOND copy of Parallel-NetCDF / Parallel HDF5 / FFTW using the
+# GNU/apt-OpenMPI toolchain (mpicc.openmpi etc, NOT mpicc - that resolves to
+# NVHPC's nvc via HPCX, which is first on PATH above). The GNU-toolchain
+# solver features (maia-cpu, nek5000, petsc/firedrake) link with plain g++,
+# and linking against the NVHPC-compiled libraries above fails with
+# undefined references to NVHPC runtime symbols (__builtin_va_gparg1,
+# __c_mcopy4, etc) - these two library stacks are not ABI-compatible, so
+# each toolchain needs its own copy (mirrors the old gompi vs NVHPC
+# EasyBuild toolchain split this container replaces).
+# ============================================
+WORKDIR /tmp/build_pnetcdf_gnu
+RUN wget -q https://parallel-netcdf.github.io/Release/pnetcdf-1.14.0.tar.gz && \
+    tar -xzf pnetcdf-1.14.0.tar.gz && cd pnetcdf-1.14.0 && \
+    export CC=/usr/bin/mpicc.openmpi CXX=/usr/bin/mpicxx.openmpi FC=/usr/bin/mpifort.openmpi F77=/usr/bin/mpif77.openmpi && \
+    export PATH=/usr/bin:${PATH} && \
+    export CFLAGS="-O3 -fPIC" CXXFLAGS="-O3 -fPIC" FCFLAGS="-O3 -fPIC" FFLAGS="-O3 -fPIC" && \
+    ./configure --prefix=${MAIA_LIB_HOME_GNU}/parallel-netcdf-1.14.0 --enable-shared --disable-fortran && \
+    make -j16 && make install && \
+    rm -rf /tmp/build_pnetcdf_gnu
+
+WORKDIR /tmp/build_hdf5_gnu
+RUN wget -q https://github.com/HDFGroup/hdf5/archive/refs/tags/hdf5_1.14.5.tar.gz -O hdf5-1.14.5.tar.gz && \
+    tar -xzf hdf5-1.14.5.tar.gz && cd hdf5-hdf5_1.14.5 && \
+    export CC=/usr/bin/mpicc.openmpi CXX=/usr/bin/mpicxx.openmpi FC=/usr/bin/mpifort.openmpi F77=/usr/bin/mpif77.openmpi && \
+    export PATH=/usr/bin:${PATH} && \
+    export CFLAGS="-O3 -fPIC" CXXFLAGS="-O3 -fPIC" FCFLAGS="-O3 -fPIC" FFLAGS="-O3 -fPIC" && \
+    ./autogen.sh && \
+    ./configure --prefix=${MAIA_LIB_HOME_GNU}/hdf5-1.14.5 --enable-parallel --enable-shared --enable-fortran && \
+    make -j16 && make install && \
+    rm -rf /tmp/build_hdf5_gnu
+
+WORKDIR /tmp/build_fftw_gnu
+RUN wget -q https://www.fftw.org/fftw-3.3.10.tar.gz && \
+    tar -xzf fftw-3.3.10.tar.gz && cd fftw-3.3.10 && \
+    export CC=/usr/bin/mpicc.openmpi CXX=/usr/bin/mpicxx.openmpi FC=/usr/bin/mpifort.openmpi F77=/usr/bin/mpif77.openmpi && \
+    export PATH=/usr/bin:${PATH} && \
+    export CFLAGS="-O3 -fPIC" CXXFLAGS="-O3 -fPIC" FCFLAGS="-O3 -fPIC" FFLAGS="-O3 -fPIC" && \
+    ./configure --prefix=${MAIA_LIB_HOME_GNU}/fftw-3.3.10 \
+        --enable-shared --enable-mpi --enable-openmp --enable-threads \
+        --enable-fortran && \
+    make -j16 && make install && \
+    rm -rf /tmp/build_fftw_gnu
+
+ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${MAIA_LIB_HOME_GNU}/hdf5-1.14.5/lib:${MAIA_LIB_HOME_GNU}/parallel-netcdf-1.14.0/lib:${MAIA_LIB_HOME_GNU}/fftw-3.3.10/lib
+
+# ============================================
+# Install uv (fast Python package manager)
+# ============================================
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh && \
+    mv /root/.local/bin/uv /usr/local/bin/uv
+
+# ============================================
+# Copy host/compiler configs to workspace (for MAIA configure.py)
+# ============================================
+COPY LocalGPU.cmake /workspace/wipmaiaml/auxiliary/hosts/LocalGPU.cmake
+COPY NVHPC.cmake /workspace/wipmaiaml/auxiliary/compilers/NVHPC.cmake
+
+# ============================================
+# Workspace setup
+# ============================================
+WORKDIR /workspace
+
+# Ensure submodules are initialized (doctest needed for tests)
+# This will be run at container start via postCreateCommand if needed

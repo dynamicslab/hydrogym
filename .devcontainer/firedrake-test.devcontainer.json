@@ -1,0 +1,24 @@
+{
+  "name": "TEST: firedrake (+petsc)",
+  "build": {
+    "dockerfile": "base/Dockerfile.base",
+    "args": {
+      "PSTL_PRESET": "ada",
+      "BUILD_TYPE": "production"
+    }
+  },
+  "features": {
+    "./features/petsc": {},
+    "./features/firedrake": {}
+  },
+  "runArgs": [
+    "--gpus=all",
+    "--net=host",
+    "--ipc=host",
+    "--hostname=LocalGPU",
+    "--cap-add=SYS_ADMIN"
+  ],
+  "workspaceMount": "source=/home/christian/maia_solver,target=/workspace,type=bind",
+  "workspaceFolder": "/workspace",
+  "remoteUser": "root"
+}

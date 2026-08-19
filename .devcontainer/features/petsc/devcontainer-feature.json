@@ -1,0 +1,19 @@
+{
+  "name": "PETSc 3.24",
+  "description": "Builds PETSc 3.24.0 with OpenBLAS for Firedrake and other scientific computing. Uses GCC + OpenMPI from base.",
+  "version": "1.0.0",
+  "options": {
+    "petscVersion": {
+      "type": "string",
+      "default": "v3.24.0",
+      "description": "PETSc version tag to build"
+    },
+    "withFiredrake": {
+      "type": "boolean",
+      "default": true,
+      "description": "Configure PETSc for Firedrake compatibility (shared libs, specific downloads)"
+    }
+  },
+  "dependsOn": [],
+  "postCreateCommand": "bash /workspace/hydrogym/.devcontainer/features/petsc/postCreateCommand.sh"
+}

@@ -1,0 +1,20 @@
+{
+  "name": "Python ML Stack (PyTorch + JAX + SB3)",
+  "description": "Installs PyTorch (CUDA 12.8), JAX (CUDA 12), and stable-baselines3 in a venv with --system-site-packages. Uses pip-managed CUDA independent of system CUDA 13.2.",
+  "version": "1.0.0",
+  "options": {
+    "pytorchCuda": {
+      "type": "string",
+      "enum": ["cu128", "cu126", "cu124", "cu121"],
+      "default": "cu128",
+      "description": "PyTorch CUDA version suffix"
+    },
+    "jaxCuda": {
+      "type": "string",
+      "default": "cuda12",
+      "description": "JAX CUDA version (cuda12, cuda12-local)"
+    }
+  },
+  "dependsOn": [],
+  "postCreateCommand": "bash /workspace/hydrogym/.devcontainer/features/python-ml/postCreateCommand.sh"
+}
