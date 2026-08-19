@@ -15,5 +15,5 @@
     }
   },
   "dependsOn": [],
-  "postCreateCommand": "bash /workspace/hydrogym/.devcontainer/features/petsc/postCreateCommand.sh"
+  "postCreateCommand": "bash /workspace/.devcontainer/features/petsc/postCreateCommand.sh"
 }

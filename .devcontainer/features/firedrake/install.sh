@@ -18,7 +18,7 @@ echo "Firedrake commit: ${FIREDRAKE_COMMIT}"
 echo "HydroGym extras: ${HYDROGYM_EXTRAS}"
 
 # Persisted for postCreateCommand.sh, which installs HydroGym itself once
-# /workspace/hydrogym is live (see note near the end of this script).
+# /workspace is live (see note near the end of this script).
 mkdir -p /opt/maia-feature-config
 cat > /opt/maia-feature-config/firedrake.env <<EOF
 HYDROGYM_EXTRAS=${HYDROGYM_EXTRAS}
@@ -170,7 +170,7 @@ echo "Installing Firedrake..."
 pip install --no-build-isolation "${FIREDRAKE_DIR}[check,docs]"
 
 # HydroGym itself is installed in postCreateCommand instead of here: this
-# devcontainer bind-mounts the actual hydrogym repo to /workspace/hydrogym
+# devcontainer bind-mounts the actual hydrogym repo to /workspace
 # at container runtime (see devcontainer.json "workspaceMount"), but that
 # mount isn't attached yet during this build-time install step - cloning a
 # second copy here would just get shadowed by the real mount later and
@@ -186,7 +186,7 @@ echo "Verifying installations..."
 # so the real installed packages resolve.
 cd /tmp
 # This dev build of firedrake has no __version__ attribute (same situation
-# as hydrogym - see the top-level CLAUDE.md gotcha), use importlib.metadata.
+# as hydrogym - see the ensure_hydrogym.sh gotcha), use importlib.metadata.
 python -c "import firedrake, importlib.metadata; print(f'Firedrake: {importlib.metadata.version(\"firedrake\")}')"
 
 # Deactivate

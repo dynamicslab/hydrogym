@@ -2,12 +2,19 @@
 # MAIA GPU Feature Install Script
 #
 # NOTE: this runs during `docker build` (image build time), *before* the
-# workspace bind mount is attached - so /workspace/wipmaiaml does not exist
-# yet here (MAIA's source isn't public, so it can't be `git clone`d at build
-# time like the other features do; it arrives later via the host bind mount
-# configured in devcontainer.json). The actual configure/build therefore
-# happens in postCreateCommand.sh instead, once the mount is live. All this
-# script does is persist the chosen feature options for that later step.
+# workspace bind mount is attached - so /workspace/third_party/m-AIA does not
+# exist yet here, even though it's a real submodule of this repo (it arrives
+# later via the host bind mount configured in devcontainer.json, same as the
+# rest of the workspace). The actual configure/build therefore happens in
+# postCreateCommand.sh instead, once the mount is live. All this script does
+# is persist the chosen feature options for that later step.
+#
+# CAVEAT: third_party/m-AIA points at RWTH's public m-AIA mirror
+# (git.rwth-aachen.de/aia/m-AIA/m-AIA), not the private wipmaiaml dev tree -
+# it does not yet have the RL-relevant features documented in
+# .devcontainer/README.md (LB jet-actuation BCs 2007/2008, the MPMD
+# flow-control channel). Swap in a full-featured checkout once one is
+# public, or point this submodule at it.
 
 set -euo pipefail
 

@@ -27,5 +27,5 @@
     }
   },
   "dependsOn": [],
-  "postCreateCommand": "bash /workspace/hydrogym/.devcontainer/features/maia-gpu/postCreateCommand.sh"
+  "postCreateCommand": "bash /workspace/.devcontainer/features/maia-gpu/postCreateCommand.sh"
 }

@@ -9,3 +9,7 @@
 	path = third_party/nek5000/solver/KTH_DRL_Framework/Toolbox
 	url = https://github.com/adampep/KTH_Toolbox.git
 	branch = master
+[submodule "third_party/m-AIA"]
+	path = third_party/m-AIA
+	url = https://git.rwth-aachen.de/aia/m-AIA/m-AIA
+	branch = master

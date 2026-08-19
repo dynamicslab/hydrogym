@@ -27,7 +27,7 @@
 #             silently swapped in a future edit.
 #
 # Runs after the container is created, once the host bind mount (see
-# devcontainer.json "workspaceMount") has attached /workspace/hydrogym.
+# devcontainer.json "workspaceMount") has attached /workspace.
 # Idempotent per case: skips a case if its binary already exists.
 
 set -euo pipefail
@@ -40,7 +40,7 @@ CASES="${CASES:-mini_channel,large_channel,naca0012_200k,small_wing}"
 
 echo "=== Nek5000 Post-Create Setup ==="
 
-NEK_ROOT="/workspace/hydrogym/third_party/nek5000"
+NEK_ROOT="/workspace/third_party/nek5000"
 NEK_CORE="${NEK_ROOT}/solver/KTH_DRL_Framework/Nek5000"
 TOOLBOX_SRC="${NEK_ROOT}/solver/KTH_DRL_Framework/Toolbox"
 NEK_CORE_DEC="${NEK_ROOT}/solver/DEC_DRL_Nek5000"
@@ -181,7 +181,7 @@ done
 
 # Solver binaries alone are useless without something that can drive them -
 # make sure hydrogym[nek] is importable from a dedicated venv.
-bash /workspace/hydrogym/.devcontainer/scripts/ensure_hydrogym.sh /opt/venvs/nek5000 nek
+bash /workspace/.devcontainer/scripts/ensure_hydrogym.sh /opt/venvs/nek5000 nek
 
 echo ""
 echo "=== Nek5000 Post-Create Complete ==="

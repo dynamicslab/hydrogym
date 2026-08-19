@@ -2,7 +2,7 @@
 # Nek5000 Feature Install Script
 #
 # NOTE: this runs during `docker build` (image build time), *before* the
-# workspace bind mount is attached, so /workspace/hydrogym isn't visible
+# workspace bind mount is attached, so /workspace isn't visible
 # here yet - and the actual case source now lives in-repo, under
 # third_party/nek5000/ (git submodules for Nek5000 core + KTH Toolbox, plus
 # the four case sources), not as something this script can fetch on its

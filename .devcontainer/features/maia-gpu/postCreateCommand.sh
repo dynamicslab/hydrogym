@@ -2,10 +2,14 @@
 # MAIA GPU Feature Post-Create Command
 #
 # Runs after the container is created, once the host bind mount (see
-# devcontainer.json "workspaceMount") has attached /workspace/wipmaiaml.
-# This is where the actual configure/build happens (see install.sh for why
-# it can't happen at image-build time). Idempotent: skips the build if a
-# matching binary already exists.
+# devcontainer.json "workspaceMount") has attached /workspace. This is where
+# the actual configure/build happens (see install.sh for why it can't happen
+# at image-build time). Idempotent: skips the build if a matching binary
+# already exists.
+#
+# CAVEAT: builds against third_party/m-AIA, RWTH's public m-AIA mirror, not
+# the private wipmaiaml dev tree - see install.sh's CAVEAT for what that's
+# currently missing (RL-relevant LB BCs, the MPMD flow-control channel).
 
 set -euo pipefail
 
@@ -20,17 +24,31 @@ DISABLE_COMPONENTS="${DISABLE_COMPONENTS:-}"
 
 echo "=== MAIA GPU Post-Create Setup ==="
 
-MAIA_DIR="/workspace/wipmaiaml"
+MAIA_DIR="/workspace/third_party/m-AIA"
 BUILD_DIR="${MAIA_DIR}/build_nvhpc_${BUILD_TYPE}"
 
-# wipmaiaml isn't public yet, so it only shows up here via the host bind
-# mount. Once it's public, replace this guard with a `git clone` fallback
-# (or clone it in install.sh at build time like the other features do).
 if [[ ! -d "${MAIA_DIR}" ]]; then
     echo "WARNING: MAIA source not found at ${MAIA_DIR}."
-    echo "Check that the host bind mount in devcontainer.json points at a valid wipmaiaml checkout."
+    echo "Check that the host bind mount in devcontainer.json points at a valid hydrogym checkout with submodules registered (.gitmodules)."
     exit 0
 fi
+
+# The submodule directory exists once .gitmodules is registered, but its
+# content is only populated after `git submodule update --init` - an
+# uninitialized submodule is just an empty dir, so check for that instead of
+# re-cloning (this repo is already bind-mounted from the host; a fresh
+# `git clone` here would be redundant with - and could conflict with -
+# whatever's already checked out on the host side).
+if [[ -z "$(ls -A "${MAIA_DIR}" 2>/dev/null)" ]]; then
+    echo "Initializing third_party/m-AIA submodule..."
+    git -C /workspace submodule update --init --depth 1 -- third_party/m-AIA
+fi
+
+echo "NOTE: third_party/m-AIA is RWTH's public m-AIA mirror, not the private"
+echo "wipmaiaml dev tree - it does not yet have the RL-relevant LB jet-actuation"
+echo "BCs (2007/2008) or the MPMD flow-control channel (see .devcontainer/README.md)."
+echo "A full-featured public checkout will replace this submodule once one is"
+echo "available."
 
 cd "${MAIA_DIR}"
 
@@ -96,7 +114,7 @@ fi
 
 # Solver binary alone is useless without something that can drive it -
 # make sure hydrogym[maia] is importable from a dedicated venv.
-bash /workspace/hydrogym/.devcontainer/scripts/ensure_hydrogym.sh /opt/venvs/maia-gpu maia
+bash /workspace/.devcontainer/scripts/ensure_hydrogym.sh /opt/venvs/maia-gpu maia
 
 # Set up VS Code compile_commands.json symlink if needed
 if [[ -f "${BUILD_DIR}/compile_commands.json" && ! -L "${MAIA_DIR}/compile_commands.json" ]]; then

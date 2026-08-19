@@ -18,7 +18,7 @@ echo "HydroGym extras: ${HYDROGYM_EXTRAS}"
 echo "JAX-Fluids repo: ${JAXFLUIDS_REPO}"
 
 # Persisted for postCreateCommand.sh, which installs HydroGym itself once
-# /workspace/hydrogym is live (see note near the end of this script).
+# /workspace is live (see note near the end of this script).
 mkdir -p /opt/maia-feature-config
 cat > /opt/maia-feature-config/hydrogym-gpu.env <<EOF
 HYDROGYM_EXTRAS=${HYDROGYM_EXTRAS}
@@ -41,7 +41,7 @@ echo "Installing JAX-Fluids from ${JAXFLUIDS_REPO}..."
 pip install -e "git+${JAXFLUIDS_REPO}#egg=jaxfluids"
 
 # HydroGym itself is installed in postCreateCommand instead of here: this
-# devcontainer bind-mounts the actual hydrogym repo to /workspace/hydrogym
+# devcontainer bind-mounts the actual hydrogym repo to /workspace
 # at container runtime (see devcontainer.json "workspaceMount"), but that
 # mount isn't attached yet during this build-time install step - cloning a
 # second copy here would just get shadowed by the real mount later and

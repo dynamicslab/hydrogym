@@ -1,6 +1,6 @@
 #!/bin/bash
 # HydroGym GPU Feature Post-Create Command
-# Installs HydroGym (against the live /workspace/hydrogym mount, which
+# Installs HydroGym (against the live /workspace mount, which
 # isn't attached yet at build time - see install.sh) and verifies the
 # environment.
 
@@ -30,7 +30,7 @@ fi
 # `python -c` puts cwd on sys.path. That false positive previously made
 # this script skip the real `pip install`, leaving hydrogym never actually
 # installed here despite every check appearing to pass.
-bash /workspace/hydrogym/.devcontainer/scripts/ensure_hydrogym.sh "${VENV_DIR}" "${HYDROGYM_EXTRAS}"
+bash /workspace/.devcontainer/scripts/ensure_hydrogym.sh "${VENV_DIR}" "${HYDROGYM_EXTRAS}"
 
 source "${VENV_DIR}/activate_hydrogym_gpu.sh"
 

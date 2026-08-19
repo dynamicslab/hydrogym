@@ -17,5 +17,5 @@
   "dependsOn": {
     "./features/python-ml": {}
   },
-  "postCreateCommand": "bash /workspace/hydrogym/.devcontainer/features/hydrogym-gpu/postCreateCommand.sh"
+  "postCreateCommand": "bash /workspace/.devcontainer/features/hydrogym-gpu/postCreateCommand.sh"
 }

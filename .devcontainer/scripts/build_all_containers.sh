@@ -23,8 +23,8 @@
 #
 # Configs run SEQUENTIALLY, not in parallel: several postCreateCommand steps
 # do native -j16 compiles (MAIA, PETSc, Firedrake, Nek5000 cases), and
-# running two of those at once risks the OOM documented in the top-level
-# CLAUDE.md ("some translation units peak at ~4.2GB each").
+# running two of those at once risks the OOM documented in
+# .devcontainer/README.md ("some translation units peak at ~4.2GB each").
 #
 # Each container is left running afterwards, labeled
 # devcontainer.config_variant=<name> - test_all_solvers.sh (in this same

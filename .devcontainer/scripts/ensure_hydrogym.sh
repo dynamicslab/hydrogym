@@ -21,7 +21,7 @@ set -euo pipefail
 
 VENV_DIR="$1"
 EXTRAS="$2"
-HYDROGYM_DIR="/workspace/hydrogym"
+HYDROGYM_DIR="/workspace"
 
 if [[ ! -d "${HYDROGYM_DIR}" ]]; then
     echo "WARNING: ${HYDROGYM_DIR} not found - check the workspace bind mount in devcontainer.json."
@@ -41,11 +41,12 @@ fi
 source "${VENV_DIR}/bin/activate"
 
 # Checked via importlib.metadata, not a bare `import hydrogym` - the
-# workspaceFolder in every devcontainer config here is /workspace (the bind
-# mount's root), one level above /workspace/hydrogym, and Python's CWD-based
-# implicit namespace packages mean `import hydrogym` succeeds from that CWD
-# purely because a directory named hydrogym exists there, even with nothing
-# installed - a false positive that made this skip a real `pip install`.
+# workspaceFolder in every devcontainer config here is /workspace (the
+# bind-mounted repo root itself), which contains a `hydrogym/` package
+# subdirectory, and Python's CWD-based implicit namespace packages mean
+# `import hydrogym` succeeds from that CWD purely because that directory
+# exists, even with nothing installed - a false positive that made this
+# skip a real `pip install`.
 if python -c "import importlib.metadata; importlib.metadata.version('hydrogym')" 2>/dev/null; then
     echo "hydrogym already importable in ${VENV_DIR} - skipping install."
 else

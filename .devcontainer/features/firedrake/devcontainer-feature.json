@@ -17,5 +17,5 @@
   "dependsOn": {
     "./features/petsc": {}
   },
-  "postCreateCommand": "bash /workspace/hydrogym/.devcontainer/features/firedrake/postCreateCommand.sh"
+  "postCreateCommand": "bash /workspace/.devcontainer/features/firedrake/postCreateCommand.sh"
 }

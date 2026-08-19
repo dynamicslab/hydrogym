@@ -16,5 +16,5 @@
     }
   },
   "dependsOn": [],
-  "postCreateCommand": "bash /workspace/hydrogym/.devcontainer/features/python-ml/postCreateCommand.sh"
+  "postCreateCommand": "bash /workspace/.devcontainer/features/python-ml/postCreateCommand.sh"
 }

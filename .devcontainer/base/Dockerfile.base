@@ -121,8 +121,8 @@ RUN curl -LsSf https://astral.sh/uv/install.sh | sh && \
 # ============================================
 # Copy host/compiler configs to workspace (for MAIA configure.py)
 # ============================================
-COPY LocalGPU.cmake /workspace/wipmaiaml/auxiliary/hosts/LocalGPU.cmake
-COPY NVHPC.cmake /workspace/wipmaiaml/auxiliary/compilers/NVHPC.cmake
+COPY LocalGPU.cmake /workspace/third_party/m-AIA/auxiliary/hosts/LocalGPU.cmake
+COPY NVHPC.cmake /workspace/third_party/m-AIA/auxiliary/compilers/NVHPC.cmake
 
 # ============================================
 # Workspace setup

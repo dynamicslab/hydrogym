@@ -61,12 +61,12 @@ check "LD_LIBRARY_PATH set" "echo \$LD_LIBRARY_PATH | grep -q 'maia_deps'"
 
 echo ""
 echo "--- MAIA GPU Feature ---"
-if [[ -f "/workspace/wipmaiaml/build_nvhpc_production/bin/maia" ]]; then
-    check "MAIA binary" "test -f /workspace/wipmaiaml/build_nvhpc_production/bin/maia"
-    check "MAIA test binary" "test -f /workspace/wipmaiaml/build_nvhpc_production/bin/test_maia"
-    warn "MAIA tests pass" "/workspace/wipmaiaml/build_nvhpc_production/bin/test_maia"
-    check "compile_commands.json" "test -f /workspace/wipmaiaml/compile_commands.json"
-    check "dev_tools present" "test -f /workspace/wipmaiaml/auxiliary/dev_tools/regression_test.py && test -f /workspace/wipmaiaml/auxiliary/dev_tools/profile_run.py && test -f /workspace/wipmaiaml/auxiliary/dev_tools/report.py"
+if [[ -f "/workspace/third_party/m-AIA/build_nvhpc_production/bin/maia" ]]; then
+    check "MAIA binary" "test -f /workspace/third_party/m-AIA/build_nvhpc_production/bin/maia"
+    check "MAIA test binary" "test -f /workspace/third_party/m-AIA/build_nvhpc_production/bin/test_maia"
+    warn "MAIA tests pass" "/workspace/third_party/m-AIA/build_nvhpc_production/bin/test_maia"
+    check "compile_commands.json" "test -f /workspace/third_party/m-AIA/compile_commands.json"
+    check "dev_tools present" "test -f /workspace/third_party/m-AIA/auxiliary/dev_tools/regression_test.py && test -f /workspace/third_party/m-AIA/auxiliary/dev_tools/profile_run.py && test -f /workspace/third_party/m-AIA/auxiliary/dev_tools/report.py"
     check "dev_runs dir" "test -d /workspace/dev_runs/results/regression && test -d /workspace/dev_runs/results/profiling"
     warn "HydroGym[maia] import" "/opt/venvs/maia-gpu/bin/python -c 'import hydrogym, importlib.metadata; print(importlib.metadata.version(\"hydrogym\"))'"
 else
@@ -76,8 +76,8 @@ fi
 
 echo ""
 echo "--- MAIA CPU Feature ---"
-if [[ -f "/workspace/wipmaiaml/build_gnu_production/bin/maia" ]]; then
-    check "MAIA CPU binary" "test -f /workspace/wipmaiaml/build_gnu_production/bin/maia"
+if [[ -f "/workspace/third_party/m-AIA/build_gnu_production/bin/maia" ]]; then
+    check "MAIA CPU binary" "test -f /workspace/third_party/m-AIA/build_gnu_production/bin/maia"
     warn "HydroGym[maia] import" "/opt/venvs/maia-cpu/bin/python -c 'import hydrogym, importlib.metadata; print(importlib.metadata.version(\"hydrogym\"))'"
 else
     echo -e "  [MAIA CPU] ${YELLOW}NOT ENABLED${NC}"
@@ -85,7 +85,7 @@ fi
 
 echo ""
 echo "--- Nek5000 Feature ---"
-NEK_CASES_DIR="/workspace/hydrogym/third_party/nek5000/cases"
+NEK_CASES_DIR="/workspace/third_party/nek5000/cases"
 if [[ -d "${NEK_CASES_DIR}" ]]; then
     for case in mini_channel large_channel naca0012_200k small_wing; do
         warn "Nek5000 ${case}" "test -f ${NEK_CASES_DIR}/${case}/nek5000"

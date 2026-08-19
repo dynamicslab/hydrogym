@@ -90,13 +90,13 @@ CMD[maia_gpu]='
 set -e
 source /opt/venvs/maia-gpu/bin/activate
 export OMP_NUM_THREADS=1
-cd /workspace/hydrogym/examples/maia/getting_started
+cd /workspace/examples/maia/getting_started
 rm -rf ci_test_run_gpu
 python prepare_workspace.py --env Cylinder_2D_Re200 --work-dir ./ci_test_run_gpu
 cd ci_test_run_gpu
 mpirun --allow-run-as-root -np 1 python ../test_maia_env.py \
     --environment Cylinder_2D_Re200 --num-steps 3 \
-    : -np 1 /workspace/wipmaiaml/build_nvhpc_production/bin/maia properties_run.toml --silent
+    : -np 1 /workspace/third_party/m-AIA/build_nvhpc_production/bin/maia properties_run.toml --silent
 '
 
 CMD[maia_cpu]='
@@ -104,19 +104,19 @@ set -e
 source /opt/venvs/maia-cpu/bin/activate
 export OMP_NUM_THREADS=1
 export LD_LIBRARY_PATH="/usr/lib/x86_64-linux-gnu:/opt/maia_deps_gnu/hdf5-1.14.5/lib:/opt/maia_deps_gnu/parallel-netcdf-1.14.0/lib:/opt/maia_deps_gnu/fftw-3.3.10/lib:${LD_LIBRARY_PATH:-}"
-cd /workspace/hydrogym/examples/maia/getting_started
+cd /workspace/examples/maia/getting_started
 rm -rf ci_test_run_cpu
 python prepare_workspace.py --env Cylinder_2D_Re200 --work-dir ./ci_test_run_cpu
 cd ci_test_run_cpu
 mpirun.openmpi --allow-run-as-root -np 1 python ../test_maia_env.py \
     --environment Cylinder_2D_Re200 --num-steps 3 \
-    : -np 1 /workspace/wipmaiaml/build_gnu_production/bin/maia properties_run.toml --silent
+    : -np 1 /workspace/third_party/m-AIA/build_gnu_production/bin/maia properties_run.toml --silent
 '
 
 CMD[firedrake]='
 set -e
 source /opt/venvs/firedrake/activate_firedrake.sh
-cd /workspace/hydrogym/examples/firedrake/getting_started
+cd /workspace/examples/firedrake/getting_started
 python test_firedrake_env.py --environment cylinder --num-steps 3 --mesh-resolution medium
 '
 
@@ -127,8 +127,8 @@ export OMP_NUM_THREADS=1
 # Best-effort PATH fallback so a bare `nek5000` resolves to a real binary if
 # the downloaded packaged env does not carry its own - see header comment,
 # this may legitimately not match TCFmini_3D_Re180 and fail for that reason.
-export PATH="/workspace/hydrogym/third_party/nek5000/cases/mini_channel:${PATH}"
-cd /workspace/hydrogym/examples/nek/getting_started/1_nekenv_single
+export PATH="/workspace/third_party/nek5000/cases/mini_channel:${PATH}"
+cd /workspace/examples/nek/getting_started/1_nekenv_single
 rm -rf ci_test_run
 python ../prepare_workspace.py --env TCFmini_3D_Re180 --work-dir ./ci_test_run --cache-dir "$HOME/.cache/hydrogym"
 cd ci_test_run
@@ -149,21 +149,21 @@ mpirun --allow-run-as-root --use-hwthread-cpus -np 1 python ../test_nek_direct.p
 CMD[jax_kolmogorov]='
 set -e
 source /opt/venvs/ml/bin/activate
-cd /workspace/hydrogym/examples/jax/getting_started/1_kolmogorov
+cd /workspace/examples/jax/getting_started/1_kolmogorov
 python test_kolmogorov_env.py no_actuation --num-steps 5
 '
 
 CMD[jax_channel]='
 set -e
 source /opt/venvs/ml/bin/activate
-cd /workspace/hydrogym/examples/jax/getting_started/2_channel
+cd /workspace/examples/jax/getting_started/2_channel
 python test_channel_env.py no_actuation --num-steps 2
 '
 
 CMD[jaxfluids]='
 set -e
 source /opt/venvs/ml/bin/activate
-cd /workspace/hydrogym/examples/jaxfluids
+cd /workspace/examples/jaxfluids
 python test_jaxfluids_env.py
 '
 

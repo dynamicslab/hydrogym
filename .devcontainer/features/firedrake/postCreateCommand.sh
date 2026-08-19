@@ -1,6 +1,6 @@
 #!/bin/bash
 # Firedrake + HydroGym CPU Feature Post-Create Command
-# Installs HydroGym (against the live /workspace/hydrogym mount, which
+# Installs HydroGym (against the live /workspace mount, which
 # isn't attached yet at build time - see install.sh) and verifies the
 # environment.
 
@@ -15,7 +15,7 @@ HYDROGYM_EXTRAS="${HYDROGYM_EXTRAS:-maia,firedrake,nek}"
 echo "=== Firedrake + HydroGym CPU Post-Create Setup ==="
 
 VENV_DIR="/opt/venvs/firedrake"
-HYDROGYM_DIR="/workspace/hydrogym"
+HYDROGYM_DIR="/workspace"
 
 if [[ ! -d "${VENV_DIR}" ]]; then
     echo "WARNING: Firedrake venv not found at ${VENV_DIR}"
@@ -25,7 +25,7 @@ fi
 
 source "${VENV_DIR}/activate_firedrake.sh"
 
-# Lifecycle commands can run with cwd inside /workspace/hydrogym (the repo
+# Lifecycle commands can run with cwd inside /workspace (the repo
 # root, which itself contains a `hydrogym/` package subdirectory) - `python
 # -c` adds cwd to sys.path first, so `import hydrogym` can resolve to that
 # raw, never-actually-pip-installed source tree and "succeed" without
