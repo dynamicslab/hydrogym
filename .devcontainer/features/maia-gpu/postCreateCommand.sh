@@ -54,12 +54,29 @@ cd "${MAIA_DIR}"
 
 # configure.py's host detection (cmake/GetHost.cmake) is purely based on the
 # container's OS hostname pattern-matched against a hardcoded cluster list -
-# it does NOT read MAIA_HOST/HOST env vars. This happens to still resolve to
-# LocalGPU today since that's also the container's --hostname (set in
-# devcontainer.json's runArgs), but that's coincidental, not load-bearing -
-# pin it explicitly via the real override (see cmake/Configure.cmake) so it
-# doesn't silently break if the hostname ever changes.
-export MAIA_HOST_FILE="${MAIA_DIR}/auxiliary/hosts/LocalGPU.cmake"
+# it does NOT read MAIA_HOST/HOST env vars. MAIA_HOST_FILE is the actual
+# override (see cmake/Configure.cmake) - it points straight at a host file
+# and skips hostname detection entirely.
+DEVCONTAINER_HOST_FILE="${MAIA_DIR}/auxiliary/hosts/DEVCONTAINER.cmake"
+
+# third_party/m-AIA (the public mirror) doesn't ship this file yet - it's
+# genuinely environment-specific (NVHPC/CUDA/library paths baked in by the
+# base image), the same category of thing as wipmaiaml's own untracked
+# LocalGPU.cmake. Materialize it from the template in this repo if it isn't
+# already present in the submodule (once upstream starts shipping it, this
+# becomes a no-op and the template copy below is skipped entirely).
+if [[ ! -f "${DEVCONTAINER_HOST_FILE}" ]]; then
+    echo "Materializing DEVCONTAINER.cmake host config from template..."
+    mkdir -p "$(dirname "${DEVCONTAINER_HOST_FILE}")"
+    cp /workspace/.devcontainer/base/DEVCONTAINER.cmake "${DEVCONTAINER_HOST_FILE}"
+fi
+
+# The template's PSTL value is just its own default - always sync it to
+# whatever architecture was actually requested via the pstlPreset feature
+# option, regardless of where the host file came from.
+sed -i "s/set(PSTL \"[^\"]*\")/set(PSTL \"${PSTL_PRESET}\")/" "${DEVCONTAINER_HOST_FILE}"
+
+export MAIA_HOST_FILE="${DEVCONTAINER_HOST_FILE}"
 
 if [[ -f "${BUILD_DIR}/bin/maia" && -f "${BUILD_DIR}/bin/test_maia" ]]; then
     echo "MAIA GPU binaries already present at ${BUILD_DIR} - skipping build."

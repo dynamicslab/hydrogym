@@ -119,13 +119,17 @@ RUN curl -LsSf https://astral.sh/uv/install.sh | sh && \
     mv /root/.local/bin/uv /usr/local/bin/uv
 
 # ============================================
-# Copy host/compiler configs to workspace (for MAIA configure.py)
-# ============================================
-COPY LocalGPU.cmake /workspace/third_party/m-AIA/auxiliary/hosts/LocalGPU.cmake
-COPY NVHPC.cmake /workspace/third_party/m-AIA/auxiliary/compilers/NVHPC.cmake
-
-# ============================================
 # Workspace setup
+#
+# NOTE: no COPY of host/compiler configs here on purpose - /workspace is
+# entirely replaced by the live bind mount at container start (see
+# devcontainer.json "workspaceMount"), so anything written under it at
+# image-build time would just be shadowed and never actually used.
+# auxiliary/compilers/NVHPC.cmake already ships with the third_party/m-AIA
+# submodule; the DEVCONTAINER.cmake host config (which the submodule does
+# NOT ship, being genuinely environment-specific) is instead materialized
+# at container-start time by maia-gpu/postCreateCommand.sh, once the mount
+# is actually live.
 # ============================================
 WORKDIR /workspace
 

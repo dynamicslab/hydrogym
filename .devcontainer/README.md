@@ -68,6 +68,15 @@ environments that depend on jet actuation won't work until a fully
 RL-featured checkout is public. Swap the submodule (`third_party/m-AIA`)
 for that checkout, or repoint `.gitmodules`, once one is available.
 
+The mirror also doesn't ship `auxiliary/hosts/DEVCONTAINER.cmake` (the
+NVHPC/CUDA/library-path host config this container needs), since a host
+config is inherently environment-specific and was never meant to live
+upstream in the first place. `maia-gpu/postCreateCommand.sh` materializes
+it at container-start from `.devcontainer/base/DEVCONTAINER.cmake` if the
+submodule doesn't already have one, and syncs its `PSTL` value to whatever
+`pstlPreset` you set — this becomes a no-op automatically if a future
+mirror update adds the file itself.
+
 ## Workspace layout
 
 `workspaceMount` binds the repo itself (`${localWorkspaceFolder}`) to
@@ -87,11 +96,11 @@ case sources), `third_party/firedrake`.
 - **MAIA host-config auto-detection is hostname-based, not env-var based**:
   `configure.py`'s host detection (`cmake/GetHost.cmake`) pattern-matches
   the container's OS hostname against a hardcoded cluster list — it does
-  NOT read `MAIA_HOST`/`HOST` env vars. Every config here sets
-  `--hostname=LocalGPU` in `runArgs`, which happens to resolve correctly
-  today, but `MAIA_HOST_FILE` (see `maia-gpu`/`maia-cpu`
-  `postCreateCommand.sh`) is the real override and doesn't depend on that
-  coincidence.
+  NOT read `MAIA_HOST`/`HOST` env vars, and this container's hostname
+  (`--hostname=LocalGPU` in `runArgs`) doesn't match anything in that list.
+  `MAIA_HOST_FILE` (see `maia-gpu`/`maia-cpu` `postCreateCommand.sh`) is the
+  real override — it points straight at a host config file and skips
+  hostname detection entirely, so none of this matters in practice.
 - **Dev builds report no `__version__`**: both this HydroGym checkout and
   the Firedrake dev build lack a `__version__` attribute, so version
   checks here use `importlib.metadata.version(...)` instead of a bare

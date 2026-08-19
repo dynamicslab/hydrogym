@@ -80,13 +80,11 @@ else
     # configure.py's host detection (cmake/GetHost.cmake) is purely based on
     # the container's OS hostname pattern-matched against a hardcoded list of
     # known clusters - it does NOT read MAIA_HOST/HOST env vars, contrary to
-    # what the manual MAIA build docs might suggest. Since this
-    # container's hostname is always "LocalGPU" (set in devcontainer.json's
-    # runArgs, shared across every solver feature), auto-detection would
-    # always resolve to the NVHPC-only LocalGPU profile regardless of which
-    # feature is active. MAIA_HOST_FILE is the actual override (see
-    # cmake/Configure.cmake) - it points straight at a host file and skips
-    # hostname detection entirely.
+    # what the manual MAIA build docs might suggest. MAIA_HOST_FILE is the
+    # actual override (see cmake/Configure.cmake) - it points straight at a
+    # host file and skips hostname detection entirely, so this doesn't
+    # depend on the container's --hostname (set in devcontainer.json's
+    # runArgs) matching anything MAIA itself would recognize.
     export MAIA_HOST_FILE="${HOST_CONFIG}"
 
     cat > "${HOST_CONFIG}" << 'EOF'
