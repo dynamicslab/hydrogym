@@ -96,8 +96,19 @@ else
     # must not be trusted.
     rm -rf "${BUILD_DIR}"
 
-    echo "Initializing git submodules..."
-    git submodule update --init --depth 1 -- include/Eigen include/cantera include/doctest include/hypre include/mfem include/sundials 2>/dev/null || true
+    echo "Initializing MAIA's own git submodules (Eigen, cantera, doctest, hypre, mfem, sundials)..."
+    # These are all public repos (unlike include/PyJacReactionMechanisms,
+    # deliberately excluded here - private RWTH repo, only needed if
+    # ENABLE_PYJAC is on) - a failure here is most likely transient
+    # (network), not an auth problem. Fail loudly instead of silently
+    # swallowing it and letting configure.py fail later with a much more
+    # confusing "Eigen not found"-style error.
+    if ! git submodule update --init --depth 1 -- include/Eigen include/cantera include/doctest include/hypre include/mfem include/sundials; then
+        echo "ERROR: could not initialize MAIA's own submodules (see git error above)."
+        echo "Retry, or run this manually from ${MAIA_DIR}:"
+        echo "  git submodule update --init --depth 1 -- include/Eigen include/cantera include/doctest include/hypre include/mfem include/sundials"
+        exit 1
+    fi
 
     CONFIGURE_CMD=(
         python3 configure.py nvhpc "${BUILD_TYPE}"
