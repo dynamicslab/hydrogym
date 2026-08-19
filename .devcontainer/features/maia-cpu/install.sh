@@ -9,12 +9,12 @@
 # postCreateCommand.sh instead, once the mount is live. All this script does
 # is persist the chosen feature options for that later step.
 #
-# CAVEAT: third_party/m-AIA points at RWTH's public m-AIA mirror
-# (git.rwth-aachen.de/aia/m-AIA/m-AIA), not the private wipmaiaml dev tree -
-# it does not yet have the RL-relevant features documented in
-# .devcontainer/README.md (LB jet-actuation BCs 2007/2008, the MPMD
-# flow-control channel). Swap in a full-featured checkout once one is
-# public, or point this submodule at it.
+# CAVEAT: third_party/m-AIA points at the private wipmaiaml dev tree
+# (git.rwth-aachen.de/aia/MAIA/Solver.git, branch wipmaiaml) for full
+# RL-feature support (LB jet-actuation BCs 2007/2008, the MPMD flow-control
+# channel) - see .devcontainer/README.md. This repo requires RWTH GitLab
+# access; without it, `git submodule update --init` on third_party/m-AIA
+# fails and maia-gpu/maia-cpu can't be built.
 
 set -euo pipefail
 

@@ -54,28 +54,31 @@ Valid `pstlPreset` values and the GPUs they correspond to:
 Not sure which one you have? Run `nvidia-smi --query-gpu=name,compute_cap
 --format=csv` on the host before building.
 
-## `third_party/m-AIA` submodule — feature parity caveat
+## `third_party/m-AIA` submodule — requires RWTH GitLab access
 
-MAIA's development happens in a private tree (`wipmaiaml`) that this
-public repo can't vendor directly. `third_party/m-AIA` is instead a
-submodule of RWTH's public mirror
-(`git.rwth-aachen.de/aia/m-AIA/m-AIA`). **This mirror does not currently
-have the RL-relevant features that make MAIA useful for HydroGym's flow
-control cases** — specifically the LB jet-actuation boundary conditions
-(BC `2007`/`2008`) and the MPMD-based external flow-control channel. Both
-`maia-gpu` and `maia-cpu` build successfully against this submodule, but
-environments that depend on jet actuation won't work until a fully
-RL-featured checkout is public. Swap the submodule (`third_party/m-AIA`)
-for that checkout, or repoint `.gitmodules`, once one is available.
+`third_party/m-AIA` is a submodule of the private `wipmaiaml` dev tree
+(`git.rwth-aachen.de/aia/MAIA/Solver.git`, branch `wipmaiaml`), for full
+RL-feature support — the LB jet-actuation boundary conditions (BC
+`2007`/`2008`) and the MPMD-based external flow-control channel that
+HydroGym's flow control cases depend on. **This repo requires RWTH GitLab
+access to clone**: `git clone --recurse-submodules` (or `git submodule
+update --init --recursive` after a plain clone) will prompt for your
+GitLab username and a Personal/Project Access Token when it reaches this
+submodule. Without access, `maia-gpu`/`maia-cpu` can't be built.
 
-The mirror also doesn't ship `auxiliary/hosts/DEVCONTAINER.cmake` (the
+Do this on the **host**, before opening the devcontainer — the prompt
+needs a real terminal, and `postCreateCommand.sh`'s own fallback attempt
+to initialize a still-empty submodule runs non-interactively inside the
+container, so it can only fail with a clear error, not prompt you.
+
+The submodule also doesn't ship `auxiliary/hosts/DEVCONTAINER.cmake` (the
 NVHPC/CUDA/library-path host config this container needs), since a host
 config is inherently environment-specific and was never meant to live
 upstream in the first place. `maia-gpu/postCreateCommand.sh` materializes
 it at container-start from `.devcontainer/base/DEVCONTAINER.cmake` if the
 submodule doesn't already have one, and syncs its `PSTL` value to whatever
-`pstlPreset` you set — this becomes a no-op automatically if a future
-mirror update adds the file itself.
+`pstlPreset` you set — this becomes a no-op automatically if wipmaiaml
+starts shipping the file itself.
 
 ## Workspace layout
 

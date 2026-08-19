@@ -7,9 +7,10 @@
 # at image-build time). Idempotent: skips the build if a matching binary
 # already exists.
 #
-# CAVEAT: builds against third_party/m-AIA, RWTH's public m-AIA mirror, not
-# the private wipmaiaml dev tree - see install.sh's CAVEAT for what that's
-# currently missing (RL-relevant LB BCs, the MPMD flow-control channel).
+# CAVEAT: builds against third_party/m-AIA, the private wipmaiaml dev tree
+# (see install.sh's CAVEAT) - requires RWTH GitLab access to have been
+# initialized on the host before this container was opened (see the
+# submodule-init check below for what happens if it wasn't).
 
 set -euo pipefail
 
@@ -41,14 +42,22 @@ fi
 # whatever's already checked out on the host side).
 if [[ -z "$(ls -A "${MAIA_DIR}" 2>/dev/null)" ]]; then
     echo "Initializing third_party/m-AIA submodule..."
-    git -C /workspace submodule update --init --depth 1 -- third_party/m-AIA
+    # third_party/m-AIA is private (RWTH GitLab) - this container has no TTY
+    # and no cached credentials of its own, so a `git submodule update --init`
+    # that has to actually authenticate here will fail immediately rather
+    # than prompt. Give a clear pointer instead of letting that raw auth
+    # error be the only output.
+    if ! git -C /workspace submodule update --init --depth 1 -- third_party/m-AIA; then
+        echo "ERROR: could not initialize third_party/m-AIA (see git error above)."
+        echo "This submodule is private and requires RWTH GitLab access. Run this on"
+        echo "the HOST before opening the devcontainer, where it can prompt you for"
+        echo "credentials interactively:"
+        echo "  git submodule update --init --recursive -- third_party/m-AIA"
+        exit 1
+    fi
 fi
 
-echo "NOTE: third_party/m-AIA is RWTH's public m-AIA mirror, not the private"
-echo "wipmaiaml dev tree - it does not yet have the RL-relevant LB jet-actuation"
-echo "BCs (2007/2008) or the MPMD flow-control channel (see .devcontainer/README.md)."
-echo "A full-featured public checkout will replace this submodule once one is"
-echo "available."
+echo "NOTE: third_party/m-AIA is the private wipmaiaml dev tree (RWTH GitLab)."
 
 cd "${MAIA_DIR}"
 
@@ -59,12 +68,12 @@ cd "${MAIA_DIR}"
 # and skips hostname detection entirely.
 DEVCONTAINER_HOST_FILE="${MAIA_DIR}/auxiliary/hosts/DEVCONTAINER.cmake"
 
-# third_party/m-AIA (the public mirror) doesn't ship this file yet - it's
-# genuinely environment-specific (NVHPC/CUDA/library paths baked in by the
-# base image), the same category of thing as wipmaiaml's own untracked
-# LocalGPU.cmake. Materialize it from the template in this repo if it isn't
-# already present in the submodule (once upstream starts shipping it, this
-# becomes a no-op and the template copy below is skipped entirely).
+# third_party/m-AIA doesn't ship this file - it's genuinely
+# environment-specific (NVHPC/CUDA/library paths baked in by the base
+# image), the same category of thing as any other machine-specific MAIA
+# host config. Materialize it from the template in this repo if it isn't
+# already present in the submodule (if wipmaiaml ever starts shipping one,
+# this becomes a no-op and the template copy below is skipped entirely).
 if [[ ! -f "${DEVCONTAINER_HOST_FILE}" ]]; then
     echo "Materializing DEVCONTAINER.cmake host config from template..."
     mkdir -p "$(dirname "${DEVCONTAINER_HOST_FILE}")"
