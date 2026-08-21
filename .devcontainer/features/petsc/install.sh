@@ -72,7 +72,16 @@ if [[ -d "${PETSC_DIR}" ]]; then
     cd "${PETSC_DIR}"
     git fetch origin
 else
-    git clone https://gitlab.com/petsc/petsc.git "${PETSC_DIR}"
+    # gitlab.com's git-smart-http sometimes rejects this base image's git
+    # client with "RPC failed; HTTP 403" / "expected flush after ref
+    # listing" - reproduced on two unrelated networks, plain HTTPS GETs to
+    # gitlab.com work fine, so it's specifically a protocol v2 negotiation
+    # issue, not a real block. protocol.version=0 works around it.
+    if ! git clone https://gitlab.com/petsc/petsc.git "${PETSC_DIR}"; then
+        echo "Clone failed, retrying with protocol.version=0 (see comment above)..."
+        rm -rf "${PETSC_DIR}"
+        git -c protocol.version=0 clone https://gitlab.com/petsc/petsc.git "${PETSC_DIR}"
+    fi
     cd "${PETSC_DIR}"
 fi
 
