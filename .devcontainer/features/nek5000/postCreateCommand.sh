@@ -52,10 +52,21 @@ if [[ ! -d "${NEK_CORE}/bin" ]]; then
     exit 0
 fi
 
-if [[ ! -d "${NEK_CORE_DEC}/core" ]]; then
-    echo "WARNING: DEC_DRL_Nek5000 core not found at ${NEK_CORE_DEC}."
+# Only the "dec" flavor (naca0012_200k, small_wing) needs NEK_CORE_DEC - the
+# "kth" flavor (mini_channel, large_channel) never touches it, so a missing
+# vendored copy shouldn't block cases that don't need it (this checked
+# unconditionally before, bailing out of every case - including
+# KTH-flavored ones with everything they need already present - whenever
+# DEC_DRL_Nek5000 was missing).
+needs_dec=0
+case ",${CASES}," in
+    *,naca0012_200k,*|*,small_wing,*) needs_dec=1 ;;
+esac
+if [[ ${needs_dec} -eq 1 && ! -d "${NEK_CORE_DEC}/core" ]]; then
+    echo "WARNING: DEC_DRL_Nek5000 core not found at ${NEK_CORE_DEC}, but CASES=${CASES} requests a case that needs it."
     echo "This is a vendored copy (not a submodule) - it should already be committed at third_party/nek5000/solver/DEC_DRL_Nek5000/. Check the checkout."
-    exit 0
+    echo "Dropping naca0012_200k/small_wing from this run; mini_channel/large_channel are unaffected."
+    CASES="$(echo ",${CASES}," | sed -e 's/,naca0012_200k,/,/g' -e 's/,small_wing,/,/g' -e 's/^,//' -e 's/,$//')"
 fi
 
 chmod -R +x "${NEK_CORE}/bin" "${NEK_CORE}/core" "${TOOLBOX_SRC}" "${NEK_CORE_DEC}/core" 2>/dev/null || true
