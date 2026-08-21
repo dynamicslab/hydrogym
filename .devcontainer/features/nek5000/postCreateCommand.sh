@@ -164,11 +164,11 @@ for case in "${CASE_LIST[@]}"; do
     case "${case}" in
         mini_channel)
             ( build_kth_case "${CASE_DIR}" phill "MPIIO DRL TSRS" \
-                "frame.o mntrlog_block.o mntrlog.o mntrtmr_block.o mntrtmr.o rprm_block.o rprm.o io_tools_block.o io_tools.o chkpoint.o chkpt_mstp.o comm_mpi_tool.o map2D.o stat.o stat_IO.o math_tools.o misc.o drl_main.o drl_state.o drl_reward.o drl_IO.o drl_action.o drl_init.o tsrs.o tsrs_IO.o pts_redistribute.o" )
+                "frame.o mntrlog_block.o mntrlog.o mntrtmr_block.o mntrtmr.o rprm_block.o rprm.o io_tools_block.o io_tools.o chkpt.o chkptms.o comm_mpi_tool.o map2D.o stat.o stat_IO.o math_tools.o misc.o drl_main.o drl_state.o drl_reward.o drl_IO.o drl_action.o drl_init.o tsrs.o tsrs_IO.o pts_redistribute.o" )
             ;;
         large_channel)
             ( build_kth_case "${CASE_DIR}" tcf "MPIIO DRL BDFD TSRS" \
-                "frame.o mntrlog_block.o mntrlog.o mntrtmr_block.o mntrtmr.o rprm_block.o rprm.o io_tools_block.o io_tools.o chkpoint.o chkpt_mstp.o comm_mpi_tool.o map2D.o stat.o stat_IO.o math_tools.o drl_main.o drl_state.o drl_reward.o drl_IO.o drl_action.o drl_init.o tsrs.o tsrs_IO.o pts_redistribute.o bdforce.o" )
+                "frame.o mntrlog_block.o mntrlog.o mntrtmr_block.o mntrtmr.o rprm_block.o rprm.o io_tools_block.o io_tools.o chkpt.o chkptms.o comm_mpi_tool.o map2D.o stat.o stat_IO.o math_tools.o drl_main.o drl_state.o drl_reward.o drl_IO.o drl_action.o drl_init.o tsrs.o tsrs_IO.o pts_redistribute.o bdforce.o" )
             ;;
         naca0012_200k)
             ( build_dec_case "${CASE_DIR}" naca_wing )
