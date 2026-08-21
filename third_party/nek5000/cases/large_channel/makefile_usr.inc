@@ -9,8 +9,8 @@ $(OBJDIR)/rprm_block.o      :$(RUNPARAM_SRC)/rprm_block.f;           $(F77) -c $
 $(OBJDIR)/rprm.o            :$(RUNPARAM_SRC)/rprm.f;                 $(F77) -c $(FL2) -I$(INC_SRC) $< -o $@
 $(OBJDIR)/io_tools_block.o  :$(IO_TOOLS_SRC)/io_tools_block.f;       $(F77) -c $(FL2) -I$(INC_SRC) $< -o $@
 $(OBJDIR)/io_tools.o        :$(IO_TOOLS_SRC)/io_tools.f;             $(F77) -c $(FL2) -I$(INC_SRC) $< -o $@
-$(OBJDIR)/chkpoint.o        :$(CHKPT_SRC)/chkpoint.f;                $(F77) -c $(FL2) -I$(INC_SRC) $< -o $@
-$(OBJDIR)/chkpt_mstp.o      :$(CHKPTMS_SRC)/chkpt_mstp.f;            $(F77) -c $(FL2) -I$(INC_SRC) $< -o $@
+$(OBJDIR)/chkpt.o           :$(CHKPT_SRC)/chkpt.f;                 $(F77) -c $(FL2) -I$(INC_SRC) $< -o $@
+$(OBJDIR)/chkptms.o         :$(CHKPTMS_SRC)/chkptms.f;             $(F77) -c $(FL2) -I$(INC_SRC) $< -o $@
 $(OBJDIR)/math_tools.o      :$(MATH_SRC)/math_tools.f;               $(F77) -c $(FL2) -I$(INC_SRC) $< -o $@
 $(OBJDIR)/map2D.o           :${MAP2D_SRC}/map2D.f;                   $(F77) -c $(FL2) -I$(INC_SRC) $< -o $@
 $(OBJDIR)/stat.o            :${STAT_SRC}/stat.f ./STATD;             $(F77) -c $(FL2) -I$(INC_SRC) $< -o $@
