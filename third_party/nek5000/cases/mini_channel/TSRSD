@@ -26,12 +26,16 @@
       integer tsrs_sec_id
       
 !     parameter section
-      integer tsrs_smpstep       !< @var frequency of sampling
-      integer tsrs_smpstep_id
+      real tsrs_tstart           ! stirting time for samping
+      integer tsrs_tstart_id
+      real tsrs_tint             ! interval of sampling
+      integer tsrs_tint_id
+      
+      integer tsrs_skstep        ! number of steps omitted at the beginning of the simulation (for restat only)
+      integer tsrs_skstep_id
 
 !     array dimensions
       integer tsrs_nfld         ! number of fileds
-      ! Originally it was velcoity + pressure + vorticity
       parameter(tsrs_nfld=2*LDIM+1)
       integer tsrs_ltsnap       ! max number of time snaphots in a buffer
       parameter(tsrs_ltsnap=100)
@@ -50,6 +54,8 @@
 
       real tsrs_pts(ldim,lhis)  ! point position
       real tsrs_fld(tsrs_nfld,lhis) ! interpolated averaged fields
+      real tsrs_stime           ! next sampling time
+      real tsrs_sfld(tsrs_nfld,lhis) ! stored interpolated averaged fields for linear interpolation in time
       real tsrs_dist(lhis)      ! distance from the nearest grid point
       real tsrs_rst(ldim*lhis)  ! r,s,t coordinates in element
 
@@ -58,16 +64,22 @@
       real tsrs_tmlist(tsrs_ltsnap) ! snapshot time
       real tsrs_buff(tsrs_nfld,lhis,tsrs_ltsnap) ! snapshot buffer
 
+!     vectors to store pressure and velocity ifelds
+      real tsrs_vel(lx1*ly1*lz1*lelv,ldim)
+      real tsrs_pr(lx2*ly2*lz2*lelv)
 
 !     common block section
       common /tsrsi/ tsrs_id, tsrs_tmr_tot_id, tsrs_tmr_ini_id,
      $     tsrs_tmr_cvp_id, tsrs_tmr_int_id, tsrs_tmr_bfr_id,
-     $     tsrs_tmr_io_id, tsrs_sec_id, tsrs_smpstep, tsrs_smpstep_id,
-     $     tsrs_handle, tsrs_nptot, tsrs_npts, tsrs_npt1, tsrs_ntsnap
+     $     tsrs_tmr_io_id, tsrs_sec_id, tsrs_tstart_id, tsrs_tint_id,
+     $     tsrs_skstep, tsrs_skstep_id, tsrs_handle, tsrs_nptot, 
+     $     tsrs_npts, tsrs_npt1, tsrs_ntsnap
 
       common /tsrsiv/ tsrs_ipts, tsrs_rcode, tsrs_elid, tsrs_proc
 
-      common /tsrsrv/ tsrs_pts, tsrs_fld, tsrs_dist,
-     $     tsrs_rst, tsrs_tmlist, tsrs_buff
+      common /tsrsr/ tsrs_tstart, tsrs_tint, tsrs_stime
+
+      common /tsrsrv/ tsrs_pts, tsrs_fld, tsrs_sfld, tsrs_dist,
+     $     tsrs_rst, tsrs_tmlist, tsrs_buff, tsrs_vel, tsrs_pr
 
       common /tsrsl/ tsrs_ifinit

@@ -27,6 +27,8 @@
 !     parameter section
       integer stat_avstep       !< @var frequency of of averaging
       integer stat_avstep_id
+      integer stat_skstep       !< @var number of steps omitted at the beginning of the simulation
+      integer stat_skstep_id
       integer stat_IOstep       !< @var frequency of of saving statistics files
       integer stat_IOstep_id
 
@@ -36,7 +38,7 @@
       real stat_tstart          ! initial averaging time for the file
       
 !     array sizes
-      integer stat_rdim         ! Parameter setting reduction of the space dimension (form LDIM to LDIM - stat_rdim)
+      integer stat_rdim         ! CASE SPECIFIC! Parameter setting reduction of the space dimension (form LDIM to LDIM - stat_rdim)
       parameter (stat_rdim=1)   ! 0 - time averaging on LDIM space (no space averaging), 1 - time and space averaging to LDIM - 1 space
       integer stat_lvar         ! Max number of statistical fields
       parameter (stat_lvar = 44)
@@ -55,8 +57,9 @@
 !     common block section
       common /stati/ stat_id, stat_tmr_tot_id, stat_tmr_ini_id,
      $     stat_tmr_avg_id, stat_tmr_cmm_id, stat_tmr_io_id,
-     $     stat_sec_id, stat_avstep, stat_avstep_id, stat_IOstep,
-     $     stat_IOstep_id, stat_nvar, stat_nm1, stat_nm2, stat_nm3
+     $     stat_sec_id, stat_avstep, stat_avstep_id, stat_skstep, 
+     $     stat_skstep_id, stat_IOstep, stat_IOstep_id, stat_nvar, 
+     $     stat_nm1, stat_nm2, stat_nm3
 
       common /statr/ stat_atime, stat_tstart
 
