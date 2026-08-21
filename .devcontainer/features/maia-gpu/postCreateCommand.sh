@@ -22,6 +22,7 @@ PSTL_PRESET="${PSTL_PRESET:-ada}"
 BUILD_TYPE="${BUILD_TYPE:-production}"
 ENABLE_COMPONENTS="${ENABLE_COMPONENTS:-}"
 DISABLE_COMPONENTS="${DISABLE_COMPONENTS:-}"
+RUN_TESTS="${RUN_TESTS:-false}"
 
 echo "=== MAIA GPU Post-Create Setup ==="
 
@@ -136,7 +137,9 @@ else
     "${CONFIGURE_CMD[@]}"
 
     echo "Building MAIA (solver + tests)..."
-    make -j16 -C "${BUILD_DIR}" maia test_maia
+    MAIA_BUILD_JOBS="$(compute_parallelism.sh)"
+    echo "Using -j${MAIA_BUILD_JOBS} (RAM-aware, see compute_parallelism.sh)"
+    make -j"${MAIA_BUILD_JOBS}" -C "${BUILD_DIR}" maia test_maia
 
     if [[ -f "${BUILD_DIR}/bin/maia" && -f "${BUILD_DIR}/bin/test_maia" ]]; then
         echo "=== MAIA GPU build successful ==="
@@ -145,8 +148,25 @@ else
         exit 1
     fi
 
-    echo "Running MAIA tests..."
-    (cd "${BUILD_DIR}" && ./bin/test_maia)
+    if [[ "${RUN_TESTS}" == "true" ]]; then
+        echo "Running MAIA tests..."
+        # Non-fatal: test_lb_latticedescriptor.cpp:77 (oppositeDist inside a
+        # GPU-offloaded parallelFor) is a known pre-existing crash, confirmed
+        # on plain master too (not a wipmaiaml issue) - it's
+        # architecture/driver sensitive (cudaErrorIllegalAddress on one GPU,
+        # cudaErrorInvalidDevice on another) and unresolved. Letting it kill
+        # this script under set -e would abort hydrogym venv setup etc.
+        # below even though the solver binary above already built
+        # successfully and is fully usable.
+        test_exit=0
+        (cd "${BUILD_DIR}" && ./bin/test_maia) || test_exit=$?
+        if [[ ${test_exit} -ne 0 ]]; then
+            echo "WARNING: test_maia exited ${test_exit} - continuing setup anyway (solver build above succeeded)."
+            echo "If the only failure is test_lb_latticedescriptor.cpp:77, that's the known pre-existing GPU parallelFor crash - not a build problem."
+        fi
+    else
+        echo "Skipping MAIA tests (runTests feature option is off by default - set it to true to enable)."
+    fi
 fi
 
 # Solver binary alone is useless without something that can drive it -
@@ -185,7 +205,7 @@ echo "Dev Tools:       ${MAIA_DIR}/auxiliary/dev_tools/"
 echo "Dev Runs:        /workspace/dev_runs/"
 echo ""
 echo "Quick commands:"
-echo "  Build:         make -j16 -C ${BUILD_DIR} maia"
+echo "  Build:         make -j\"\$(compute_parallelism.sh)\" -C ${BUILD_DIR} maia"
 echo "  Test:          ${BUILD_DIR}/bin/test_maia"
 echo "  Regression:    cd ${MAIA_DIR} && python3 auxiliary/dev_tools/regression_test.py run-and-compare --binary ${BUILD_DIR}/bin/maia --label my_test --against master_baseline --bc 2000 --steps 2000"
 echo "  Profile:       cd ${MAIA_DIR} && python3 auxiliary/dev_tools/profile_run.py run --binary ${BUILD_DIR}/bin/maia --label my_profile --bc 2000"

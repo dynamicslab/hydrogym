@@ -27,8 +27,9 @@
 # .devcontainer/README.md ("some translation units peak at ~4.2GB each").
 #
 # Each container is left running afterwards, labeled
-# devcontainer.config_variant=<name> - test_all_solvers.sh (in this same
-# directory) looks containers up by that label, so run this script first.
+# devcontainer.config_variant=<name> - test_gpu_solvers.sh / test_cpu_solvers.sh
+# (in this same directory) look containers up by that label, so run this
+# script first.
 
 set -uo pipefail
 
@@ -122,7 +123,7 @@ done
 echo ""
 echo "Containers are left running, each labeled devcontainer.config_variant=<name>."
 echo "List them with:  docker ps --filter 'label=devcontainer.config_variant'"
-echo "Next: ${SCRIPT_DIR}/test_all_solvers.sh"
+echo "Next: ${SCRIPT_DIR}/test_gpu_solvers.sh and/or ${SCRIPT_DIR}/test_cpu_solvers.sh"
 
 # Exit non-zero if anything failed, so this is CI-friendly.
 for r in "${RESULTS[@]}"; do

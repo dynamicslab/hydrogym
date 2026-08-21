@@ -205,7 +205,9 @@ EOF
     "${CONFIGURE_CMD[@]}"
 
     echo "Building MAIA CPU (solver + tests)..."
-    make -j16 -C "${BUILD_DIR}" maia test_maia
+    MAIA_BUILD_JOBS="$(compute_parallelism.sh)"
+    echo "Using -j${MAIA_BUILD_JOBS} (RAM-aware, see compute_parallelism.sh)"
+    make -j"${MAIA_BUILD_JOBS}" -C "${BUILD_DIR}" maia test_maia
 
     if [[ -f "${BUILD_DIR}/bin/maia" && -f "${BUILD_DIR}/bin/test_maia" ]]; then
         echo "=== MAIA CPU build successful ==="

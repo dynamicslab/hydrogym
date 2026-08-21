@@ -90,12 +90,15 @@ case sources), `third_party/firedrake`.
 
 ## Gotchas
 
-- **`-j16`, not higher**: several postCreateCommand steps do native
-  parallel compiles (MAIA, PETSc, Firedrake, Nek5000 cases) — some
-  translation units peak at ~4.2GB RAM each, so building more of these at
-  once than your machine's RAM/16 supports risks the compiler getting
-  OOM-killed. `build_all_containers.sh` runs configs sequentially for this
-  reason, not in parallel.
+- **Build parallelism is RAM-aware, not a flat `-j16`**: the base image
+  build and MAIA's own build (`maia-gpu`/`maia-cpu` postCreateCommand) get
+  their `-j` value from `.devcontainer/scripts/compute_parallelism.sh`
+  (`min(nproc, available_RAM_GB / 5)`) instead of a number hand-picked for
+  one machine — some translation units peak at ~4.2GB RSS each, so a flat
+  `-j16` either under-uses a big box or OOM-kills the compiler on a
+  smaller one. `build_all_containers.sh` still runs configs sequentially,
+  not in parallel, since two builds at once would blow past what even this
+  per-build calculation accounts for.
 - **MAIA host-config auto-detection is hostname-based, not env-var based**:
   `configure.py`'s host detection (`cmake/GetHost.cmake`) pattern-matches
   the container's OS hostname against a hardcoded cluster list — it does

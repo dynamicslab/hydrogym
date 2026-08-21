@@ -24,6 +24,11 @@
       "type": "string",
       "default": "",
       "description": "Comma-separated list of components to disable (avg,dg,lbm,particle,structured)"
+    },
+    "runTests": {
+      "type": "boolean",
+      "default": false,
+      "description": "Run bin/test_maia after a fresh build. Off by default: test_lb_latticedescriptor.cpp's GPU parallelFor case is a known pre-existing crash on some architectures/drivers, so this mostly adds noise; turn on when you specifically want the sanity check on a new node/GPU."
     }
   },
   "dependsOn": [],

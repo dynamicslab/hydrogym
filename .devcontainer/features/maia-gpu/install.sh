@@ -27,12 +27,14 @@ PSTL_PRESET="${PSTLPRESET:-ada}"
 BUILD_TYPE="${BUILDTYPE:-production}"
 ENABLE_COMPONENTS="${ENABLECOMPONENTS:-}"
 DISABLE_COMPONENTS="${DISABLECOMPONENTS:-}"
+RUN_TESTS="${RUNTESTS:-false}"
 
 echo "=== MAIA GPU Feature Installation ==="
 echo "PSTL Preset: ${PSTL_PRESET}"
 echo "Build Type: ${BUILD_TYPE}"
 echo "Enable Components: ${ENABLE_COMPONENTS}"
 echo "Disable Components: ${DISABLE_COMPONENTS}"
+echo "Run Tests: ${RUN_TESTS}"
 
 CONFIG_DIR=/opt/maia-feature-config
 mkdir -p "${CONFIG_DIR}"
@@ -41,6 +43,7 @@ PSTL_PRESET=${PSTL_PRESET}
 BUILD_TYPE=${BUILD_TYPE}
 ENABLE_COMPONENTS=${ENABLE_COMPONENTS}
 DISABLE_COMPONENTS=${DISABLE_COMPONENTS}
+RUN_TESTS=${RUN_TESTS}
 EOF
 
 echo "Options saved to ${CONFIG_DIR}/maia-gpu.env"
