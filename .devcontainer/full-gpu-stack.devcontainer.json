@@ -20,7 +20,11 @@
       "buildType": "production"
     },
     "./features/hydrogym-gpu": {
-      "hydrogymExtras": "maia,jax"
+      // "jax" alone doesn't cover jaxfluids's own deps (pyvista, gitpython,
+      // h5py, optax - see pyproject.toml's separate [tool.poetry.extras]
+      // jax vs jaxfluids groups) even though test_gpu_solvers.sh's
+      // jaxfluids test expects them to be present.
+      "hydrogymExtras": "maia,jax,jaxfluids"
     }
   },
   "runArgs": [

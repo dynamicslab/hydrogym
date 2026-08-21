@@ -5,8 +5,8 @@
   "options": {
     "hydrogymExtras": {
       "type": "string",
-      "default": "maia,jax",
-      "description": "HydroGym extras to install"
+      "default": "maia,jax,jaxfluids",
+      "description": "HydroGym extras to install. Includes jaxfluids by default since this feature also installs JAX-Fluids itself (jaxfluidsRepo below) - dropping it from here still leaves JAX-Fluids installed but hydrogym.jaxfluids unimportable (missing pyvista/gitpython/h5py/optax, which live in pyproject.toml's jaxfluids extras group, not jax)."
     },
     "jaxfluidsRepo": {
       "type": "string",

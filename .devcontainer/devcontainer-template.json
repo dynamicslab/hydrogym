@@ -102,9 +102,9 @@
       "dependsOn": []
     },
     "./features/hydrogym-gpu": {
-      "description": "HydroGym GPU venv with JAX-Fluids + HydroGym[maia,jax] extras. Requires python-ml feature.",
+      "description": "HydroGym GPU venv with JAX-Fluids + HydroGym[maia,jax,jaxfluids] extras. Requires python-ml feature.",
       "options": {
-        "hydrogymExtras": "HydroGym extras (default: maia,jax)",
+        "hydrogymExtras": "HydroGym extras (default: maia,jax,jaxfluids)",
         "jaxfluidsRepo": "JAX-Fluids repository URL (default: https://github.com/tumaer/JAXFLUIDS.git)"
       },
       "dependsOn": ["python-ml"]

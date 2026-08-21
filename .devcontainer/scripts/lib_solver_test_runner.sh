@@ -64,7 +64,7 @@ run_solver_tests() {
     # also show up in unrelated boilerplate (e.g. prepare_workspace.py's own
     # "Next steps:" printout, which previously false-positived this check
     # on a run that had actually crashed before ever reaching the solver).
-    if grep -qiE "resetting environment|env[._]step[ =]|sim_step=|episode 1/|reward *[:=] *-?[0-9]" "${log_file}"; then
+    if grep -qiE "resetting environment|env[._]step[ =]|sim_step=|episode 1/|reward *[:=] *-?[0-9]|total time for [0-9]+ steps" "${log_file}"; then
       evidence="(saw step/reset output)"
     else
       evidence="(no step/reset output seen)"
