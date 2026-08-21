@@ -1,0 +1,70 @@
+#
+# nek parameter file
+#
+[GENERAL] 
+stopAt = numSteps #endTime
+#endTime = 30.0
+numSteps = 100000
+
+dt = -2.0e-03
+timeStepper = bdf3
+variableDt = no
+
+
+writeControl = timeStep #runTime
+writeInterval = 10000
+
+dealiasing = yes
+
+filtering = none
+#filtering = hpfrt
+filterWeight = 0.01
+filterCutoffRatio = 0.9
+
+
+#-----------------------
+#     DRL 
+#-----------------------
+userParam01=3 # How many steps for update the policy 
+userParam01=3 # How many steps for update the policy 
+#-----------------------
+
+
+[PROBLEMTYPE]
+stressFormulation = no
+variableProperties = no
+
+[PRESSURE]
+residualTol = 1e-8
+residualProj = no
+
+[VELOCITY]
+residualTol = 1e-8
+residualProj = no
+density = 1.0
+viscosity = -2800
+# viscosity = 2e5
+advection = yes
+
+
+
+
+#
+[_RUNPAR]               # Runtime parameter section for rprm module
+PARFWRITE            = no                     # Do we write runtime parameter file
+PARFNAME             = outparfile             # Runtime parameter file name for output (without .par)
+#
+[_MONITOR]              # Runtime parameter section for monitor module
+LOGLEVEL             = 4                      # Logging threshold for toolboxes
+WALLTIME             = 23:45                  # Simulation wall time
+#
+[_CHKPOINT]             # Runtime paramere section for checkpoint module
+READCHKPT            = no                # Restat from checkpoint
+CHKPFNUMBER          = 1                     # Restart file number
+CHKPINTERVAL         = 5000                   # Checkpiont saving frequency (number of time steps)
+#
+[_STAT]             # Runtime paramere section for statistics module
+AVSTEP               = 10
+IOSTEP               = 10000
+
+

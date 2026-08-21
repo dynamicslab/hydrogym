@@ -1,0 +1,57 @@
+! ======================================
+! The object for DRL 
+! ======================================
+! Define the control regin Basically indicating the wall
+        real ctrlxs,ctrlxe,ctrlys,ctrlye,ypctrl,nuctrl,dyi
+        integer NUMCTRL,NFLDC,nfeat           ! The real number of points of wall points at each RANk
+        integer inth_hpts1  ! Handle for find_pts             
+        logical obs_xavg,obs_zavg,rwd_zavg,rwd_xavg
+        logical act_xavg,act_zavg
+! DRL Communication 
+        integer DRL_COMM
+! Define the control region
+        parameter(ctrlxs=0.25,ctrlxe=0.86)  
+        parameter(ctrlys=0.0,ctrlye=0.6)
+! Define the y+, viscosity and u_tau
+        parameter (ypctrl=15.0,nuctrl=1.0/200000.0)  ! Viscosity 
+! YW: Nov 24 2023 Basic variable used during running
+        parameter(NFLDC=2)        ! Vx, Vy, Vz Dimension, set as 1 
+
+! YW: Coordinates of control and sesning plane, as well as the u_taw for distance between them 
+        real pos_obs(LDIM,totctrl)  ! Interpolated coord points of ctrl points
+        real pos_agt(LDIM,totctrl) ! Interpolated coord points of wall points
+!       real utau(LDIM,totctrl)    ! u_taw for computing y = y_plus * nu / u_tau
+        integer elid(totctrl)         ! Work array
+        integer iptctl(totctrl) ! The array for the processor
+        integer rcode(totctrl)        ! Work array
+        integer proc(totctrl)
+        real    dist(totctrl)            ! l2-norm between input and actual found points
+        real    rst(totctrl*LDIM)       ! Residual/Tolerance of interpolation
+        
+! YW:   The instantaneous velocity array 
+        real val_obs(NFLDC,totctrl)   ! STATE/Observation 
+        real rwd_agt(totctrl)        ! Rewards
+
+! YW:   Prior information of NODE/ELEMENT of Agent
+        parameter (nfeat=5)               ! "Library" of prior infomation
+        integer info_agt(nfeat,totctrl)    ! the Number of Rank [1] and the local order [2] of the wall point in the mesh 
+
+! YW:   For Rotating Angle to compute the Wall-normal velocity 
+        real body_sin(LX1,LY1,LZ1,LELT),body_cos(LX1,LY1,LZ1,LELT)
+        ! YW:   A optimization of the code, 
+        real actions(LX1,LY1,LZ1,LELT)  !Actions to be imposed
+        integer msk_act(LX1,LY1,LZ1,LELT)
+        ! Spatial averaging  True/False
+        parameter(obs_xavg=.FALSE.,obs_zavg=.TRUE.) ! STATE        
+        parameter(rwd_xavg=.FALSE.,rwd_zavg=.TRUE.)  ! REWARD
+        parameter(act_xavg=.FALSE.,act_zavg=.TRUE.)  ! ACTIONS
+
+        common /YW_drl / NUMCTRL,inth_hpts1,
+     $                   rcode,elid,proc,info_agt,         ! integer for ctrl
+     $                   pos_obs,pos_agt,val_obs,dist,rst,rwd_agt   !Real for ctr
+
+        common /drl_act/ actions,msk_act
+        common /drl_IO/ iptctl
+        ! For Common block of Angle 
+        common / oppo_angle / body_sin, body_cos
+        common /drl_yw_mpi/ DRL_COMM

@@ -1,0 +1,3 @@
+filetemplate: la2small_wing%01d.f%05d
+firsttimestep: 1
+numtimesteps: 3

@@ -1,0 +1,65 @@
+!> @file STATD
+!! @ingroup stat
+!! @brief Include file with parameter and common block definitions for
+!!  statistics module
+!! @author Prabal Negi, Adam Peplinski
+!! @date Aug 15, 2018
+!=======================================================================
+!     module id and name
+      integer stat_id
+      character*(*) stat_name
+      parameter(stat_name='STAT')
+
+!     timer id
+      integer stat_tmr_tot_id   ! total time
+      integer stat_tmr_ini_id   ! initialisation itme
+      integer stat_tmr_avg_id   ! averaging time
+      integer stat_tmr_cmm_id   ! communication time
+      integer stat_tmr_io_id    ! IO time
+
+!     initialisation flag
+      logical stat_ifinit
+
+!     runtime parameter part
+!     section id
+      integer stat_sec_id
+      
+!     parameter section
+      integer stat_avstep       !< @var frequency of of averaging
+      integer stat_avstep_id
+      integer stat_IOstep       !< @var frequency of of saving statistics files
+      integer stat_IOstep_id
+
+
+!     time averaging variables
+      real stat_atime           ! current time over which the current stat file is averaged
+      real stat_tstart          ! initial averaging time for the file
+      
+!     array sizes
+      integer stat_rdim         ! Parameter setting reduction of the space dimension (form LDIM to LDIM - stat_rdim)
+      parameter (stat_rdim=1)   ! 0 - time averaging on LDIM space (no space averaging), 1 - time and space averaging to LDIM - 1 space
+      integer stat_lvar         ! Max number of statistical fields
+      parameter (stat_lvar = 44)
+
+      integer stat_nvar         ! number of avaraged variables
+
+!     Variables for 2D statistics
+      integer stat_nm1          ! number of points in uniform direction
+      integer stat_nm2, stat_nm3 ! number of points in 2D element
+
+      real stat_bm1d(lx1,ly1,lz1,lelt) ! 1D mass matrix
+      real stat_abm1d(lx1,lz1,lelt) ! line length   
+
+      real stat_ruavg(lx1**(LDIM-stat_rdim),lelt,stat_lvar) ! averaged fields
+      
+!     common block section
+      common /stati/ stat_id, stat_tmr_tot_id, stat_tmr_ini_id,
+     $     stat_tmr_avg_id, stat_tmr_cmm_id, stat_tmr_io_id,
+     $     stat_sec_id, stat_avstep, stat_avstep_id, stat_IOstep,
+     $     stat_IOstep_id, stat_nvar, stat_nm1, stat_nm2, stat_nm3
+
+      common /statr/ stat_atime, stat_tstart
+
+      common /statsrvo/ stat_bm1d, stat_abm1d, stat_ruavg
+      
+      common /statl/ stat_ifinit 
