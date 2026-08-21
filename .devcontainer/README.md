@@ -92,7 +92,7 @@ case sources), `third_party/firedrake`.
 
 - **Build parallelism is RAM-aware, not a flat `-j16`**: the base image
   build and MAIA's own build (`maia-gpu`/`maia-cpu` postCreateCommand) get
-  their `-j` value from `.devcontainer/scripts/compute_parallelism.sh`
+  their `-j` value from `.devcontainer/base/compute_parallelism.sh`
   (`min(nproc, available_RAM_GB / 5)`) instead of a number hand-picked for
   one machine — some translation units peak at ~4.2GB RSS each, so a flat
   `-j16` either under-uses a big box or OOM-kills the compiler on a

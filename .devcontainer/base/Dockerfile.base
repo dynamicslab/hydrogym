@@ -17,8 +17,11 @@ RUN apt-get update && apt-get install -y \
 # Shared helper: prints a RAM-aware `make -j` value (min(nproc,
 # available_RAM_GB / 5GB)) instead of a flat number picked for one
 # particular machine - see the script itself for why. Copied in early since
-# every from-source build below needs it.
-COPY scripts/compute_parallelism.sh /usr/local/bin/compute_parallelism.sh
+# every from-source build below needs it. Lives alongside this Dockerfile
+# (not in ../scripts/) because the devcontainer CLI defaults the build
+# context to the Dockerfile's own directory, not .devcontainer/ - COPY
+# cannot reach outside that context.
+COPY compute_parallelism.sh /usr/local/bin/compute_parallelism.sh
 RUN chmod +x /usr/local/bin/compute_parallelism.sh
 
 # ============================================
