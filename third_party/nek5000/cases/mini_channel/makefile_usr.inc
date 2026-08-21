@@ -9,6 +9,7 @@ $(OBJDIR)/rprm_block.o      :$(RUNPARAM_SRC)/rprm_block.f;           $(F77) -c $
 $(OBJDIR)/rprm.o            :$(RUNPARAM_SRC)/rprm.f;                 $(F77) -c $(FL2) -I$(INC_SRC) $< -o $@
 $(OBJDIR)/io_tools_block.o  :$(IO_TOOLS_SRC)/io_tools_block.f;       $(F77) -c $(FL2) -I$(INC_SRC) $< -o $@
 $(OBJDIR)/io_tools.o        :$(IO_TOOLS_SRC)/io_tools.f;             $(F77) -c $(FL2) -I$(INC_SRC) $< -o $@
+$(OBJDIR)/comm_mpi_tool.o   :$(COMM_SRC)/comm_mpi_tool.f;            $(F77) -c $(FL2) -I$(INC_SRC) $< -o $@
 $(OBJDIR)/chkpt.o           :$(CHKPT_SRC)/chkpt.f;                 $(F77) -c $(FL2) -I$(INC_SRC) $< -o $@
 $(OBJDIR)/chkptms.o         :$(CHKPTMS_SRC)/chkptms.f;             $(F77) -c $(FL2) -I$(INC_SRC) $< -o $@
 $(OBJDIR)/math_tools.o      :$(MATH_SRC)/math_tools.f;               $(F77) -c $(FL2) -I$(INC_SRC) $< -o $@
