@@ -14,7 +14,6 @@
     "./features/nek5000": {}
   },
   "runArgs": [
-    "--gpus=all",
     "--net=host",
     "--ipc=host",
     "--hostname=LocalGPU",

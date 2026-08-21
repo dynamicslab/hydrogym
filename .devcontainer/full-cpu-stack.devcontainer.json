@@ -21,7 +21,6 @@
     }
   },
   "runArgs": [
-    "--gpus=all",
     "--net=host",
     "--ipc=host",
     "--hostname=LocalGPU",
