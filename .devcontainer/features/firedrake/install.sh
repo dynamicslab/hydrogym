@@ -75,7 +75,12 @@ export LD_LIBRARY_PATH="/usr/lib/x86_64-linux-gnu:/opt/maia_deps_gnu/hdf5-1.14.5
 # the later, correctly-configured rebuild entirely - h5py would end up
 # working but without MPI support and against the wrong HDF5 version.
 pip install --upgrade pip setuptools wheel
-pip install cython numpy mpi4py
+# petsc4py's Cython sources under this pinned PETSC_VERSION predate the fix
+# for Cython 3.1's stricter pointer-array index-type checking - building
+# with an unpinned (latest) Cython fails with "Invalid index type 'int'" in
+# PC.pyx (RT_Pi_mat[i] = ...). Pin below 3.1; requirements-build.txt below
+# only needs Cython>=3.0, so this satisfies both.
+pip install "cython<3.1" numpy mpi4py
 
 # Set PETSc environment for firedrake-configure
 export PETSC_DIR="${PETSC_DIR}"
