@@ -52,7 +52,30 @@ if python -c "import importlib.metadata; importlib.metadata.version('hydrogym')"
 else
     echo "Installing hydrogym[${EXTRAS}] into ${VENV_DIR}..."
     (cd "${HYDROGYM_DIR}" && git lfs pull 2>/dev/null || true)
-    pip install -e "${HYDROGYM_DIR}[${EXTRAS}]"
+
+    # pip install here pulls ~1-2GB of wheels (vtk, tfp-nightly, etc.) in one
+    # shot. Seen once in practice: pip died with "Illegal instruction (core
+    # dumped)" partway through - not reproducible on retry, including a
+    # --no-cache-dir --force-reinstall of the packages right where it died,
+    # so it wasn't a real CPU/instruction-set incompatibility, just a
+    # corrupted/truncated wheel (cached or downloaded). Retry a couple of
+    # times, purging pip's wheel cache in between so a bad cached wheel
+    # can't just get reused on the next attempt.
+    MAX_ATTEMPTS=3
+    attempt=1
+    while true; do
+        pip install -e "${HYDROGYM_DIR}[${EXTRAS}]" && break
+        status=$?
+        if (( attempt >= MAX_ATTEMPTS )); then
+            echo "ERROR: pip install failed ${MAX_ATTEMPTS} times in a row (last exit code ${status}) - giving up." >&2
+            exit "${status}"
+        fi
+        echo "WARNING: pip install failed (exit code ${status}, attempt ${attempt}/${MAX_ATTEMPTS})." \
+             "Purging pip's wheel cache and retrying in 5s." >&2
+        pip cache purge || true
+        sleep 5
+        attempt=$((attempt + 1))
+    done
 fi
 
 python -c "import hydrogym, importlib.metadata; print(f'hydrogym {importlib.metadata.version(\"hydrogym\")} OK in ${VENV_DIR}')"
