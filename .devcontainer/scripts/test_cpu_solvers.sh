@@ -38,6 +38,25 @@
 #     resolves to HPCX's on PATH, an ABI-incompatible libmpi - same trap as
 #     the LD_LIBRARY_PATH override just below, just for the mpirun binary
 #     itself rather than the solver binary).
+#   - nek5000's small_wing/NACA4412_3D_Re75000_AOA5 env is packaged in the
+#     older NEK5000_v17 (.rea) format, not v19 (.par) like TCFmini - needs
+#     `prepare_workspace.py --profile NEK5000_v17` or it can't find the
+#     case file at all. test_nek_direct.py itself hardcoded the v19 rewrite
+#     path (silently no-opped the DRL control params for v17 cases instead
+#     of erroring) - fixed to branch on NEK_INIT._is_v17() like
+#     zeroshot_demo_pettingzoo.py already did.
+#   - that same env ships a stale small_wing.sch (checkpoint schedule file)
+#     baked into the HF package; prepare_workspace.py symlinks it into the
+#     workspace on every run, and Nek5000 refuses to start if it already
+#     exists ("ERROR: .sch file already exists"). Must `rm -f small_wing.sch`
+#     right before launching nek5000 each run.
+#   - that env's config has no normalization.dUdy/runner.dUdy (its reward
+#     varies with streamwise position, not dU/dy, per
+#     zeroshot_demo_pettingzoo.py's comment), so NekEnv.baseline_dudy comes
+#     back None and env.step()'s reward normalization does `float / None`.
+#     test_nek_direct.py gained a --baseline-dudy override for this
+#     (zeroshot_demo_pettingzoo.py works around the same issue by poking
+#     env.baseline_dudy directly after construction).
 
 set -uo pipefail
 
@@ -104,7 +123,26 @@ mpirun --allow-run-as-root --use-hwthread-cpus -np 1 python ../test_nek_direct.p
     : -np 10 nek5000
 '
 
-DEFAULT_TESTS="maia_cpu firedrake nek5000"
+CMD[nek5000_wing]='
+set -e
+source /opt/venvs/nek5000/bin/activate
+export OMP_NUM_THREADS=1
+export PATH="/workspace/third_party/nek5000/cases/small_wing:${PATH}"
+cd /workspace/examples/nek/getting_started/1_nekenv_single
+rm -rf ci_test_wing
+python ../prepare_workspace.py --env NACA4412_3D_Re75000_AOA5 --work-dir ./ci_test_wing --cache-dir "$HOME/.cache/hydrogym" --profile NEK5000_v17
+cd ci_test_wing
+# stale schedule file baked into the HF package - see header comment
+rm -f small_wing.sch
+# -np MUST be 12, matching small_wing/SIZE (lp=12, lelt=875) and the
+# published env'\''s environment_config.yaml (nproc=12, TOTCTRL=1000) - same
+# class of compile-time-sizing trap as mini_channel'\''s -np 10 above.
+mpirun --allow-run-as-root --use-hwthread-cpus -np 1 python ../test_nek_direct.py \
+    --env NACA4412_3D_Re75000_AOA5 --steps 3 --nproc 12 --baseline-dudy 1.0 \
+    : -np 12 nek5000
+'
+
+DEFAULT_TESTS="maia_cpu firedrake nek5000 nek5000_wing"
 TESTS="${TESTS:-${DEFAULT_TESTS}}"
 TIMEOUT_SECS="${TIMEOUT_SECS:-90}"
 
