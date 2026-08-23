@@ -1,0 +1,3 @@
+      real             max_mach,LENX,sigmabc,pinfty,betah,betav
+      COMMON /bcscrt4/ max_mach,LENX
+     >               , sigmabc,pinfty,betah,betav

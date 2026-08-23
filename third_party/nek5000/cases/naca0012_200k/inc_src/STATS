@@ -1,0 +1,59 @@
+!     Variables speciffic to 2D statistics
+      integer STAT_LVAR         ! number of avaraged variables; array size
+      parameter (STAT_LVAR = 72) ! should be in SIZE
+      integer STAT_NVAR         ! number of avaraged variables
+      integer STAT_IDIR         ! uniform direction
+      integer STAT_LNUM         ! number of locally unique 2D elements
+      integer STAT_GNUM         ! number of globally unique 2D elements
+      integer STAT_LOWN         ! number of elements owned by NID
+      integer STAT_LMAP(LELT)   ! local map of elements 3D => 2D
+      integer STAT_GMAP(LELT)   ! local => global map
+      integer STAT_OWN(LELT)    ! global ownership
+      integer STAT_LM1          ! max dimension of the array
+      parameter (STAT_LM1 = max(LX1,max(LY1,LZ1)))
+      integer STAT_NM1          ! number of points in uniform direction
+      integer STAT_NM2, STAT_NM3 ! number of points in 2D element
+      integer STAT_ION, STAT_CNN, STAT_EVN ! counters for I/O, communication and averaging calls
+
+      real STAT_TOL             ! tolerance for detection of section borders
+      parameter (STAT_TOL = 1.0e-8)
+      real STAT_TINI, STAT_TEV, STAT_TCMM, STAT_TIO ! simple timing
+
+      real STAT_BM1D(STAT_LM1,STAT_LM1,STAT_LM1,LELT) ! 1D mass matrix
+      real STAT_ABM1D(STAT_LM1,STAT_LM1,LELT) ! line length
+
+      real STAT_XM1(STAT_LM1,STAT_LM1,LELT) ! coordinates of 2D owned elements
+      real STAT_YM1(STAT_LM1,STAT_LM1,LELT) 
+
+      real STAT_RUAVG(STAT_LM1,STAT_LM1,LELT,STAT_LVAR) ! averaged fields
+
+c-------------------------------------------------- 
+      integer STAT_PROCID(LELV),STAT_PROCPOS(LELV)
+      integer STAT_MAXREC,STAT_SND_CNT,STAT_RECNO
+      integer STAT_COMP,STAT_OUTP
+
+      logical STAT_INI
+
+      real STAT_TSTART,STAT_ATIME
+c-------------------------------------------------- 
+
+c----------  common block section
+
+      common /statsi/ STAT_NVAR, STAT_IDIR, STAT_LNUM, STAT_GNUM, 
+     $     STAT_LOWN, STAT_NM1, STAT_NM2, STAT_NM3, STAT_ION,
+     $     STAT_CNN, STAT_EVN,
+     $     STAT_MAXREC,STAT_SND_CNT,STAT_PROCID,STAT_RECNO,
+     $     STAT_PROCPOS, STAT_COMP, STAT_OUTP
+
+      common /statsiv/ STAT_LMAP, STAT_GMAP, STAT_OWN
+
+      common /statsr/ STAT_TINI, STAT_TEV, STAT_TCMM, STAT_TIO,
+     $     STAT_TSTART,STAT_ATIME
+
+      common /statsrv/ STAT_BM1D, STAT_ABM1D, STAT_RUAVG, STAT_XM1,
+     $     STAT_YM1
+
+      common /statsl/ STAT_INI
+
+c-------------------------------------------------- 
+

@@ -1,0 +1,19 @@
+!
+!     Gauss-Labotto and Gauss points
+!
+      real zgm1(lx1,3), zgm2(lx2,3), zgm3(lx3,3)
+     $    ,zam1(lx1)  , zam2(lx2)  , zam3(lx3)
+      common /gauss/ zgm1,zgm2,zgm3,zam1,zam2,zam3
+!
+!    Weights
+!
+      real wxm1(lx1), wym1(ly1), wzm1(lz1), w3m1(lx1,ly1,lz1)
+     $    ,wxm2(lx2), wym2(ly2), wzm2(lz2), w3m2(lx2,ly2,lz2)
+     $    ,wxm3(lx3), wym3(ly3), wzm3(lz3), w3m3(lx3,ly3,lz3)
+     $    ,wam1(ly1), wam2(ly2), wam3(ly3)
+     $    ,w2am1(lx1,ly1), w2cm1(lx1,ly1)
+     $    ,w2am2(lx2,ly2), w2cm2(lx2,ly2)
+     $    ,w2am3(lx3,ly3), w2cm3(lx3,ly3)
+      common /wxyz/ wxm1,wym1,wzm1,w3m1,wxm2,wym2,wzm2,w3m2,wxm3,wym3
+     $             ,wzm3,w3m3,wam1,wam2,wam3,w2am1,w2cm1,w2am2,w2cm2
+     $             ,w2am3, w2cm3

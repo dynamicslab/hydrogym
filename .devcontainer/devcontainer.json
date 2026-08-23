@@ -1,28 +1,51 @@
 {
-	"name": "HydroGym Devpod",
-
-	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
-	// 	pulling from Dockerhub
-	"image": "lpaehler/hydrogym-devpod:stable",
-	"features": {
-		"ghcr.io/devcontainers-contrib/features/black:2": {},
-		"ghcr.io/devcontainers-contrib/features/poetry:2": {},
-		"ghcr.io/devcontainers-contrib/features/ruff:2": {}
-	},
-
-	// Features to add to the dev container. More info: https://containers.dev/features.
-	// "features": {},
-
-	// Use 'forwardPorts' to make a list of ports inside the container available locally.
-	// "forwardPorts": [],
-
-	// Use 'postCreateCommand' to run commands after the container is created.
-	// Setting up an editable version of HydroGym
-	"postCreateCommand": "source /home/firedrake/firedrake/bin/activate && pip install -e ."
-
-	// Configure tool-specific properties.
-	// "customizations": {},
-
-	// Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
-	// "remoteUser": "root"
+  "name": "MAIA + HydroGym Modular (NVHPC 26.5)",
+  "build": {
+    "dockerfile": "base/Dockerfile.base",
+    // NOTE: PSTL_PRESET/BUILD_TYPE here are currently unused - Dockerfile.base
+    // declares no matching ARG, so these are no-ops. The GPU architecture is
+    // actually set by features["./features/maia-gpu"].pstlPreset below.
+    "args": {
+      "PSTL_PRESET": "ada",
+      "BUILD_TYPE": "production"
+    }
+  },
+  "features": {
+    "./features/maia-gpu": {
+      // pstlPreset is hardcoded to "ada" (RTX 40-series / Ada Lovelace) -
+      // change this to match YOUR OWN GPU before building, or the solver
+      // will compile for the wrong architecture. See .devcontainer/README.md
+      // for the full list of valid values and how to pick yours.
+      "pstlPreset": "ada",
+      "buildType": "production"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-vscode.cpptools",
+        "ms-vscode.cmake-tools",
+        "ms-python.python",
+        "nvidia.nsight-vscode-edition"
+      ],
+      "settings": {
+        "C_Cpp.default.compilerPath": "/opt/nvidia/hpc_sdk/Linux_x86_64/26.5/compilers/bin/nvc++",
+        "C_Cpp.default.compileCommands": "${workspaceFolder}/third_party/m-AIA/build_nvhpc_production/compile_commands.json",
+        "C_Cpp.intelliSenseEngine": "default",
+        "cmake.configureOnOpen": false,
+        "cmake.automaticReconfigure": false,
+        "python.defaultInterpreterPath": "/usr/bin/python3"
+      }
+    }
+  },
+  "runArgs": [
+    "--gpus=all",
+    "--net=host",
+    "--ipc=host",
+    "--hostname=LocalGPU",
+    "--cap-add=SYS_ADMIN"
+  ],
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind",
+  "workspaceFolder": "/workspace",
+  "remoteUser": "root"
 }

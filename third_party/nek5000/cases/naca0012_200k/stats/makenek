@@ -1,0 +1,87 @@
+#!/bin/bash
+# Nek5000 build config file
+# (c) 2008,2009,2010 UCHICAGO ARGONNE, LLC
+
+# source path 
+SOURCE_ROOT="/home/prabal/nek5_svn/trunk/nek" 
+
+# Fortran compiler
+F77="mpif77"
+
+# C compiler
+CC="mpicc"
+
+# pre-processor symbol list 
+# (set PPLIST=? to get a list of available symbols)
+#PPLIST="?" 
+
+# plug-in list
+PLUGIN_LIST=""
+
+
+# OPTIONAL SETTINGS
+# -----------------
+
+# enable MPI (default true)
+#IFMPI="false"
+
+# auxilliary files to compile
+# NOTE: source files have to located in the same directory as makenek
+#       a makefile_usr.inc has to be provided containing the build rules 
+USR="statistics_2D.o statistics_2DIO.o statistics_2D_usr.o statistics_2D_debug.o time_series.o time_seriesIO.o pts_redistribute.o"
+#USR="foo.o"
+
+# linking flags
+#USR_LFLAGS="-L/usr/lib -lfoo"
+
+# generic compiler flags
+#G="-g"
+
+# optimization flags
+#OPT_FLAGS_STD=""
+#OPT_FLAGS_MAG=""
+
+# enable AMG coarse grid solver (default XXT)
+#IFAMG="true"
+#IFAMG_DUMP="true"
+
+# CVODE path
+#CVODE_DIR=$HOME/cvode/lib
+ 
+# MOAB/iMESH path
+#MOAB_DIR="$HOME/moab"
+
+
+###############################################################################
+# DONT'T TOUCH WHAT FOLLOWS !!!
+###############################################################################
+# assign version tag
+mver=1
+# overwrite source path with optional 2nd argument
+if [ -d $2 ] && [ $# -eq 2 ]; then
+  SOURCE_ROOT="$2"
+  echo "change source code directory to: ", $SOURCE_ROOT
+fi
+
+if [ $1 =  "clean" ]; then
+    echo Clean up ./obj and binary
+else
+#    cp SIZE.f SIZE
+    cp $1.f $1.usr
+fi
+
+# do some checks and create makefile
+source $SOURCE_ROOT/makenek.inc
+# compile
+make -j4 -f makefile 2>&1 | tee compiler.out
+
+# clean up
+mkdir obj 2>/dev/null
+\mv *.o ./obj 2>/dev/null
+
+rm compiler.out 
+# rm makefile
+mv $1.usr $1.f
+
+
+exit 0

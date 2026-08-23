@@ -1,3 +1,15 @@
 [submodule "third_party/firedrake"]
 	path = third_party/firedrake
 	url = https://github.com/firedrakeproject/firedrake
+[submodule "third_party/nek5000/solver/KTH_DRL_Framework/Nek5000"]
+	path = third_party/nek5000/solver/KTH_DRL_Framework/Nek5000
+	url = https://github.com/Nek5000/nek5000.git
+	branch = master
+[submodule "third_party/nek5000/solver/KTH_DRL_Framework/Toolbox"]
+	path = third_party/nek5000/solver/KTH_DRL_Framework/Toolbox
+	url = https://github.com/adampep/KTH_Toolbox.git
+	branch = master
+[submodule "third_party/m-AIA"]
+	path = third_party/m-AIA
+	url = https://git.rwth-aachen.de/aia/MAIA/Solver.git
+	branch = wipmaiaml

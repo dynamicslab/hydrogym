@@ -1,0 +1,3 @@
+!     missing definitions in MASS
+      real BM1, BM2, BINVM1, BINTM1, BM2INV, BAXM1, BM1LAG,
+     $     VOLVM1,VOLVM2,VOLTM1,VOLTM2,YINVM1

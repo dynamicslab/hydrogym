@@ -1,0 +1,21 @@
+{
+  "name": "Firedrake + HydroGym CPU",
+  "description": "Installs Firedrake FE automation with PETSc, creates HydroGym CPU venv with [maia,firedrake,nek] extras. Requires petsc feature.",
+  "version": "1.0.0",
+  "options": {
+    "firedrakeCommit": {
+      "type": "string",
+      "default": "ef4c1bf9e6caa9c70dc75413f633c8f97551a4cc",
+      "description": "Firedrake git commit to install"
+    },
+    "hydrogymExtras": {
+      "type": "string",
+      "default": "maia,firedrake,nek",
+      "description": "HydroGym extras to install"
+    }
+  },
+  "dependsOn": {
+    "./features/petsc": {}
+  },
+  "postCreateCommand": "bash /workspace/.devcontainer/features/firedrake/postCreateCommand.sh"
+}

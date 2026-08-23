@@ -1,0 +1,6 @@
+!     missing definitions in NEKUSE
+      real X, Y, Z, R, THETA, UX, UY, UZ, UN, U1, U2, TRX, TRY, TRZ,
+     $     TRN, TR1, TR2, PA, FFX, FFY, FFZ, TEMP, FLUX, HC, HRAD,
+     $     TINF, QVOL, UDIFF, UTRANS, SI2, SI3, SIGMA, TURBK, TURBE,
+     $     PS
+

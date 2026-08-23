@@ -1,0 +1,11 @@
+! ======================================
+! The object for Body-force damping 
+! ======================================
+
+        real bdf_mask(LX1,LY1,LZ1,LELT) ! A mask for defining the control region
+
+        real test_bdf(LX1,LY1,LZ1,LELT)
+        
+        real test_bdf2(LX1,LY1,LZ1,LELT)
+
+        common /YW_DAMP / bdf_mask, test_bdf, test_bdf2

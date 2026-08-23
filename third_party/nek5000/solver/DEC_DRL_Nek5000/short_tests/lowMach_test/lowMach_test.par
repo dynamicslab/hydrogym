@@ -1,0 +1,52 @@
+#
+# nek parameter file
+#
+[GENERAL] 
+#startFrom = restart.fld 
+stopAt = numSteps #endTime
+endTime = 1.0
+numSteps = 500
+
+dt = 1e-03
+timeStepper = bdf #char #steady
+tOrder = 3
+variableDt = No
+maxCFL = 2.0
+
+writeControl = timeStep #runTime
+writeInterval = 500
+
+dealiasing = yes
+filtering = no  
+filterWeight = 5e-02
+
+userParam01 = 1 # use in .usr uparam(01)
+
+[PROBLEMTYPE]
+#stressFormulation = yes
+lowMachNumber = yes 
+#dp0dt = yes
+variableProperties = yes
+
+[PRESSURE]
+preconditioner = semg
+residualTol = 1e-08
+residualProj = yes
+
+[VELOCITY]
+residualTol = 1e-12
+residualProj = no
+#density = 1
+#viscosity = 1
+#writeToFieldFile = no 
+
+[TEMPERATURE] 
+#solver= cvode
+residualTol = 1e-12
+#absoluteTol = 1e-12
+#conjugateHeatTransfer = yes 
+
+[CVODE]
+relativeTol = 1e-12
+stiff = no
+dtmax = 1e-3

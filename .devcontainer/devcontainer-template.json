@@ -1,0 +1,185 @@
+{
+  "name": "MAIA + HydroGym Modular - Feature Selection Template",
+  "description": "Copy this file to devcontainer.json and uncomment the features you need",
+  "build": {
+    "dockerfile": "base/Dockerfile.base",
+    // NOTE: PSTL_PRESET/BUILD_TYPE here are currently unused - Dockerfile.base
+    // declares no matching ARG, so these are no-ops. The GPU architecture is
+    // actually set by features["./features/maia-gpu"].pstlPreset below.
+    "args": {
+      "PSTL_PRESET": "ada",
+      "BUILD_TYPE": "production"
+    }
+  },
+  "features": {
+    "./features/maia-gpu": {
+      // pstlPreset is hardcoded to "ada" (RTX 40-series / Ada Lovelace) -
+      // change this to match YOUR OWN GPU before building, or the solver
+      // will compile for the wrong architecture. See .devcontainer/README.md
+      // for the full list of valid values and how to pick yours.
+      "pstlPreset": "ada",
+      "buildType": "production"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-vscode.cpptools",
+        "ms-vscode.cmake-tools",
+        "ms-python.python",
+        "nvidia.nsight-vscode-edition"
+      ],
+      "settings": {
+        "C_Cpp.default.compilerPath": "/opt/nvidia/hpc_sdk/Linux_x86_64/26.5/compilers/bin/nvc++",
+        "C_Cpp.default.compileCommands": "${workspaceFolder}/third_party/m-AIA/build_nvhpc_production/compile_commands.json",
+        "C_Cpp.intelliSenseEngine": "default",
+        "cmake.configureOnOpen": false,
+        "cmake.automaticReconfigure": false,
+        "python.defaultInterpreterPath": "/usr/bin/python3"
+      }
+    }
+  },
+  "runArgs": [
+    "--gpus=all",
+    "--net=host",
+    "--ipc=host",
+    "--hostname=LocalGPU",
+    "--cap-add=SYS_ADMIN"
+  ],
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind",
+  "workspaceFolder": "/workspace",
+  "remoteUser": "root",
+
+  "availableFeatures": {
+    "./features/maia-gpu": {
+      "description": "MAIA GPU solver with NVHPC + CUDA stdpar (current workflow). Includes regression/profiling tools.",
+      "options": {
+        "pstlPreset": ["ada", "hopper", "blackwell", "blackwell_consumer", "turing", "ampere", "volta", "multicore", "HOST"],
+        "buildType": ["debug", "production", "extreme"],
+        "enableComponents": "comma-separated: avg,dg,lbm,particle,structured",
+        "disableComponents": "comma-separated: avg,dg,lbm,particle,structured"
+      },
+      "dependsOn": []
+    },
+    "./features/maia-cpu": {
+      "description": "MAIA CPU solver with GCC + OpenMPI (gompi-like). For CPU-only development.",
+      "options": {
+        "buildType": ["debug", "production", "extreme"],
+        "enableComponents": "comma-separated: avg,dg,lbm,particle,structured",
+        "disableComponents": "comma-separated: avg,dg,lbm,particle,structured"
+      },
+      "dependsOn": []
+    },
+    "./features/nek5000": {
+      "description": "Nek5000 spectral element solver for HydroGym's 4 DRL cases (mini_channel, large_channel, naca0012_200k, small_wing), built from the in-repo third_party/nek5000 submodules + case sources. Independent of PETSc. Uses GCC + OpenMPI from base.",
+      "options": {
+        "cases": "comma-separated list of cases to build (default: all 4)"
+      },
+      "dependsOn": []
+    },
+    "./features/petsc": {
+      "description": "PETSc 3.24.0 + OpenBLAS (required for Firedrake). Built with GCC + OpenMPI.",
+      "options": {
+        "petscVersion": "PETSc version tag (default: v3.24.0)",
+        "withFiredrake": "Configure for Firedrake compatibility (default: true)"
+      },
+      "dependsOn": []
+    },
+    "./features/firedrake": {
+      "description": "Firedrake FE automation + HydroGym CPU venv with [maia,firedrake,nek] extras. Requires petsc feature.",
+      "options": {
+        "firedrakeCommit": "Firedrake git commit (default: ef4c1bf9e6caa9c70dc75413f633c8f97551a4cc)",
+        "hydrogymExtras": "HydroGym extras (default: maia,firedrake,nek)"
+      },
+      "dependsOn": ["petsc"]
+    },
+    "./features/python-ml": {
+      "description": "PyTorch (CUDA 12.8) + JAX (CUDA 12) + stable-baselines3 in venv. Uses pip-managed CUDA independent of system CUDA 13.2.",
+      "options": {
+        "pytorchCuda": ["cu128", "cu126", "cu124", "cu121"],
+        "jaxCuda": "JAX CUDA version (default: cuda12)"
+      },
+      "dependsOn": []
+    },
+    "./features/hydrogym-gpu": {
+      "description": "HydroGym GPU venv with JAX-Fluids + HydroGym[maia,jax,jaxfluids] extras. Requires python-ml feature.",
+      "options": {
+        "hydrogymExtras": "HydroGym extras (default: maia,jax,jaxfluids)",
+        "jaxfluidsRepo": "JAX-Fluids repository URL (default: https://github.com/tumaer/JAXFLUIDS.git)"
+      },
+      "dependsOn": ["python-ml"]
+    },
+    "./features/jax-fluids": {
+      "description": "JAX-Fluids standalone CFD solver in python-ml venv. Requires python-ml feature.",
+      "options": {
+        "jaxfluidsRepo": "JAX-Fluids repository URL (default: https://github.com/tumaer/JAXFLUIDS.git)",
+        "jaxfluidsBranch": "JAX-Fluids branch (default: main)"
+      },
+      "dependsOn": ["python-ml"]
+    }
+  },
+
+  "exampleCombinations": {
+    "maia-gpu-only": {
+      "description": "Current MAIA GPU workflow (default)",
+      "features": {
+        "./features/maia-gpu": {}
+      }
+    },
+    "maia-cpu-nek5000": {
+      "description": "MAIA CPU + Nek5000 (no PETSc/Firedrake)",
+      "features": {
+        "./features/maia-cpu": {},
+        "./features/nek5000": {}
+      }
+    },
+    "full-cpu-stack": {
+      "description": "MAIA CPU + Nek5000 + PETSc + Firedrake + HydroGym CPU + JAX (CPU). Pinned config: full-cpu-stack.devcontainer.json. Passes hydrogymExtras=\"maia,firedrake,nek,jax\" to the firedrake feature so plain (CPU) jax lands in the same /opt/venvs/firedrake venv as hydrogym, instead of adding a separate ML feature.",
+      "features": {
+        "./features/maia-cpu": {},
+        "./features/nek5000": {},
+        "./features/petsc": {},
+        "./features/firedrake": {
+          "hydrogymExtras": "maia,firedrake,nek,jax"
+        }
+      }
+    },
+    "full-gpu-stack": {
+      "description": "MAIA GPU + Python ML (PyTorch/JAX CUDA12/SB3) + HydroGym GPU (JAX-Fluids + HydroGym[maia,jax]). Pinned config: full-gpu-stack.devcontainer.json.",
+      "features": {
+        "./features/maia-gpu": {},
+        "./features/python-ml": {},
+        "./features/hydrogym-gpu": {}
+      }
+    },
+    "gpu-ml-stack": {
+      "description": "MAIA GPU + Python ML (PyTorch/JAX/SB3) + HydroGym GPU + JAX-Fluids as its own standalone feature (redundant with hydrogym-gpu's own JAX-Fluids install - prefer full-gpu-stack above unless you specifically need the jax-fluids feature's separate branch/repo override options)",
+      "features": {
+        "./features/maia-gpu": {},
+        "./features/python-ml": {},
+        "./features/hydrogym-gpu": {},
+        "./features/jax-fluids": {}
+      }
+    },
+    "maia-gpu-nek5000": {
+      "description": "MAIA GPU + Nek5000 (mixed GPU/CPU)",
+      "features": {
+        "./features/maia-gpu": {},
+        "./features/nek5000": {}
+      }
+    },
+    "everything": {
+      "description": "All features (large image, long build time ~2-3 hours)",
+      "features": {
+        "./features/maia-gpu": {},
+        "./features/maia-cpu": {},
+        "./features/nek5000": {},
+        "./features/petsc": {},
+        "./features/firedrake": {},
+        "./features/python-ml": {},
+        "./features/hydrogym-gpu": {},
+        "./features/jax-fluids": {}
+      }
+    }
+  }
+}
