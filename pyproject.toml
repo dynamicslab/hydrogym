@@ -124,6 +124,7 @@ seaborn = "^0.12.1"
 
 [tool.ruff]
 line-length = 120
+extend-exclude = ["third_party"]
 
 [tool.ruff.format]
 quote-style = "double"
@@ -139,9 +140,10 @@ ignore = ["F401", "E731"]
 profile = "black"
 line_length = 120
 known_first_party = ["hydrogym"]
+skip_glob = ["third_party/*"]
 
 [tool.codespell]
-skip = '*.svg,*.ipynb,./docs/package-lock.json'
+skip = '*.svg,*.ipynb,./docs/package-lock.json,./third_party/*'
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
