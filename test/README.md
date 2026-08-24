@@ -16,10 +16,11 @@ command line with
 source /home/firedrake/firedrake/bin/activate
 ```
 
-Install HydroGym
+Install HydroGym and its locked development dependencies additively into the
+existing Firedrake environment:
 
 ```bash
-pip install .
+./scripts/bootstrap_firedrake.sh --dev
 ```
 
 And is then set up to run the tests.
@@ -27,13 +28,13 @@ And is then set up to run the tests.
 ## Running Tests
 
 ```bash
-cd test && python -m pytest test_pinball.py
+uv run --active --no-sync pytest test/test_pinball.py
 ```
 
 or to run all tests
 
 ```bash
-python -m pytest .
+uv run --active --no-sync pytest test
 ```
 
 > The gradient tests are currently not run, and are to be run at your own risk.

@@ -3,6 +3,8 @@
 
 FROM lpaehler/hydrogym-env:stable
 
+COPY --from=ghcr.io/astral-sh/uv:0.12.5 /uv /uvx /bin/
+
 USER firedrake
 WORKDIR /home/firedrake
 
@@ -12,8 +14,6 @@ RUN bash -c "source firedrake/bin/activate"
 # Clone HydroGym
 RUN bash -c "git clone https://github.com/dynamicslab/hydrogym.git"
 
-# Installation of HydroGym
-RUN bash -c "cd hydrogym && pip install ."
-
-#RUN bash -c ". $VENV/bin/activate && pip install -e /home/hydrogym"
-#RUN bash -c ". $VENV_COMPLEX/bin/activate && pip install -e /home/hydrogym"
+# Install the locked dependencies additively into the existing Firedrake
+# environment, then install HydroGym without pruning Firedrake itself.
+RUN bash -c "cd hydrogym && ./scripts/bootstrap_firedrake.sh"
