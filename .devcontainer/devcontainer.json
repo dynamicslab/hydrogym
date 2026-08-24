@@ -5,9 +5,9 @@
 	// 	pulling from Dockerhub
 	"image": "lpaehler/hydrogym-devpod:stable",
 	"features": {
-		"ghcr.io/devcontainers-contrib/features/black:2": {},
-		"ghcr.io/devcontainers-contrib/features/poetry:2": {},
-		"ghcr.io/devcontainers-contrib/features/ruff:2": {}
+		"ghcr.io/va-h/devcontainers-features/uv:1": {
+			"version": "0.12.5"
+		}
 	},
 
 	// Features to add to the dev container. More info: https://containers.dev/features.
@@ -18,7 +18,7 @@
 
 	// Use 'postCreateCommand' to run commands after the container is created.
 	// Setting up an editable version of HydroGym
-	"postCreateCommand": "source /home/firedrake/firedrake/bin/activate && pip install -e ."
+	"postCreateCommand": "./scripts/bootstrap_firedrake.sh --dev"
 
 	// Configure tool-specific properties.
 	// "customizations": {},

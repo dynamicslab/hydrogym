@@ -1,18 +1,26 @@
-[tool.poetry]
+[project]
 name = "hydrogym"
 version = "1.0.0"
+description = "A Reinforcement Learning Benchmarking Environment for Fluid Dynamics (with Firedrake, JAX-Fluids, MAIA, and NEK5000 solver support)"
+readme = "README.md"
+requires-python = ">=3.10,<3.15"
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [
-    "HydroGym Team"
+    { name = "HydroGym Team" },
 ]
 maintainers = [
-    "Christian Lagemann <clage@uw.edu>",
-    "Ludger Paehler <paehlerludger@gmail.com>",
-    "Jared Callaham <jared.callaham@gmail.com>",
+    { name = "Christian Lagemann", email = "clage@uw.edu" },
+    { name = "Ludger Paehler", email = "paehlerludger@gmail.com" },
+    { name = "Jared Callaham", email = "jared.callaham@gmail.com" },
 ]
-description = "A Reinforcement Learning Benchmarking Environment for Fluid Dynamics (with Firedrake, JAX-Fluids, MAIA, and NEK5000 solver support)"
-license = "MIT"
-readme = "README.md"
-classifiers=[
+keywords = [
+    "Reinforcement Learning",
+    "Scientific Machine Learning",
+    "Benchmarking",
+    "Computational Fluid Dynamics",
+]
+classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Science/Research",
     "Operating System :: MacOS",
@@ -23,104 +31,123 @@ classifiers=[
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Topic :: Scientific/Engineering :: Atmospheric Science",
     "Topic :: Scientific/Engineering :: Hydrology",
     "Topic :: Scientific/Engineering :: Physics",
 ]
-documentation = "https://dynamicslab.github.io/hydrogym"
-repository = "https://github.com/dynamicslab/hydrogym"
-keywords = [
-    "Reinforcement Learning",
-    "Scientific Machine Learning",
-    "Benchmarking",
-    "Computational Fluid Dynamics"
-]
-include = [
-    { path = "hydrogym"}
+dependencies = [
+    "control>=0.9.2",
+    "dmsuite>=0.1.1",
+    "gymnasium>=1.2.3",
+    "huggingface-hub>=0.16.0",
+    "numpy>=1.23",
+    "pandas>=2.1.0",
+    "scipy>=1.7.0",
 ]
 
-[tool.poetry.urls]
-issues = "https://github.com/dynamicslab/hydrogym/issues"
+[project.urls]
+Documentation = "https://dynamicslab.github.io/hydrogym"
+Repository = "https://github.com/dynamicslab/hydrogym"
+Issues = "https://github.com/dynamicslab/hydrogym/issues"
 
-[tool.poetry.dependencies]
-python = "^3.10"
-
-# Core dependencies
-control = "^0.9.2"
-dmsuite = "^0.1.1"
-gymnasium = "^1.2.3"
-huggingface-hub = "^0.16.0"
-pandas = "^2.1.0"
-scipy = "^1.7.0"
-
-# Firedrake solver optional dependencies
-# (firedrake itself must be installed via its own installer)
-gmsh = { version = "^4.11.1", optional = true }
-psutil = {version = "^7.2.2", optional = true }
-
-# Maia solver optional dependencies
-mpi4py = { version = "^4.0.0", optional = true }
-omegaconf = { version = "^2.1.0", optional = true }
-einops = { version = "^0.6.0", optional = true }
-toml = { version = "^0.10.0", optional = true }
-
-# NEK5000 solver optional dependencies
-pymech = { version = "^1.4.0", optional = true }
-pettingzoo = { version = "^1.24.0", optional = true }
-stable-baselines3 = { version = "^2.7.1", optional = true }
-supersuit = { version = "3.10.0", optional = true }
-tensorboard = { version = "^2.0.0", optional = true }
-
-# JAX solver optional dependencies
-jax = { version = "*", optional = true }
-jaxlib = { version = "*", optional = true }
-chex = { version = "*", optional = true }
-navix = { version = "*", optional = true }
-gymnax = { version = "*", optional = true }
-tree-math = { version = "*", optional = true }
-
-# JAX-Fluids solver optional dependencies
-flax = { version = "*", optional = true }
-gitpython = { version = "*", optional = true }
-h5py = { version = "*", optional = true }
-optax = { version = "*", optional = true }
-pyvista = { version = "*", optional = true }
-
-
-[tool.poetry.extras]
-firedrake = ["gmsh", "psutil"]
-maia = ["mpi4py", "omegaconf", "einops", "toml"]
-nek = ["mpi4py", "omegaconf", "pymech", "pettingzoo", "stable-baselines3", "supersuit", "tensorboard"]
-jax = ["jax", "jaxlib", "chex", "navix", "gymnax", "tree-math", "flax", "omegaconf", "toml"]
-jaxfluids = ["jax", "jaxlib", "flax", "gitpython", "h5py", "optax"]
+[project.optional-dependencies]
+firedrake = [
+    "gmsh>=4.11.1",
+    "matplotlib>=3.7",
+    "mpi4py>=4.0.0",
+    "psutil>=7.2.2",
+]
+maia = [
+    "einops>=0.6.0",
+    "mpi4py>=4.0.0",
+    "omegaconf>=2.1.0",
+    "toml>=0.10.0",
+]
+nek = [
+    "matplotlib>=3.7",
+    "mpi4py>=4.0.0",
+    "omegaconf>=2.1.0",
+    "pettingzoo>=1.24.0",
+    "pymech>=1.4.0",
+    "stable-baselines3>=2.7.1",
+    "supersuit==3.10.0",
+    "tensorboard>=2.0.0",
+]
+jax = [
+    "chex",
+    "flax",
+    "gymnax",
+    "jax",
+    "jaxlib",
+    "matplotlib>=3.7",
+    "navix",
+    "omegaconf>=2.1.0",
+    "toml>=0.10.0",
+    "tree-math",
+]
+jaxfluids = [
+    "flax",
+    "gitpython",
+    "h5py",
+    "jax",
+    "jaxlib",
+    "matplotlib>=3.7",
+    "omegaconf>=2.1.0",
+    "optax",
+    "pyvista",
+]
 all = [
-  "gmsh", "psutil",
-  "mpi4py", "omegaconf", "einops", "toml",
-  "pymech", "pettingzoo", "stable-baselines3", "supersuit", "tensorboard",
-  "jax", "jaxlib", "chex", "navix", "gymnax", "tree-math",
-  "flax", "gitpython", "h5py", "optax"
+    "chex",
+    "einops>=0.6.0",
+    "flax",
+    "gitpython",
+    "gmsh>=4.11.1",
+    "gymnax",
+    "h5py",
+    "jax",
+    "jaxlib",
+    "matplotlib>=3.7",
+    "mpi4py>=4.0.0",
+    "navix",
+    "omegaconf>=2.1.0",
+    "optax",
+    "pettingzoo>=1.24.0",
+    "psutil>=7.2.2",
+    "pymech>=1.4.0",
+    "pyvista",
+    "stable-baselines3>=2.7.1",
+    "supersuit==3.10.0",
+    "tensorboard>=2.0.0",
+    "toml>=0.10.0",
+    "tree-math",
 ]
 
-[tool.poetry.group.dev.dependencies]
-ruff = "^0.15.8"
-isort = "^5.13.0"
-toml = "^0.10.2"
-tomli = "^2.0.1"
-codespell = "^2.2.6"
-pytest = "^8.1.1"
-psutil = "^7.0.2"
-
-[tool.poetry.group.interactive.dependencies]
-jupyterlab = "^3.5.2"
-ipykernel = "^6.19.4"
-notebook = "^6.5.2"
-ipywidgets = "^8.0.4"
-mpltools = "^0.2.0"
-nbformat = "^5.7.1"
-nbconvert = "^7.2.7"
-memory-profiler = "^0.61.0"
-seaborn = "^0.12.1"
+[dependency-groups]
+dev = [
+    "codespell>=2.2.6,<3",
+    "isort>=6,<7",
+    "psutil>=7.0.2,<8",
+    "pytest>=9.0.3,<10",
+    "ruff>=0.15.8,<0.16",
+    "toml>=0.10.2,<0.11",
+    "tomli>=2.0.1,<3",
+]
+docs = [
+    "pydoc-markdown>=4.8.2,<5",
+]
+interactive = [
+    "ipykernel>=6.29,<7",
+    "ipywidgets>=8,<9",
+    "jupyterlab>=4.5.10,<5",
+    "memory-profiler>=0.61,<0.62",
+    "mpltools>=0.2,<0.3",
+    "nbconvert>=7.16,<8",
+    "nbformat>=5.10,<6",
+    "notebook>=7.4,<8",
+    "seaborn>=0.13,<0.14",
+]
 
 [tool.ruff]
 line-length = 120
@@ -141,8 +168,15 @@ line_length = 120
 known_first_party = ["hydrogym"]
 
 [tool.codespell]
-skip = '*.svg,*.ipynb,./docs/package-lock.json'
+skip = "*.svg,*.ipynb,docs/package-lock.json,docs/node_modules,docs/build,docs/.docusaurus"
+
+[tool.uv]
+default-groups = ["dev"]
+
+[tool.uv.build-backend]
+module-name = "hydrogym"
+module-root = ""
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["uv_build>=0.12.5,<0.13"]
+build-backend = "uv_build"

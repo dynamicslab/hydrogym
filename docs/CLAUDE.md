@@ -29,26 +29,29 @@ yarn typecheck
 ### Python Package (parent directory)
 
 ```bash
-# Install in development mode
-pip install -e .
+# Install the locked development environment
+uv sync --locked
 
 # Install with solver-specific extras
-pip install -e ".[firedrake]"
-pip install -e ".[maia]"
-pip install -e ".[nek]"
-pip install -e ".[all]"
+uv sync --locked --extra maia
+uv sync --locked --extra nek
+uv sync --locked --extra jax
+uv sync --locked --extra jaxfluids
+
+# Install additively into the provided Firedrake environment
+./scripts/bootstrap_firedrake.sh --dev
 
 # Linting and formatting
-ruff check .
-ruff format .
-isort .
+uv run ruff check .
+uv run ruff format .
+uv run isort .
 
 # Spell check
-codespell
+uv run codespell
 
 # Run tests (requires Firedrake Docker container)
-cd test && python -m pytest .
-python -m pytest test_pinball.py  # single test file
+uv run pytest test
+uv run pytest test/test_pinball.py  # single test file
 ```
 
 ## Architecture
@@ -81,9 +84,9 @@ python -m pytest test_pinball.py  # single test file
 ## CI/CD
 
 GitHub Actions workflows:
-- `build.yml` - Package build test with Poetry
-- `ruff_lint.yml`, `ruff_format.yml`, `isort.yml` - Code formatting checks
-- `codespell.yml` - Spell checking
+- `python-ci.yml` - Locked quality, Python-version, and distribution checks with uv
+- `codeql.yml` - Python and JavaScript/TypeScript security analysis
+- `python-publish.yml` - Trusted PyPI publishing with uv
 - `deploy.yml` - Docs deployment to GitHub Pages
 
 ## Testing

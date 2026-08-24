@@ -1,5 +1,8 @@
 name: Test deployment
 
+permissions:
+  contents: read
+
 on:
   pull_request:
     branches:
@@ -15,21 +18,25 @@ jobs:
       run:
         working-directory: docs
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - uses: actions/setup-node@v4
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 20
           cache: npm
           cache-dependency-path: docs/package-lock.json
 
-      - uses: actions/setup-python@v5
+      - name: Install uv and Python
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
         with:
-          python-version: '3.11'
+          version: "0.12.5"
+          python-version: "3.12"
+          enable-cache: true
 
-      - name: Install pydoc-markdown
-        run: pip install pydoc-markdown
+      - name: Install locked documentation environment
+        run: uv sync --project .. --locked --no-default-groups --group docs
 
       - name: Install dependencies
         run: npm ci
