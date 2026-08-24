@@ -202,7 +202,7 @@ See also provided [examples/](examples/) for more details how to leverage indivi
 ## Documentation
 
 - **Getting Started Guides**: See `examples/[backend]/getting_started/README.md`
-- **API Documentation**: [https://hydrogym.readthedocs.io](https://hydrogym.readthedocs.io)
+- **API Documentation**: [https://dynamicslab.github.io/hydrogym](https://dynamicslab.github.io/hydrogym)
 - **Flow Configurations**: [docs/FlowConfigurations.md](docs/FlowConfigurations.md)
 - **Paper**: [arXiv:2512.17534](https://arxiv.org/abs/2512.17534)
 
