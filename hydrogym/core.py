@@ -1,4 +1,5 @@
 import abc
+import warnings
 from typing import Any, Callable, Iterable, Tuple, TypeVar, Union
 
 import gymnasium as gym
@@ -45,13 +46,17 @@ class PDEBase(metaclass=abc.ABCMeta):
     BCType = TypeVar("BCType")
 
     def __init__(self, **config):
-        self.mesh = self.load_mesh(name=config.get("mesh", self.DEFAULT_MESH))
+        # Consume the keys PDEBase itself owns. Subclasses consume their own
+        # keys (with .pop) before calling super().__init__; anything left in
+        # `config` after that is almost certainly a typo'd or unsupported
+        # option, so warn rather than silently ignoring it (audit Task 2.1).
+        self.mesh = self.load_mesh(name=config.pop("mesh", self.DEFAULT_MESH))
         self.initialize_state()
 
         self.reset()
 
         # Handle both single checkpoint (string) and multiple checkpoints (list)
-        restart = config.get("restart")
+        restart = config.pop("restart", None)
         if restart is not None:
             if isinstance(restart, str):
                 # Single checkpoint - load immediately
@@ -63,6 +68,14 @@ class PDEBase(metaclass=abc.ABCMeta):
                     self.load_checkpoint(restart[0])
             else:
                 raise ValueError(f"restart must be a string or list of strings, got {type(restart)}")
+
+        leftover = sorted(config)
+        if leftover:
+            warnings.warn(
+                f"{type(self).__name__} got unsupported flow_config key(s) {leftover}; "
+                "they have no effect and may indicate a misspelled option.",
+                stacklevel=2,
+            )
 
     @property
     @abc.abstractmethod
