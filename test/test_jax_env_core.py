@@ -80,3 +80,22 @@ class TestFallbackProfile:
         from hydrogym.jax.env_core import JAXFlowEnv
 
         assert JAXFlowEnv.SOLVER_TYPE in SOLVER_PROFILES
+
+
+class TestCacheNamespace:
+    def test_cache_namespace_is_jax_specific(self, offline_data_manager, fake_home, capsys):
+        """Task 2.11: JAXFlowEnv's local cache namespace must be JAX-specific
+        ("jaxgym"), not "maiagym" (copy-paste from the MAIA backend). The
+        maiagym dir is a decoy: with the old code it would be used and the
+        capsys output would mention it."""
+        from hydrogym.jax import env_core
+
+        (fake_home / ".cache" / "jaxgym" / "unit_test_env").mkdir(parents=True)
+        (fake_home / ".cache" / "maiagym" / "unit_test_env").mkdir(parents=True)
+
+        with pytest.raises(env_core.ConfigError, match="No configuration file"):
+            env_core.JAXFlowEnv({"environment_name": "unit_test_env"})
+
+        out = capsys.readouterr().out
+        assert "jaxgym" in out
+        assert "maiagym" not in out

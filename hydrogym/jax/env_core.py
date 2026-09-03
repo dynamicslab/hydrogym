@@ -145,7 +145,7 @@ class JAXFlowEnv(environment.Environment[EnvState, EnvParams]):
         """
         Download and setup environment data from HF Hub.
 
-        First checks ~/.cache/maiagym/ for local data, otherwise falls back to data_manager.
+        First checks ~/.cache/jaxgym/ for local data, otherwise falls back to data_manager.
 
         Returns:
             Path to the local environment data directory.
@@ -154,7 +154,7 @@ class JAXFlowEnv(environment.Environment[EnvState, EnvParams]):
             ConfigError: If environment data cannot be retrieved.
         """
         # Check cache directory first
-        cache_dir = Path.home() / ".cache" / "maiagym" / self.environment_name
+        cache_dir = Path.home() / ".cache" / "jaxgym" / self.environment_name
         if cache_dir.exists() and cache_dir.is_dir():
             print(f"Using cached environment data from: {cache_dir}")
             return str(cache_dir)
