@@ -38,10 +38,7 @@ jobs:
         run: codespell examples
       
       - name: Check spelling in tests
-        run: codespell tests
-      
-      - name: Check spelling in tutorials
-        run: codespell tutorials
+        run: codespell test
       
       - name: Check spelling in main package
         run: codespell hydrogym
