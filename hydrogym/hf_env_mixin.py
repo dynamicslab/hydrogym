@@ -46,6 +46,11 @@ class HFEnvConfigMixin:
     # (offline / legacy data). Must be a key of data_manager.SOLVER_PROFILES.
     SOLVER_TYPE: Optional[str] = None
 
+    # Optional prefix for the resolution-method log lines (e.g. "[NEK] " on
+    # the Nek backend, which tags all its prints that way). Empty for the
+    # backends whose copies printed bare messages.
+    LOG_PREFIX: str = ""
+
     HF_CACHE_NAMESPACE: str = None
 
     def _make_data_manager(
@@ -82,13 +87,13 @@ class HFEnvConfigMixin:
         # Check cache directory first
         cache_dir = Path.home() / ".cache" / self.HF_CACHE_NAMESPACE / self.environment_name
         if cache_dir.exists() and cache_dir.is_dir():
-            print(f"Using cached environment data from: {cache_dir}")
+            print(f"{self.LOG_PREFIX}Using cached environment data from: {cache_dir}")
             return str(cache_dir)
 
         # Fall back to data_manager if cache doesn't exist
         try:
             env_path = self.data_manager.get_environment_path(self.environment_name)
-            print(f"Using environment data from: {env_path}")
+            print(f"{self.LOG_PREFIX}Using environment data from: {env_path}")
             return env_path
         except Exception as e:
             raise ConfigError(f"Failed to setup environment data for {self.environment_name}: {e}")
