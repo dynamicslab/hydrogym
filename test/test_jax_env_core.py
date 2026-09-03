@@ -45,11 +45,12 @@ def fake_home(monkeypatch, tmp_path):
     """Point Path.home() at tmp_path for the ~/.cache/<namespace> lookup.
 
     NOTE: this temporarily patches pathlib.Path.home() process-wide (the
-    module imports Path from pathlib); monkeypatch restores it afterwards.
+    HFEnvConfigMixin resolution logic lives in hydrogym.hf_env_mixin, whose
+    Path is the same pathlib.Path class); monkeypatch restores it afterwards.
     """
-    from hydrogym.jax import env_core
+    import pathlib
 
-    monkeypatch.setattr(env_core.Path, "home", classmethod(lambda cls: tmp_path))
+    monkeypatch.setattr(pathlib.Path, "home", staticmethod(lambda: tmp_path))
     return tmp_path
 
 
