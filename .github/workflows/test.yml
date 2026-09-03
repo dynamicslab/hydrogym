@@ -77,5 +77,15 @@ jobs:
             cd /tmp
             python -c "import firedrake, hydrogym; print(\"firedrake + hydrogym import OK\")"
             cd /workspace/test
-            python -m pytest . -x --durations=10
+            # The gradient tests (test_*_grad.py) are excluded: they import
+            # firedrake_adjoint, which the Firedrake venv does not provide,
+            # so they fail at COLLECTION (ModuleNotFoundError), not at
+            # runtime. This matches the pre-existing documented state
+            # (test/README.md: "The gradient tests are currently not run")
+            # and the Task 0.3 baseline; including them in CI would make
+            # every run red on an unchanged, pre-existing condition.
+            python -m pytest . -x --durations=10 \
+              --ignore=test_cavity_grad.py \
+              --ignore=test_pinball_grad.py \
+              --ignore=test_step_grad.py
           '
