@@ -498,6 +498,9 @@ class MaiaFlowEnv(HFEnvConfigMixin, gym.Env):
 
         Returns:
             Tuple of (observation, reward, terminated, truncated, info).
+            terminated is always False (no in-band physics-failure signal);
+            truncated becomes True once the step budget
+            (max_episode_steps) is reached.
         """
         action = [a * self.MAX_CONTROL for a in action]
 
@@ -539,12 +542,16 @@ class MaiaFlowEnv(HFEnvConfigMixin, gym.Env):
         self.obs = (self.obs - self.obs_loc) / self.obs_scale
 
         self.iter += 1
+        # Audit Task 5.1: reaching the step budget is a TRUNCATION, not a
+        # termination -- terminated is reserved for physics failure. (The
+        # MAIA solver exposes no in-band divergence signal today; a solver-
+        # side crash surfaces as an MPI communication error, not a flag.)
         done = self.check_complete()
         info = {}
 
         self.maiaInterface.continueRun()
 
-        return self.obs, reward, bool(done), bool(done), info
+        return self.obs, reward, False, bool(done), info
 
     def reset(self, seed: Optional[int] = None, options: Optional[Dict] = None) -> Tuple[np.ndarray, Dict]:
         """

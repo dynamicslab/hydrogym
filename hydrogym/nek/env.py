@@ -816,8 +816,10 @@ class NekEnv(HFEnvConfigMixin, ExternalProcessEnvMixin, gym.Env):
         Returns:
           observation: Flat array of observations, shape (n_actuators * obs_per_actuator,)
           reward: Scalar reward
-          terminated: Whether episode is done
-          truncated: Whether episode was truncated (always False for Nek)
+          terminated: Always False for Nek (physics failure raises
+              NekDivergenceError from _evolve instead)
+          truncated: Whether the episode budget was reached (simulation
+              end time tmax or nb_interactions RL steps)
           info: Additional information
         """
         # Validate action shape
@@ -849,17 +851,20 @@ class NekEnv(HFEnvConfigMixin, ExternalProcessEnvMixin, gym.Env):
         # Get new observation
         flow_time, observation = self._get_state()
 
-        # Check if done
-        terminated = False
+        # Check if done (audit Task 5.1: reaching the episode's simulation
+        # end time or step budget is a TRUNCATION, not a termination --
+        # terminated is reserved for physics failure, which surfaces as a
+        # raised NekDivergenceError from _evolve, not a returned flag).
+        truncated = False
         if flow_time > self.tmax:
-            terminated = True
+            truncated = True
 
         self.act_index += 1
         if self.act_index >= self.nb_interactions:
-            print(f"[STEP] ACT_INDEX={self.act_index}; TERMINATED == TRUE", flush=True)
-            terminated = True
+            print(f"[STEP] ACT_INDEX={self.act_index}; TRUNCATED == TRUE", flush=True)
+            truncated = True
 
-        truncated = False  # Nek doesn't use truncation
+        terminated = False
 
         info = {
             "time": flow_time,
