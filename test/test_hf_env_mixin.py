@@ -176,3 +176,42 @@ class TestJaxfluidsMigration:
         mod = pytest.importorskip("hydrogym.jaxfluids.env_core")
         # Same exception object: existing `except ConfigError` sites keep working
         assert mod.ConfigError is ConfigError
+
+
+class TestJaxMigration:
+    """Pin the Task 3.2 migration: JAXFlowEnv uses the mixin's methods
+    (its local copies are deleted), keeping its namespace/profile."""
+
+    def test_uses_mixin(self):
+        mod = pytest.importorskip("hydrogym.jax.env_core")
+        assert issubclass(mod.JAXFlowEnv, HFEnvConfigMixin)
+        for name in ("_setup_environment_data", "_resolve_configuration_file", "_find_configuration_file"):
+            assert name not in vars(mod.JAXFlowEnv), f"{name} still overridden locally"
+        assert mod.JAXFlowEnv.HF_CACHE_NAMESPACE == "jaxgym"
+        assert mod.JAXFlowEnv.SOLVER_TYPE == "JAX"
+
+    def test_config_error_is_shared_type(self):
+        mod = pytest.importorskip("hydrogym.jax.env_core")
+        assert mod.ConfigError is ConfigError
+
+
+class TestNekMigration:
+    """Pin the Task 3.3 migration: NekEnv uses the mixin's
+    _setup_environment_data (its local copy is deleted) but KEEPS its own
+    simplified _resolve_configuration_file as a documented divergence."""
+
+    def test_uses_mixin_for_setup(self):
+        mod = pytest.importorskip("hydrogym.nek.env")
+        assert issubclass(mod.NekEnv, HFEnvConfigMixin)
+        assert "_setup_environment_data" not in vars(mod.NekEnv), "still overridden locally"
+        assert mod.NekEnv.HF_CACHE_NAMESPACE == "nekgym"
+        assert mod.NekEnv.LOG_PREFIX == "[NEK] "
+        assert mod.NekEnv.SOLVER_TYPE == "NEK5000"
+        # Intentional divergence: Nek's simplified resolver is retained
+        assert "_resolve_configuration_file" in vars(mod.NekEnv)
+
+    def test_config_error_is_shared_type(self):
+        mod = pytest.importorskip("hydrogym.nek.env")
+        # `from hydrogym.nek.env import ConfigError` / `hydrogym.nek.ConfigError`
+        # must keep resolving to the shared type
+        assert mod.ConfigError is ConfigError
