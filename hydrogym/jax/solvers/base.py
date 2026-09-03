@@ -8,7 +8,6 @@ from jax import lax
 
 from hydrogym.core import CallbackBase, PDEBase, TransientSolver
 from hydrogym.jax.equation import IMEXEquation
-from hydrogym.jax.flow import FlowConfig
 
 _alpha_RK4 = [0, 0.1496590219993, 0.3704009573644, 0.6222557631345, 0.9582821306748, 1]
 _beta_RK4 = [0, -0.4178904745, -1.192151694643, -1.697784692471, -1.514183444257]
@@ -22,7 +21,7 @@ class VelocityState(NamedTuple):
 
 
 class RungeKuttaCrankNicolson(TransientSolver):
-    def __init__(self, flow: FlowConfig, dt: float, save_n: int, equation: IMEXEquation, **kwargs):
+    def __init__(self, flow: PDEBase, dt: float, save_n: int, equation: IMEXEquation, **kwargs):
         self.save_n = save_n
         self.dt = dt
         self.flow = flow
@@ -58,7 +57,7 @@ class RungeKuttaCrankNicolson(TransientSolver):
 
         return time_step_fn
 
-    def step(self, flow: FlowConfig, dt: float, save_n: int, callbacks: Callable, control_field=None):
+    def step(self, flow: PDEBase, dt: float, save_n: int, callbacks: Callable, control_field=None):
         """
         Lax.scan to iteratively apply a function given an initial value
 
@@ -82,7 +81,7 @@ class RungeKuttaCrankNicolson(TransientSolver):
     def solve(
         self,
         dt: float,
-        flow: FlowConfig,
+        flow: PDEBase,
         t_span: Tuple[float, float],
         callbacks: Iterable[CallbackBase] = [],
         controller: Callable = None,
