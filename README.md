@@ -11,13 +11,13 @@
 
 # HydroGym: Reinforcement Learning for Fluid Dynamics
 
-**61+ environments | 6 solver backends | 2D & 3D | Ready for RL training**
+**89 environments | 6 solver backends | 2D & 3D | Ready for RL training**
 
 HydroGym is a comprehensive platform for applying reinforcement learning to fluid dynamics and flow control. With environments ranging from canonical benchmarks to turbulent flows, HydroGym provides a standardized Gymnasium-compatible interface for training RL agents on challenging CFD problems.
 
 ## Key Features
 
-- **Diverse Environments**: 61+ pre-configured environments across 6 CFD solvers
+- **Diverse Environments**: 89 pre-configured environments across 6 CFD solvers
 - **Standard RL Interface**: Gymnasium-compatible API works with Stable-Baselines3, RLlib, and other RL libraries
 - **Compute Efficient**: Highly optimized GPU & CPU backends for efficient RL deployment ranging from local workstations to exascale HPC systems
 - **Scalable**: MPI-parallelized solvers with distributed RL training support
@@ -43,16 +43,18 @@ docker run -it --gpus all clagemann/hydrogym-nvhpc-26.1_cuda-12.9_turing_ampere:
 ```
 ## Available Environments
 
-HydroGym provides **61 environments** across 6 solver backends:
+HydroGym provides **89 environments** across 6 solver backends (counts are
+the environment configurations currently published on the
+[Hugging Face Hub](https://huggingface.co/dynamicslab/HydroGym-environments)):
 
 | Solver Backend | Count | Description | Dimensions |
 |----------------|-------|-------------|------------|
 | **Firedrake** (FEM) | 20 | Canonical flow control benchmarks | 2D |
 | **MAIA LBM** | 55 | Lattice Boltzmann method environments | 2D, 3D |
-| **MAIA Structured FV** | 8 | High-Reynolds turbulent boundary layers | 3D |
-| **NEK5000** | 2 | Spectral element turbulent channel flow | 3D |
+| **MAIA Structured FV** | 4 | High-Reynolds turbulent boundary layers | 3D |
+| **NEK5000** | 4 | Spectral element turbulent channel/airfoil flow | 3D |
 | **JAX** | 2 | Differentiable fluid dynamics | 2D, 3D |
-| **JAX-Fluids** | 2 | Compressible shock vector control | 2D, 3D |
+| **JAX-Fluids** | 4 | Compressible shock vector control | 2D, 3D |
 
 ### Environment Categories
 
