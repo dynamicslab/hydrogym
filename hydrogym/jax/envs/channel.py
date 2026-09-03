@@ -413,13 +413,18 @@ class ChannelFlowSpectralEnv(JAXFlowEnvBase):
 
     def __init__(self, env_config: Dict):
         super().__init__(env_config)
-        self.Lx = 2.0 * jnp.pi
-        self.Ly = 1.0 * jnp.pi
-        self.Lz = 2.0
-        self.nu = 1.9e-3
-        self.Nx = 72
-        self.Ny = 72
-        self.Nz = 72
+        # Physical/spectral grid parameters. Defaults preserve the previously
+        # hardcoded values exactly; env_config overrides exist for running
+        # other channel configurations (NOTE: non-default Nx/Ny/Nz change the
+        # JIT-compiled spectral operator shapes and require matching
+        # initial-field array shapes at reset()).
+        self.Lx = env_config.get("Lx", 2.0 * jnp.pi)
+        self.Ly = env_config.get("Ly", 1.0 * jnp.pi)
+        self.Lz = env_config.get("Lz", 2.0)
+        self.nu = env_config.get("nu", 1.9e-3)
+        self.Nx = int(env_config.get("Nx", 72))
+        self.Ny = int(env_config.get("Ny", 72))
+        self.Nz = int(env_config.get("Nz", 72))
 
         dtype_str = env_config.get("dtype", "float32")
         self.dtype = jnp.float64 if dtype_str == "float64" else jnp.float32
@@ -443,12 +448,16 @@ class ChannelFlowSpectralEnv(JAXFlowEnvBase):
         # Load initial fields from HuggingFace (downloaded/cached via HFDataManager).
         # env_config may override with:
         #   - "initial_field_dir": path to a directory containing U/V/W_nocontrol.npy
-        #   - "local_fallback_dir": passed to HFDataManager for offline use
+        #   - "hf_repo_id" / "cache_dir" / "use_clean_cache" / "local_fallback_dir":
+        #     forwarded to HFDataManager (defaults match JAXFlowEnv's).
         if "initial_field_dir" in env_config:
             initial_field_dir = Path(env_config["initial_field_dir"])
         else:
             dm = HFDataManager(
+                repo_id=env_config.get("hf_repo_id", "dynamicslab/HydroGym-environments"),
+                cache_dir=env_config.get("cache_dir"),
                 local_fallback_dir=env_config.get("local_fallback_dir"),
+                use_clean_cache=env_config.get("use_clean_cache", True),
                 fallback_profile="JAX",
             )
             env_path = dm.get_environment_path("Channel_3D_Retau180")
