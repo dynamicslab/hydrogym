@@ -253,6 +253,8 @@ class HFDataManager:
         local_fallback_dir: Optional[str] = None,
         use_clean_cache: Union[bool, str] = True,
         fallback_profile: str = "MAIA_LB",
+        token: Optional[str] = None,
+        revision: Optional[str] = None,
     ):
         """
         Initialize the HF Data Manager.
@@ -275,8 +277,16 @@ class HFDataManager:
                 Defaults to ``'MAIA_LB'``.  Pass the environment class's
                 ``SOLVER_TYPE`` attribute to get the right fallback in offline /
                 legacy scenarios.
+            token: Hugging Face access token, for private/gated repos. ``None``
+                (default) preserves ambient authentication (``HF_TOKEN`` env var
+                or ``huggingface-cli login``).
+            revision: Git revision (branch name, tag, or commit hash) to pin
+                downloads and file listings to. ``None`` (default) uses the
+                repo's default branch.
         """
         self.repo_id = repo_id
+        self.token = token
+        self.revision = revision
         self.cache_dir = cache_dir or os.path.expanduser("~/.cache/hydrogym")
         # cache_dir as the user actually passed it (None when defaulted). Only
         # an explicitly-set cache_dir is forwarded to snapshot_download(); see
@@ -340,8 +350,8 @@ class HFDataManager:
         # 3. Query HF file listing (no download, requires network)
         if HF_AVAILABLE:
             try:
-                api = HfApi()
-                repo_files = api.list_repo_files(self.repo_id, repo_type="dataset")
+                api = HfApi(token=self.token)
+                repo_files = api.list_repo_files(self.repo_id, repo_type="dataset", revision=self.revision)
                 for file_path in repo_files:
                     parts = file_path.split("/")
                     if len(parts) == 2 and parts[0] == env_name and parts[1] in _SENTINEL_TO_PROFILE:
@@ -368,8 +378,8 @@ class HFDataManager:
         """
         if HF_AVAILABLE:
             try:
-                api = HfApi()
-                repo_files = api.list_repo_files(self.repo_id, repo_type="dataset")
+                api = HfApi(token=self.token)
+                repo_files = api.list_repo_files(self.repo_id, repo_type="dataset", revision=self.revision)
 
                 env_names = set()
                 for file_path in repo_files:
@@ -537,6 +547,8 @@ class HFDataManager:
                     allow_patterns=f"{env_name}/**",
                     force_download=force_download,
                     cache_dir=self._hf_download_cache_dir,
+                    token=self.token,
+                    revision=self.revision,
                 )
                 hf_env_path = os.path.join(hf_cache_path, env_name)
                 if os.path.exists(hf_env_path) and os.path.isdir(hf_env_path):
@@ -601,6 +613,8 @@ class HFDataManager:
                     allow_patterns=f"{env_name}/**",
                     force_download=force_download,
                     cache_dir=self._hf_download_cache_dir,
+                    token=self.token,
+                    revision=self.revision,
                 )
                 hf_env_path = os.path.join(hf_cache_path, env_name)
                 if os.path.exists(hf_env_path) and os.path.isdir(hf_env_path):
@@ -641,6 +655,8 @@ class HFDataManager:
                     allow_patterns=f"{env_name}/**",
                     force_download=force_download,
                     cache_dir=self._hf_download_cache_dir,
+                    token=self.token,
+                    revision=self.revision,
                 )
                 env_path = os.path.join(hf_cache_path, env_name)
                 if os.path.exists(env_path) and self._validate_environment_files(env_path, profile):
