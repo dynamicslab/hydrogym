@@ -107,12 +107,16 @@ class MaiaFlowEnv(gym.Env):
         self.hf_repo_id = env_config.get("hf_repo_id", "dynamicslab/HydroGym-environments")
         self.local_fallback_dir = env_config.get("local_fallback_dir", None)
         self.use_clean_cache = env_config.get("use_clean_cache", True)
+        self.hf_token = env_config.get("hf_token", None)
+        self.hf_revision = env_config.get("hf_revision", None)
 
         self.data_manager = HFDataManager(
             repo_id=self.hf_repo_id,
             local_fallback_dir=self.local_fallback_dir,
             use_clean_cache=self.use_clean_cache,
             fallback_profile=self.SOLVER_TYPE,
+            token=self.hf_token,
+            revision=self.hf_revision,
         )
 
         # Environment identification
@@ -953,17 +957,23 @@ def from_hf(environment_name: str, hf_repo_id: str = "dynamicslab/HydroGym-envir
         raise ConfigError(f"Failed to create environment '{environment_name}' of type '{env_type}': {e}") from e
 
 
-def list_available_environments(hf_repo_id: str = "dynamicslab/HydroGym-environments") -> List[str]:
+def list_available_environments(
+    hf_repo_id: str = "dynamicslab/HydroGym-environments",
+    hf_token: Optional[str] = None,
+    hf_revision: Optional[str] = None,
+) -> List[str]:
     """
     List all available environments from HF Hub.
 
     Args:
         hf_repo_id: Hugging Face repository ID.
+        hf_token: Hugging Face access token (private/gated repos; ``None`` = ambient auth).
+        hf_revision: Git revision to pin the file listing to.
 
     Returns:
         List of environment names.
     """
-    data_manager = HFDataManager(repo_id=hf_repo_id)
+    data_manager = HFDataManager(repo_id=hf_repo_id, token=hf_token, revision=hf_revision)
     return data_manager.get_available_environments()
 
 

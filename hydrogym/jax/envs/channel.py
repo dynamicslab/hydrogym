@@ -459,6 +459,8 @@ class ChannelFlowSpectralEnv(JAXFlowEnvBase):
                 local_fallback_dir=env_config.get("local_fallback_dir"),
                 use_clean_cache=env_config.get("use_clean_cache", True),
                 fallback_profile="JAX",
+                token=env_config.get("hf_token"),
+                revision=env_config.get("hf_revision"),
             )
             env_path = dm.get_environment_path("Channel_3D_Retau180")
             initial_field_dir = Path(env_path) / "initial_field"
