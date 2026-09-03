@@ -58,7 +58,7 @@ class FlowConfig(PDEBase):
     FUNCTIONS = ("q",)  # tuple of functions necessary for the flow
 
     def __init__(self, velocity_order=None, **config):
-        self.Re = fd.Constant(ufl.real(config.get("Re", self.DEFAULT_REYNOLDS)))
+        self.Re = fd.Constant(ufl.real(config.pop("Re", self.DEFAULT_REYNOLDS)))
 
         if velocity_order is None:
             velocity_order = self.DEFAULT_VELOCITY_ORDER
@@ -90,7 +90,7 @@ class FlowConfig(PDEBase):
         # auto-inferred HF checkpoint env name below, so the old MESH_DIR
         # fallback produced names like "..._FD" with a slash-containing path
         # that could never match an environment on the Hub.
-        mesh = config.get("mesh", self.DEFAULT_MESH)
+        mesh = config.pop("mesh", self.DEFAULT_MESH)
         cache_dir = config.pop("cache_dir", None)  # Custom cache directory (optional)
         local_dir = config.pop("local_dir", None)  # Local fallback directory (optional)
         use_HF_data_manager = config.pop("use_HF_data_manager", True)  # Control HF data manager usage (default: True)
@@ -101,7 +101,7 @@ class FlowConfig(PDEBase):
         Re_value = int(float(self.Re))
 
         resolved_restart = self._resolve_checkpoint(
-            restart=config.get("restart"),
+            restart=config.pop("restart", None),
             Re=Re_value,
             mesh=mesh,
             cache_dir=cache_dir,
