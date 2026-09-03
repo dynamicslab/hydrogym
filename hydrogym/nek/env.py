@@ -19,6 +19,7 @@ import pandas as pd
 from mpi4py import MPI
 from omegaconf import OmegaConf
 
+from hydrogym.core_external import ExternalProcessEnvMixin, mpi_split  # noqa: F401  (mpi_split re-exported)
 from hydrogym.data_manager import HFDataManager
 from hydrogym.hf_env_mixin import ConfigError, HFEnvConfigMixin
 
@@ -28,59 +29,7 @@ from .nek_lib.nek_utils import remove_sch
 from .nek_lib.reward_logger import RewardLogger
 
 
-def mpi_split(comm_world: MPI.Comm, nproc: Optional[int] = None) -> MPI.Comm:
-    """
-    Split MPI world into master/worker inter-communicator.
-
-    Args:
-      comm_world: MPI communicator
-      nproc: Expected number of Nek workers (for validation)
-
-    Returns:
-      Inter-communicator between controller and workers
-    """
-    mpi_rank = comm_world.Get_rank()
-    mpi_size = comm_world.Get_size()
-
-    if mpi_size < 2:
-        raise RuntimeError(
-            "MPI world size must be >= 2 to create the Nek inter-communicator. "
-            "Launch with MPMD, e.g. `mpirun -n 1 python ... : -n N ./nek5000`, "
-            "so rank 0 can connect to the Nek worker ranks."
-        )
-
-    # Validate MPI size matches nproc
-    if nproc is not None:
-        expected_size = 1 + nproc  # 1 controller + N workers
-        if mpi_size != expected_size:
-            raise RuntimeError(
-                f"MPI world size mismatch: expected {expected_size} "
-                f"(1 controller + {nproc} workers), got {mpi_size}. "
-                f"Launch with: mpirun -n 1 python ... : -n {nproc} ./nek5000"
-            )
-
-    if mpi_rank == 0:
-        color = 0
-    else:
-        color = 1
-
-    local_comm = comm_world.Split(color, mpi_rank)
-    print(
-        f"[MPI_SPLIT] World rank {mpi_rank}, color {color}, "
-        f"local_comm size: {local_comm.Get_size()}, "
-        f"local rank: {local_comm.Get_rank()}",
-        flush=True,
-    )
-
-    sub_comm = local_comm.Create_intercomm(local_leader=0, peer_comm=MPI.COMM_WORLD, remote_leader=1, tag=99)
-    print(
-        f"[MPI_SPLIT] Inter-comm created: local_size={sub_comm.Get_size()}, remote_size={sub_comm.Get_remote_size()}",
-        flush=True,
-    )
-    return sub_comm
-
-
-class NekEnv(HFEnvConfigMixin, gym.Env):
+class NekEnv(HFEnvConfigMixin, ExternalProcessEnvMixin, gym.Env):
     """
     Core Nek5000 environment with Gymnasium interface.
 
@@ -282,7 +231,7 @@ class NekEnv(HFEnvConfigMixin, gym.Env):
 
         # MPI communicator required by Nek
         comm_world = MPI.COMM_WORLD
-        self.sub_comm = mpi_split(comm_world, nproc=self.nproc)
+        self.sub_comm = self._split_mpmd_comm(comm_world, nproc=self.nproc)
 
         # Initialize the environment (this sets n_actuators, obs_per_actuator, etc.)
         self._initialize()
@@ -379,7 +328,7 @@ class NekEnv(HFEnvConfigMixin, gym.Env):
 
         # MPI communicator required by Nek
         comm_world = MPI.COMM_WORLD
-        self.sub_comm = mpi_split(comm_world, nproc=self.nproc)
+        self.sub_comm = self._split_mpmd_comm(comm_world, nproc=self.nproc)
 
         # Initialize the environment
         self._initialize()

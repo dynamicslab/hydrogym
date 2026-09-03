@@ -21,6 +21,7 @@ import pytest
 pytest.importorskip("mpi4py")
 pytest.importorskip("pandas")
 
+from hydrogym import core_external  # noqa: E402
 from hydrogym.nek.env import NekEnv  # noqa: E402
 
 
@@ -78,8 +79,10 @@ class TestEnvConfigLevelOverride:
         monkeypatch.setattr(NekEnv, "_apply_runtime_overrides", lambda self, ec: None)
         monkeypatch.setattr(NekEnv, "_create_session_file_early", lambda self: None)
         # _init_from_hf finishes with the MPI split and solver wiring, which
-        # needs a real MPMD world -- stub both out.
-        monkeypatch.setattr(nek_env_mod, "mpi_split", lambda comm, nproc=None: None)
+        # needs a real MPMD world -- stub both out. NekEnv delegates the
+        # split to ExternalProcessEnvMixin._split_mpmd_comm, which resolves
+        # mpi_split from core_external's module namespace.
+        monkeypatch.setattr(core_external, "mpi_split", lambda comm, nproc=None, **kw: None)
         monkeypatch.setattr(NekEnv, "_initialize", lambda self: None)
         # Keep run-folder creation inside tmp_path
         monkeypatch.chdir(tmp_path)

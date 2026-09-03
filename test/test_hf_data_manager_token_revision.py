@@ -25,6 +25,7 @@ import pytest
 
 pytest.importorskip("huggingface_hub")
 
+from hydrogym import core_external as core_external_mod  # noqa: E402
 from hydrogym import data_manager as dm_mod  # noqa: E402
 from hydrogym.data_manager import HFDataManager  # noqa: E402
 
@@ -169,7 +170,7 @@ class TestNekEnvConfigThreading:
         monkeypatch.setattr(nek_env_mod.NekEnv, "_update_configuration_paths", lambda self: None)
         monkeypatch.setattr(nek_env_mod.NekEnv, "_apply_runtime_overrides", lambda self, ec: None)
         monkeypatch.setattr(nek_env_mod.NekEnv, "_create_session_file_early", lambda self: None)
-        monkeypatch.setattr(nek_env_mod, "mpi_split", lambda comm, nproc=None: None)
+        monkeypatch.setattr(core_external_mod, "mpi_split", lambda comm, nproc=None, **kw: None)
         monkeypatch.setattr(nek_env_mod.NekEnv, "_initialize", lambda self: None)
         monkeypatch.chdir(tmp_path)
         return {"recorded": recorded, "NekEnv": nek_env_mod.NekEnv}

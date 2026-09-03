@@ -11,6 +11,8 @@ from typing import List, Optional, Union
 import numpy as np
 from mpi4py import MPI
 
+from hydrogym.core_external import split_comm_by_appnum
+
 # MPI tag mapping for different command types
 COMMAND_TAGS = {
     "timeStep": 0,
@@ -65,30 +67,24 @@ class MaiaInterface:
         Initialize MPI communication with m-AIA.
 
         Sets up the communicators and determines the root ranks for both
-        the Python controller and the m-AIA solver.
+        the Python controller and the m-AIA solver. The split math itself
+        lives in `hydrogym.core_external.split_comm_by_appnum` (shared
+        module for MPMD world-split strategies, audit Task 3.5); only the
+        attribute assignment stays here.
 
         Args:
             comm_world: MPI communicator, typically MPI.COMM_WORLD.
         """
-        self.appnum = comm_world.Get_attr(MPI.APPNUM)
-        rank_world = comm_world.Get_rank()
         self.worldComm = comm_world
-        self.appComm = comm_world.Split(self.appnum, rank_world)
-        self.appRank = self.appComm.Get_rank()
-        self.appNoRanks = self.appComm.Get_size()
-        self.appGroup = self.appComm.Get_group()
-
-        # Get root of other application
-        group_world = comm_world.Get_group()
-        self.appRootInWorld = group_world.Translate_ranks([self.appRoot], self.appGroup)[0]
-
-        no_app = 2
-        buff_send = np.zeros(no_app, dtype="i")
-        app_roots_in_world = np.empty_like(buff_send)
-        buff_send.fill(-1)
-        buff_send[self.appnum] = self.appRootInWorld
-        self.worldComm.Allreduce(buff_send, app_roots_in_world, op=MPI.MAX)
-        self.remoteRoot = app_roots_in_world[1 - self.appnum]
+        (
+            self.appnum,
+            self.appComm,
+            self.appRank,
+            self.appNoRanks,
+            self.appGroup,
+            self.appRootInWorld,
+            self.remoteRoot,
+        ) = split_comm_by_appnum(comm_world)
 
     def _comm_send(self, name: str, data: Union[List, np.ndarray], send_tag: bool = True) -> None:
         """
