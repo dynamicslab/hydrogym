@@ -215,3 +215,46 @@ class TestNekMigration:
         # `from hydrogym.nek.env import ConfigError` / `hydrogym.nek.ConfigError`
         # must keep resolving to the shared type
         assert mod.ConfigError is ConfigError
+
+
+class TestMaiaMigration:
+    """Pin the Task 3.4 migration: MaiaFlowEnv uses the mixin's methods
+    (its local copies are deleted), keeping its namespace/profile."""
+
+    def test_uses_mixin(self):
+        mod = pytest.importorskip("hydrogym.maia.env_core")
+        assert issubclass(mod.MaiaFlowEnv, HFEnvConfigMixin)
+        for name in ("_setup_environment_data", "_resolve_configuration_file", "_find_configuration_file"):
+            assert name not in vars(mod.MaiaFlowEnv), f"{name} still overridden locally"
+        assert mod.MaiaFlowEnv.HF_CACHE_NAMESPACE == "maiagym"
+        assert mod.MaiaFlowEnv.SOLVER_TYPE == "MAIA_LB"
+
+    def test_config_error_is_shared_type(self):
+        mod = pytest.importorskip("hydrogym.maia.env_core")
+        # `from hydrogym.maia.env_core import ConfigError` (used by the
+        # maia envs) must keep resolving to the shared type
+        assert mod.ConfigError is ConfigError
+
+    def test_setup_uses_nek_cache_and_prefix(self, monkeypatch, tmp_path, capsys):
+        """The mixin's LOG_PREFIX hook reproduces the old [NEK]-tagged
+        print lines exactly (byte-for-byte vs the pre-migration copy)."""
+        import pathlib
+
+        monkeypatch.setattr(pathlib.Path, "home", staticmethod(lambda: tmp_path))
+
+        cache = tmp_path / ".cache" / "nekgym" / "MyEnv"
+        cache.mkdir(parents=True)
+        dm = _StubDataManager(env_path="/hf/MyEnv")
+        host = _Host("MyEnv", None, dm)
+        host.HF_CACHE_NAMESPACE = "nekgym"
+        host.LOG_PREFIX = "[NEK] "
+
+        assert host._setup_environment_data() == str(cache)
+        assert "[NEK] Using cached environment data from:" in capsys.readouterr().out
+        assert dm.calls == []  # never consulted
+
+        # And a prefix-less host (jax/jaxfluids/maia pattern) prints bare
+        dm2 = _StubDataManager(env_path="/hf/MyEnv")
+        host2 = _Host("MyEnv", None, dm2)
+        assert host2._setup_environment_data() == "/hf/MyEnv"
+        assert "[NEK]" not in capsys.readouterr().out
