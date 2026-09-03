@@ -1,0 +1,81 @@
+name: Test
+
+# Runs the pytest suite (test/) in the Firedrake devcontainer.
+#
+# Why this exists: before this workflow, NO GitHub Actions workflow ever ran
+# `pytest` -- build.yml only runs `poetry build` (audit Finding 4). This job
+# is the Phase 0 regression net from HYDROGYM_ENGINEERING_AUDIT_v2.md
+# (Task 0.1): nothing else in the implementation plan merges before this is
+# green.
+#
+# Design notes:
+# - The container is built from the repo's own `.devcontainer/` feature
+#   system (`firedrake-test.devcontainer.json` = petsc + firedrake features),
+#   the exact same definition used for the local validation containers -- not
+#   from one of the stale third-party Docker Hub images referenced in
+#   README.md / test/README.md (that mismatch is Task 1.3's problem).
+# - The build is heavy (PETSc + Firedrake compiled from source, pinned
+#   commits): expect 1.5-3h per run on a hosted runner. Accepted for the
+#   first iteration per the audit ("acceptable to start with a long timeout
+#   and optimize later"); the obvious future optimization is publishing the
+#   built image to GHCR and pulling it here instead of rebuilding.
+# - `lfs: true` on checkout is required: meshes (*.msh, *.re2, ...) are LFS
+#   pointers otherwise.
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  firedrake-tests:
+    name: Firedrake test suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      # The base image includes the NVHPC/CUDA stack (~17GB+); hosted
+      # runners start with limited free disk, so clear the usual large
+      # preinstalled toolchains before building.
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup \
+            /opt/hostedtoolcache/CodeQL /usr/local/lib/android \
+            /usr/share/swift
+          sudo docker image prune --all --force || true
+          df -h /
+
+      - name: Install devcontainer CLI
+        run: npm install -g @devcontainers/cli@0.88.0
+
+      - name: Build Firedrake devcontainer
+        run: |
+          devcontainer up \
+            --workspace-folder "${{ github.workspace }}" \
+            --config .devcontainer/firedrake-test.devcontainer.json \
+            --id-label devcontainer.config_variant=firedrake-test \
+            --log-level info
+
+      - name: Run test suite
+        run: |
+          CID=$(docker ps \
+            --filter "label=devcontainer.config_variant=firedrake-test" \
+            --format '{{.ID}}' | head -1)
+          if [[ -z "${CID}" ]]; then
+            echo "ERROR: no firedrake-test container found" >&2
+            exit 1
+          fi
+          docker exec "${CID}" bash -c '
+            set -euo pipefail
+            source /opt/venvs/firedrake/activate_firedrake.sh
+            cd /tmp
+            python -c "import firedrake, hydrogym; print(\"firedrake + hydrogym import OK\")"
+            cd /workspace/test
+            python -m pytest . -x --durations=10
+          '
