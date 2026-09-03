@@ -101,3 +101,17 @@ class TestRealMethodsSupportKwarg:
     @pytest.mark.parametrize("solver_cls", [SemiImplicitBDF, LinearizedBDF])
     def test_solve_signature_has_collect_rewards(self, solver_cls):
         assert "collect_rewards" in inspect.signature(solver_cls.solve).parameters
+
+
+class TestNoiseKwargsRemoved:
+    """Task 2.3: NavierStokesTransientSolver's eta/max_noise_iter/noise_cutoff
+    accepted a white-noise body forcing whose implementation was removed
+    upstream (a067781, "Clean up old forcing code", 2024-03); the kwargs were
+    silently ignored ever since -- even by test_step.py, which passed eta=1.0
+    expecting forcing that never happened. They are removed; this pins the
+    removal so they can't silently reappear as dead parameters."""
+
+    @pytest.mark.parametrize("kwarg", ["eta", "max_noise_iter", "noise_cutoff"])
+    @pytest.mark.parametrize("solver_cls", [SemiImplicitBDF, LinearizedBDF])
+    def test_dead_noise_kwargs_gone(self, solver_cls, kwarg):
+        assert kwarg not in inspect.signature(solver_cls.__init__).parameters

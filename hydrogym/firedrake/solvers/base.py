@@ -1,12 +1,10 @@
 import firedrake as fd
-import numpy as np
 from firedrake import logging
 from ufl import as_ufl, div, dot, ds, dx, inner, lhs, nabla_grad, rhs
 
 from hydrogym.core import TransientSolver
 from hydrogym.firedrake import FlowConfig
 from hydrogym.firedrake.solvers.stabilization import ns_stabilization
-from hydrogym.firedrake.utils import white_noise
 
 __all__ = ["NewtonSolver"]
 
@@ -73,15 +71,12 @@ class NewtonSolver:
 
 
 class NavierStokesTransientSolver(TransientSolver):
-    def __init__(
-        self,
-        flow: FlowConfig,
-        dt: float = None,
-        eta: float = 0.0,
-        debug: bool = False,
-        max_noise_iter: int = int(1e8),
-        noise_cutoff: float = None,
-    ):
+    def __init__(self, flow: FlowConfig, dt: float = None, debug: bool = False):
+        # NOTE: this class previously accepted eta/max_noise_iter/noise_cutoff
+        # for a random white-noise body forcing, but the forcing itself was
+        # removed upstream in a067781 ("Clean up old forcing code", 2024-03)
+        # and the kwargs were silently ignored ever since -- they were removed
+        # in this repo's audit Task 2.3 for exactly that reason.
         super().__init__(flow, dt)
         self.debug = debug
         self.reset()
