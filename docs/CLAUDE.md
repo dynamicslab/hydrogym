@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is the **documentation site** for HydroGym, a reinforcement learning platform for fluid dynamics. The docs are built with Docusaurus and live in the `/docs` subdirectory of the main HydroGym repository.
 
-HydroGym provides 88 RL environments across 6 CFD solver backends (Firedrake, MAIA LBM, MAIA FV, NEK5000, JAX, JAX-Fluids) for training agents on flow control problems.
+HydroGym provides 89 RL environments across 6 CFD solver backends (Firedrake, MAIA LBM, MAIA FV, NEK5000, JAX, JAX-Fluids) for training agents on flow control problems.
 
 ## Common Commands
 
@@ -91,4 +91,4 @@ GitHub Actions workflows:
 
 ## Testing
 
-Tests require the Firedrake Docker container (`lpaehler/hydrogym-env:stable`) due to complex solver dependencies. Run tests inside the container after activating the Firedrake virtualenv.
+Tests require a Firedrake Docker container due to complex solver dependencies; CI (`.github/workflows/test.yml`) builds the repo's own `.devcontainer/firedrake-test.devcontainer.json` for this. Run tests inside such a container after activating the Firedrake virtualenv.

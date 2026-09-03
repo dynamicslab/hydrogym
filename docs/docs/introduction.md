@@ -6,7 +6,7 @@ sidebar_position: 1
 
 ![HydroGym overview — six solver backends, environments ranging from 2-D cylinder wakes to 3-D turbulent boundary layers](/img/HydroGymOverview.png)
 
-HydroGym is a reinforcement learning platform for active flow control in fluid dynamics. It provides a unified, [Gymnasium](https://gymnasium.farama.org/)-compatible interface to 88 pre-configured CFD environments that span six solver backends, two to three spatial dimensions, and Reynolds numbers from laminar benchmarks to wall-bounded turbulence above Re = 400 000.
+HydroGym is a reinforcement learning platform for active flow control in fluid dynamics. It provides a unified, [Gymnasium](https://gymnasium.farama.org/)-compatible interface to 89 pre-configured CFD environments that span six solver backends, two to three spatial dimensions, and Reynolds numbers from laminar benchmarks to wall-bounded turbulence above Re = 400 000.
 
 The central design goal is to make it straightforward to apply standard RL tooling and techniques — [Stable-Baselines3](https://stable-baselines3.readthedocs.io/), [TorchRL](https://github.com/pytorch/rl), [RLlib](https://docs.ray.io/en/latest/rllib/index.html), [PettingZoo](https://pettingzoo.farama.org/), or your own training loop — to a broad set of physically meaningful flow control problems without having to write a custom environment or solver interface. Every environment exposes the same `env.reset()` / `env.step()` API; solver-specific setup is handled behind the scenes.
 
