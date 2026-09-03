@@ -8,15 +8,43 @@ from numpy.typing import ArrayLike
 
 
 class ActuatorBase:
+    """Base class for a single actuator driving the flow.
+
+    An actuator holds a scalar state ``x`` that the controller updates each
+    step. Subclasses override :meth:`step` to define how the applied state
+    evolves from the requested input (e.g. first-order smoothing towards the
+    input over the flow's ``TAU`` timescale) rather than setting it directly.
+
+    Attributes:
+        x: Current actuator state.
+    """
+
     def __init__(self, state=0.0, **kwargs):
+        """Initialize the actuator to a constant state.
+
+        Args:
+            state: Initial actuator state. Defaults to 0.0.
+            **kwargs: Ignored; accepted so subclasses can pass through
+                shared configuration dictionaries unchanged.
+        """
         self.x = state
 
     @property
     def state(self) -> float:
+        """Return the current actuator state.
+
+        Returns:
+            float: Current value of the actuator state ``x``.
+        """
         return self.x
 
     @state.setter
     def state(self, u: float):
+        """Set the actuator state directly.
+
+        Args:
+            u (float): New actuator state.
+        """
         self.x = u
 
     def step(self, u: float, dt: float):
@@ -46,6 +74,30 @@ class PDEBase(metaclass=abc.ABCMeta):
     BCType = TypeVar("BCType")
 
     def __init__(self, **config):
+        """Configure the PDE from keyword arguments and prepare it for use.
+
+        Loads the mesh, initializes the state, and resets the model to its
+        initial condition. Also handles the ``restart`` option: a single
+        checkpoint path (string) is loaded immediately, while a list/tuple of
+        paths loads the first one as the default state (FlowEnv handles
+        random selection among the full set at reset time).
+
+        Subclasses are expected to ``.pop`` their own config keys before
+        calling ``super().__init__``; any keys left in ``config`` at this
+        point are almost certainly typos or unsupported options, so a
+        warning is emitted rather than silently ignoring them.
+
+        Args:
+            **config: Configuration options. PDEBase itself consumes:
+                - mesh (str): Mesh name passed to ``load_mesh``.
+                  Defaults to ``DEFAULT_MESH``.
+                - restart (str | list | tuple): Checkpoint file(s) to load.
+                  Defaults to None (start from the initial condition).
+
+        Raises:
+            ValueError: If ``restart`` is neither a string nor a list/tuple
+                of strings.
+        """
         # Consume the keys PDEBase itself owns. Subclasses consume their own
         # keys (with .pop) before calling super().__init__; anything left in
         # `config` after that is almost certainly a typo'd or unsupported
@@ -154,10 +206,21 @@ class PDEBase(metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def save_checkpoint(self, filename: str):
+        """Write the current PDE state to a checkpoint file.
+
+        Args:
+            filename (str): Path of the checkpoint file to write.
+        """
         pass
 
     @abc.abstractmethod
     def load_checkpoint(self, filename: str):
+        """Load the PDE state from a checkpoint file.
+
+        Args:
+            filename (str): Path of a checkpoint previously written by
+                ``save_checkpoint``.
+        """
         pass
 
     @abc.abstractmethod
@@ -187,6 +250,7 @@ class PDEBase(metaclass=abc.ABCMeta):
 
     @property
     def control_state(self) -> Iterable[ArrayLike]:
+        """Return the current control vector (one entry per actuator)."""
         return [a.state for a in self.actuators]
 
     def set_control(self, act: ArrayLike = None):
@@ -256,15 +320,19 @@ class EvaluationActor:
 
 
 class CallbackBase:
+    """Base class for things that happen every so often in the simulation.
+
+    Concrete callbacks (e.g. saving output for visualization or writing log
+    entries) are invoked by ``TransientSolver.solve`` each iteration; the
+    default ``__call__`` acts only every ``interval`` iterations.
+
+    TODO: Add a ControllerCallback
+    """
+
     def __init__(self, interval: int = 1):
         """
-        Base class for things that happen every so often in the simulation
-        (e.g. save output for visualization or write some info to a log file).
-
         Args:
             interval (int, optional): How often to take action. Defaults to 1.
-
-        TODO: Add a ControllerCallback
         """
         self.interval = interval
 
@@ -290,6 +358,13 @@ class TransientSolver:
     """Time-stepping code for updating the transient PDE"""
 
     def __init__(self, flow: PDEBase, dt: float = None):
+        """Bind the solver to a flow and select the time step.
+
+        Args:
+            flow (PDEBase): The PDE model to be time-stepped.
+            dt (float, optional): Time step to use. Defaults to the flow's
+                ``DEFAULT_DT`` if not given.
+        """
         self.flow = flow
         if dt is None:
             dt = flow.DEFAULT_DT
@@ -387,7 +462,66 @@ class TransientSolver:
 
 
 class FlowEnv(gym.Env):
+    """Gymnasium environment wrapping a PDE model and its transient solver.
+
+    Each ``step`` advances the flow and returns the (negated, time-scaled)
+    objective as the reward. Reaching the configured step budget is reported
+    as a truncation, not a termination. Optionally, one ``step`` can advance
+    the simulation by several solver substeps while holding the action
+    constant, with per-substep rewards aggregated by a configurable rule.
+
+    Attributes:
+        flow: The underlying PDE model.
+        solver: The transient solver driving the PDE.
+        callbacks: Callbacks invoked after each step.
+        max_steps: Episode length in environment steps.
+        iter: Total number of solver steps taken since the last reset.
+        num_substeps: Solver steps per environment step.
+        reward_aggregation: How per-substep objectives are combined
+            ('mean', 'sum', or 'median').
+        restart_checkpoints: List of checkpoint paths (if any) available
+            for random selection on reset, else None.
+        initial_states: Preloaded flow states to reset to.
+    """
+
     def __init__(self, env_config: dict):
+        """Build the flow and solver from ``env_config`` and set up spaces.
+
+        Multi-substep actuation is configured via ``actuation_config``. The
+        old keys ``num_sim_substeps_per_actuation`` and
+        ``reward_aggreation_rule`` (misspelled) are still accepted but emit a
+        DeprecationWarning; their non-deprecated replacements are
+        ``num_substeps`` and ``reward_aggregation``.
+
+        The ``restart`` entry of ``flow_config`` selects the initial states:
+        a string means a single checkpoint (already loaded by the flow), a
+        list/tuple means several checkpoints, all of which are preloaded as
+        candidate initial states (reset picks one at random).
+
+        Args:
+            env_config (dict): Configuration dictionary containing:
+                - flow (type): Callable (usually a PDEBase subclass)
+                  constructing the flow from ``flow_config``.
+                - flow_config (dict, optional): Keyword configuration passed
+                  to the flow constructor.
+                - solver (type): Callable (usually a TransientSolver
+                  subclass) constructing the solver as
+                  ``solver(flow, **solver_config)``.
+                - solver_config (dict, optional): Keyword configuration
+                  passed to the solver.
+                - callbacks (Iterable[CallbackBase], optional): Callbacks
+                  invoked after each step. Defaults to [].
+                - max_steps (int, optional): Steps per episode. Defaults to
+                  1e6.
+                - actuation_config (dict, optional): Multi-substep options
+                  (see above). Defaults to one substep and 'mean'
+                  aggregation.
+
+        Raises:
+            ValueError: If ``num_substeps < 1``, if ``reward_aggregation``
+                is not 'mean', 'sum', or 'median', or if ``restart`` is
+                neither a string nor a list/tuple.
+        """
         self.flow: PDEBase = env_config.get("flow")(**env_config.get("flow_config", {}))
         self.solver: TransientSolver = env_config.get("solver")(self.flow, **env_config.get("solver_config", {}))
         self.callbacks: Iterable[CallbackBase] = env_config.get("callbacks", [])
@@ -464,6 +598,12 @@ class FlowEnv(gym.Env):
         )
 
     def set_callbacks(self, callbacks: Iterable[CallbackBase]):
+        """Replace the environment's callbacks.
+
+        Args:
+            callbacks (Iterable[CallbackBase]): Callbacks to invoke after
+                each step.
+        """
         self.callbacks = callbacks
 
     def step(self, action: Iterable[ArrayLike] = None) -> Tuple[ArrayLike, float, bool, bool, dict]:
@@ -483,6 +623,7 @@ class FlowEnv(gym.Env):
         else:
             # Multi-substep mode
             def constant_controller(t, y):
+                """Return the (fixed) action, holding it constant across substeps."""
                 return action
 
             _, rewards = self.solver.solve(
@@ -536,9 +677,22 @@ class FlowEnv(gym.Env):
             return np.array([obs], dtype=np.float64)
 
     def get_reward(self):
+        """Return the reward for the current flow state.
+
+        The reward is the negative of the flow's objective function (which
+        is to be minimized), scaled by the solver time step.
+
+        Returns:
+            float: Reward ``-dt * evaluate_objective()``.
+        """
         return -self.solver.dt * self.flow.evaluate_objective()
 
     def check_complete(self):
+        """Check whether the episode has exceeded its step budget.
+
+        Returns:
+            bool: True if the number of elapsed steps exceeds ``max_steps``.
+        """
         return self.iter > self.max_steps
 
     def reset(self, seed=None, options=None) -> Tuple[ArrayLike, dict]:
@@ -574,8 +728,17 @@ class FlowEnv(gym.Env):
         return obs, info
 
     def render(self, mode="human", **kwargs):
+        """Render the current PDE state.
+
+        Args:
+            mode (str, optional): Render mode passed through to the flow.
+                Defaults to "human".
+            **kwargs: Additional keyword arguments forwarded to
+                ``flow.render``.
+        """
         self.flow.render(mode=mode, **kwargs)
 
     def close(self):
+        """Close the environment by closing all registered callbacks."""
         for cb in self.callbacks:
             cb.close()
