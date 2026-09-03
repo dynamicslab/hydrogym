@@ -116,14 +116,17 @@ class NekEnv(gym.Env):
       configuration_file: Override config file path
       run_root: Root directory for outputs (default: 'runs')
       run_name: Name for this run (default: '' = no subdirectory, use run_root directly)
-      reward_agg: Reward aggregation method ("mean" or "sum")
+      reward_agg: Reward aggregation method ("mean", "sum", or "median") - legacy
+          name, kept working
+      reward_aggregation: Same as reward_agg, primary name (matches core.py /
+          Firedrake); takes precedence when both are given
       ... (runtime overrides for config parameters)
 
     Args (Legacy pattern):
       conf: Configuration object (OmegaConf)
       run_root: Root directory for run outputs
       run_name: Name for this run (defaults to MPI rank)
-      reward_agg: How to aggregate per-actuator rewards ("mean" or "sum")
+      reward_agg: How to aggregate per-actuator rewards ("mean", "sum", or "median")
     """
 
     metadata = {"render_modes": ["human"]}
@@ -136,6 +139,7 @@ class NekEnv(gym.Env):
         run_root: str = ".",
         run_name: Optional[str] = None,
         reward_agg: str = "mean",
+        reward_aggregation: Optional[str] = None,
         **kwargs,
     ):
         """
@@ -152,6 +156,21 @@ class NekEnv(gym.Env):
         # Determine which API is being used
         if conf is not None and env_config is not None:
             raise ValueError("Cannot provide both 'conf' and 'env_config'. Use one or the other.")
+
+        # ``reward_aggregation`` is the primary name (matching core.py's
+        # actuation_config / Firedrake); ``reward_agg`` is the legacy Nek
+        # name and keeps working unchanged.
+        if reward_aggregation is not None:
+            if reward_agg != "mean" and reward_agg != reward_aggregation:
+                warnings.warn(
+                    "Both reward_agg and reward_aggregation were provided with different values; "
+                    "using reward_aggregation",
+                    stacklevel=2,
+                )
+            reward_agg = reward_aggregation
+        if reward_agg not in ("mean", "sum", "median"):
+            raise ValueError(f"reward aggregation must be 'mean', 'sum', or 'median', got {reward_agg!r}")
+        self.reward_agg = reward_agg
 
         if conf is not None:
             # Legacy API
@@ -188,7 +207,8 @@ class NekEnv(gym.Env):
             - configuration_file: Override config path
             - run_root: Output directory (default: 'runs')
             - run_name: Run name (auto-generate if None)
-            - reward_agg: 'mean' or 'sum' (default: 'mean')
+            - reward_agg: 'mean', 'sum', or 'median' (default: 'mean'); legacy name
+            - reward_aggregation: same as reward_agg, primary name (takes precedence)
             - normalize_input: Override normalization strategy
             - nb_interactions: Override episode length
             - random_init: Override IC randomization
@@ -256,7 +276,28 @@ class NekEnv(gym.Env):
         self.environment_name = env_config["environment_name"]
         self.nproc = env_config["nproc"]
         self.hostfile = env_config.get("hostfile", "")
-        self.reward_agg = reward_agg
+
+        # reward_agg/reward_aggregation may also arrive via env_config (e.g.
+        # through from_hf(**kwargs)); the from_hf docstring documented this
+        # override but it was previously SILENTLY IGNORED (only the
+        # __init__-level kwarg was ever read, which from_hf never forwards).
+        # The `reward_agg` argument here is the value already resolved in
+        # __init__ from the reward_agg/reward_aggregation kwargs, so it wins
+        # whenever it is not at its "mean" default; env_config overrides
+        # (from_hf kwargs) win over the bare default:
+        #   resolved kwarg (incl. reward_aggregation) > env_config
+        #   ["reward_aggregation"] > env_config["reward_agg"] > "mean".
+        if "reward_aggregation" in env_config:
+            cfg_reward = env_config["reward_aggregation"]
+        elif reward_agg != "mean":
+            cfg_reward = reward_agg
+        elif "reward_agg" in env_config:
+            cfg_reward = env_config["reward_agg"]
+        else:
+            cfg_reward = reward_agg
+        if cfg_reward not in ("mean", "sum", "median"):
+            raise ValueError(f"reward aggregation must be 'mean', 'sum', or 'median', got {cfg_reward!r}")
+        self.reward_agg = cfg_reward
 
         # Initialize HF data manager
         self.hf_repo_id = env_config.get("hf_repo_id", "dynamicslab/HydroGym-environments")
@@ -780,6 +821,8 @@ class NekEnv(gym.Env):
         # Aggregate reward
         if self.reward_agg == "sum":
             reward = float(np.sum(rewards_per_actuator))
+        elif self.reward_agg == "median":
+            reward = float(np.median(rewards_per_actuator))
         else:  # mean
             reward = float(np.mean(rewards_per_actuator))
 
