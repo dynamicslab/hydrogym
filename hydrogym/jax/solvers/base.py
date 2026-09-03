@@ -15,13 +15,38 @@ _gammas_RK4 = [0.1496590219993, 0.3792103129999, 0.8229550293869, 0.699450455948
 
 
 class VelocityState(NamedTuple):
+    """Three-component velocity (or velocity-spectrum) state, one array per direction.
+
+    Attributes:
+        u: x-component; physical or spectral depending on usage.
+        v: y-component.
+        w: z-component.
+    """
+
     u: jnp.ndarray  # physical or spectral depending on usage
     v: jnp.ndarray
     w: jnp.ndarray
 
 
 class RungeKuttaCrankNicolson(TransientSolver):
+    """IMEX Crank-Nicolson Runge-Kutta transient solver for a split equation.
+
+    Advances an :class:`~hydrogym.jax.equation.IMEXEquation` with the nonlinear
+    terms treated explicitly and the linear terms treated implicitly, using a
+    low-storage 5-stage scheme; the whole rollout is expressed as a
+    ``lax.scan`` so it can be JIT-compiled.
+    """
+
     def __init__(self, flow: PDEBase, dt: float, save_n: int, equation: IMEXEquation, **kwargs):
+        """Initialize the solver.
+
+        Args:
+            flow: Flow configuration providing the state (used by the base class).
+            dt: Timestep size.
+            save_n: Number of (inner) steps between saved states.
+            equation: The split (IMEX) equation being integrated.
+            **kwargs: Ignored; accepted for API compatibility.
+        """
         self.save_n = save_n
         self.dt = dt
         self.flow = flow
@@ -89,6 +114,35 @@ class RungeKuttaCrankNicolson(TransientSolver):
         initial_state=None,
         control_field=None,
     ) -> PDEBase:
+        """Integrate the equation from t=0 to ``t_span[1]`` with nested lax scans.
+
+        The rollout is run as an outer scan of inner scans, each of ``save_n // dt``
+        timesteps, so the saved trajectory holds one state per ``save_n`` time
+        units. Callbacks are invoked once at the end (per-iteration callback
+        tracking is not possible through the compiled scans).
+
+        Args:
+            dt: Timestep size.
+            flow: Flow configuration; also supplies the initial state when
+                ``initial_state`` is None.
+            t_span: ``(t0, t1)`` integration interval; ``t1`` must be at least 1.
+            callbacks: Callbacks invoked on the flow after the rollout.
+            controller: Unused; accepted for API compatibility with the
+                hydrogym solver interface.
+            save_n: Time interval between saved trajectory states.
+            initial_state: Optional starting state (FFT vorticity field);
+                defaults to ``flow.initialize_state()``.
+            control_field: Optional control input forwarded to the equation's
+                nonlinear terms at every step.
+
+        Returns:
+            Tuple ``(final_state, outputs)`` where ``outputs`` is the stacked
+            trajectory of states at each outer-scan step (also stored on
+            ``flow.vorticity``).
+
+        Raises:
+            ValueError: If the end time in ``t_span`` is less than 1.
+        """
         end_time = t_span[1]
         if end_time < 1:
             raise ValueError(
@@ -116,7 +170,26 @@ class RungeKuttaCrankNicolson(TransientSolver):
 
 
 class RungeKutta4:
+    """Explicit classical 4th-order Runge-Kutta stepper for a velocity state.
+
+    Each step evaluates the equation's full right-hand side four times,
+    projects the result back onto the constraint manifold
+    (``equation.project``), and optionally applies a constant-mass-flux
+    correction by rescaling the mean streamwise velocity in physical space
+    before re-applying the boundary conditions.
+    """
+
     def __init__(self, equation, dt: float, save_n: int, **kwargs):
+        """Initialize the integrator.
+
+        Args:
+            equation: Equation object providing ``rhs``, ``project``,
+                ``to_physical``, ``to_spectral`` and ``enforce_noslip``.
+            dt: Default timestep used when ``rk4_step`` gets no explicit ``dt``.
+            save_n: Number of steps between saves (stored; not used by
+                ``rk4_step`` itself).
+            **kwargs: Ignored; accepted for API compatibility.
+        """
         self.save_n = int(save_n)
         self.dt = dt
         self.equation = equation
@@ -133,6 +206,26 @@ class RungeKutta4:
         enforce_const_massflux=True,
         target_bulk_u=8.0,
     ):
+        """Advance the state by one RK4 step, then project and correct mass flux.
+
+        Args:
+            state_hat: Current state (spectral velocity components).
+            dt: Timestep; defaults to the value given at construction.
+            action: Control (actuation) input forwarded to the equation's rhs,
+                projection, and boundary-condition enforcement.
+            t: Current time, used for time-dependent BCs and forcing.
+            fx: x-direction body forcing.
+            fy: y-direction body forcing.
+            fz: z-direction body forcing.
+            enforce_const_massflux: If True, rescale the streamwise velocity in
+                physical space so the bulk velocity equals ``target_bulk_u``,
+                then re-apply the no-slip/jet boundary conditions.
+            target_bulk_u: Target bulk (domain-mean) streamwise velocity for
+                the mass-flux correction.
+
+        Returns:
+            The new state in spectral form.
+        """
         eq = self.equation
         dt = self.dt if dt is None else dt
 
