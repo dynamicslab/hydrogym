@@ -29,6 +29,16 @@ from .nek_lib.nek_utils import remove_sch
 from .nek_lib.reward_logger import RewardLogger
 
 
+class NekDivergenceError(RuntimeError):
+    """Raised when the Nek simulation's CFL number blows up during evolve.
+
+    Replaces the former bare ``exit()`` so the failure is catchable by RL
+    loops and gym wrappers. By the time this is raised the solver side has
+    already been shut down cleanly (TERMN sent, intercomm freed, MPI
+    finalized) -- the environment is not usable afterwards.
+    """
+
+
 class NekEnv(HFEnvConfigMixin, ExternalProcessEnvMixin, gym.Env):
     """
     Core Nek5000 environment with Gymnasium interface.
@@ -970,8 +980,17 @@ class NekEnv(HFEnvConfigMixin, ExternalProcessEnvMixin, gym.Env):
                     f"[WARNING] {i_evolv}/{self.ndrl} Current CFL {current_cfl} >= {self.target_cfl}!",
                     flush=True,
                 )
+                # Tell the solver side to shut down cleanly (TERMN + comm free
+                # + MPI finalize) BEFORE raising, so the MPMD job cannot hang
+                # if the caller chooses not to catch. Raising (instead of the
+                # former bare exit()) lets gym wrappers / RL loops observe the
+                # failure; the env is not usable afterwards either way.
                 self._end_simulation(farewell=True)
-                exit()
+                raise NekDivergenceError(
+                    f"CFL blew up at evolve step {i_evolv}/{self.ndrl}: "
+                    f"current_cfl={current_cfl} >= target_cfl={self.target_cfl}. "
+                    "The Nek simulation has been terminated (TERMN sent)."
+                )
 
             # Receive reward buffer at last step
             if i_evolv == self.ndrl:

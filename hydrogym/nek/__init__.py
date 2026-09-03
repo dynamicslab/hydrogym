@@ -19,7 +19,7 @@ Most users should use NekEnv directly.
 
 from .AFC import AFC, BLCtrl, OppoCtrl, SinWave, ZeroCtrl, make_afc_controller
 from .configs import Config
-from .env import ConfigError, NekEnv, mpi_split
+from .env import ConfigError, NekDivergenceError, NekEnv, mpi_split
 from .parallel_env import NekParallelEnv
 from .utils import io
 from .utils.utils import is_rank_zero, print
