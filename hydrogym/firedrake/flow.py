@@ -85,7 +85,12 @@ class FlowConfig(PDEBase):
 
         # Process restart parameter - resolve environment names to checkpoint paths
         # or auto-infer from flow configuration
-        mesh = config.get("mesh", self.MESH_DIR)
+        # NOTE: the fallback must be the mesh NAME (DEFAULT_MESH, e.g. "medium"),
+        # not MESH_DIR (a filesystem path) -- the value is interpolated into the
+        # auto-inferred HF checkpoint env name below, so the old MESH_DIR
+        # fallback produced names like "..._FD" with a slash-containing path
+        # that could never match an environment on the Hub.
+        mesh = config.get("mesh", self.DEFAULT_MESH)
         cache_dir = config.pop("cache_dir", None)  # Custom cache directory (optional)
         local_dir = config.pop("local_dir", None)  # Local fallback directory (optional)
         use_HF_data_manager = config.pop("use_HF_data_manager", True)  # Control HF data manager usage (default: True)
