@@ -110,6 +110,8 @@ class NekEnv(gym.Env):
       environment_name: Name of environment on HuggingFace
       nproc: Number of MPI workers for Nek (required)
       hostfile: MPI hostfile path (default: '')
+      mpi_bind_to: MPI bind policy passed to mpirun via MPI.Info
+          (default: 'none' = unbound; e.g. 'core' binds ranks to cores)
       hf_repo_id: HuggingFace repository (default: 'dynamicslab/HydroGym-environments')
       use_clean_cache: Use fresh workspace (default: True)
       local_fallback_dir: Local directory for offline usage
@@ -131,6 +133,9 @@ class NekEnv(gym.Env):
 
     metadata = {"render_modes": ["human"]}
     SOLVER_TYPE = "NEK5000"
+    # MPI rank-binding policy passed to mpirun via MPI.Info ("bind_to").
+    # Overridable via the `mpi_bind_to` env_config key (MAIA pattern).
+    DEFAULT_MPI_BIND_TO = "none"
 
     def __init__(
         self,
@@ -323,6 +328,7 @@ class NekEnv(gym.Env):
         self.use_clean_cache = env_config.get("use_clean_cache", True)
         self.hf_token = env_config.get("hf_token", None)
         self.hf_revision = env_config.get("hf_revision", None)
+        self.mpi_bind_to = env_config.get("mpi_bind_to", self.DEFAULT_MPI_BIND_TO)
 
         self.data_manager = HFDataManager(
             repo_id=self.hf_repo_id,
@@ -510,6 +516,7 @@ class NekEnv(gym.Env):
             "reward_aggregation",
             "hf_token",
             "hf_revision",
+            "mpi_bind_to",
         }
     )
 
@@ -620,7 +627,7 @@ class NekEnv(gym.Env):
         # MPI info for Nek
         mpi_info = MPI.Info.Create()
         mpi_info.Set("wdir", f"{os.getcwd()}/{self.run_folder}")
-        mpi_info.Set("bind_to", "none")
+        mpi_info.Set("bind_to", getattr(self, "mpi_bind_to", self.DEFAULT_MPI_BIND_TO))
         if self.hostfile and self.hostfile != "":
             mpi_info.Set("hostfile", self.hostfile)
             print("[NEK] LOAD HOSTFILE!")
