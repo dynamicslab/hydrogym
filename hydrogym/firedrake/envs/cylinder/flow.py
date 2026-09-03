@@ -24,6 +24,15 @@ DEFAULT_PRES_PROBES = [
 
 
 class CylinderBase(FlowConfig):
+    """Base class for circular-cylinder flow configurations (Re 100).
+
+    Uniform inflow from the left with symmetry conditions top and bottom,
+    outflow on the right, and a single rotary/blowing-suction actuator on
+    the cylinder wall implemented as a ``ScaledDirichletBC`` driven by
+    ``cyl_velocity_field`` (subclasses define the velocity profile).
+    Default observations are the lift and drag coefficients.
+    """
+
     DEFAULT_REYNOLDS = 100
     DEFAULT_MESH = "medium"
     DEFAULT_DT = 1e-2
@@ -42,9 +51,25 @@ class CylinderBase(FlowConfig):
 
     @property
     def num_inputs(self) -> int:
+        """Number of control inputs: one (rotary control on the cylinder)."""
         return 1  # Rotary control
 
     def configure_observations(self, obs_type=None, probe_obs_types={}) -> ObservationFunction:
+        """Select the observation function for the cylinder.
+
+        Args:
+            obs_type (str, optional): Observation type. Defaults to
+                "lift_drag". Probe-based types passed in
+                ``probe_obs_types`` are also supported.
+            probe_obs_types (dict, optional): Probe-based observation
+                functions provided by ``FlowConfig``.
+
+        Returns:
+            ObservationFunction: The selected observation function.
+
+        Raises:
+            ValueError: If ``obs_type`` is not a supported type.
+        """
         if obs_type is None:
             obs_type = "lift_drag"
 
@@ -59,6 +84,18 @@ class CylinderBase(FlowConfig):
         return supported_obs_types[obs_type]
 
     def init_bcs(self, function_spaces=None):
+        """Construct and apply the cylinder boundary conditions.
+
+        Creates the inflow, freestream (symmetry), and outflow conditions,
+        plus the time-varying actuation boundary condition on the cylinder
+        wall (``ScaledDirichletBC`` with the subclass's
+        ``cyl_velocity_field``), then applies the current control state.
+
+        Args:
+            function_spaces (optional): Pair of (velocity, pressure)
+                spaces to build conditions on; defaults to the subspaces
+                of the mixed space.
+        """
         if function_spaces is None:
             V, Q = self.function_spaces(mixed=True)
         else:
@@ -79,13 +116,29 @@ class CylinderBase(FlowConfig):
 
     @property
     def cyl_velocity_field(self):
-        """Velocity vector for boundary condition"""
+        """Velocity vector for the actuation boundary condition on the cylinder.
+
+        Raises:
+            NotImplementedError: In the base class; subclasses must
+                override this.
+        """
         raise NotImplementedError
 
     def collect_bcu(self) -> list[fd.DirichletBC]:
+        """List of velocity boundary conditions (inflow, freestream, actuation).
+
+        Returns:
+            list[fd.DirichletBC]: All velocity ``DirichletBC`` objects.
+        """
         return [self.bcu_inflow, self.bcu_freestream, *self.bcu_actuation]
 
     def collect_bcp(self) -> list[fd.DirichletBC]:
+        """List of pressure boundary conditions.
+
+        Returns:
+            list[fd.DirichletBC]: Pressure ``DirichletBC`` objects (zero
+            pressure at the outlet).
+        """
         return [self.bcp_outflow]
 
     def compute_forces(self, q: fd.Function = None) -> tuple[float]:
@@ -142,6 +195,16 @@ class CylinderBase(FlowConfig):
         return fd.assemble((direction / self.Re * sqrt(du_dn_t[0] ** 2 + du_dn_t[1] ** 2)) * ds(self.CYLINDER))
 
     def linearize_bcs(self, function_spaces=None):
+        """Set boundary conditions to zero-amplitude for linearized problems.
+
+        Resets the controls to zero (which scales the actuation BC to
+        zero) and sets the inflow velocity and freestream condition to
+        zero.
+
+        Args:
+            function_spaces (optional): Pair of (velocity, pressure)
+                spaces to rebuild the conditions on.
+        """
         self.reset_controls(function_spaces=function_spaces)
         self.bcu_inflow.set_value(fd.Constant((0, 0)))
         self.bcu_freestream.set_value(fd.Constant(0.0))
@@ -152,6 +215,19 @@ class CylinderBase(FlowConfig):
         return CD
 
     def render(self, mode="human", clim=None, levels=None, cmap="RdBu", **kwargs):
+        """Render the current vorticity field with the cylinder overlaid.
+
+        Args:
+            mode (str, optional): Rendering mode; only "human" plotting is
+                implemented.
+            clim (tuple, optional): (min, max) color limits for the
+                vorticity plot. Default (-2, 2).
+            levels (array, optional): Contour levels; defaults to 10
+                levels spanning ``clim``.
+            cmap (str, optional): Matplotlib colormap name. Default "RdBu".
+            **kwargs: Additional keyword arguments passed to
+                ``tricontourf``.
+        """
         if clim is None:
             clim = (-2, 2)
         if levels is None:
@@ -172,11 +248,25 @@ class CylinderBase(FlowConfig):
 
 
 class RotaryCylinder(CylinderBase):
+    """Cylinder controlled by tangential (rotary) blowing on the wall.
+
+    The actuation boundary condition is a purely tangential velocity field
+    of constant magnitude around the cylinder, so scaling it with the
+    control input implements rotational forcing.
+    """
+
     MAX_CONTROL = 0.5 * np.pi
     DEFAULT_DT = 1e-2
 
     @property
     def cyl_velocity_field(self):
+        """Tangential velocity vector field around the cylinder surface.
+
+        Returns:
+            ufl.Tensor: Unit-magnitude tangential velocity
+            ``(-rad * sin(theta), rad * cos(theta))`` as a function of the
+            angle ``theta`` from the cylinder center.
+        """
         # Set up tangential boundaries to cylinder
         theta = atan2(ufl.real(self.y), ufl.real(self.x))  # Angle from origin
         self.rad = fd.Constant(RADIUS)
@@ -185,6 +275,13 @@ class RotaryCylinder(CylinderBase):
 
 
 class Cylinder(CylinderBase):
+    """Cylinder controlled by normal blowing/suction jets on the wall.
+
+    Two jets centered at the top and bottom of the cylinder follow
+    Rabault et al (2018), https://arxiv.org/abs/1808.07664, with a 10-degree
+    angular width each; the actuation BC is scaled by the control input.
+    """
+
     MAX_CONTROL = 0.1
     DEFAULT_DT = 1e-2
 
@@ -194,6 +291,11 @@ class Cylinder(CylinderBase):
 
         Blowing/suction actuation on the cylinder wall, following Rabault, et al (2018)
         https://arxiv.org/abs/1808.07664
+
+        Returns:
+            ufl.Tensor: Normal (radial) velocity field on the cylinder
+            wall, nonzero only within the jet widths around the top and
+            bottom of the cylinder.
         """
 
         # Set up tangential boundaries to cylinder
