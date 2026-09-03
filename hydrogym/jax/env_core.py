@@ -57,6 +57,10 @@ class JAXFlowEnv(environment.Environment[EnvState, EnvParams]):
         action_space: Gymnax action space.
     """
 
+    # Solver profile used by HFDataManager when no sentinel file is found
+    # (offline / legacy data). Must be a key of data_manager.SOLVER_PROFILES.
+    SOLVER_TYPE: str = "JAX"
+
     def __init__(self, env_config: Dict):
         """
         Initialize the JAXFlowEnv environment.
@@ -84,7 +88,10 @@ class JAXFlowEnv(environment.Environment[EnvState, EnvParams]):
         self.use_clean_cache = env_config.get("use_clean_cache", True)
 
         self.data_manager = HFDataManager(
-            repo_id=self.hf_repo_id, local_fallback_dir=self.local_fallback_dir, use_clean_cache=self.use_clean_cache
+            repo_id=self.hf_repo_id,
+            local_fallback_dir=self.local_fallback_dir,
+            use_clean_cache=self.use_clean_cache,
+            fallback_profile=self.SOLVER_TYPE,
         )
 
         # Environment identification
