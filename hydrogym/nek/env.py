@@ -224,11 +224,14 @@ class NekEnv(gym.Env):
             - run_name: Run name (auto-generate if None)
             - reward_agg: 'mean', 'sum', or 'median' (default: 'mean'); legacy name
             - reward_aggregation: same as reward_agg, primary name (takes precedence)
-            - normalize_input: Override normalization strategy
-            - nb_interactions: Override episode length
-            - random_init: Override IC randomization
-            - rescale_actions: Override action rescaling
-            - rew_mode: Override reward mode
+            - normalize_input: Override normalization strategy (shorthand)
+            - nb_interactions: Override episode length (shorthand)
+            - random_init: Override IC randomization (shorthand)
+            - rescale_actions: Override action rescaling (shorthand)
+            - rew_mode: Override reward mode (shorthand)
+            - '<section>.<param>': Override ANY existing config-tree entry by
+              dotted path (e.g. 'simulation.walltime'); unknown paths raise
+              ConfigError
 
         Returns:
           NekEnv instance
@@ -489,25 +492,78 @@ class NekEnv(gym.Env):
                     # Fallback: use configured path even if it doesn't exist yet
                     self.conf.simulation.restart_folder = os.path.join(self.env_data_path, restart_folder)
 
-    def _apply_runtime_overrides(self, env_config: Dict):
-        """Apply runtime overrides from env_config to loaded config."""
-        # Allow runtime override of certain parameters
-        override_map = {
-            "normalize_input": ("normalization", "normalize_input"),
-            "nb_interactions": ("episode", "max_interactions"),
-            "random_init": ("initial_conditions", "random_init"),
-            "rescale_actions": ("rl_interface", "rescale_actions"),
-            "rew_mode": ("episode", "reward_mode"),
+    # env_config keys that are consumed structurally by __init__/_init_from_hf
+    # (environment selection, HF/cache options, run layout, reward aggregation)
+    # and must never be interpreted as config-tree overrides.
+    RESERVED_ENV_CONFIG_KEYS = frozenset(
+        {
+            "environment_name",
+            "nproc",
+            "hostfile",
+            "hf_repo_id",
+            "use_clean_cache",
+            "local_fallback_dir",
+            "configuration_file",
+            "run_root",
+            "run_name",
+            "reward_agg",
+            "reward_aggregation",
+            "hf_token",
+            "hf_revision",
         }
+    )
 
-        for key, (section, param) in override_map.items():
-            if key in env_config:
-                # Check if section exists in config
-                if hasattr(self.conf, section):
-                    cfg_section = getattr(self.conf, section)
-                    if hasattr(cfg_section, param):
-                        setattr(cfg_section, param, env_config[key])
-                        print(f"[NEK] Override: {section}.{param} = {env_config[key]}")
+    # Legacy shorthand keys, mapped to the config-tree path they set. Kept
+    # working unchanged; the dotted path is the general form.
+    SHORTHAND_OVERRIDES = {
+        "normalize_input": ("normalization", "normalize_input"),
+        "nb_interactions": ("episode", "max_interactions"),
+        "random_init": ("initial_conditions", "random_init"),
+        "rescale_actions": ("rl_interface", "rescale_actions"),
+        "rew_mode": ("episode", "reward_mode"),
+    }
+
+    def _apply_runtime_overrides(self, env_config: Dict):
+        """Apply runtime overrides from env_config to the loaded config.
+
+        Two key forms are supported (anything else is a ConfigError, not a
+        silent drop):
+
+        - Dotted config-tree paths, e.g. ``{"episode.max_interactions": 5}``
+          or ``{"simulation.walltime": 100}``. The path must already exist
+          in the loaded configuration.
+        - The five legacy shorthand keys in SHORTHAND_OVERRIDES, which map
+          to the same tree paths and keep working unchanged.
+
+        Reserved structural keys (RESERVED_ENV_CONFIG_KEYS) are ignored here;
+        they configure the environment machinery itself, not the solver
+        config.
+        """
+        for key, value in env_config.items():
+            if key in self.RESERVED_ENV_CONFIG_KEYS:
+                continue
+            if key in self.SHORTHAND_OVERRIDES:
+                section, param = self.SHORTHAND_OVERRIDES[key]
+                path = f"{section}.{param}"
+            elif "." in key:
+                path = key
+            else:
+                raise ConfigError(
+                    f"Unknown env_config override key {key!r}. Use a dotted "
+                    "config path (e.g. 'episode.max_interactions') or one of "
+                    f"the shorthand keys {sorted(self.SHORTHAND_OVERRIDES)}."
+                )
+
+            section_path, _, param = path.rpartition(".")
+            parent = OmegaConf.select(self.conf, section_path) if section_path else self.conf
+            if parent is None or param not in parent:
+                raise ConfigError(
+                    f"Runtime override path {path!r} does not exist in the "
+                    f"configuration for '{self.environment_name}'. Check the "
+                    "environment's config file for the correct section.param."
+                )
+            parent[param] = value
+            print(f"[NEK] Override: {path} = {value}")
 
     def _get_config_value(self, *paths, default=None):
         """
