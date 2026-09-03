@@ -152,10 +152,25 @@ class NekEnv(gym.Env):
           run_name: Run name (auto-generate if None)
           reward_agg: Reward aggregation method
           **kwargs: Additional parameters (for backward compatibility)
+
+        Raises:
+          ValueError: If both 'conf' and 'env_config' are given, or an invalid
+            reward aggregation is requested.
+          UserWarning: If **kwargs is non-empty -- these are accepted for
+            backward compatibility but have NO effect; runtime overrides
+            belong in env_config (see NekEnv.from_hf).
         """
         # Determine which API is being used
         if conf is not None and env_config is not None:
             raise ValueError("Cannot provide both 'conf' and 'env_config'. Use one or the other.")
+
+        if kwargs:
+            warnings.warn(
+                f"NekEnv.__init__ got unsupported keyword argument(s) {sorted(kwargs)}; "
+                "they have no effect. Runtime configuration overrides belong in "
+                "env_config (see NekEnv.from_hf).",
+                stacklevel=2,
+            )
 
         # ``reward_aggregation`` is the primary name (matching core.py's
         # actuation_config / Firedrake); ``reward_agg`` is the legacy Nek
