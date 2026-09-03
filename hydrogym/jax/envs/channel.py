@@ -53,6 +53,17 @@ class ChannelEnvParams(BaseEnvParams):
 
 @struct.dataclass
 class ChannelEnvState(environment.EnvState):
+    """Channel-flow environment state (physical-space velocity fields).
+
+    Attributes:
+        time: Simulation time (in DNS steps) elapsed in the episode.
+        U: Streamwise velocity field, shape (Nx, Ny, Nz).
+        V: Wall-normal velocity field, shape (Nx, Ny, Nz).
+        W: Spanwise velocity field, shape (Nx, Ny, Nz).
+        dt: Current DNS timestep.
+        terminal: Whether the episode has terminated.
+    """
+
     time: int
     U: jnp.ndarray
     V: jnp.ndarray
@@ -62,12 +73,31 @@ class ChannelEnvState(environment.EnvState):
 
 
 class SpectralState(NamedTuple):
+    """Three-component spectral (FFT'd) velocity state.
+
+    Attributes:
+        u_hat: x-component spectrum, shape (Nx, Ny, Nz), complex.
+        v_hat: y-component spectrum.
+        w_hat: z-component spectrum.
+    """
+
     u_hat: jnp.ndarray  # (Nx,Ny,Nz), complex
     v_hat: jnp.ndarray
     w_hat: jnp.ndarray
 
 
 def make_obs_grid_indices(Nx: int, Ny: int, n: int):
+    """Build the (x, y) index grid used to subsample the observation plane.
+
+    Args:
+        Nx: Number of grid points in x.
+        Ny: Number of grid points in y.
+        n: Number of subsample points along each axis.
+
+    Returns:
+        Tuple ``(Xi, Yi)`` of index arrays of shape (n, n) spanning the full
+        x/y ranges, suitable for advanced indexing of a slice of the state.
+    """
     xs = jnp.linspace(0, Nx - 1, n).astype(jnp.int64)
     ys = jnp.linspace(0, Ny - 1, n).astype(jnp.int64)
     Xi, Yi = jnp.meshgrid(xs, ys, indexing="ij")
@@ -80,6 +110,20 @@ def get_obs_spectral_channel(
     Xi: jnp.ndarray,
     Yi: jnp.ndarray,
 ) -> chex.Array:
+    """Extract the channel-flow observation vector from the current state.
+
+    Samples the streamwise (U) and spanwise (W) velocity at the subsampled
+    grid points on the wall-parallel plane ``z = params.k_det``.
+
+    Args:
+        state: Current channel environment state.
+        params: Channel environment parameters.
+        Xi: Observation x-index grid (from :func:`make_obs_grid_indices`).
+        Yi: Observation y-index grid.
+
+    Returns:
+        1D array of the sampled U and W values stacked and flattened.
+    """
     k = params.k_det
     Usl = state.U[:, :, k]
     Wsl = state.W[:, :, k]
@@ -87,6 +131,21 @@ def get_obs_spectral_channel(
 
 
 def wss_compute(k, U, nu=1.9e-3, z=None):
+    """Compute the domain-mean wall shear stress from a finite-difference gradient.
+
+    Approximates the wall-normal velocity gradient at the wall by a one-sided
+    difference between wall-parallel slices ``k`` and ``0``, using the physical
+    z-coordinates in ``z``.
+
+    Args:
+        k: Index of the near-wall slice used for the finite difference.
+        U: Streamwise velocity field, shape (Nx, Ny, Nz).
+        nu: Kinematic viscosity used to convert the gradient to stress.
+        z: Physical z-coordinates of the grid points (1D array).
+
+    Returns:
+        Mean wall shear stress over the (Nx, Ny) plane.
+    """
     dz = z[k] - z[0]
     du_dz_wall = (U[:, :, k] - U[:, :, 0]) / dz
     tau_w = nu * du_dz_wall
@@ -101,7 +160,34 @@ def wss_compute(k, U, nu=1.9e-3, z=None):
 
 
 class PseudoSpectralNavierStokes3D(SplitEquation):
+    """Pseudo-spectral 3D Navier-Stokes equation for a channel flow.
+
+    Horizontal (x, y) directions are treated spectrally with FFTs and the
+    wall-normal (z) direction with Chebyshev collocation. The state is the
+    triple of spectral velocity components on the (Nx, Ny, Nz) grid. The
+    incompressibility constraint is enforced by a pressure Poisson solve whose
+    per-horizontal-wavenumber Chebyshev matrices are pre-inverted at
+    construction, with the no-penetration wall condition folded in.
+
+    The pressure solver imposes the mean-pressure gauge by pinning one grid
+    point (the zero-wavenumber row), and the wall-normal pressure-gradient
+    boundary conditions (from the wall values of w) are applied in
+    :meth:`project`.
+    """
+
     def __init__(self, Nx, Ny, Nz, Lx, Ly, Lz, nu, dtype=jnp.float32):
+        """Precompute wavenumbers, derivative operators, dealiasing mask, and pressure solver.
+
+        Args:
+            Nx: Number of grid points in x.
+            Ny: Number of grid points in y.
+            Nz: Number of Chebyshev collocation points in z.
+            Lx: Domain length in x.
+            Ly: Domain length in y.
+            Lz: Domain height in z.
+            nu: Kinematic viscosity.
+            dtype: Floating dtype for the precomputed operators.
+        """
         self.Nx = Nx
         self.Ny = Ny
         self.Nz = Nz
@@ -147,12 +233,36 @@ class PseudoSpectralNavierStokes3D(SplitEquation):
         self.A_inv = jax.vmap(jnp.linalg.inv)(A)
 
     def fft_xy(self, f):
+        """Forward FFT of a field over the horizontal (x, y) axes.
+
+        Args:
+            f: Physical-space field of shape (Nx, Ny, Nz).
+
+        Returns:
+            Spectral field of the same shape.
+        """
         return jnp.fft.fftn(f, axes=(0, 1))
 
     def ifft_xy(self, f_hat):
+        """Inverse FFT of a field over the horizontal (x, y) axes, taking the real part.
+
+        Args:
+            f_hat: Spectral field of shape (Nx, Ny, Nz).
+
+        Returns:
+            Physical-space (real) field of the same shape.
+        """
         return jnp.fft.ifftn(f_hat, axes=(0, 1)).real
 
     def to_spectral(self, state: "VelocityState") -> "VelocityState":
+        """Transform a physical-space velocity state to spectral space.
+
+        Args:
+            state: Physical-space :class:`VelocityState`.
+
+        Returns:
+            Spectral-space :class:`VelocityState`.
+        """
         return VelocityState(
             self.fft_xy(state.u),
             self.fft_xy(state.v),
@@ -160,6 +270,14 @@ class PseudoSpectralNavierStokes3D(SplitEquation):
         )
 
     def to_physical(self, state_hat: "VelocityState") -> "VelocityState":
+        """Transform a spectral velocity state to physical space.
+
+        Args:
+            state_hat: Spectral-space :class:`VelocityState`.
+
+        Returns:
+            Physical-space :class:`VelocityState`.
+        """
         return VelocityState(
             self.ifft_xy(state_hat.u),
             self.ifft_xy(state_hat.v),
@@ -167,15 +285,47 @@ class PseudoSpectralNavierStokes3D(SplitEquation):
         )
 
     def dx_hat(self, f_hat):
+        """x-derivative of a spectral field (multiplication by i*kx).
+
+        Args:
+            f_hat: Spectral field.
+
+        Returns:
+            Spectral x-derivative.
+        """
         return self.ikx * f_hat
 
     def dy_hat(self, f_hat):
+        """y-derivative of a spectral field (multiplication by i*ky).
+
+        Args:
+            f_hat: Spectral field.
+
+        Returns:
+            Spectral y-derivative.
+        """
         return self.iky * f_hat
 
     def dz_phys(self, f_phys):
+        """First z-derivative of a physical field via the Chebyshev matrix.
+
+        Args:
+            f_phys: Physical-space field of shape (Nx, Ny, Nz).
+
+        Returns:
+            z-derivative of the same shape.
+        """
         return jnp.einsum("ij,xyj->xyi", self.Dz, f_phys)
 
     def dzz_phys(self, f_phys):
+        """Second z-derivative of a physical field via the Chebyshev matrix.
+
+        Args:
+            f_phys: Physical-space field of shape (Nx, Ny, Nz).
+
+        Returns:
+            Second z-derivative of the same shape.
+        """
         return jnp.einsum("ij,xyj->xyi", self.Dzz, f_phys)
 
     def apply_jets_v(
@@ -190,6 +340,29 @@ class PseudoSpectralNavierStokes3D(SplitEquation):
         nx_jets=6,
         ny_jets=4,
     ):
+        """Imprint a grid of wall-normal jet velocity profiles onto the v-field.
+
+        A periodic array of ``nx_jets x ny_jets`` Gaussian jets centered on the
+        bottom wall builds a velocity mask from the per-jet amplitudes in
+        ``Vjets``; the mask is mean-subtracted (zero net blowing) and written
+        into the wall-normal component ``v`` over ``jet_thickness`` layers
+        starting at wall layer ``z0``. The wall layers of ``v`` are first set
+        to zero.
+
+        Args:
+            v: Wall-normal velocity field, shape (Nx, Ny, Nz).
+            Vjets: Jet amplitudes, shape (nx_jets, ny_jets).
+            z0: First wall-normal layer the jets penetrate.
+            jet_thickness: Number of layers the jets span.
+            slit_length_x: Gaussian width of each jet in x.
+            slit_width_y: Gaussian width of each jet in y.
+            x_span_frac: Fraction of the x domain covered by the jet array.
+            nx_jets: Number of jets along x.
+            ny_jets: Number of jets along y.
+
+        Returns:
+            The modified wall-normal velocity field.
+        """
         Nx, Ny, Nz = v.shape
         v = v.at[:, :, 0].set(0.0)
         v = v.at[:, :, -1].set(0.0)
@@ -221,6 +394,26 @@ class PseudoSpectralNavierStokes3D(SplitEquation):
         return v
 
     def enforce_noslip(self, u, v, w, action=None, action_time=50.0, t=0.0):
+        """Apply the wall boundary conditions to a physical-space velocity state.
+
+        u and v are forced to zero at both walls. For w, an actuation ramp is
+        applied: if an ``action`` is given, the wall-normal jets
+        (:meth:`apply_jets_v`) are driven with amplitude proportional to the
+        action, scaled by a gain that ramps linearly up over the first 10 time
+        units and down over the last 10 before ``action_time``; without an
+        action, w is simply set to zero at the walls.
+
+        Args:
+            u: Streamwise velocity field, shape (Nx, Ny, Nz).
+            v: Wall-normal velocity field.
+            w: Spanwise velocity field.
+            action: Jet control amplitudes, or None for the unactuated case.
+            action_time: Total actuation window over which the gain ramps up and down.
+            t: Current time, used for the gain ramp.
+
+        Returns:
+            Tuple ``(u, v, w)`` with the boundary conditions applied.
+        """
         u = u.at[:, :, 0].set(0.0).at[:, :, -1].set(0.0)
         v = v.at[:, :, 0].set(0.0).at[:, :, -1].set(0.0)
 
@@ -237,6 +430,25 @@ class PseudoSpectralNavierStokes3D(SplitEquation):
         return u, v, w
 
     def nonlinear_terms(self, state_hat, action=None, t=0.0, fx=0.0, fy=0.0, fz=0.0):
+        """Evaluate the explicitly treated (nonlinear advection + forcing) terms.
+
+        The state is transformed to physical space, wall boundary conditions
+        (and jets, if actuated) are applied, and the advective terms
+        ``u · ∇u`` are computed with spectral x/y derivatives and Chebyshev
+        z-derivatives. The result is returned in spectral space with the 2/3
+        dealiasing mask applied and the body forcing added.
+
+        Args:
+            state_hat: Spectral velocity state.
+            action: Jet control amplitudes, or None.
+            t: Current time (used for the actuation gain ramp).
+            fx: x-direction body forcing (scalar or physical-space field).
+            fy: y-direction body forcing.
+            fz: z-direction body forcing.
+
+        Returns:
+            Spectral :class:`VelocityState` of the nonlinear terms.
+        """
         state = self.to_physical(state_hat)
         u, v, w = self.enforce_noslip(state.u, state.v, state.w, action=action, t=t)
 
@@ -277,6 +489,20 @@ class PseudoSpectralNavierStokes3D(SplitEquation):
         )
 
     def linear_terms(self, state_hat, action=None, t=0.0):
+        """Evaluate the implicitly treated (viscous diffusion) term.
+
+        Computes ``nu * (∂²u/∂z² - k²u)`` for each component, combining the
+        Chebyshev second z-derivative in physical space with the horizontal
+        Laplacian applied spectrally.
+
+        Args:
+            state_hat: Spectral velocity state.
+            action: Unused; present for interface compatibility.
+            t: Unused; present for interface compatibility.
+
+        Returns:
+            Spectral :class:`VelocityState` of the linear terms.
+        """
         state = self.to_physical(state_hat)
         u, v, w = self.enforce_noslip(state.u, state.v, state.w, action=action, t=t)
 
@@ -292,6 +518,19 @@ class PseudoSpectralNavierStokes3D(SplitEquation):
         )
 
     def rhs(self, state_hat, action=None, t=0.0, fx=0.0, fy=0.0, fz=0.0):
+        """Evaluate the full right-hand side as nonlinear + linear terms.
+
+        Args:
+            state_hat: Spectral velocity state.
+            action: Jet control amplitudes, or None.
+            t: Current time.
+            fx: x-direction body forcing.
+            fy: y-direction body forcing.
+            fz: z-direction body forcing.
+
+        Returns:
+            Spectral :class:`VelocityState` of the full right-hand side.
+        """
         N = self.nonlinear_terms(state_hat, action=action, t=t, fx=fx, fy=fy, fz=fz)
         L = self.linear_terms(state_hat, action=action, t=t)
         return VelocityState(
@@ -301,6 +540,25 @@ class PseudoSpectralNavierStokes3D(SplitEquation):
         )
 
     def project(self, state_hat, dt, action=None, t=0.0):
+        """Project the state onto the divergence-free (incompressibility) constraint.
+
+        Solves the pressure Poisson problem for the divergence error over one
+        timestep using the precomputed per-wavenumber inverse Chebyshev
+        matrices, with the wall-normal pressure-gradient conditions derived
+        from the wall values of w, and the mean-pressure gauge pinned at the
+        zero-wavenumber mode. The velocity is corrected by the pressure
+        gradient, the boundary conditions (and jets, if actuated) are
+        re-applied, and the result is returned in spectral space.
+
+        Args:
+            state_hat: Spectral velocity state to project.
+            dt: Timestep used in the pressure correction.
+            action: Jet control amplitudes, or None.
+            t: Current time (used for the actuation gain ramp).
+
+        Returns:
+            Projected spectral :class:`VelocityState`.
+        """
         u_hat = state_hat.u
         v_hat = state_hat.v
         w_hat = state_hat.w
@@ -367,6 +625,33 @@ def run_channel_pseudospectral(
     return_trajectory: bool = False,
     checkpoint_steps: bool = True,
 ):
+    """Run a channel-flow DNS rollout of ``nsteps`` RK4 steps.
+
+    The initial physical fields are transformed to spectral space, advanced
+    with ``integrator.rk4_step`` for ``nsteps`` substeps (constant body forcing
+    ``fx = 2.0``, constant-mass-flux correction toward a bulk velocity of 8.0),
+    and returned either as a trajectory of physical-space snapshots or as the
+    final state only.
+
+    Args:
+        U0: Initial streamwise velocity field, shape (Nx, Ny, Nz).
+        V0: Initial wall-normal velocity field.
+        W0: Initial spanwise velocity field.
+        action: Jet control amplitudes applied at every substep, or None.
+        dt: DNS timestep.
+        equation: The pseudo-spectral equation (provides transforms).
+        integrator: The RK4 integrator to step with.
+        nsteps: Number of DNS substeps to run.
+        return_trajectory: If True, return the full trajectory of physical
+            velocity fields instead of just the final state.
+        checkpoint_steps: If True, wrap the step function in ``jax.checkpoint``
+            to trade compute for reduced memory during the scan.
+
+    Returns:
+        If ``return_trajectory``: arrays ``(U, V, W)`` of trajectories with a
+        leading time axis of length ``nsteps``; otherwise the final state's
+        physical ``(u, v, w)`` fields.
+    """
     state0 = equation.to_spectral(VelocityState(U0, V0, W0))
 
     def step_fn(state, n):
@@ -412,6 +697,24 @@ class ChannelFlowSpectralEnv(JAXFlowEnvBase):
     """
 
     def __init__(self, env_config: Dict):
+        """Build the equation, integrator, and initial fields for the channel.
+
+        Physical/spectral grid parameters are taken from ``env_config`` (with
+        defaults matching the previously hardcoded values). Initial velocity
+        fields are loaded either from a local directory or from Hugging Face
+        (see the source comments for the accepted overrides).
+
+        Args:
+            env_config: Configuration dictionary; recognized keys include
+                ``Lx``/``Ly``/``Lz`` (domain extents), ``nu`` (viscosity),
+                ``Nx``/``Ny``/``Nz`` (grid resolution, note that non-default
+                values change the JIT-compiled operator shapes and require
+                matching initial-field shapes), ``dtype`` ("float32" or
+                "float64"), ``initial_field_dir`` (local directory containing
+                U/V/W.npy), and the HFDataManager forwarding options
+                ``hf_repo_id``/``cache_dir``/``use_clean_cache``/
+                ``local_fallback_dir``/``hf_token``/``hf_revision``.
+        """
         super().__init__(env_config)
         # Physical/spectral grid parameters. Defaults preserve the previously
         # hardcoded values exactly; env_config overrides exist for running
@@ -474,13 +777,25 @@ class ChannelFlowSpectralEnv(JAXFlowEnvBase):
 
     @property
     def default_params(self) -> ChannelEnvParams:
+        """Default :class:`ChannelEnvParams` for this environment."""
         return ChannelEnvParams()
 
     @property
     def name(self) -> str:
+        """Name of this environment."""
         return "ChannelFlowSpectralEnv"
 
     def reset_env(self, key: chex.PRNGKey, params: ChannelEnvParams) -> Tuple[chex.Array, ChannelEnvState]:
+        """Reset the channel to the stored initial fields.
+
+        Args:
+            key: PRNG key (forwarded to the observation function; the reset
+                itself is deterministic).
+            params: Channel environment parameters.
+
+        Returns:
+            Tuple ``(obs, ChannelEnvState)`` at time 0 with ``terminal=False``.
+        """
         state = ChannelEnvState(
             time=0,
             U=self.U0,
@@ -493,9 +808,28 @@ class ChannelFlowSpectralEnv(JAXFlowEnvBase):
         return obs, state
 
     def get_obs(self, state: ChannelEnvState, params: ChannelEnvParams, key=None) -> chex.Array:
+        """Sample the subsampled U/W observation plane at ``k_det``.
+
+        Args:
+            state: Current channel environment state.
+            params: Channel environment parameters.
+            key: Unused; accepted for API compatibility.
+
+        Returns:
+            1D observation array (see :func:`get_obs_spectral_channel`).
+        """
         return get_obs_spectral_channel(state, params, self.Xi_obs, self.Yi_obs)
 
     def is_terminal(self, state: ChannelEnvState, params: ChannelEnvParams) -> jnp.ndarray:
+        """Whether the episode has ended (``terminal`` flag or step limit reached).
+
+        Args:
+            state: Current channel environment state.
+            params: Channel environment parameters.
+
+        Returns:
+            Boolean array indicating termination.
+        """
         return jnp.logical_or(state.terminal, state.time >= params.max_steps_in_episode)
 
     def step_env(
@@ -505,6 +839,25 @@ class ChannelFlowSpectralEnv(JAXFlowEnvBase):
         action: jnp.ndarray,
         params: ChannelEnvParams,
     ) -> Tuple[chex.Array, ChannelEnvState, jnp.ndarray, jnp.ndarray, Dict]:
+        """Advance the channel flow by ``params.nsteps`` DNS substeps under the given jet action.
+
+        The action is clipped to the parameter bounds and the wall shear stress
+        after the rollout is differentiated with respect to the action (via
+        ``jax.value_and_grad``) to obtain the reward ``-wss`` together with its
+        gradient.
+
+        Args:
+            key: PRNG key (forwarded to the observation function; the dynamics
+                are deterministic).
+            state: Current channel environment state.
+            action: Jet control input (clipped to ``[min_action, max_action]``).
+            params: Channel environment parameters.
+
+        Returns:
+            Tuple ``(obs, next_state, reward, done, info)`` where ``info``
+            contains ``"discount"``. (The reward gradient w.r.t. the action is
+            computed as ``grad_wss`` but is not currently returned.)
+        """
         action = jnp.clip(action, params.min_action, params.max_action)
 
         (wss, (U1, V1, W1)), grad_wss = jax.value_and_grad(
@@ -532,6 +885,16 @@ class ChannelFlowSpectralEnv(JAXFlowEnvBase):
         return obs, next_state, reward, done, {"discount": self.discount(next_state, params)}
 
     def action_space(self, params: Optional[ChannelEnvParams] = None) -> spaces.Box:
+        """Return the jet-control action space.
+
+        Args:
+            params: Channel environment parameters; defaults to
+                ``self.default_params``.
+
+        Returns:
+            Gymnax Box of shape ``(params.action_dim,)`` with bounds
+            ``[params.min_action, params.max_action]``.
+        """
         params = params or self.default_params
         return spaces.Box(
             low=params.min_action,
@@ -540,6 +903,17 @@ class ChannelFlowSpectralEnv(JAXFlowEnvBase):
         )
 
     def observation_space(self, params: Optional[ChannelEnvParams] = None) -> spaces.Box:
+        """Return the (unbounded) observation space.
+
+        Args:
+            params: Channel environment parameters; defaults to
+                ``self.default_params``.
+
+        Returns:
+            Gymnax Box of shape
+            ``(params.obs_subsample**2 * params.obs_include_components,)`` with
+            infinite bounds.
+        """
         params = params or self.default_params
         obs_dim = params.obs_subsample**2 * params.obs_include_components
         return spaces.Box(low=-jnp.inf, high=jnp.inf, shape=(obs_dim,))
@@ -550,6 +924,22 @@ class ChannelFlowSpectralEnv(JAXFlowEnvBase):
         action: jnp.ndarray,
         params: ChannelEnvParams,
     ):
+        """Roll the flow forward ``nsteps`` DNS substeps and compute the mean wall shear stress.
+
+        Differentiable through the action: the rollout runs under
+        ``jax.checkpoint`` so ``jax.value_and_grad`` in :meth:`step_env` can
+        propagate gradients from the wall shear stress back to the jet action.
+
+        Args:
+            state: Current channel environment state (physical-space fields).
+            action: Jet control amplitudes applied at every substep.
+            params: Channel environment parameters (only ``nsteps`` is read).
+
+        Returns:
+            Tuple ``(wss, aux)`` where ``wss`` is the mean wall shear stress of
+            the final state and ``aux`` is the final physical-space velocity
+            tuple ``(U1, V1, W1)``.
+        """
         state0 = self.equation.to_spectral(VelocityState(state.U, state.V, state.W))
 
         def step_fn(state_hat, n):
