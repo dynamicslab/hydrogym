@@ -11,6 +11,16 @@ from hydrogym.firedrake import FlowConfig, ObservationFunction, ScaledDirichletB
 
 
 class Cavity(FlowConfig):
+    """Open cavity flow configuration (Re 7500).
+
+    Rectangular open cavity with inflow on the left, free-slip top, and a
+    blowing/suction actuator on the leading edge whose velocity profile
+    follows Barbagallo et al (2009). The default observation is the
+    integral wall-normal shear stress at the trailing edge, and the
+    objective is the fluctuation kinetic energy relative to a stored base
+    flow ``qB`` (hence ``FUNCTIONS = ("q", "qB")``).
+    """
+
     DEFAULT_REYNOLDS = 7500
     DEFAULT_MESH = "fine"
     DEFAULT_DT = 1e-4
@@ -35,9 +45,25 @@ class Cavity(FlowConfig):
 
     @property
     def num_inputs(self) -> int:
+        """Number of control inputs: one (blowing/suction on the leading edge)."""
         return 1  # Blowing/suction on leading edge
 
     def configure_observations(self, obs_type=None, probe_obs_types={}) -> ObservationFunction:
+        """Select the observation function for the cavity.
+
+        Args:
+            obs_type (str, optional): Observation type. Defaults to
+                "stress_sensor". Probe-based types passed in
+                ``probe_obs_types`` are also supported.
+            probe_obs_types (dict, optional): Probe-based observation
+                functions provided by ``FlowConfig``.
+
+        Returns:
+            ObservationFunction: The selected observation function.
+
+        Raises:
+            ValueError: If ``obs_type`` is not a supported type.
+        """
         if obs_type is None:
             obs_type = "stress_sensor"  # Shear stress at trailing edge
 
@@ -52,6 +78,18 @@ class Cavity(FlowConfig):
         return supported_obs_types[obs_type]
 
     def init_bcs(self, function_spaces=None):
+        """Construct and apply the cavity boundary conditions.
+
+        Creates the inflow, freestream, no-slip wall, free-slip top, and
+        outflow conditions, plus the time-varying leading-edge actuation
+        boundary condition (stored in ``bcu_actuation`` as a
+        ``ScaledDirichletBC``), then applies the current control state.
+
+        Args:
+            function_spaces (optional): Pair of (velocity, pressure)
+                spaces to build conditions on; defaults to the subspaces
+                of the mixed space.
+        """
         if function_spaces is None:
             V, Q = self.function_spaces(mixed=True)
         else:
@@ -75,6 +113,11 @@ class Cavity(FlowConfig):
         self.set_control(self.control_state)
 
     def collect_bcu(self):
+        """List of velocity boundary conditions (inflow, freestream, walls, slip, actuation).
+
+        Returns:
+            list: All velocity ``DirichletBC`` objects for this flow.
+        """
         return [
             self.bcu_inflow,
             self.bcu_freestream,
@@ -84,9 +127,24 @@ class Cavity(FlowConfig):
         ]
 
     def collect_bcp(self):
+        """List of pressure boundary conditions.
+
+        Returns:
+            list: Pressure ``DirichletBC`` objects (zero pressure at the outlet).
+        """
         return [self.bcp_outflow]
 
     def linearize_bcs(self, function_spaces=None):
+        """Set boundary conditions to zero-amplitude for linearized problems.
+
+        Resets the controls to zero (which scales the actuation BC to
+        zero), reinitializes the boundary conditions, and sets the inflow
+        velocity to zero.
+
+        Args:
+            function_spaces (optional): Pair of (velocity, pressure)
+                spaces to rebuild the conditions on.
+        """
         self.reset_controls()
         self.init_bcs(function_spaces=function_spaces)
         self.bcu_inflow.set_value(fd.Constant((0, 0)))
@@ -100,6 +158,17 @@ class Cavity(FlowConfig):
         return (m,)
 
     def evaluate_objective(self, q=None, qB=None):
+        """Compute the fluctuation kinetic energy relative to a base flow.
+
+        Args:
+            q (fd.Function, optional): Flow state to evaluate; defaults to
+                the current state.
+            qB (fd.Function, optional): Base flow to subtract; defaults to
+                the stored base flow ``self.qB``.
+
+        Returns:
+            float: ``0.5 * ||u - uB||_L2^2`` of the velocity fields.
+        """
         if q is None:
             q = self.q
         if qB is None:
@@ -110,6 +179,19 @@ class Cavity(FlowConfig):
         return KE
 
     def render(self, mode="human", clim=None, levels=None, cmap="RdBu", **kwargs):
+        """Render the current vorticity field with matplotlib.
+
+        Args:
+            mode (str, optional): Rendering mode; only "human" plotting is
+                implemented.
+            clim (tuple, optional): (min, max) color limits for the
+                vorticity plot. Default (-10, 10).
+            levels (array, optional): Contour levels; defaults to 20
+                levels spanning ``clim``.
+            cmap (str, optional): Matplotlib colormap name. Default "RdBu".
+            **kwargs: Additional keyword arguments passed to
+                ``tricontourf``.
+        """
         _fig, ax = plt.subplots(1, 1, figsize=(6, 3))
         if clim is None:
             clim = (-10, 10)
