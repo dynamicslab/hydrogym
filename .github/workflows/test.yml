@@ -31,6 +31,25 @@ permissions:
   contents: read
 
 jobs:
+  developer-template-skeletons:
+    # Audit Task 4.4: the reference skeletons under
+    # examples/developer_templates/ must stay runnable in the PLAIN CI tier
+    # (no Firedrake, no MPI, no GPU, no solver binaries). This job
+    # deliberately does not install hydrogym or any backend dependency --
+    # only gymnasium + numpy, matching hydrogym/core.py's own imports --
+    # so a future change that silently couples the skeletons to a backend
+    # dependency fails here.
+    name: Developer-template skeletons
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    container: python:3.12-slim
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install minimal deps
+        run: pip install --no-cache-dir pytest gymnasium numpy
+      - name: Run skeleton tests
+        run: python -m pytest examples/developer_templates/ -q
+
   firedrake-tests:
     name: Firedrake test suite
     runs-on: ubuntu-latest
