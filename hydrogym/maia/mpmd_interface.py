@@ -62,7 +62,7 @@ class MaiaInterface:
         self.remoteRoot = None
         self.nDim = nDim
 
-    def init_comm(self, comm_world: MPI.Comm) -> None:
+    def init_comm(self, comm_world: MPI.Comm, nproc: Optional[int] = None) -> None:
         """
         Initialize MPI communication with m-AIA.
 
@@ -74,6 +74,20 @@ class MaiaInterface:
 
         Args:
             comm_world: MPI communicator, typically MPI.COMM_WORLD.
+            nproc: Expected number of m-AIA solver ranks. When given,
+                validated against the actual remote-app rank count
+                (``comm_world.Get_size() - appNoRanks``, i.e. every world
+                rank not part of this app) and a clear ``RuntimeError`` is
+                raised on mismatch, mirroring
+                ``hydrogym.core_external.mpi_split``'s existing check for
+                Nek (audit Finding 2.5 / Verification Addendum Finding B:
+                MAIA previously had zero launch-config mismatch detection).
+                ``None`` (default) skips validation, preserving prior
+                behavior exactly.
+
+        Raises:
+            RuntimeError: If ``nproc`` is given and does not match the
+                actual number of m-AIA solver ranks in the MPMD job.
         """
         self.worldComm = comm_world
         (
@@ -85,6 +99,15 @@ class MaiaInterface:
             self.appRootInWorld,
             self.remoteRoot,
         ) = split_comm_by_appnum(comm_world)
+
+        if nproc is not None:
+            remote_size = comm_world.Get_size() - self.appNoRanks
+            if remote_size != nproc:
+                raise RuntimeError(
+                    f"MAIA MPMD rank count mismatch: expected {nproc} m-AIA solver "
+                    f"ranks (env_config['nproc']), got {remote_size}. "
+                    f"Launch with: mpirun -n {self.appNoRanks} python ... : -n {nproc} maia ..."
+                )
 
     def _comm_send(self, name: str, data: Union[List, np.ndarray], send_tag: bool = True) -> None:
         """
