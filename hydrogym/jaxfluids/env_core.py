@@ -34,6 +34,15 @@ class JAXFluidsFlowEnv(HFEnvConfigMixin, JAXFluidsEnv):
     HF_CACHE_NAMESPACE = "jaxfluidsgym"
 
     def _init_from_hf(self, env_config: dict) -> None:
+        """Initialize HF-backed environment data from ``env_config``.
+
+        Reads the HF settings (``hf_repo_id``, ``local_fallback_dir``,
+        ``use_clean_cache``, ``hf_token``, ``hf_revision``) and constructs
+        this env's :class:`~hydrogym.data_manager.HFDataManager` instance.
+
+        Args:
+            env_config: Environment configuration dict.
+        """
         # Initialize HF data manager
         self.hf_repo_id = env_config.get("hf_repo_id", "dynamicslab/HydroGym-environments")
         self.local_fallback_dir = env_config.get("local_fallback_dir", None)

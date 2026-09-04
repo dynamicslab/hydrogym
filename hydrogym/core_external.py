@@ -48,6 +48,12 @@ except ImportError:  # pragma: no cover - exercised only without mpi4py
 
 
 def _require_mpi():
+    """Raise a clear ImportError if mpi4py is unavailable.
+
+    Called at the top of every public entry point in this module so the
+    no-mpi4py path fails loudly at call time instead of at import time
+    (the module itself imports fine without mpi4py).
+    """
     if not MPI_AVAILABLE:
         raise ImportError(
             "mpi4py is required for MPMD communicator splitting but is not installed. "

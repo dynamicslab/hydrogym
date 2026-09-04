@@ -31,6 +31,23 @@ permissions:
   contents: read
 
 jobs:
+  docstring-coverage:
+    # Audit Task 7.2: enforce the docstring-coverage floor that the Phase 7
+    # rollout achieved (99.8% over the default target set), so it cannot
+    # silently regress again the way it had across backends before the audit
+    # (jax/env_core.py was 24%). The measurement tool is stdlib-only, so this
+    # job needs no dependencies and runs in seconds. To lower the floor,
+    # update both the number here and the rationale in
+    # HYDROGYM_ENGINEERING_AUDIT_v2.md's Phase 7 section.
+    name: Docstring coverage floor
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    container: python:3.12-slim
+    steps:
+      - uses: actions/checkout@v4
+      - name: Measure docstring coverage
+        run: python test/measure_docstrings.py --fail-under 99
+
   developer-template-skeletons:
     # Audit Task 4.4: the reference skeletons under
     # examples/developer_templates/ must stay runnable in the PLAIN CI tier
