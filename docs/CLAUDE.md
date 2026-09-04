@@ -72,7 +72,8 @@ uv run pytest test/test_pinball.py  # single test file
 - `maia/` - MAIA LBM and structured FV solver environments
 - `nek/` - NEK5000 spectral element solver environments
 - `jax/` - Differentiable JAX-based solvers
-- `distributed/` - Empty placeholder (multi-agent support lives under `nek/`: NekParallelEnv, NekPettingZooEnv)
+
+Multi-agent RL support lives under `nek/` (`NekParallelEnv`, `NekPettingZooEnv`), not in a separate `distributed/` package — none exists in this tree; it was removed after standing as an empty, misleadingly-named placeholder (see `HYDROGYM_ENGINEERING_AUDIT_v2.md`'s Verification Addendum, Finding A).
 
 ### Key Design Patterns
 

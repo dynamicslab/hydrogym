@@ -8,7 +8,7 @@ def __getattr__(name):
     """Lazy import submodules to avoid MPI conflicts."""
     import importlib
 
-    if name in ("distributed", "firedrake", "jax", "jaxfluids", "maia", "nek"):
+    if name in ("firedrake", "jax", "jaxfluids", "maia", "nek"):
         # Use importlib to import the submodule
         module = importlib.import_module(f".{name}", package=__name__)
         # Cache it in globals to avoid re-importing
@@ -24,7 +24,6 @@ __all__ = [
     "FlowEnv",
     "PDEBase",
     "TransientSolver",
-    "distributed",
     "firedrake",
     "jax",
     "jaxfluids",
