@@ -891,19 +891,32 @@ class NekEnv(HFEnvConfigMixin, ExternalProcessEnvMixin, gym.Env):
         self.sub_comm.Recv([current_time, MPI.DOUBLE], 0, tag=1998)
         current_time = current_time[0]
 
-        # Receive state from each node
+        # Receive state from each node. Batched: post every per-node,
+        # per-field Irecv up front and wait once, instead of draining them
+        # one blocking Recv at a time (the solver side is untouched and keeps
+        # sending exactly the same point-to-point messages). The (source,
+        # tag) pairs and buffer layout below are identical to what the
+        # previous serial loop matched, so the same bytes land in the same
+        # slots; MPI matching (by source+tag, with non-overtaking order
+        # within a source+tag for nid=0's shared tag) preserves the per-field
+        # ordering. Performance-only change.
         state_buffer = np.ndarray(shape=(self.nNID, NFLDC, TOTCTRL), dtype=np.float64)
+        requests = []
         for ni, nid in enumerate(self.uniqID):
-            node_buffer = np.ndarray(shape=(NFLDC, TOTCTRL), dtype=np.float64)
             for t in range(NFLDC):
-                buffer = np.ndarray(shape=(TOTCTRL), dtype=np.float64)
-                self.sub_comm.Recv(
-                    [buffer, tag_dict["STATE"]["mpi_dtype"]],
-                    nid,
-                    tag=nid * (t + 1) + tag_dict["STATE"]["tag"],
+                requests.append(
+                    self.sub_comm.Irecv(
+                        [state_buffer[ni, t, :], tag_dict["STATE"]["mpi_dtype"]],
+                        nid,
+                        tag=nid * (t + 1) + tag_dict["STATE"]["tag"],
+                    )
                 )
-                node_buffer[t, :] = buffer[:]
-            state_buffer[ni, :, :] = self._normalize_state(node_buffer)
+        MPI.Request.Waitall(requests)
+
+        # Normalize each node's block exactly as before (per node, over the
+        # whole (NFLDC, TOTCTRL) block).
+        for ni in range(self.nNID):
+            state_buffer[ni, :, :] = self._normalize_state(state_buffer[ni, :, :])
 
         print("[NEK] STATE RECV", flush=True)
 
@@ -937,7 +950,14 @@ class NekEnv(HFEnvConfigMixin, ExternalProcessEnvMixin, gym.Env):
         # Apply ZNMF condition
         action = self._apply_znmf(action)
 
-        # Send actions to each node
+        # Send actions to each node. Batched: build every per-node buffer
+        # first, then post one Isend per node and wait once, instead of
+        # blocking on each send in turn (the solver side is untouched and
+        # keeps receiving exactly the same point-to-point messages). Same
+        # (dest, tag, dtype, byte content) as the previous serial loop.
+        # Performance-only change.
+        action_buffers = []
+        requests = []
         icount = 0
         for il, nid in enumerate(self.uniqID):
             _index = np.where((self.actuator_info["NID"] == nid))[0]
@@ -948,12 +968,16 @@ class NekEnv(HFEnvConfigMixin, ExternalProcessEnvMixin, gym.Env):
                 act_buffer[jl] = action[icount]
                 icount += 1
 
-            # Send buffer
-            self.sub_comm.Send(
-                [act_buffer, tag_dict["ACTION"]["mpi_dtype"]],
-                nid,
-                tag=nid + tag_dict["ACTION"]["tag"],
+            # Post the send; the buffer is kept alive until Waitall below
+            action_buffers.append(act_buffer)
+            requests.append(
+                self.sub_comm.Isend(
+                    [act_buffer, tag_dict["ACTION"]["mpi_dtype"]],
+                    nid,
+                    tag=nid + tag_dict["ACTION"]["tag"],
+                )
             )
+        MPI.Request.Waitall(requests)
 
         assert icount == self.n_actuators, ValueError("[NEK] Actuator count mismatch!")
         print(f"[NEK] ACTION for {icount} Actuators", flush=True)
