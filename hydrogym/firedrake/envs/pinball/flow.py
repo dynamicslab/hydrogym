@@ -106,6 +106,7 @@ class Pinball(FlowConfig):
             obs_type = "lift_drag"
 
         def _lift_drag(q):
+            """Observation payload: flattened lift coefficients followed by drag coefficients."""
             CL, CD = self.compute_forces(q=q)
             return [*CL, *CD]
 

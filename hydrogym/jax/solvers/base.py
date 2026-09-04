@@ -72,6 +72,18 @@ class RungeKuttaCrankNicolson(TransientSolver):
 
         @tree_math.wrap
         def time_step_fn(u):
+            """Advance a (tree-wrapped) state by one full 5-stage IMEX-RK step.
+
+            Each stage combines the explicit nonlinear term (with the
+            low-storage recursion ``h``) with a partially implicit
+            Crank-Nicolson solve of the linear term.
+
+            Args:
+                u: Current state (tree of arrays).
+
+            Returns:
+                The state after one timestep.
+            """
             h = 0
             for k in range(5):
                 h = unwrapped_nonlinear(u) + _beta_RK4[k] * h
@@ -83,20 +95,30 @@ class RungeKuttaCrankNicolson(TransientSolver):
         return time_step_fn
 
     def step(self, flow: PDEBase, dt: float, save_n: int, callbacks: Callable, control_field=None):
-        """
-        Lax.scan to iteratively apply a function given an initial value
+        """Build a ``lax.scan`` function that advances a state by ``save_n`` timesteps.
+
+        Note this returns the *scan function*, not a stepped state: the caller
+        nests it inside an outer scan (see :meth:`solve`).
 
         Args:
-            initialization(grid array): the initial fft vorticity field
-            steps (int):  number of timesteps
-            save_n (int): save every n steps
-            ignore_intermediate_steps (bool): if saving every n steps, ignore intermediate steps.
-                                              this drastically reduces the memory requirements.
+            flow: Flow configuration (unused here; the equation carries the
+                dynamics).
+            dt: Timestep size (unused here; the one fixed at construction
+                applies).
+            save_n: Number of timesteps each inner scan performs.
+            callbacks: Unused; per-step callback tracking is not possible
+                inside compiled scans.
+            control_field: Optional control input forwarded to the equation's
+                nonlinear terms at every step.
 
+        Returns:
+            Callable mapping an initial state to the state ``save_n``
+            timesteps later.
         """
         func = self.RK4_CN(control_field=control_field)
 
         def inner_scan(initialization):
+            """Run ``save_n`` RK4-CN timesteps from ``initialization``, keeping only the final state."""
             f = lambda init, inputs: (func(init), init)
             final_state, outputs = lax.scan(f, initialization, xs=None, length=save_n)
             return final_state
@@ -230,6 +252,7 @@ class RungeKutta4:
         dt = self.dt if dt is None else dt
 
         def add_state(a, b, alpha=1.0):
+            """Component-wise ``a + alpha * b`` for two :class:`VelocityState` values."""
             return VelocityState(
                 a.u + alpha * b.u,
                 a.v + alpha * b.v,
