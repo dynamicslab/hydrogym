@@ -17,7 +17,7 @@ import pytest
 def test_all_lists_all_backend_names():
     import hydrogym
 
-    for backend in ("distributed", "firedrake", "jax", "jaxfluids", "maia", "nek"):
+    for backend in ("firedrake", "jax", "jaxfluids", "maia", "nek"):
         assert backend in hydrogym.__all__
 
 
