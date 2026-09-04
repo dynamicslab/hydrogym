@@ -37,7 +37,7 @@ mpirun -np 1 python test_nek_parallel.py --steps 100 : -np 10 nek5000
 
 ### Train RL Agent (DIY Centralized Approach)
 ```bash
-mpirun -np 1 python train_sb3_parallel.py --env MiniChannel_Re180 --algo PPO --total-timesteps 100000 : -np 10 nek5000
+mpirun -np 1 python train_sb3_parallel.py --env TCFmini_3D_Re180 --algo PPO --total-timesteps 100000 : -np 10 nek5000
 ```
 
 ## When to Use

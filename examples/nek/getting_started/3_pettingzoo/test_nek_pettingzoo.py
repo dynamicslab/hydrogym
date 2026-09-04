@@ -36,7 +36,7 @@ from hydrogym.nek.pettingzoo_env import make_pettingzoo_env
 def main():
     parser = argparse.ArgumentParser(description="Test Nek5000 PettingZoo multi-agent environment")
     parser.add_argument("--steps", type=int, default=100, help="Number of steps to run")
-    parser.add_argument("--env", type=str, default="MiniChannel_Re180", help="Environment name")
+    parser.add_argument("--env", type=str, default="TCFmini_3D_Re180", help="Environment name")
     parser.add_argument("--nproc", type=int, default=10, help="Number of Nek5000 processes")
     parser.add_argument("--local-dir", type=str, default=None, help="Local fallback directory for environments")
     parser.add_argument("--config-file", type=str, default=None, help="Config file (None = auto-detect)")

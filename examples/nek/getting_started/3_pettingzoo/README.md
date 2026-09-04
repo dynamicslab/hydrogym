@@ -35,7 +35,7 @@ mpirun -np 1 python test_nek_pettingzoo.py --steps 100 : -np 10 nek5000
 
 ### Train RL Agent (SuperSuit Production Approach)
 ```bash
-mpirun -np 1 python train_sb3_pettingzoo.py --env MiniChannel_Re180 --algo PPO --total-timesteps 100000 : -np 10 nek5000
+mpirun -np 1 python train_sb3_pettingzoo.py --env TCFmini_3D_Re180 --algo PPO --total-timesteps 100000 : -np 10 nek5000
 ```
 
 ## Configuration-Driven Tutorial (Recommended for Reproducibility)

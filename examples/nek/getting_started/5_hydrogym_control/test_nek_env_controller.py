@@ -7,13 +7,13 @@ Test NEK5000 environments with MPMD coupling (Python + Nek5000).
 
 Usage:
     # Using MAIA pattern (recommended)
-    mpirun -np 1 python test_nek_env_controller.py --env MiniChannel_Re180 --nproc 10 : -np 10 nek5000
+    mpirun -np 1 python test_nek_env_controller.py --env TCFmini_3D_Re180 --nproc 10 : -np 10 nek5000
 
     # Using config file (legacy)
     mpirun -np 1 python test_nek_env_controller.py --config test_config.yml --nproc 10 : -np 10 nek5000
 
 Arguments:
-    --env: Environment name from HuggingFace (e.g., MiniChannel_Re180)
+    --env: Environment name from HuggingFace (e.g., TCFmini_3D_Re180)
     --nproc: Number of Nek5000 processes (required)
     --config: Path to YAML configuration file (optional, for legacy usage)
     --steps: Number of simulation steps (optional, overrides config)
@@ -90,7 +90,7 @@ def run_nek_test(
     Run NEK5000 environment test.
 
     Args:
-        env_name: Environment name for MAIA pattern (e.g., 'MiniChannel_Re180')
+        env_name: Environment name for MAIA pattern (e.g., 'TCFmini_3D_Re180')
         nproc: Number of Nek5000 processes
         config_path: Path to YAML configuration (legacy, optional)
         num_steps: Number of steps per episode (None = use config)
@@ -262,7 +262,7 @@ def main():
 
     # Environment specification (either --env or --config)
     parser.add_argument(
-        "--env", type=str, default=None, help="Environment name from HuggingFace (e.g., MiniChannel_Re180)"
+        "--env", type=str, default=None, help="Environment name from HuggingFace (e.g., TCFmini_3D_Re180)"
     )
     parser.add_argument("--config", type=str, default=None, help="Path to YAML configuration file (legacy, optional)")
     parser.add_argument("--nproc", type=int, required=True, help="Number of Nek5000 processes (required)")

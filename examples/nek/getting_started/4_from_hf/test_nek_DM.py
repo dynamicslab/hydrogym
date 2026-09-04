@@ -34,7 +34,7 @@ from hydrogym.nek.nek_lib.nek_utils import NEK_INIT
 def main():
     parser = argparse.ArgumentParser(description="Simple Nek5000 test with MAIA pattern")
     parser.add_argument("--steps", type=int, default=100, help="Number of steps to run")
-    parser.add_argument("--env", type=str, default="MiniChannel_Re180", help="Environment name")
+    parser.add_argument("--env", type=str, default="TCFmini_3D_Re180", help="Environment name")
     parser.add_argument("--nproc", type=int, default=10, help="Number of Nek5000 processes")
     parser.add_argument("--local-dir", type=str, default=None, help="Local fallback directory for environments")
     args = parser.parse_args()
