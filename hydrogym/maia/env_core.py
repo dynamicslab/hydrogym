@@ -94,9 +94,17 @@ class MaiaFlowEnv(HFEnvConfigMixin, gym.Env):
                     'none', 'customized'.
                 - obs_loc (list): Required if strategy is 'customized'.
                 - obs_scale (list): Required if strategy is 'customized'.
+                - nproc (int): Optional. Expected number of m-AIA solver
+                    ranks in the MPMD launch. When given, validated against
+                    the actual MPI world at construction time; a mismatch
+                    raises a clear ``RuntimeError`` naming the fix, instead
+                    of failing confusingly downstream. Omit to skip this
+                    check (default).
 
         Raises:
             ConfigError: If required configuration is missing or invalid.
+            RuntimeError: If ``nproc`` is given and does not match the
+                actual number of m-AIA solver ranks in the MPMD job.
         """
 
         # Initialize HF data manager
@@ -193,7 +201,11 @@ class MaiaFlowEnv(HFEnvConfigMixin, gym.Env):
         # Initialize MPI communication
         self.comm_world = MPI.COMM_WORLD
         self.maiaInterface = MaiaInterface(self.nDim)
-        self.maiaInterface.init_comm(self.comm_world)
+        # Optional launch-config validation (Verification Addendum Finding
+        # B): when the caller states how many MAIA solver ranks it expects,
+        # catch a wrong `-np` in the MPMD launch command here instead of
+        # failing confusingly (or silently misbehaving) downstream.
+        self.maiaInterface.init_comm(self.comm_world, nproc=env_config.get("nproc"))
         print("Python communicator initialized", flush=True)
 
         if self.Re != self.cfg.maia.Re:
