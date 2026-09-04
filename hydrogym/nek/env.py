@@ -1192,6 +1192,13 @@ class RingBuffer:
     """N-dimensional ring buffer using numpy arrays."""
 
     def __init__(self, length, dim=1):
+        """Allocate the backing array.
+
+        Args:
+            length: Number of entries the buffer holds before wrapping.
+            dim: Shape of each entry (an int, or a tuple of axis sizes);
+                defaults to scalar entries.
+        """
         if type(dim) is int:
             dim = (dim,)
         self.data = np.zeros((length,) + dim, dtype="f")
