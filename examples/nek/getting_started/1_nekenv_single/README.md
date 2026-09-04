@@ -32,7 +32,7 @@ mpirun -np 1 python test_nek_direct.py --steps 100 : -np 10 nek5000
 
 ### Train RL Agent
 ```bash
-mpirun -np 1 python train_sb3_nek_direct.py --env MiniChannel_Re180 --algo PPO --total-timesteps 100000 : -np 10 nek5000
+mpirun -np 1 python train_sb3_nek_direct.py --env TCFmini_3D_Re180 --algo PPO --total-timesteps 100000 : -np 10 nek5000
 ```
 
 ## When to Use

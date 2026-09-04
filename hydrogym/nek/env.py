@@ -51,7 +51,7 @@ class NekEnv(HFEnvConfigMixin, ExternalProcessEnvMixin, gym.Env):
 
     1. MAIA pattern (recommended):
         env = NekEnv.from_hf(
-            'MiniChannel_Re180',
+            'TCFmini_3D_Re180',
             nproc=10,
             hostfile='',
         )
@@ -176,7 +176,7 @@ class NekEnv(HFEnvConfigMixin, ExternalProcessEnvMixin, gym.Env):
         Create environment from HuggingFace Hub (MAIA pattern).
 
         Args:
-          environment_name: Name of the environment (e.g., 'MiniChannel_Re180')
+          environment_name: Name of the environment (e.g., 'TCFmini_3D_Re180')
           nproc: Number of MPI workers for Nek (required)
           hostfile: MPI hostfile path (default: '')
           **kwargs: Additional env_config parameters:
@@ -201,10 +201,10 @@ class NekEnv(HFEnvConfigMixin, ExternalProcessEnvMixin, gym.Env):
           NekEnv instance
 
         Example:
-          env = NekEnv.from_hf('MiniChannel_Re180', nproc=10)
+          env = NekEnv.from_hf('TCFmini_3D_Re180', nproc=10)
 
           env = NekEnv.from_hf(
-              'MiniChannel_Re180',
+              'TCFmini_3D_Re180',
               nproc=10,
               hostfile='hosts.txt',
               use_clean_cache=True,
