@@ -51,7 +51,15 @@ def measure(path):
 
 def main():
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    targets = sys.argv[1:] or DEFAULT_TARGETS
+    # --fail-under <pct> sets a CI exit-code gate on the TOTAL coverage;
+    # everything else is treated as explicit file targets.
+    fail_under = None
+    args = list(sys.argv[1:])
+    if "--fail-under" in args:
+        i = args.index("--fail-under")
+        fail_under = float(args[i + 1])
+        del args[i : i + 2]
+    targets = args or DEFAULT_TARGETS
     grand_have = grand_total = 0
     for t in targets:
         p = t if os.path.isabs(t) else os.path.join(root, t)
@@ -63,8 +71,18 @@ def main():
         grand_total += total
         pct = 100 * have / total if total else 100.0
         print(f"{t:50s} {have:3d}/{total:<3d} {pct:6.1f}%")
-    if grand_total:
-        print(f"{'TOTAL':50s} {grand_have:3d}/{grand_total:<3d} {100 * grand_have / grand_total:6.1f}%")
+    if not grand_total:
+        return
+    total_pct = 100 * grand_have / grand_total
+    print(f"{'TOTAL':50s} {grand_have:3d}/{grand_total:<3d} {total_pct:6.1f}%")
+    if fail_under is not None:
+        if total_pct < fail_under:
+            print(
+                f"FAIL: docstring coverage {total_pct:.1f}% is below the "
+                f"{fail_under:.1f}% floor (audit Task 7.2)"
+            )
+            sys.exit(1)
+        print(f"OK: docstring coverage at or above the {fail_under:.1f}% floor")
 
 
 if __name__ == "__main__":

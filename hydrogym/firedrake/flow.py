@@ -1030,6 +1030,8 @@ class FlowConfig(PDEBase):
         F_im = self.residual((uB_im, pB_im), q_test=(v_im, s_im))
 
         def _inner(u, v):
+            """L2 inner product ``∫ u · v dx`` used to build the shift blocks
+            of the complex-valued eigenproblem's linear form."""
             return ufl.inner(u, v) * ufl.dx
 
         # Shift each block of the linear form appropriately

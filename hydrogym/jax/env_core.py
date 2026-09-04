@@ -429,6 +429,15 @@ class JAXFlowEnvBase(environment.Environment[EnvState, EnvParams]):
         )
 
     def _clip_action(self, action: chex.Array, params: EnvParams) -> chex.Array:
+        """Clip an action to the environment's action space bounds.
+
+        Args:
+            action: Raw (unclipped) action array.
+            params: Environment parameters supplying ``min_action``/``max_action``.
+
+        Returns:
+            The action element-wise clipped into ``[min_action, max_action]``.
+        """
         return jnp.clip(action, params.min_action, params.max_action)
 
     def is_terminal(self, state: EnvState, params: EnvParams) -> jnp.ndarray:
@@ -519,6 +528,7 @@ class GymnaxWrapper(object):
 
     # provide proxy access to regular attributes of wrapped object
     def __getattr__(self, name):
+        """Proxy attribute access through to the wrapped environment."""
         return getattr(self._env, name)
 
 
