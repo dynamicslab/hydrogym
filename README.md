@@ -20,7 +20,7 @@ HydroGym is a comprehensive platform for applying reinforcement learning to flui
 - **Diverse Environments**: 89 pre-configured environments across 6 CFD solvers
 - **Standard RL Interface**: Gymnasium-compatible API works with Stable-Baselines3, RLlib, and other RL libraries
 - **Compute Efficient**: Highly optimized GPU & CPU backends for efficient RL deployment ranging from local workstations to exascale HPC systems
-- **Scalable**: MPI-parallelized solvers with distributed RL training support
+- **Scalable**: MPI-parallelized solvers for large-scale HPC deployment (MPMD co-launch of RL and solver processes)
 - **Multiple Backends**: Finite Element (Firedrake), Lattice Boltzmann (MAIA LBM), Finite Volume (MAIA FV), Spectral Element (NEK5000), Fully Differentiable solvers (JAX-Fluids)
 - **2D & 3D**: From simple 2D benchmarks to complex 3D turbulent flows (Re up to 400,000)
 - **Research-Ready**: Managed by a complementary HuggingFace repository
@@ -149,7 +149,7 @@ cd examples/jax/getting_started
 
 # Test Kolmogorov flow environment
 cd 1_kolmogorov
-./run_nekenv_docker.sh
+./run_kolmogorov_docker.sh
 
 # ... or test channel flow environment
 cd 2_channel
