@@ -9,9 +9,9 @@ assigned to actuator subsets, each policy can update at its own DRL interval,
 and all groups interact simultaneously with the same environment.
 
 Usage:
-    mpirun -np 1 python test_nek_pettingzoo.py : -np 12 nek5000
+    mpirun -np 1 python zeroshot_demo_pettingzoo.py : -np 12 nek5000
 
-    mpirun -np 1 python test_nek_pettingzoo.py \
+    mpirun -np 1 python zeroshot_demo_pettingzoo.py \
         --policy-template ./meta_policy_small_wing_template.py \
         --policy-root /path/to/legacy_runs \
         --steps 3000 \

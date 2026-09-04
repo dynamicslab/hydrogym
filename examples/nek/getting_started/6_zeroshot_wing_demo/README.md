@@ -8,7 +8,7 @@ __This is a deployment/evaluation demo only (no training). The template and cont
 
 ## What the script does
 
-`test_nek_pettingzoo.py`:
+`zeroshot_demo_pettingzoo.py`:
 - loads a base `NekEnv` via `NekEnv.from_hf(...)` and wraps it with `make_pettingzoo_env(...)`
 - builds one controller per entry in `POLICY_SPECS` (from `meta_policy_small_wing_template.py`)
 - assigns each controller to actuator agents by `x_range` and `side` (`SS` means `y > 0`, `PS` means `y < 0`)
@@ -34,7 +34,7 @@ obs_dict, rewards_dict, terminations, truncations, infos = env.step(actions)
 
 ## Files
 
-- `test_nek_pettingzoo.py` - zero-shot multi-policy rollout demo (deployment only)
+- `zeroshot_demo_pettingzoo.py` - zero-shot multi-policy rollout demo (deployment only)
 - `meta_policy_small_wing_template.py` - template defining `ENV_NAME`, `NPROC`, and `POLICY_SPECS`
 - `run_pettingzoo_docker.sh` - runner script (module load + workspace prep + `mpirun`)
 
@@ -52,12 +52,12 @@ From `6_zeroshot_wing_demo/`:
 
 Default template:
 ```bash
-mpirun -np 1 python test_nek_pettingzoo.py : -np 12 nek5000
+mpirun -np 1 python zeroshot_demo_pettingzoo.py : -np 12 nek5000
 ```
 
 Legacy policy template + run root:
 ```bash
-mpirun -np 1 python test_nek_pettingzoo.py \
+mpirun -np 1 python zeroshot_demo_pettingzoo.py \
   --policy-template ./meta_policy_small_wing_template.py \
   --policy-root /path/to/legacy_runs \
   --steps 3000 \
