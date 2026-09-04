@@ -37,8 +37,12 @@ def train_pettingzoo_with_supersuit(args):
         "configuration_file": args.config_file,
         "rescale_actions": True,  # The action space has range of [-1,1] and we rescale by the maximum amplitude
         "normalize_input": "utau",
-        "ctrl_min_amp": -0.06388353,
-        "ctrl_max_amp": 0.06388353,
+        # Control amplitude bounds are regular config-tree entries under the
+        # "runner" section (see hydrogym/nek/configs.py::Runner), so they must
+        # be overridden by dotted path — bare "ctrl_min_amp"/"ctrl_max_amp"
+        # keys are rejected by NekEnv's env_config validation.
+        "runner.ctrl_min_amp": -0.06388353,
+        "runner.ctrl_max_amp": 0.06388353,
     }
     base_env = NekEnv(env_config=env_config)
 

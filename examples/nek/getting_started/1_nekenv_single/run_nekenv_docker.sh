@@ -19,7 +19,7 @@ export OMP_NUM_THREADS=1
 
 # Configuration
 WORK_DIR="./train_run"
-LOCAL_DIR="/workspace/hydrogym_NEK/packaged_envs"
+LOCAL_DIR="/workspace/hydrogym/packaged_envs"
 ENV_NAME="TCFmini_3D_Re180"
 NPROC_NEK=10
 NUM_STEPS=100

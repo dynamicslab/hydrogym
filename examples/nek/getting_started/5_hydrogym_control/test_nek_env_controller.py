@@ -109,12 +109,22 @@ def run_nek_test(
         if env_name:
             # MAIA pattern (recommended)
             logger.info(f"Using MAIA pattern: environment={env_name}, nproc={nproc}")
+            # Only pass the step override when the user actually provided it:
+            # an explicit None would either fail validation or override the
+            # packaged config's episode length with None. Use the dotted
+            # config path (runner.nb_interactions) rather than the
+            # "nb_interactions" shorthand, which maps to episode.max_interactions
+            # and does not exist in the runner-style packaged configs.
+            overrides = {}
+            if num_steps is not None:
+                overrides["runner.nb_interactions"] = num_steps
+                logger.info(f"Overriding steps to: {num_steps}")
             env = NekEnv.from_hf(
                 env_name,
                 nproc=nproc,
                 use_clean_cache=False,
                 local_fallback_dir=local_dir,
-                nb_interactions=num_steps,  # Override if provided
+                **overrides,
             )
         elif config_path:
             # Legacy pattern with config file
