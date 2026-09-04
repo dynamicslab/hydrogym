@@ -48,3 +48,27 @@ budget and catch `NekDivergenceError` for Nek physics failure.
 - Developer guides: `docs/docs/developers/adding-a-solver.md`,
   `docs/docs/developers/adding-an-environment.md`; reference solver
   skeletons under `examples/developer_templates/` with a plain-CI job.
+- `MaiaFlowEnv`'s `env_config` accepts an optional `nproc` key: the
+  expected number of m-AIA solver ranks in the MPMD launch, validated at
+  construction with a clear error naming the fix on a mismatch (mirrors
+  the equivalent, pre-existing check for Nek). Omit to skip validation,
+  unchanged from prior behavior.
+
+### Fixed
+
+- `FlowConfig`'s checkpoint auto-resolution (`hydrogym/firedrake/flow.py`)
+  now picks deterministically from a directory containing multiple
+  candidate checkpoint files (sorted by filename, last wins), instead of
+  an unsorted directory listing whose result could silently vary by
+  filesystem/download order. Also fixes 7 call sites that referenced the
+  nonexistent `firedrake.logging.WARN` (Firedrake's logging shim only
+  defines `WARNING`) — any checkpoint-resolution error that should have
+  logged a warning and fallen back gracefully instead crashed with an
+  unrelated `AttributeError`.
+
+### Removed
+
+- `hydrogym.distributed` — an empty placeholder package with no
+  functionality; multi-agent RL support lives under `hydrogym.nek`
+  (`NekParallelEnv`, `NekPettingZooEnv`). Re-add as a real package when
+  distributed-training support actually lands.
