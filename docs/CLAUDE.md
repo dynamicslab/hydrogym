@@ -72,7 +72,7 @@ uv run pytest test/test_pinball.py  # single test file
 - `maia/` - MAIA LBM and structured FV solver environments
 - `nek/` - NEK5000 spectral element solver environments
 - `jax/` - Differentiable JAX-based solvers
-- `distributed/` - Multi-agent and distributed RL support
+- `distributed/` - Empty placeholder (multi-agent support lives under `nek/`: NekParallelEnv, NekPettingZooEnv)
 
 ### Key Design Patterns
 

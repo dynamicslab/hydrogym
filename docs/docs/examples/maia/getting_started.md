@@ -16,10 +16,10 @@ This directory contains examples and utilities for HydroGym's MAIA-based flow en
 Usage:
 ```bash
 # Basic usage (1 Python + 1 MAIA process)
-mpirun -np 1 python test_maia_env.py --environment Cylinder_2D_Re200 : -np 1 maia properties.toml
+mpirun -np 1 python test_maia_env.py --environment Cylinder_2D_Re200 : -np 1 maia properties_run.toml
 
 # Parallel MAIA (1 Python + 4 MAIA processes)
-mpirun -np 1 python test_maia_env.py --environment Cylinder_2D_Re200 : -np 4 maia properties.toml
+mpirun -np 1 python test_maia_env.py --environment Cylinder_2D_Re200 : -np 4 maia properties_run.toml
 ```
 
 ### [`train_sb3_maia.py`](https://github.com/dynamicslab/hydrogym/blob/main/examples/maia/getting_started/train_sb3_maia.py)
@@ -38,7 +38,7 @@ python prepare_workspace.py --env Cylinder_2D_Re200 --work-dir ./train_run
 
 # Then train with MPMD execution
 cd train_run
-mpirun -np 1 python ../train_sb3_maia.py --env Cylinder_2D_Re200 --algo PPO --total-timesteps 100000 : -np 1 maia properties.toml
+mpirun -np 1 python ../train_sb3_maia.py --env Cylinder_2D_Re200 --algo PPO --total-timesteps 100000 : -np 1 maia properties_run.toml
 
 # Monitor training
 tensorboard --logdir logs/
@@ -78,15 +78,17 @@ python prepare_workspace.py --env Cylinder_2D_Re200 --work-dir ./test_run_000
 
 This creates:
 - `test_run_000/` - working directory
-- `test_run_000/properties.toml` - MAIA configuration file (symlink)
-- `test_run_000/grid` - mesh file (symlink)
-- `test_run_000/out/` - output directory
+- `test_run_000/properties_run.toml` - MAIA run configuration (symlink)
+- `test_run_000/geometry.toml` - geometry configuration (symlink)
+- `test_run_000/environment_config.yaml` - environment/actuation configuration (symlink)
+- `test_run_000/out_lb/` - solver output directory (grid + restart files symlinked inside)
+- `test_run_000/stl/` - STL geometry files (symlink)
 
 **Step 2:** Run the test with MPMD execution:
 
 ```bash
 cd test_run_000
-mpirun -np 1 python ../test_maia_env.py --environment Cylinder_2D_Re200 --num-steps 10 : -np 1 maia properties.toml
+mpirun -np 1 python ../test_maia_env.py --environment Cylinder_2D_Re200 --num-steps 10 : -np 1 maia properties_run.toml
 ```
 
 This runs:
@@ -100,7 +102,7 @@ To run with more MAIA processes for larger meshes:
 
 ```bash
 cd test_run_000
-mpirun -np 1 python ../test_maia_env.py --environment Cylinder_2D_Re200 : -np 4 maia properties.toml
+mpirun -np 1 python ../test_maia_env.py --environment Cylinder_2D_Re200 : -np 4 maia properties_run.toml
 ```
 
 ### Explore Options
@@ -146,7 +148,7 @@ env.close()
 
 **Important:** This script must be run with MPMD:
 ```bash
-mpirun -np 1 python your_script.py : -np 4 maia properties.toml
+mpirun -np 1 python your_script.py : -np 4 maia properties_run.toml
 ```
 
 ### Example 2: Training with Stable-Baselines3
@@ -186,7 +188,7 @@ env.save("vec_normalize.pkl")
 **Run with MPMD:**
 ```bash
 cd work_dir
-mpirun -np 1 python ../train_sb3_maia.py --env Cylinder_2D_Re200 --algo PPO : -np 1 maia properties.toml
+mpirun -np 1 python ../train_sb3_maia.py --env Cylinder_2D_Re200 --algo PPO : -np 1 maia properties_run.toml
 ```
 
 ### Example 3: Custom Probe Configuration
@@ -311,7 +313,7 @@ env = maia.from_hf(
 
 ```bash
 cd my_run
-mpirun -np 1 python ../my_rl_script.py : -np 4 maia properties.toml
+mpirun -np 1 python ../my_rl_script.py : -np 4 maia properties_run.toml
 ```
 
 ---
