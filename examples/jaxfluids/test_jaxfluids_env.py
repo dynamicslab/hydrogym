@@ -15,7 +15,7 @@ JAXFluidsFlowEnv has the following arguments:
         * True - Creates fresh workspace copy (recommended for production)
         * False - Uses cached workspace (faster for development/testing)
     - local_fallback_dir: Local directory for offline usage
-    - configuration_file: Custom path to MAIA config.yaml (optional)
+    - configuration_file: Custom path to JAX-Fluids config.yaml (optional)
 
     - output_dir: Optional. String indicating where the environment outputs are saved.
         Defaults to 'outputs'.

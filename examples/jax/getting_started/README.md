@@ -79,7 +79,9 @@ obs, state = jit_reset(key, params)
 # Zero action: passive turbulence evolution (baseline)
 action = jnp.zeros((params.action_dim,))   # shape (24,)
 obs, state, reward, done, info = jit_step(key, state, action, params)
-# reward = -WSS;  WSS ≈ 0.0019 for uncontrolled Re_tau=180
+# reward = -WSS. The magnitude is configuration-dependent (normalization,
+# grid, initial field); the recorded run in 2_channel/channel.ipynb shows
+# WSS ≈ 0.34 (reward ≈ -0.34) for the uncontrolled case at Re_tau=180.
 ```
 
 **Note:** The initial turbulent field (`U.npy`, `V.npy`, `W.npy`) is downloaded from Hugging Face Hub on the first run and cached at `~/.cache/hydrogym/`.

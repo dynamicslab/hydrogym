@@ -4,6 +4,12 @@
 #
 # All arguments are forwarded directly to run_ppo.py.
 #
+# NOTE: despite the historical "_docker" suffix in the filename, this is an
+# HPC cluster job script, not a Docker entrypoint: it loads environment
+# modules (`module purge` / `module load`) and activates an EasyBuild
+# virtualenv. Submit it from a compute node (or wrap it in your own
+# sbatch/srun script).
+#
 # ── Supported environments ────────────────────────────────────────────────────
 #
 #   kolmogorov  -- 2D Kolmogorov flow (Re=200, 64×64 pseudo-spectral)
@@ -44,9 +50,10 @@ source /home/easybuild/venvs/hydrogym_gpu/bin/activate
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-python "$SCRIPT_DIR/run_ppo.py" "$@"
-
-EXIT_CODE=$?
+# Run training. `|| EXIT_CODE=$?` captures a nonzero status without tripping
+# `set -e`, so the reporting block below always executes.
+EXIT_CODE=0
+python "$SCRIPT_DIR/run_ppo.py" "$@" || EXIT_CODE=$?
 echo ""
 if [ $EXIT_CODE -eq 0 ]; then
     echo "Training completed successfully."
