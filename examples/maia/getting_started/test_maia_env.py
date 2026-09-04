@@ -10,11 +10,11 @@ one MPI process runs Python (this script), another runs the m-AIA CFD solver.
 
 Usage:
     # MPMD execution with mpirun (required for MAIA)
-    mpirun -np 1 python test_maia_env.py --environment Cylinder_2D_Re200 : -np 1 maia properties.toml
+    mpirun -np 1 python test_maia_env.py --environment Cylinder_2D_Re200 : -np 1 maia properties_run.toml
 
     # Note: The ':' separator indicates two separate programs:
     #   - Process 0: Python script (this file)
-    #   - Process 1: MAIA solver with properties.toml configuration
+    #   - Process 1: MAIA solver with properties_run.toml configuration
 
 Available environments:
     2D & 3D Flows:
