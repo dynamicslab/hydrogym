@@ -24,6 +24,31 @@ _beta_EXT = [
 
 
 class SemiImplicitBDF(NavierStokesTransientSolver):
+    """Semi-implicit BDF transient solver for the incompressible Navier-Stokes equations.
+
+    Uses a backward-differentiation formula of order ``k`` for the time
+    derivative (treated implicitly, together with the viscous and pressure
+    terms) and a k-th-order extrapolation of the velocity for the convective
+    term, which is thereby treated explicitly. The result is a sequence of
+    linear variational problems, one per BDF order, solved each timestep with
+    Firedrake's ``LinearVariationalSolver``.
+
+    For ``k > 1`` the first ``k - 1`` timesteps are taken with lower-order
+    startup solvers (order 1 .. k-1, each with a matching extrapolation),
+    since the full-order scheme needs ``k`` previous solutions.
+
+    Attributes:
+        k: Order of the BDF/extrapolation scheme (1, 2, or 3).
+        ksp_rtol: Relative tolerance for the Krylov solver.
+        custom_solver_parameters: User-supplied PETSc solver parameters,
+            overriding the built-in defaults (see ``_make_petsc_solver``).
+        stabilization: Name of the stabilization scheme (a key of
+            :data:`~hydrogym.firedrake.solvers.stabilization.ns_stabilization`);
+            ``"default"`` resolves to ``flow.DEFAULT_STABILIZATION``.
+        u_prev: List of the ``k`` most recent velocity solutions (oldest
+            first) used to build the BDF and extrapolation combinations.
+    """
+
     def __init__(
         self,
         flow: FlowConfig,
@@ -34,6 +59,25 @@ class SemiImplicitBDF(NavierStokesTransientSolver):
         solver_parameters: dict = None,
         **kwargs,
     ):
+        """Initialize the solver and build the BDF/startup operators.
+
+        Args:
+            flow: Flow configuration (mesh, mixed space, BCs, forcing).
+            dt: Timestep size.
+            order: Order of the BDF/extrapolation scheme (1-3).
+            stabilization: Stabilization type; ``"default"`` resolves to the
+                flow's ``DEFAULT_STABILIZATION``. See ``ns_stabilization`` for
+                the available keys (e.g. "none", "supg", "gls", and their
+                "linearized_" variants).
+            rtol: Relative tolerance for the Krylov (KSP) solver.
+            solver_parameters: Optional PETSc solver parameters replacing the
+                built-in defaults chosen in ``_make_petsc_solver``.
+            **kwargs: Forwarded to
+                :class:`~hydrogym.firedrake.solvers.base.NavierStokesTransientSolver`.
+
+        Raises:
+            ValueError: If ``stabilization`` is not a recognized type.
+        """
         self.k = order  # Order of the BDF/EXT scheme
         self.ksp_rtol = rtol  # Krylov solver tolerance
         self.custom_solver_parameters = solver_parameters  # Custom solver parameters
@@ -52,6 +96,13 @@ class SemiImplicitBDF(NavierStokesTransientSolver):
         self.reset()
 
     def initialize_functions(self):
+        """Allocate trial/test functions and the BDF history of previous solutions.
+
+        Sets ``self.q_trial``/``self.q_test`` (velocity-pressure pairs on the
+        mixed space), aliases the body force ``self.f`` from the flow
+        configuration, and creates ``k`` copies of the current velocity in
+        ``self.u_prev`` so the first (startup) steps have valid history.
+        """
         flow = self.flow
         self.f = flow.body_force
 
@@ -73,6 +124,23 @@ class SemiImplicitBDF(NavierStokesTransientSolver):
             u.assign(flow.q.subfunctions[0])
 
     def _make_petsc_solver(self, weak_form):
+        """Wrap a weak form in a Firedrake linear variational problem and PETSc solver.
+
+        The problem is defined on the flow's current state ``self.flow.q``
+        with the flow's boundary conditions applied.
+
+        Args:
+            weak_form: UFL form (zero if written ``lhs - rhs = 0``) for the
+                order-``k`` BDF step.
+
+        Returns:
+            fd.LinearVariationalSolver: Solver with either the user-supplied
+            parameters or built-in defaults: a Schur-complement fieldsplit
+            preconditioner for the unstabilized saddle-point system, monolithic
+            hypre AMG for SUPG-type stabilization, and a direct LU/MUMPS solve
+            for GLS-type stabilization (which is incompatible with the Schur
+            complement approach).
+        """
         # Construct variational problem and PETSc solver
         q = self.flow.q
         a = lhs(weak_form)
@@ -133,6 +201,20 @@ class SemiImplicitBDF(NavierStokesTransientSolver):
         return petsc_solver
 
     def _stabilize_weak_form(self, weak_form, u_t, wind, f=None):
+        """Append the configured stabilization terms (SUPG, GLS, etc.) to a weak form.
+
+        Args:
+            weak_form: The unstabilized UFL weak form.
+            u_t: UFL expression for the BDF estimate of the time derivative.
+            wind: Velocity field used as the "wind" in the convective and
+                stabilization terms (the extrapolated velocity, or the base
+                flow for the linearized solvers).
+            f: Body forcing entering the residual-based stabilization terms.
+
+        Returns:
+            The weak form with the stabilization term added (unchanged for
+            the "none" stabilization types).
+        """
         # Stabilization (SUPG, GLS, etc.)
         stab = self.StabilizationType(
             self.flow,
@@ -146,6 +228,25 @@ class SemiImplicitBDF(NavierStokesTransientSolver):
         return stab.stabilize(weak_form)
 
     def _make_order_k_solver(self, k):
+        """Build the (order-``k`` BDF + order-``k`` extrapolation) solver.
+
+        Assembles the semi-implicit weak form
+
+            ``(alpha_k u - sum beta_BDF u_n) / dt + w . grad(u) + sigma(u,p) : eps(v)
+            + div(u) s - f . v``
+
+        where ``w`` is the order-``k`` extrapolation of the previous
+        velocities (the explicit convective velocity) and ``alpha_k``/``beta_BDF``
+        are the BDF-``k`` coefficients, then adds stabilization and wraps the
+        form in a PETSc solver.
+
+        Args:
+            k: BDF order to build (``1..self.k``); orders below ``self.k``
+                are the startup schemes used for the first timesteps.
+
+        Returns:
+            fd.LinearVariationalSolver: Solver for the order-``k`` step.
+        """
         # Setup functions and spaces
         flow = self.flow
         h = fd.Constant(self.dt)
@@ -174,6 +275,12 @@ class SemiImplicitBDF(NavierStokesTransientSolver):
         return self._make_petsc_solver(weak_form)
 
     def initialize_operators(self):
+        """Build the main order-``k`` solver and the lower-order startup solvers.
+
+        Initializes the flow's boundary conditions first, then constructs the
+        full-order BDF solver and, if ``k > 1``, one solver per order
+        ``1 .. k-1`` for the startup timesteps (``self.startup_solvers``).
+        """
         self.flow.init_bcs()
         self.petsc_solver = self._make_order_k_solver(self.k)
 
@@ -184,6 +291,23 @@ class SemiImplicitBDF(NavierStokesTransientSolver):
                 self.startup_solvers.append(self._make_order_k_solver(i + 1))
 
     def step(self, iter, control=None):
+        """Advance the flow by one timestep.
+
+        The flow's time is advanced (which also applies any actuation
+        scaling), the appropriate linear problem is solved — the full-order
+        BDF solver once ``iter`` exceeds ``k - 1``, otherwise the matching
+        lower-order startup solver — and the velocity history is shifted so
+        the newest solution enters ``u_prev[0]``.
+
+        Args:
+            iter: Timestep index within the solve (0-based); the first
+                ``k - 1`` iterations use the startup solvers.
+            control: Optional actuation value(s) forwarded to
+                ``flow.advance_time`` to scale the actuation BCs.
+
+        Returns:
+            FlowConfig: The updated flow configuration.
+        """
         # Update the time of the flow
         # TODO: Test with actuation
         bc_scale = self.flow.advance_time(self.dt, control)
@@ -205,7 +329,37 @@ class SemiImplicitBDF(NavierStokesTransientSolver):
 
 
 class LinearizedBDF(SemiImplicitBDF):
+    """Semi-implicit BDF solver for the Navier-Stokes equations linearized about a base flow.
+
+    Instead of the full convective term, solves the linearized form
+
+        ``du/dt + uB . grad(u) + u . grad(uB) - div(sigma(u,p)) = f``
+
+    around the base flow ``qB`` supplied at construction, with the flow's
+    boundary conditions linearized (``flow.linearize_bcs()``) and the
+    base-flow velocity ``uB`` acting as the "wind" in the stabilization
+    terms. Intended for adjoint/transient-growth-type analyses about a known
+    (typically steady) state.
+
+    Attributes:
+        qB: Base flow (mixed velocity-pressure ``fd.Function``) to
+            linearize about.
+    """
+
     def __init__(self, *args, qB: fd.Function, **kwargs):
+        """Initialize the linearized solver.
+
+        Args:
+            *args: Positional arguments forwarded to
+                :class:`SemiImplicitBDF` (``flow``, ``dt``, ...).
+            qB: Base flow (mixed velocity-pressure function) to linearize
+                the equations about.
+            **kwargs: Keyword arguments forwarded to :class:`SemiImplicitBDF`.
+                ``stabilization`` defaults to ``"none"`` (resolved to
+                ``"linearized_none"``) rather than the unlinearized default;
+                a plain name (e.g. ``"supg"``) is automatically prefixed with
+                ``"linearized_"``.
+        """
         self.qB = qB
         stabilization = kwargs.pop("stabilization", "none").split("_")
         if stabilization[0] != "linearized":
@@ -214,6 +368,21 @@ class LinearizedBDF(SemiImplicitBDF):
         super().__init__(*args, stabilization=stabilization, **kwargs)
 
     def _make_order_k_solver(self, k):
+        """Build the order-``k`` solver for the base-flow-linearized weak form.
+
+        Like :meth:`SemiImplicitBDF._make_order_k_solver`, but the convective
+        terms are the linearized pair ``uB . grad(u) + u . grad(uB)``, the
+        flow's boundary conditions are linearized (``flow.linearize_bcs()``),
+        and the base-flow velocity ``uB`` is used as the wind in the
+        stabilization terms. The base-flow forcing contributions on the RHS
+        vanish for a steady base flow and are folded into ``self.f``.
+
+        Args:
+            k: BDF order to build (``1..self.k``).
+
+        Returns:
+            fd.LinearVariationalSolver: Solver for the order-``k`` step.
+        """
         # Setup functions and spaces
         flow = self.flow
         sigma, epsilon = flow.sigma, flow.epsilon

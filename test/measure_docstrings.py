@@ -29,6 +29,15 @@ DEFAULT_TARGETS = [
     "hydrogym/jax/solvers/base.py",
     "hydrogym/jax/envs/channel.py",
     "hydrogym/jax/envs/kolmogorov.py",
+    # Additional files the audit's Finding-4 table measured but that were
+    # omitted from the original target list. (hydrogym/nek/integrate.py is
+    # deliberately omitted — under concurrent edit at measurement time.)
+    "hydrogym/data_manager.py",
+    "hydrogym/hf_env_mixin.py",
+    "hydrogym/core_external.py",
+    "hydrogym/nek/env.py",
+    "hydrogym/maia/env_core.py",
+    "hydrogym/jaxfluids/env_core.py",
 ]
 
 

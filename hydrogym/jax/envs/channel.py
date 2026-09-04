@@ -472,6 +472,7 @@ class PseudoSpectralNavierStokes3D(SplitEquation):
         Nw = u * dw_dx + v * dw_dy + w * dw_dz
 
         def forcing_hat(f):
+            """Broadcast a scalar forcing to the full grid (or pass a field through) and FFT it in x/y."""
             if jnp.ndim(f) == 0:
                 f_phys = jnp.ones((self.Nx, self.Ny, self.Nz), dtype=self.dtype) * f
             else:
@@ -655,6 +656,7 @@ def run_channel_pseudospectral(
     state0 = equation.to_spectral(VelocityState(U0, V0, W0))
 
     def step_fn(state, n):
+        """One RK4 substep: constant body forcing ``fx = 2.0``, time = substep index."""
         t = n
         fx = 2.0
         new_state = integrator.rk4_step(
@@ -943,6 +945,7 @@ class ChannelFlowSpectralEnv(JAXFlowEnvBase):
         state0 = self.equation.to_spectral(VelocityState(state.U, state.V, state.W))
 
         def step_fn(state_hat, n):
+            """One checkpointed RK4 substep at absolute time ``state.time + n`` (constant forcing ``fx = 2.0``)."""
             t = state.time + n
             fx = 2.0
 

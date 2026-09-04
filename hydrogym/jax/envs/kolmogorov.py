@@ -78,6 +78,20 @@ class FlowConfig(PDEBase):
         return jnp.meshgrid(x, y, indexing="ij")
 
     def _calculate_velocity_point(self, state, k1, k2):
+        """Evaluate the velocity at a single observation point from a spectral vorticity state.
+
+        Reconstructs the velocity in Fourier space (via
+        :func:`~hydrogym.jax.utils.utils.compute_velocity_fft`) and evaluates
+        the real-space velocity at grid point ``(k1, k2)``.
+
+        Args:
+            state: Spectral vorticity field.
+            k1: x-index of the evaluation point.
+            k2: y-index of the evaluation point.
+
+        Returns:
+            Real-space velocity at that point (2-vector).
+        """
         # Calculate velocity point
         kx, ky = self.load_fft_mesh()
         uhat, vhat = compute_velocity_fft(state, kx, ky)
@@ -104,6 +118,7 @@ class FlowConfig(PDEBase):
         divisor = n // self.obs_size
 
         def calculate_velocity(trajectory):
+            """Evaluate the velocity at every subsampled observation point of one snapshot."""
             points = [
                 self._calculate_velocity_point(trajectory, x, y)
                 for x in range(0, n, int(n / divisor))
@@ -112,6 +127,7 @@ class FlowConfig(PDEBase):
             return jnp.array(points)
 
         def scan_fn(carry, state):
+            """Observation for one trajectory snapshot (the carry is unused)."""
             obs_val = calculate_velocity(state)  # To use energy observation, swap this with calculate_energy
             return carry, obs_val
 
@@ -145,9 +161,11 @@ class FlowConfig(PDEBase):
 
         # Gradients of φ(x,y) #
         def dstream_func_dx(x, y):
+            """x-derivative of the stream function, ``d(phi)/dx = cos(x)``."""
             return jnp.cos(x)
 
         def dstream_func_dy(x, y):
+            """y-derivative of the stream function, ``d(phi)/dy = -sin(y)``."""
             return -jnp.sin(y)
 
         dudy = jax.grad(dstream_func_dy, argnums=1)
@@ -313,10 +331,16 @@ class PseudoSpectralNavierStokes2D(IMEXEquation):
         return self.kx * cfy_hat - self.ky * cfx_hat
 
     def forcing_term(self):
-        """Computes the user-specified forcing term of the vorticity equation
-        Args:
-          omega_hat: Fourier transformed vorticity term
-          forcing: Forcing function as specified by environment or user
+        """Compute the environmental forcing term of the vorticity equation.
+
+        Evaluates the flow's ``forcing_function(k, x, y)`` in physical space,
+        transforms the (fx, fy) velocity forcing to Fourier space, and takes
+        its curl ``2i*pi * (fy_hat * kx - fx_hat * ky)`` to obtain the
+        vorticity-space forcing.
+
+        Returns:
+            The spectral forcing term of the same shape as the state, or
+            ``None`` if the flow defines no forcing function.
         """
         forcing_func = self.flow.forcing_function
         if forcing_func is not None:
@@ -527,9 +551,21 @@ class KolmogorovFlow(JAXFlowEnvBase):
         params: KolmogorovFlowParams,
         control_field: Optional[Tuple[jnp.ndarray, jnp.ndarray]] = None,
     ) -> Tuple[jnp.ndarray, jnp.ndarray]:
-        """
+        """Roll the pseudo-spectral solver forward for one ``action_time`` window.
+
+        Uses the integrator built at construction with the default parameters'
+        ``dt`` and ``save_time``.
+
+        Args:
+            omega_hat0: Initial spectral vorticity field.
+            params: Environment parameters (unused; the rollout settings come
+                from ``self.default_params``).
+            control_field: Optional tuple ``(forcing_x, forcing_y)`` of
+                physical-space control fields applied throughout the rollout.
+
         Returns:
-            final_state_hat, trajectory
+            Tuple ``(final_state_hat, trajectory)``: the final spectral
+            vorticity and the stacked saved states along the rollout.
         """
         default = self.default_params
         dt = float(default.dt)
@@ -547,14 +583,43 @@ class KolmogorovFlow(JAXFlowEnvBase):
         return final_state, trajectory
 
     def _calculate_velocity_point(self, omega_hat: jnp.ndarray, i: int, j: int):
+        """Evaluate the real-space velocity at grid point ``(i, j)`` from a spectral vorticity field.
+
+        Uses the precomputed Fourier mesh cached at construction.
+
+        Args:
+            omega_hat: Spectral vorticity field.
+            i: x-index of the evaluation point.
+            j: y-index of the evaluation point.
+
+        Returns:
+            Real-space velocity at that point (2-vector).
+        """
         uhat, vhat = compute_velocity_fft(omega_hat, self.kx, self.ky)
         return compute_real_velocity_point(uhat, vhat, i, j)
 
     def _trajectory_mean_obs(self, trajectory: jnp.ndarray) -> jnp.ndarray:
+        """Compute the time-mean velocity-magnitude observation over a rollout trajectory.
+
+        For each spectral vorticity snapshot the velocity is reconstructed in
+        Fourier space, transformed to physical space on the full grid once,
+        subsampled on a regular ``obs_size x obs_size`` grid (stride
+        ``grid_size // obs_size``, at least 1), converted to velocity
+        magnitude, and finally averaged over the snapshots.
+
+        Args:
+            trajectory: Array of spectral vorticity snapshots with a leading
+                time axis.
+
+        Returns:
+            Flattened array of shape ``(obs_size * obs_size,)`` with the
+            trajectory-mean velocity magnitude at each observation point.
+        """
         stride_x = max(1, self.n // self.flow.obs_size)
         stride_y = max(1, self.m // self.flow.obs_size)
 
         def obs_one_state(omega_hat):
+            """Velocity-magnitude observation (subsampled, flattened) for one spectral state."""
             # 1. Compute velocity in Fourier space for the whole grid ONCE
             uhat, vhat = compute_velocity_fft(omega_hat, self.kx, self.ky)
 
@@ -602,6 +667,7 @@ class KolmogorovFlow(JAXFlowEnvBase):
             Scalar mean TKE over all snapshots.
         """
         def one(omega_hat):
+            """TKE of a single spectral vorticity snapshot."""
             return compute_tke(omega_hat, self.kx, self.ky, self.n)
 
         return jnp.mean(jax.vmap(one)(trajectory))
