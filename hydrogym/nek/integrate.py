@@ -10,18 +10,26 @@ from hydrogym.core import CallbackBase
 
 def integrate(
     env,
-    t_span: Tuple[float, float],
+    t_span: Optional[Tuple[float, float]] = None,
     dt: Optional[float] = None,
     callbacks: Iterable[CallbackBase] = [],
     controller: Optional[Callable] = None,
     max_steps: Optional[int] = None,
+    num_steps: Optional[int] = None,
 ):
     """
     Integrate a Nek environment through time.
 
+    The loop runs until one of the following stops it first: the end of
+    ``t_span`` is reached, the step budget (``max_steps``/``num_steps``) is
+    exhausted, or the environment reports the episode is over
+    (``terminated or truncated``).
+
     Args:
       env: Nek environment (NekEnv, NekParallelEnv, or NekPettingZooEnv)
-      t_span: Tuple of (start_time, end_time)
+      t_span: Tuple of (start_time, end_time). Optional: when omitted the
+        loop is bounded only by the step budget (and episode termination),
+        and simulated time is reported relative to t=0.
       dt: Time step (optional, uses env's default if not provided)
       callbacks: List of callbacks to evaluate throughout the solve
       controller: Controller object or function. Supports multiple formats:
@@ -29,18 +37,42 @@ def integrate(
           `model.predict(obs, state=..., episode_start=..., deterministic=True)`)
         - Legacy function: `action = controller(t, obs, env)` or
           `action = controller(t, obs)`
-      max_steps: Maximum number of steps (optional)
+      max_steps: Maximum number of steps (optional). If not given, derived
+        from t_span (number of dt intervals + 1).
+      num_steps: Alternative step bound, taking precedence over max_steps
+        when both are given. Provided for callers that think in interaction
+        counts rather than a time span (e.g.
+        ``integrate(env, controller=model, num_steps=1000)``); it is the
+        same kind of limit as max_steps, not an additional one.
 
     Returns:
       The environment after integration
+
+    Raises:
+      ValueError: if no stop condition is specified (neither t_span nor a
+        step budget via max_steps/num_steps).
     """
-    t_start, t_end = t_span
+    if t_span is not None:
+        t_start, t_end = t_span
+    else:
+        t_start, t_end = 0.0, float("inf")
+
+    if num_steps is not None:
+        max_steps = num_steps
+    elif max_steps is None:
+        if t_span is None:
+            raise ValueError(
+                "integrate() needs a stop condition: pass t_span, max_steps, or num_steps."
+            )
+
     iter = 0
     t = t_start
 
-    # Reset environment
+    # Reset environment. Gymnasium-style envs return (obs, info); older
+    # wrappers / VecEnvs return just the observation.
     if hasattr(env, "reset"):
-        obs = env.reset()
+        reset_result = env.reset()
+        obs = reset_result[0] if isinstance(reset_result, tuple) else reset_result
     else:
         obs = None
 
@@ -127,16 +159,26 @@ def integrate(
         info = {}
         if hasattr(env, "step"):
             result = env.step(action)
-            if isinstance(result, tuple) and len(result) >= 2:
-                obs, reward, done, info = result[:4]
-                last_reward = reward
-                # Store reward in env for callbacks
-                env.last_reward = reward
-                if done:
-                    break
+            if isinstance(result, tuple) and len(result) >= 5:
+                # Gymnasium 5-tuple: (obs, reward, terminated, truncated, info)
+                obs, reward, terminated, truncated, info = result[:5]
+                done = terminated or truncated
+            elif isinstance(result, tuple) and len(result) == 4:
+                # Legacy gym API 4-tuple: (obs, reward, done, info)
+                obs, reward, done, info = result
             else:
+                # Wrapped/vectorized env returning a bare observation
                 obs = result
-                info = {}
+                done = False
+
+            # Track the last reward for callbacks (and expose it on the env)
+            if isinstance(result, tuple) and len(result) >= 2:
+                reward = result[1]
+                last_reward = reward
+                env.last_reward = reward
+
+            if done:
+                break
 
         # Update time
         t = t_start + (iter + 1) * dt
