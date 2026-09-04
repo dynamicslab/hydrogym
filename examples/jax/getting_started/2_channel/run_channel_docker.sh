@@ -2,6 +2,12 @@
 #
 # Run 3D turbulent channel flow JAX environment (Re_tau = 180).
 #
+# NOTE: despite the historical "_docker" suffix in the filename, this is an
+# HPC cluster job script, not a Docker entrypoint: it loads environment
+# modules (`module purge` / `module load`) and activates an EasyBuild
+# virtualenv. Submit it from a compute node (or wrap it in your own
+# sbatch/srun script).
+#
 # ── Flow physics ────────────────────────────────────────────────────────────
 #
 #   This environment simulates incompressible turbulent channel flow between
@@ -76,7 +82,9 @@
 # ── Output ──────────────────────────────────────────────────────────────────
 #
 #   Per-step table: step | WSS | reward
-#   WSS ≈ 0.0019 at Re_tau=180 in the uncontrolled case.
+#   Magnitude is configuration-dependent (normalization, grid, initial field);
+#   the recorded notebook run (channel.ipynb) shows WSS ≈ 0.34 (reward ≈ -0.34)
+#   for the uncontrolled case at Re_tau=180 with the shipped default config.
 #   Drag reduction is achieved when WSS (and reward magnitude) decreases.
 #
 
