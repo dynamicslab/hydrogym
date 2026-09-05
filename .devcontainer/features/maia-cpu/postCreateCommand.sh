@@ -95,6 +95,22 @@ else
         exit 1
     fi
 
+    # GCC-13-specific -Werror=stack-protector false positive inside vendored
+    # Eigen headers (confirmed on Ubuntu 24.04's default GCC 13.3.0; MAIA's
+    # own auxiliary/compilers/GNU.cmake already carries an identical
+    # "-Wno-error=alloc-zero"/"-Wno-error=stringop-overflow" pair for the
+    # same class of GCC-version-triggered warning inside this vendored
+    # header, added when they hit it on GCC 15.1.4 -- Eigen's own code
+    # hasn't changed, just what each GCC version's -Wstack-protector
+    # analysis flags). Patch it in at container-start rather than requiring
+    # an upstream wipmaiaml fix first; idempotent (checks it isn't already
+    # there) so this becomes a no-op once wipmaiaml picks it up itself.
+    GNU_CMAKE="${MAIA_DIR}/auxiliary/compilers/GNU.cmake"
+    if [[ -f "${GNU_CMAKE}" ]] && ! grep -q 'Wno-error=stack-protector' "${GNU_CMAKE}"; then
+        echo "Patching ${GNU_CMAKE}: adding -Wno-error=stack-protector (GCC 13 Eigen false positive)"
+        sed -i 's/"-Wno-error=stringop-overflow"/"-Wno-error=stringop-overflow"\n    "-Wno-error=stack-protector"/' "${GNU_CMAKE}"
+    fi
+
     HOST_CONFIG="${MAIA_DIR}/auxiliary/hosts/LocalCPU.cmake"
     echo "Creating GNU host config: ${HOST_CONFIG}"
 
