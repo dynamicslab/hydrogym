@@ -2827,3 +2827,95 @@ deferred; it is not a regression from anything in this branch's own work.
 
 Commits: `5d789e7` (merge), `2dd0064` (issue #259 + public-access docs),
 `7cec3a0` (GCC13/Eigen fix).
+
+## Bisected and Fixed: `full-cpu-stack`'s Firedrake/FIAT Bug (2026-09-05)
+
+Follow-up to the previous section. The user confirmed the `third_party/firedrake`
+submodule pointer (Dec 2022) was a red herring — it's vestigial; the
+`firedrake` feature's `install.sh` does its own fresh clone into
+`/opt/firedrake` and checks out a separate `FIREDRAKE_COMMIT` pin
+(`ef4c1bf9e6c`, confirmed actually from **2026-03-12**, not stale) — and
+asked for the narrowest possible fix rather than jumping to current
+Firedrake HEAD (which was confirmed to cascade into unrelated new build
+requirements: a missing `firedrake-rtree` dependency, then a
+`libsupermesh` CMake failure that turned out to be its own testing
+artifact — see below).
+
+**Root cause, precisely identified**: Firedrake's own `pyproject.toml`
+pins its FIAT dependency to `firedrake-fiat @ git+.../fiat.git@main` —
+no fixed commit at all, by design (Firedrake and FIAT are co-developed
+and Firedrake's own CI continuously tests HEAD-against-`main`). Any
+given historical Firedrake pin therefore only stays compatible with FIAT
+for as long as FIAT's API doesn't move. FIAT's `dual_evaluation()` grew
+a third return value at some point; Firedrake itself didn't start
+unpacking it (`evaluation, point_indices, basis_indices = ...` instead
+of the old `evaluation, basis_indices = ...`) until commit `22c6bc44c`
+("Compile interpolation through the GEM optimisation pipeline",
+2026-08-26). Found via `git log <old>..<new> -- tsfc/driver.py` — two
+commits touched that file in the range; the other
+(`fda580f34`, "TSFC: Dual evaluation for nodal EnrichedElement") looked
+promising by title alone but its diff didn't touch the actual failing
+unpacking line, ruling it out.
+
+**Cascading requirement, also fixed**: `22c6bc44c` requires PETSc
+`>=3.25.0` (per its `scripts/firedrake-configure`'s
+`SUPPORTED_PETSC_VERSION`); the `petsc` feature's default was `v3.24.0`.
+Rebuilt PETSc 3.25.0 live (full `--download-mumps --download-hypre
+--download-superlu_dist` etc. build, ~35 min) and confirmed it configures
+and builds cleanly with the same GNU/OpenMPI toolchain — no changes
+needed to the PETSc configure flags themselves, just the version.
+
+**Two false leads self-corrected during testing** (both artifacts of
+manual, partial reproduction rather than running the real `install.sh`
+end-to-end):
+- `libsupermesh`'s build "failing" with `nvfortran-Error-Unknown switch:
+  -ffree-line-length-none` — `mpif90` was resolving to NVHPC's
+  `nvfortran` instead of the GNU-toolchain `mpifort.openmpi`, because my
+  manual test commands weren't setting `FC` the way `install.sh` already
+  does (line 58, well before the `requirements-build.txt` install). Not
+  a real bug — confirmed by re-running with `FC` set correctly.
+- `firedrake-rtree` "missing" at Firedrake HEAD — already listed in
+  `requirements-build.txt`, just not yet installed in that manual
+  session; a plain `pip install -r requirements-build.txt` picks it up.
+
+**Fixes applied** (commits `9061395`, `0f84cd7`):
+- `.devcontainer/features/firedrake/install.sh`: `FIREDRAKE_COMMIT` →
+  `22c6bc44c79a06d576f49790d1a6d00dc10112ca`, with a detailed comment
+  explaining the FIAT-`@main` coupling so the next person who has to bump
+  this understands why it's not a "just pin to HEAD" problem.
+- `.devcontainer/features/petsc/install.sh`: `PETSC_VERSION` → `v3.25.0`.
+- **Also caught**: both features' `devcontainer-feature.json` manifests
+  declare their own `"default"` for the same options, which the
+  devcontainer CLI always injects — silently shadowing `install.sh`'s own
+  inline fallback. The first attempt at this fix (editing only
+  `install.sh`) looked complete but a genuinely fresh
+  `build_all_containers.sh` re-run proved otherwise: the log showed the
+  old `ef4c1bf9e6c` commit still being used. Fixed both manifests plus
+  `devcontainer-template.json`'s doc-comment defaults to match.
+
+**Verified, twice, both live**:
+1. Directly in the container that hit the original failure: after
+   manually replaying the fix chain (submodule init already done →
+   bumped `FIREDRAKE_COMMIT` → rebuilt PETSc 3.25.0 → reinstalled
+   petsc4py → reinstalled Firedrake), `hgym.Cylinder(Re=100,
+   mesh="medium", use_HF_data_manager=False)` + `NewtonSolver().solve()`
+   reproduces the exact reference values: `CL=3.87e-5, CD=1.2840`.
+2. **From a completely fresh, unattended, from-scratch
+   `build_all_containers.sh` run** (no manual intervention, testing the
+   actual committed fix): `full-cpu-stack: PASS [34m 59s]`. Re-ran the
+   same Cylinder/NewtonSolver check against this independently-built
+   container — identical result. Re-ran the `firedrake` solver smoke
+   test (`test_cpu_solvers.sh`) — `firedrake: PASS`.
+
+### Final status
+
+Both `full-cpu-stack` and `full-gpu-stack` now build and pass cleanly
+from a genuinely fresh clone, with MAIA's now-public `wipmaiaml` and this
+Firedrake/PETSc fix both confirmed working end-to-end, not asserted. All
+8 solver smoke tests across both stacks pass (the earlier "TIMEOUT"
+results were confirmed genuine in-progress runs hitting a tight 90s
+harness budget, not real failures). This closes out the devcontainer
+validation the user asked for as a precondition for un-drafting PR #266.
+
+Commits: `9061395` (Firedrake/PETSc version bump), `0f84cd7` (feature
+manifest defaults).
