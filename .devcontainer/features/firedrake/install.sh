@@ -10,7 +10,27 @@ set -euo pipefail
 # concatenating the camelCase option id in uppercase with no separator
 # (e.g. "hydrogymExtras" -> HYDROGYMEXTRAS, not HYDROGYM_EXTRAS) - read
 # from those, or a configured option silently falls back to the default.
-FIREDRAKE_COMMIT="${FIREDRAKECOMMIT:-ef4c1bf9e6caa9c70dc75413f633c8f97551a4cc}"
+#
+# FIREDRAKE_COMMIT must be new enough to match whatever FIAT commit is
+# current at build time: Firedrake's own pyproject.toml pins
+# "firedrake-fiat @ git+https://github.com/firedrakeproject/fiat.git@main"
+# (no fixed FIAT commit at all), so an old Firedrake pin paired with a
+# much newer FIAT silently breaks at runtime, not at install time - the
+# previous pin here (ef4c1bf9e6c, 2026-03-12) failed with "ValueError:
+# too many values to unpack (expected 2)" out of
+# tsfc/driver.py::compile_expression_dual_evaluation, because FIAT's
+# dual_evaluation() had grown a third return value
+# (evaluation, point_indices, basis_indices) that Firedrake itself didn't
+# start unpacking until 22c6bc44c ("Compile interpolation through the GEM
+# optimisation pipeline", 2026-08-26) - the commit pinned below. That
+# commit in turn requires PETSc >=3.25.0 (see the petsc feature's
+# PETSC_VERSION) and a setuptools new enough to parse PEP 639-style
+# `license = "..."` string fields in pyproject.toml (install.sh already
+# upgrades setuptools right before this step, see below - just don't
+# downgrade it again afterward). Confirmed live: hgym.Cylinder() +
+# NewtonSolver().solve() reproduces the exact reference values
+# (CL=3.87e-5, CD=1.2840) at this pin.
+FIREDRAKE_COMMIT="${FIREDRAKECOMMIT:-22c6bc44c79a06d576f49790d1a6d00dc10112ca}"
 HYDROGYM_EXTRAS="${HYDROGYMEXTRAS:-maia,firedrake,nek}"
 
 echo "=== Firedrake + HydroGym CPU Feature Installation ==="

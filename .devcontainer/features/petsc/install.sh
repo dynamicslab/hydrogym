@@ -1,6 +1,6 @@
 #!/bin/bash
 # PETSc Feature Install Script
-# Builds PETSc 3.24.0 with OpenBLAS for Firedrake compatibility
+# Builds PETSc 3.25.0 with OpenBLAS for Firedrake compatibility
 # Uses GCC + OpenMPI from base
 
 set -euo pipefail
@@ -9,7 +9,14 @@ set -euo pipefail
 # named by concatenating the camelCase option id in uppercase with no
 # separator (e.g. "petscVersion" -> PETSCVERSION, not PETSC_VERSION) - read
 # from those, or a configured option silently falls back to the default.
-PETSC_VERSION="${PETSCVERSION:-v3.24.0}"
+#
+# Must satisfy whatever SUPPORTED_PETSC_VERSION the pinned FIREDRAKE_COMMIT
+# (see the firedrake feature's install.sh) declares in its
+# scripts/firedrake-configure -- v3.24.0 was the requirement paired with
+# this repo's previous Firedrake pin; bumping the Firedrake pin to
+# 22c6bc44c (see that file for why) requires v3.25.0. Keep these two pins
+# moving together.
+PETSC_VERSION="${PETSCVERSION:-v3.25.0}"
 WITH_FIREDRAKE="${WITHFIREDRAKE:-true}"
 
 echo "=== PETSc Feature Installation ==="
