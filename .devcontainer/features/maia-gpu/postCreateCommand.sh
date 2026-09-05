@@ -7,10 +7,11 @@
 # at image-build time). Idempotent: skips the build if a matching binary
 # already exists.
 #
-# CAVEAT: builds against third_party/m-AIA, the private wipmaiaml dev tree
-# (see install.sh's CAVEAT) - requires RWTH GitLab access to have been
-# initialized on the host before this container was opened (see the
-# submodule-init check below for what happens if it wasn't).
+# CAVEAT: builds against third_party/m-AIA, the wipmaiaml dev tree (see
+# install.sh's CAVEAT) - this branch is now public, but the submodule
+# still needs to have been initialized on the host before this container
+# was opened (see the submodule-init check below for what happens if it
+# wasn't).
 
 set -euo pipefail
 
@@ -43,22 +44,22 @@ fi
 # whatever's already checked out on the host side).
 if [[ -z "$(ls -A "${MAIA_DIR}" 2>/dev/null)" ]]; then
     echo "Initializing third_party/m-AIA submodule..."
-    # third_party/m-AIA is private (RWTH GitLab) - this container has no TTY
-    # and no cached credentials of its own, so a `git submodule update --init`
-    # that has to actually authenticate here will fail immediately rather
-    # than prompt. Give a clear pointer instead of letting that raw auth
-    # error be the only output.
+    # third_party/m-AIA (wipmaiaml) is now public, so this should just work -
+    # but this container has no TTY and no cached credentials of its own, so
+    # if it fails for some other reason (network, a still-private branch on
+    # your fork, etc.) it will fail immediately rather than prompt. Give a
+    # clear pointer instead of letting that raw error be the only output.
     if ! git -C /workspace submodule update --init --depth 1 -- third_party/m-AIA; then
         echo "ERROR: could not initialize third_party/m-AIA (see git error above)."
-        echo "This submodule is private and requires RWTH GitLab access. Run this on"
-        echo "the HOST before opening the devcontainer, where it can prompt you for"
-        echo "credentials interactively:"
+        echo "Run this on the HOST before opening the devcontainer, where a"
+        echo "credential prompt (if this actually is a private fork/branch for"
+        echo "you) can be answered interactively:"
         echo "  git submodule update --init --recursive -- third_party/m-AIA"
         exit 1
     fi
 fi
 
-echo "NOTE: third_party/m-AIA is the private wipmaiaml dev tree (RWTH GitLab)."
+echo "NOTE: third_party/m-AIA is the wipmaiaml dev tree (RWTH GitLab, public)."
 
 cd "${MAIA_DIR}"
 
