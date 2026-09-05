@@ -25,6 +25,71 @@ HydroGym is a comprehensive platform for applying reinforcement learning to flui
 - **2D & 3D**: From simple 2D benchmarks to complex 3D turbulent flows (Re up to 400,000)
 - **Research-Ready**: Managed by a complementary HuggingFace repository
 
+## Quick Start: `gym.make()`
+
+**The standard way to start any HydroGym environment is gymnasium's
+`gym.make()`** — one call, the same shape regardless of backend:
+
+```python
+import gymnasium as gym
+import hydrogym.registration  # registers HydroGym's environment ids
+
+env = gym.make("hydrogym/Cylinder-v0")
+obs, info = env.reset()
+for _ in range(100):
+    action = env.action_space.sample()
+    obs, reward, terminated, truncated, info = env.step(action)
+env.close()
+```
+
+The exact same shape works for every gymnasium-API backend — only the id
+(and, for MAIA/Nek, the MPMD launch command underneath) changes:
+
+| Backend | id | Launch |
+|---|---|---|
+| Firedrake | `hydrogym/Cylinder-v0`, `RotaryCylinder`, `Cavity`, `Pinball`, `Step` | `python script.py` |
+| MAIA | `hydrogym-maia/Cylinder_2D_Re200-v0` (zero extra args) | `mpirun -np 1 python script.py : -np N maia properties_run.toml` |
+| NEK5000 | `hydrogym-nek/TCFmini_3D_Re180-v0` (`nproc=` required) | `mpirun -np 1 python script.py : -np N nek5000` |
+| JAX-Fluids | `hydrogym-jaxfluids/Nozzle2D-v0`, `Nozzle3D` | `python script.py` |
+
+Runnable, verified reference scripts for each: [`examples/firedrake/getting_started/gym_make_demo.py`](examples/firedrake/getting_started/gym_make_demo.py),
+[`examples/maia/getting_started/gym_make_demo.py`](examples/maia/getting_started/gym_make_demo.py),
+[`examples/nek/getting_started/gym_make_demo.py`](examples/nek/getting_started/gym_make_demo.py),
+[`examples/jaxfluids/gym_make_demo.py`](examples/jaxfluids/gym_make_demo.py).
+
+`gym.make()` is additive, not a cage — pass `env_config={...}` (Firedrake,
+JAX-Fluids) or backend-native kwargs (MAIA, Nek) to override any default,
+same as constructing the environment directly. MAIA ids other than
+`Cylinder_2D_Re200` have no universal default probe grid and require
+`probe_locations=[...]`; `gym.make()` raises a clear error naming this if
+it's missing, rather than guessing at flow-geometry-specific defaults.
+
+**JAX stays outside `gym.make()` by design.** It implements a
+functional/JIT (`gymnax`-style) contract — `jax.jit(env.reset_env)` /
+`jax.jit(env.step_env)`, not `gymnasium.Env`'s `reset()`/`step()` — because
+the whole point of the JAX backend is being traceable through
+`jax.jit`/`jax.vmap`/`jax.lax.scan`, which a `self`-mutating
+`gymnasium.Env` cannot be. Wrapping it in `gym.make()` would present a
+misleading API. Use `hydrogym.jax.envs.*` directly — see
+[`examples/jax/getting_started/`](examples/jax/getting_started/).
+
+### Lower-level entry points
+
+`gym.make()` is a thin, optional layer over each backend's own native
+construction path — every one of them remains fully available, for direct
+solver access, open-loop control, custom flow/solver classes, or anything
+`gym.make()`'s registered defaults don't cover:
+
+- **Firedrake**: `hydrogym.firedrake.Cylinder` + `hydrogym.core.FlowEnv`
+  directly, or `hydrogym.firedrake.NewtonSolver`/`SemiImplicitBDF` on a
+  bare flow object for non-RL workflows (steady-state solves, stability
+  analysis) — see [`examples/firedrake/advanced/`](examples/firedrake/advanced/).
+- **MAIA**: `hydrogym.maia.from_hf(...)` — see [`examples/maia/getting_started/test_maia_env.py`](examples/maia/getting_started/test_maia_env.py).
+- **NEK5000**: `hydrogym.nek.NekEnv.from_hf(...)` / `NekEnv(env_config=...)` — see [`examples/nek/getting_started/`](examples/nek/getting_started/).
+- **JAX-Fluids**: `hydrogym.jaxfluids.envs.Nozzle2D(env_config=...)` directly.
+- **JAX**: the functional API is always the entry point (there is no
+  higher-level wrapper to bypass) — see [`examples/jax/getting_started/`](examples/jax/getting_started/).
+
 ## Quick Start with Docker (Recommended)
 
 **We strongly recommend using our pre-configured Docker containers** for hassle-free setup:
@@ -89,7 +154,12 @@ All required environment checkpoints are available via [HuggingFace](https://hug
 
 ## Examples
 
-HydroGym includes comprehensive examples for each solver backend (internet connection required). We highly recommend using our provided docker containers:
+HydroGym includes comprehensive examples for each solver backend (internet connection required). We highly recommend using our provided docker containers.
+Each backend's `getting_started/` directory includes a `gym_make_demo.py`
+(the standard entry point above) alongside the backend-specific,
+lower-level scripts below (direct construction, SB3 training loops,
+multi-agent wrappers) — start with `gym_make_demo.py` unless you need
+what a specific lower-level script demonstrates.
 
 ### Firedrake Examples
 
@@ -162,24 +232,25 @@ cd 3_ppo
 
 ## Training RL Agents
 
-HydroGym works with standard RL libraries. Example with Stable-Baselines3:
+HydroGym works with standard RL libraries. Example with Stable-Baselines3,
+built on `gym.make()`:
 
 ```python
-from hydrogym import FlowEnv
-import hydrogym.firedrake as hgym
+import gymnasium as gym
+import hydrogym.registration
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 
-# Create environment
+# Create environment (env_config overrides gym.make()'s registered defaults)
 def make_env():
-    env_config = {
-        'flow': hgym.Cylinder,
-        'flow_config': {'mesh': 'medium', 'Re': 100},
-        'solver': hgym.SemiImplicitBDF,
-        'solver_config': {'dt': 1e-2},
-        'actuation_config': {'num_substeps': 2},
-    }
-    return FlowEnv(env_config)
+    return gym.make(
+        "hydrogym/Cylinder-v0",
+        env_config={
+            "flow_config": {"mesh": "medium", "Re": 100},
+            "solver_config": {"dt": 1e-2},
+            "actuation_config": {"num_substeps": 2},
+        },
+    )
 
 # Vectorize and normalize
 env = DummyVecEnv([make_env])
@@ -190,7 +261,12 @@ model = PPO("MlpPolicy", env, verbose=1)
 model.learn(total_timesteps=100000)
 ```
 
-See also provided [examples/](examples/) for more details how to leverage individual solver backends for training.
+Constructing `hydrogym.core.FlowEnv`/backend-native factories
+(`hydrogym.maia.from_hf`, `NekEnv.from_hf`, ...) directly works exactly
+the same way and remains fully supported — `gym.make()` is a thin,
+optional layer on top, not a replacement; see "Lower-level entry points"
+above. See also provided [examples/](examples/) for more details how to
+leverage individual solver backends for training.
 
 ## Advanced Features
 

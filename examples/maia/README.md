@@ -12,7 +12,8 @@ MAIA is a high-performance CFD solver designed for massively parallel simulation
 maia/
 ├── README.md              # This file
 └── getting_started/       # START HERE - Standard RL interface
-    ├── test_maia_env.py   # Interactive test script with MPMD
+    ├── gym_make_demo.py   # gym.make() -- the standard entry point (MPMD underneath)
+    ├── test_maia_env.py   # Interactive test script (lower-level, direct from_hf)
     ├── prepare_workspace.py  # Workspace setup utility
     └── run_example_docker.sh # HPC job runner script (loads env modules; not Docker despite the name)
 ```
@@ -29,6 +30,11 @@ maia/
 
 ### Running Your First Example
 
+MAIA is still reached through the standard `gym.make()` entry point --
+the only difference from Firedrake/JAX-Fluids is that it must be launched
+as an MPMD job, since the real solver runs as a separate MPI application
+that Python talks to over MPI, not a library call:
+
 ```bash
 cd getting_started
 
@@ -37,8 +43,25 @@ python prepare_workspace.py --env Cylinder_2D_Re200 --work-dir ./test_run
 
 # Step 2: Run with MPMD execution (1 Python process + 1 MAIA process)
 cd test_run
-mpirun -np 1 python ../test_maia_env.py --environment Cylinder_2D_Re200 : -np 1 maia properties_run.toml
+mpirun -np 1 python ../gym_make_demo.py : -np 1 maia properties_run.toml
 ```
+
+```python
+# gym_make_demo.py's core, once inside the MPMD-launched process:
+import gymnasium as gym
+import hydrogym.registration
+
+env = gym.make("hydrogym-maia/Cylinder_2D_Re200-v0")  # verified default probe grid, zero extra args
+obs, info = env.reset()
+obs, reward, terminated, truncated, info = env.step(env.action_space.sample())
+```
+
+Other MAIA ids (e.g. `hydrogym-maia/RotaryCylinder_2D_Re1000-v0`) have no
+universal default probe grid and need `probe_locations=[...]` passed to
+`gym.make()` explicitly -- it raises a clear error naming this if it's
+missing, rather than guessing at a flow-geometry-specific default. See
+`test_maia_env.py` for the lower-level `hydrogym.maia.from_hf(...)` path
+and worked probe-grid examples.
 
 **Note:** MAIA uses MPMD (Multiple Program Multiple Data) execution where Python and MAIA run as separate MPI programs that communicate.
 

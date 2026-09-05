@@ -12,6 +12,17 @@ HydroGym's JAX backend provides pseudo-spectral Navier-Stokes solvers written en
 
 The JAX environments follow the [gymnax](https://github.com/RobertTLange/gymnax) interface (`reset_env` / `step_env` with explicit `params`) and include wrappers (`VecEnv`, `LogWrapper`, `ClipAction`, `NormalizeVecObservation`, `NormalizeVecReward`) for RL training.
 
+> **Note on `gym.make()`:** every other HydroGym backend (Firedrake, MAIA,
+> NEK5000, JAX-Fluids) is reachable through gymnasium's `gym.make()`, the
+> standard, recommended entry point across the rest of this repo. JAX is
+> the one deliberate exception: `reset_env`/`step_env` are functional
+> (state in, state out) so the whole thing stays traceable through
+> `jax.jit`/`jax.vmap`/`jax.lax.scan` — a `self`-mutating `gymnasium.Env`
+> cannot be, so wrapping it in `gym.make()` would present a misleading
+> API rather than a real one. The functional API below (or
+> `hydrogym.jax.envs.*` directly) is always the entry point for this
+> backend; there is no higher-level wrapper to bypass.
+
 ## Directory Structure
 
 ```
