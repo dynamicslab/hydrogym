@@ -2501,3 +2501,174 @@ affected by it.
 
 Commits: `4eb509d` (SemiImplicitBDF), `73b0f95` (MAIA + JAX-Fluids),
 `09de9dc` (CHANGELOG).
+
+## Making `gym.make()` the Documented Standard, Closing Remaining Findings (2026-09-05)
+
+Follow-up to the previous section: with `gym.make()` verified working
+across all four gymnasium-API backends, this pass (1) made it the
+documented, discoverable standard entry point everywhere a user would
+first look, (2) added it as an explicit, tested feature rather than an
+implementation detail, and (3) used the "run everything, don't assert"
+directive to find and fix issues the previous passes missed.
+
+### Documentation changes
+
+Every backend README (main `README.md`, `examples/firedrake/README.md`,
+`examples/maia/README.md`, `examples/nek/getting_started/README.md`,
+`examples/jax/README.md`) now leads with `gym.make()` as the standard
+entry point and demotes native construction (`FlowEnv`, `.from_hf()`,
+direct `NekEnv`/`MaiaFlowEnv` construction) to explicitly-labeled
+lower-level side entries, matching the mujoco/gymnasium convention the
+user asked for. `docs/docs/quickstart.md` and `docs/docs/introduction.md`
+got the same treatment. `examples/jaxfluids/README.md` didn't exist
+before this pass and was added.
+
+Four reference scripts (`examples/{firedrake,maia,nek,jaxfluids}/
+getting_started/gym_make_demo.py`, and one at `examples/jaxfluids/
+gym_make_demo.py`), each live-verified end-to-end (Firedrake in-process;
+MAIA and Nek as real MPMD jobs; JAX-Fluids in-process), are the canonical
+examples every README's `gym.make()` section points to.
+
+### `gym.make()` added as an explicit, tested feature
+
+`test/test_registration_live.py` (new) exercises `gym.make()` against the
+**real** Firedrake backend (no mocking) for all 5 registered ids, plus a
+kwarg-override test — this is the actual regression coverage for the
+feature, since the pre-existing `test/test_registration.py` mocks every
+backend and therefore cannot catch backend-integration bugs (see the
+previous section's four real bugs it never caught).
+
+### Nek5000 README: two structurally wrong sections found and fixed
+
+Running every example against the "test and prove it" standard surfaced
+that `examples/nek/getting_started/README.md`'s sections 2 and 3 had
+fundamentally wrong, not-just-cosmetic API usage:
+
+- **Section 2 (`2_parallel_env`)**: documented a nonexistent factory
+  call (`parallel_env(environment_name=..., nproc=..., num_agents=...)`)
+  and `obs = env.reset()` (single return value). The real API is
+  composition — construct `NekEnv` first, then wrap it —
+  and `reset()` returns `(obs, info)`. Fixed and live-verified (real
+  10-rank MPMD run, 400 agents, exit 0).
+- **Section 3 (`3_pettingzoo`)**: this was worse than a typo — the
+  section's title ("PettingZoo AEC Interface"), use-case description
+  ("Turn-based multi-agent scenarios"), and code (`env.agent_iter()`/
+  `env.last()`) all claimed `NekPettingZooEnv` implements PettingZoo's
+  turn-based AEC protocol. Reading `hydrogym/nek/pettingzoo_env.py` in
+  full shows `class NekPettingZooEnv(ParallelEnv)` — it is a
+  `pettingzoo.ParallelEnv` subclass, i.e. the same dict-based,
+  simultaneous-action interface as section 2's `NekParallelEnv`, just
+  with PettingZoo-spec compliance (`metadata`, cached
+  `observation_space`/`action_space`) added on top. Confirmed the
+  `agent_iter()` snippet does not even run
+  (`AttributeError: 'NekPettingZooEnv' object has no attribute
+  'agent_iter'`) before rewriting the section to accurately describe it
+  as a `ParallelEnv`-compliance wrapper, not an AEC interface. Re-verified
+  live against a real 10-rank MPMD job after the fix (400 agents, exit 0)
+  using the existing `3_pettingzoo/test_nek_pettingzoo.py`, which already
+  used the correct dict-based pattern — only the README was wrong.
+  Also removed an unused `from pettingzoo.utils import parallel_to_aec`
+  import left in `train_sb3_pettingzoo.py` from the same earlier,
+  incorrect AEC-based design; the script actually wraps the `ParallelEnv`
+  directly with `supersuit.pettingzoo_env_to_vec_env_v1`.
+
+### API docs (`docs/docs/api/`) had drifted badly and needed regeneration
+
+Grepping for stale references (`hgym.IPCS`, old factory calls,
+`MiniChannel_Re180`) turned up two real problems in the checked-in,
+auto-generated `docs/docs/api/*.md` files:
+
+1. `docs/docs/api/nek/__init__.md` and `docs/docs/api/nek/env.md` still
+   showed `NekEnv.from_hf('MiniChannel_Re180', ...)` — an environment
+   name that does not exist (fixed in the *source* docstring by an
+   earlier commit in this session, `db3ee88`, but the generated docs were
+   never regenerated afterward).
+2. Diffing a full regeneration (`pydoc-markdown` via `docs/package.json`'s
+   `generate-api` script) against the checked-in docs showed the drift
+   was much larger than just this one string: entire modules added this
+   session (`registration.py`, `core_external.py`, `bdf_ext.py`,
+   `hf_env_mixin.py`, `jax/equation.py`) had no doc page at all, and two
+   modules removed earlier (`maia/hf_data_manager.py`, `jax/flow.py`)
+   still had stale pages.
+
+Regenerating surfaced a second, independent bug: `hydrogym/registration.py`'s
+module docstring used a bare indented code block starting with
+`import hydrogym.registration`. pydoc-markdown's `google`-style processor
+doesn't preserve that as a fenced code block, so the generated
+`docs/docs/api/registration.md` had a raw `import ...` line outside any
+code fence — Docusaurus's MDX compiler tries to parse any top-level line
+starting with `import`/`export` as a real ESM statement and failed the
+build (`Could not parse import/exports with acorn`). Confirmed by running
+`docusaurus build` (Node 20, since the repo requires it and the host only
+had Node 18 — downloaded a portable Node 20 build to verify). Fixed by
+rewriting the docstring's example as an `Examples:`/`>>>` doctest-style
+block, the convention already used elsewhere in this codebase (e.g.
+`maia/env_core.py::from_hf`) and confirmed to render correctly. Full site
+build verified clean after the fix and the full doc regeneration.
+
+### Two more real bugs found while re-running the full Firedrake suite
+
+Re-running `test/`'s full suite after all the above (`pytest . --ignore
+test_*_grad.py`, the repo's own CI invocation) surfaced one failure not
+caught by the previous pass's targeted Finding-C fixes:
+
+- **`test_cyl.py::test_linearize`**: same root cause as `test_steady`
+  (Finding C) — `hgym.Cylinder(mesh="medium")` without
+  `use_HF_data_manager=False` picks up a nondeterministically-selected
+  transient checkpoint as the Newton solve's initial guess, which
+  diverges. This specific test was missed by the earlier sweep because it
+  doesn't assert on force coefficients (just exercises
+  `solver.solve()` + `hgym.modeling.linearize()`), so it wasn't part of
+  the numerical-target audit. Fixed identically to `test_steady`.
+- Fixing that initial-condition issue let the Newton solve converge far
+  enough to reach `hgym.modeling.linearize()` for the first time in this
+  audit, which then surfaced a **second, independent, previously-masked
+  bug**: `hydrogym/firedrake/utils/modeling.py::linearize_dynamics` calls
+  `solver.steady_form(q=qB)` with the raw, un-split `qB` `fd.Function`,
+  but `NewtonSolver.steady_form` immediately unpacks its argument as
+  `(u, p) = q`, expecting the already-split tuple that
+  `NewtonSolver.solve()` itself provides via `fd.split(q)`. This raised
+  `ValueError: too many values to unpack` and had presumably never been
+  exercised successfully before, since the only caller
+  (`test_cyl.py::test_linearize`) always diverged before reaching it.
+  Fixed by calling `fd.split(qB)` before `steady_form()`, matching
+  `NewtonSolver.solve()`'s own usage. Verified live: `test_linearize`
+  passes end-to-end (steady solve, then forward and adjoint
+  linearization) both standalone and under pytest.
+
+**Devcontainer resync gotcha, worth recording**: the CPU test container
+(`jovial_proskuriakova`) bind-mounts a *separate* clone
+(`/home/christian/test_hydrogym_devcontainer/hydrogym`) from this
+session's working clone, tracked via a `local` git remote pointing at the
+working clone's path. It had drifted 3 commits behind mid-session, so a
+`pytest test_cyl.py::test_linearize` run inside it was silently exercising
+stale, pre-fix source (still showing the ConvergenceError from before the
+`use_HF_data_manager=False` fix, even though the fix had already been
+committed on the working clone) — resolved with `git fetch local
+<branch> && git merge --ff-only local/<branch>` inside that clone, plus a
+direct file copy for the not-yet-committed edit-in-progress. Always
+confirm `git log -1`/`git diff <file>` match between the working clone and
+whatever container is about to run verification before trusting a
+"still fails" result.
+
+### "Delete stale/deprecated examples" — investigated, nothing found
+
+Searched for backup-named files (`*.bak`, `*deprecated*`, `*.old`) and
+grepped for known-stale API references (`hgym.IPCS`, old `parallel_env(`
+factory calls, `parallel_to_aec`, `MiniChannel_Re180`) across
+`examples/`, `docs/`, and the main `README.md`. No dead/backup files
+exist; every stale reference found was fixed in place rather than
+deleted (see above) since each corresponded to a real, currently-used
+example script that just needed its documentation or a small bug
+corrected, not removal.
+
+### Full Firedrake test suite: final result
+
+`pytest test/ --ignore test_cavity_grad.py --ignore test_pinball_grad.py
+--ignore test_step_grad.py` (the repo's own CI invocation), re-run after
+all fixes above: **all tests pass** (previously 236 passed / 1 failed / 6
+skipped; the 1 failure was `test_linearize`, now fixed and passing).
+
+Commits: `a8a47c2` (READMEs/quickstart/introduction), `aa5e8ce` (API docs
+regeneration + registration.py docstring fix + dead-import cleanup),
+`acf979a` (test_linearize + linearize_dynamics fixes).
