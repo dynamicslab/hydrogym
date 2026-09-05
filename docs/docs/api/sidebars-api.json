@@ -38,7 +38,10 @@
         },
         {
           "items": [
-            "api/firedrake/solvers/base"
+            "api/firedrake/solvers/base",
+            "api/firedrake/solvers/bdf_ext",
+            "api/firedrake/solvers/integrate",
+            "api/firedrake/solvers/stabilization"
           ],
           "label": "hydrogym.firedrake.solvers",
           "type": "category"
@@ -87,7 +90,7 @@
           "type": "category"
         },
         "api/jax/env_core",
-        "api/jax/flow"
+        "api/jax/equation"
       ],
       "label": "hydrogym.jax",
       "type": "category"
@@ -131,7 +134,6 @@
           "type": "category"
         },
         "api/maia/env_core",
-        "api/maia/hf_data_manager",
         "api/maia/mpmd_interface",
         "api/maia/workspace"
       ],
@@ -170,7 +172,10 @@
     },
     "api/__init__",
     "api/core",
-    "api/data_manager"
+    "api/core_external",
+    "api/data_manager",
+    "api/hf_env_mixin",
+    "api/registration"
   ],
   "label": "hydrogym",
   "type": "category"

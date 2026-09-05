@@ -30,7 +30,9 @@ def __init__(environment_name: str,
              hf_repo_id: str = "dynamicslab/HydroGym-environments",
              local_fallback_dir: Optional[str] = None,
              use_clean_cache: bool = True,
-             solver_type: Optional[str] = None)
+             solver_type: Optional[str] = None,
+             hf_token: Optional[str] = None,
+             hf_revision: Optional[str] = None)
 ```
 
 Initialize the MAIA workspace.
@@ -43,6 +45,8 @@ Initialize the MAIA workspace.
 - `local_fallback_dir` - Optional local fallback directory.
 - `use_clean_cache` - Whether to use clean cache for HF downloads.
 - `solver_type` - Solver profile key (``&#x27;MAIA_LB&#x27;`` or ``&#x27;MAIA_STRCTRD&#x27;``).
+- `work_dir`0 - Hugging Face access token (private/gated repos; ``None`` = ambient auth).
+- `work_dir`3 - Git revision to pin HF downloads/listings to.
   Auto-detected from sentinel files if ``None`` (recommended).
   Defaults to ``&#x27;MAIA_LB&#x27;`` as fallback for legacy environments.
 
