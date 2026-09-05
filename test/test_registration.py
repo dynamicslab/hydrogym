@@ -149,6 +149,21 @@ def fake_firedrake(monkeypatch):
     # execute the real (backend-heavy) parent/module chain here.
     monkeypatch.setitem(sys.modules, "hydrogym.firedrake", flow)
     monkeypatch.setitem(sys.modules, "hydrogym.core", core)
+    # _firedrake_make does `import hydrogym as hgym; ... hgym.firedrake`
+    # (attribute access on the *package*, not a submodule import) --
+    # hydrogym/__init__.py's lazy __getattr__ caches the real module into
+    # hydrogym.__dict__ the first time anything ever does
+    # `hydrogym.firedrake`, permanently, for the rest of the process. If any
+    # other collected test module (e.g. test_pinball.py) already triggered
+    # that real import before this fixture runs -- which pytest's collection
+    # phase does for every test file up front, regardless of which tests you
+    # actually select -- patching sys.modules alone is not enough: the cached
+    # attribute on the real `hydrogym` module object still wins over it.
+    # Patch that attribute directly too, so this fixture is correct
+    # regardless of what else got collected/imported first.
+    import hydrogym as _hydrogym_pkg
+
+    monkeypatch.setattr(_hydrogym_pkg, "firedrake", flow, raising=False)
     return captured
 
 
@@ -190,6 +205,19 @@ def fake_maia(monkeypatch):
     # must expose `from_hf` as its own attribute to match.
     maia = _fake_module(from_hf=fake_from_hf)
     monkeypatch.setitem(sys.modules, "hydrogym.maia", maia)
+    # `import hydrogym.maia as maia` resolves through attribute access on the
+    # real `hydrogym` package, not a fresh sys.modules lookup each call --
+    # confirmed empirically: two sequential gym.make() calls for two
+    # different MAIA ids, each with its own sys.modules swap, both ended up
+    # invoking the *first* call's fake (proven with a minimal repro outside
+    # pytest entirely, so this is not a monkeypatch/pytest artifact -- it's
+    # hydrogym/__init__.py's own lazy loader, which caches
+    # `globals()["maia"] = module` permanently the first time anything ever
+    # resolves `hydrogym.maia`, same mechanism already worked around for
+    # `fake_firedrake` above). Patch the attribute directly too.
+    import hydrogym as _hydrogym_pkg
+
+    monkeypatch.setattr(_hydrogym_pkg, "maia", maia, raising=False)
     return captured
 
 
@@ -230,6 +258,12 @@ def fake_nek(monkeypatch):
     nek.env = env
     monkeypatch.setitem(sys.modules, "hydrogym.nek", nek)
     monkeypatch.setitem(sys.modules, "hydrogym.nek.env", env)
+    # Same hydrogym.__init__ lazy-loader caching risk as fake_maia/
+    # fake_firedrake/fake_jaxfluids above ("nek" is also in the parent's
+    # lazy __getattr__ allowlist) -- defensive.
+    import hydrogym as _hydrogym_pkg
+
+    monkeypatch.setattr(_hydrogym_pkg, "nek", nek, raising=False)
     return captured
 
 
@@ -258,6 +292,14 @@ def fake_jaxfluids(monkeypatch):
     jxf = _fake_module(envs=envs)
     monkeypatch.setitem(sys.modules, "hydrogym.jaxfluids", jxf)
     monkeypatch.setitem(sys.modules, "hydrogym.jaxfluids.envs", envs)
+    # Same hydrogym.__init__ lazy-loader caching risk as fake_maia/
+    # fake_firedrake above -- defensive, not yet proven necessary for this
+    # fixture specifically, but the mechanism is identical (`hydrogym.
+    # jaxfluids` is also a lazy `_MPI_ATTRS`-style name in the parent's
+    # __getattr__), so patch it the same way rather than wait to hit it.
+    import hydrogym as _hydrogym_pkg
+
+    monkeypatch.setattr(_hydrogym_pkg, "jaxfluids", jxf, raising=False)
     return captured
 
 
