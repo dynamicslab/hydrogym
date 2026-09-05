@@ -2672,3 +2672,158 @@ skipped; the 1 failure was `test_linearize`, now fixed and passing).
 Commits: `a8a47c2` (READMEs/quickstart/introduction), `aa5e8ce` (API docs
 regeneration + registration.py docstring fix + dead-import cleanup),
 `acf979a` (test_linearize + linearize_dynamics fixes).
+
+## Validating PR #266 (devcontainer-update) Now That MAIA Is Public (2026-09-05)
+
+Follow-up to the previous sections: the user asked to (1) merge this
+branch's work with `devcontainer-update` (PR #266, the still-draft PR this
+branch actually builds on top of), (2) do a genuinely fresh clone +
+submodule init + from-scratch container build in a brand-new directory
+(`/home/christian/maia_solver/hydrogym_devcontainer_test`, entirely
+separate from this session's working clone) to verify the devcontainer
+now that MAIA's `wipmaiaml` branch has gone public, and (3) fix
+https://github.com/dynamicslab/hydrogym/issues/259 along the way.
+
+### Merge with devcontainer-update
+
+`hydrogym-audit-v2` had diverged from `origin/devcontainer-update` at
+`2af9303`; the PR branch gained 8 more commits since (mostly Dependabot
+bumps) that this branch didn't have. Merged cleanly (`5d789e7`) — no
+conflicts requiring manual resolution beyond a clean 3-way auto-merge,
+verified by diffing both branches' tips against the merge result on the
+handful of files git flagged as touched by both sides.
+
+### MAIA is confirmed genuinely public
+
+`git ls-remote https://git.rwth-aachen.de/aia/MAIA/Solver.git wipmaiaml`
+succeeds with zero credentials from a clean shell. A full, from-scratch
+`git submodule update --init --recursive` on the fresh clone confirmed
+this further: `third_party/m-AIA` itself and all of its *required* nested
+submodules (`include/{Eigen,cantera,doctest,hypre,mfem,sundials}`) cloned
+with zero auth prompts. Only `include/PyJacReactionMechanisms` (private,
+optional, `ENABLE_PYJAC`-only) failed — cleanly, with a clear "could not
+read Username" error, exactly as `maia-gpu`/`maia-cpu`'s
+`postCreateCommand.sh` already anticipates by excluding it from its own
+scoped submodule init. Updated `.devcontainer/README.md` and both
+`maia-{gpu,cpu}/{install.sh,postCreateCommand.sh}`'s comments/error
+messages, which previously described the whole `wipmaiaml` tree as
+private — no behavioral changes, just correcting now-stale claims
+(commit `2dd0064`).
+
+### Fixed: issue #259 (Lmod/Docker-image/docs mismatch)
+
+Root cause confirmed: `docs/docs/quickstart.md` pointed at a stale image
+(`clagemann/maia-cuda-12.8.1:latest`, which only ships
+`MAIA/1.0-NVHPC-24.11-SystemCUDA-GPU`) while
+`docs/docs/installation/maia.md` and the example scripts assume the
+current one (`clagemann/hydrogym-nvhpc-26.1_cuda-12.9_*`, ships
+`MAIA/1.0-NVHPC-26.1`) — unified on the current image everywhere. Also
+clarified the "HydroGym is pre-installed" vs `pip install hydrogym[maia]`
+contradiction (the pip step is for the source-build path only), and
+replaced `run_example_docker.sh`'s hardcoded GPU module/venv pair with a
+single `MAIA_VARIANT` selector so they can't silently drift apart again
+(commit `2dd0064`).
+
+### Real bug found and fixed: `full-cpu-stack` build (GCC 13 / Eigen)
+
+A genuinely fresh `build_all_containers.sh` run (`NO_CACHE=0`, fresh
+containers + fresh `postCreateCommand.sh`, real Docker layer reuse only
+for the unchanged base image) found `full-cpu-stack`'s `maia-cpu` build
+failing hard: `-Werror=stack-protector` inside vendored Eigen headers
+under Ubuntu 24.04's default GCC (13.3.0) — Eigen's template-heavy
+triangular-solve/gemm code trips GCC's stack-protector analysis, and
+`GNU.cmake` treats all warnings (including this one) as errors. This is
+the exact same category of problem `wipmaiaml`'s own
+`auxiliary/compilers/GNU.cmake` already has two precedented workarounds
+for (`-Wno-error=alloc-zero`, `-Wno-error=stringop-overflow`, both
+labeled "since gcc 15.1.4" in that file's own comment) — Eigen's code
+hasn't changed, different GCC versions just flag different subsets of it.
+`-Wstack-protector` wasn't on that list yet for GCC 13.
+
+Since `third_party/m-AIA` is a separate, external repository this PR
+doesn't control, patched it into the checked-out submodule at
+container-start instead (idempotent, matching the existing precedent for
+materializing `DEVCONTAINER.cmake`) rather than waiting on an upstream
+`wipmaiaml` fix. **Verified live, twice**: first by directly retrying the
+exact failed compile step inside the container that hit the failure
+(confirmed `bin/{maia,test_maia}` both build and link), then by fully
+reverting the manual patch + deleting the stale build directory and
+re-running `build_all_containers.sh` from a genuinely fresh container
+end-to-end — `full-cpu-stack: PASS [39m 44s]` (commit `7cec3a0`).
+
+**`full-gpu-stack` never had this problem** (confirmed: NVHPC's
+`nvc++`/`auxiliary/compilers/NVHPC.cmake` sets neither `-Werror` nor
+`-Wstack-protector` at all) — it passed cleanly on the very first
+from-scratch run, `full-gpu-stack: PASS [51m 25s]`, including a real
+`maia` GPU compile, HydroGym + JAX + JAX-Fluids + PyTorch setup, and a
+live CUDA device check (`JAX devices: [CudaDevice(id=0)]`).
+
+### Solver smoke tests: 7/8 clean, 2 timeout-budget-limited (not broken), 1 real pre-existing bug found
+
+Ran `test_cpu_solvers.sh`/`test_gpu_solvers.sh` against the two freshly
+built, passing containers:
+
+| Test | Result | Note |
+|---|---|---|
+| `maia_gpu` | PASS | real MPMD, real HF Hub download |
+| `jax_kolmogorov` | PASS | |
+| `jax_channel` | PASS | real MPMD-adjacent HF Hub download |
+| `jaxfluids` | TIMEOUT | genuinely running (`env_step=20 sim_step=2000 wct/step/cell=88ns` mid-log) — 90s test-harness budget is just tight for this solver's real per-step cost, not a hang |
+| `maia_cpu` | PASS | real MPMD, real HF Hub download |
+| `firedrake` | **FAIL** | real bug, see below |
+| `nek5000` | TIMEOUT | confirmed via `ps aux` inside the container: all 10 `nek5000` ranks + the Python controller genuinely running at ~99% CPU, not stuck — same output-buffering-vs-fixed-timeout pattern as `jaxfluids` above |
+| `nek5000_wing` | TIMEOUT | genuinely mid-download of the ~40MB×N wing checkpoint set when the 90s budget hit |
+
+**New, real, currently-active bug found: `full-cpu-stack`'s `firedrake`
+feature can't construct even the most basic environment.**
+`hgym.Cylinder(mesh="medium")` — the very first thing
+`test/test_cyl.py::test_import_medium` does, which passed cleanly in this
+session's extensive, separate 237/243-passing pytest verification —
+fails on a fresh `full-cpu-stack` build with:
+
+```
+File ".../tsfc/driver.py", line 346, in compile_expression_dual_evaluation
+    evaluation, basis_indices = to_element.dual_evaluation(fn, coordinate_mapping)
+ValueError: too many values to unpack (expected 2)
+```
+
+Root cause, confirmed by inspection: `third_party/firedrake` is pinned to
+a commit from **2022-12-09** (`2209aaeb3`, no `branch =` in `.gitmodules`,
+so it never auto-tracks anything), but that submodule's own
+`requirements-git.txt` installs its FIAT dependency **unpinned**
+(`git+https://github.com/firedrakeproject/fiat.git#egg=fiat`, no `@<sha>`)
+— every fresh build always pulls FIAT's current HEAD, nearly four years
+of independent FIAT evolution ahead of the pinned Firedrake commit it's
+being paired with. This is not a hypothetical future risk — it is
+actively broken for any fresh build started today. It does not affect or
+call into question this session's earlier, extensive Firedrake pytest
+verification, which ran against a different, already-provisioned
+container built before FIAT's upstream drifted this far.
+
+**Attempted, not completed**: tried pinning FIAT to a commit
+contemporaneous with the Firedrake pin (`97316e3f1`, 2022-12-08, the
+closest commit before the Firedrake pin's timestamp) — blocked because
+FIAT's own packaging structure has since changed; that old commit has no
+`setup.py`/`pyproject.toml` at all and isn't pip-installable as-is. A
+real fix needs either (a) a properly bisected/known-compatible FIAT pin
+(non-trivial given the packaging-format change partway through FIAT's
+history), or (b) bumping the `third_party/firedrake` submodule pin itself
+to a current, compatible commit — the more robust fix, but a
+substantially larger change needing its own dedicated verification pass
+across all of HydroGym's Firedrake-dependent code. Flagging for a
+maintainer decision rather than guessing at a pin with no way to verify
+it's actually correct.
+
+### Net assessment
+
+MAIA (both GPU and CPU) and the overall devcontainer infrastructure are
+now confirmed working end-to-end from a genuinely fresh clone, with the
+one real blocker found (`-Wstack-protector`) fixed and verified. The
+`firedrake` feature's fresh-build path has a separate, real, pre-existing
+(not introduced by this branch) bug that needs a maintainer call on the
+right fix. `full-gpu-stack` has no known issues. Recommend: un-draft PR
+#266 once the `firedrake`/FIAT question is resolved or explicitly
+deferred; it is not a regression from anything in this branch's own work.
+
+Commits: `5d789e7` (merge), `2dd0064` (issue #259 + public-access docs),
+`7cec3a0` (GCC13/Eigen fix).
