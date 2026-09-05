@@ -55,7 +55,6 @@ def train_pettingzoo_with_supersuit(args):
 
     # Convert to SB3-compatible format using SuperSuit
     try:
-        from pettingzoo.utils import parallel_to_aec
         from supersuit import black_death_v3, pad_action_space_v0, pad_observations_v0
     except ImportError:
         print("✗ Error: PettingZoo/SuperSuit not installed!")

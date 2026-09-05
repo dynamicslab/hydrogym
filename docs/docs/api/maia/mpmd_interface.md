@@ -47,17 +47,36 @@ Initialize the MaiaInterface.
 #### init\_comm
 
 ```python
-def init_comm(comm_world: MPI.Comm) -> None
+def init_comm(comm_world: MPI.Comm, nproc: Optional[int] = None) -> None
 ```
 
 Initialize MPI communication with m-AIA.
 
 Sets up the communicators and determines the root ranks for both
-the Python controller and the m-AIA solver.
+the Python controller and the m-AIA solver. The split math itself
+lives in `hydrogym.core_external.split_comm_by_appnum` (shared
+module for MPMD world-split strategies, audit Task 3.5); only the
+attribute assignment stays here.
 
 **Arguments**:
 
 - `comm_world` - MPI communicator, typically MPI.COMM_WORLD.
+- `nproc` - Expected number of m-AIA solver ranks. When given,
+  validated against the actual remote-app rank count
+  (``comm_world.Get_size() - appNoRanks``, i.e. every world
+  rank not part of this app) and a clear ``RuntimeError`` is
+  raised on mismatch, mirroring
+  ``hydrogym.core_external.mpi_split``&#x27;s existing check for
+  Nek (audit Finding 2.5 / Verification Addendum Finding B:
+  MAIA previously had zero launch-config mismatch detection).
+  ``None`` (default) skips validation, preserving prior
+  behavior exactly.
+  
+
+**Raises**:
+
+- `comm_world`1 - If ``nproc`` is given and does not match the
+  actual number of m-AIA solver ranks in the MPMD job.
 
 #### continueRun
 

@@ -75,7 +75,9 @@ def __init__(repo_id: str = "dynamicslab/HydroGym-environments",
              cache_dir: Optional[str] = None,
              local_fallback_dir: Optional[str] = None,
              use_clean_cache: Union[bool, str] = True,
-             fallback_profile: str = "MAIA_LB")
+             fallback_profile: str = "MAIA_LB",
+             token: Optional[str] = None,
+             revision: Optional[str] = None)
 ```
 
 Initialize the HF Data Manager.
@@ -85,17 +87,26 @@ Initialize the HF Data Manager.
 - `repo_id` - Hugging Face repository ID.
 - `cache_dir` - Clean local cache directory (default: ``~/.cache/hydrogym``).
   Only used for HF downloads; local_fallback_dir is used directly.
+  When explicitly set, it is also passed to ``snapshot_download`` so
+  the raw HF download cache lands under it instead of the
+  huggingface_hub default (~/.cache/huggingface).
 - `local_fallback_dir` - Local directory with environment files used when HF
   is unreachable. When available, used directly without cache layer.
   use_clean_cache:
   - ``True``:    Create symlinks into HF cache (recommended).
   - ``&#x27;copy&#x27;``:  Copy files to clean cache.
   - ``False``:   Use HF cache paths directly.
-- `cache_dir`1 - cache_dir is only used for HF downloads, not for local_fallback.
-- `cache_dir`2 - Solver profile to use when no sentinel file is found.
+- `cache_dir`3 - cache_dir is only used for HF downloads, not for local_fallback.
+- `cache_dir`4 - Solver profile to use when no sentinel file is found.
   Defaults to ``&#x27;MAIA_LB&#x27;``.  Pass the environment class&#x27;s
   ``SOLVER_TYPE`` attribute to get the right fallback in offline /
   legacy scenarios.
+- `cache_dir`9 - Hugging Face access token, for private/gated repos. ``None``
+  (default) preserves ambient authentication (``HF_TOKEN`` env var
+  or ``huggingface-cli login``).
+- ``6 - Git revision (branch name, tag, or commit hash) to pin
+  downloads and file listings to. ``None`` (default) uses the
+  repo&#x27;s default branch.
 
 #### get\_available\_environments
 
