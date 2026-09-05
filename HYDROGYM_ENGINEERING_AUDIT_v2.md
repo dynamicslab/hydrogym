@@ -2387,3 +2387,117 @@ Fortran solver-internal behavior this repo doesn't own the source for,
 the other needs profiling this pass wasn't scoped to do. Nothing found in
 this pass touches the MPI/launch architecture question from the prior
 pass; that finding stands as previously confirmed.
+
+---
+
+## `gym.make()` as a Unified Entry Point (2026-09-05)
+
+**Trigger:** a direct follow-up question — is `gym.make("hydrogym/...")`
+(the mujoco/gymnasium convention: one call, `.reset()`/`.step()` work the
+same regardless of backend, lower-level entry points preserved for
+advanced use) genuinely achievable with the current implementation? Task
+6.1's `hydrogym.registration` module (§ Proposed Target Architecture item
+6 of the original audit) was built for exactly this, but had never
+actually been exercised end-to-end against real backends — every existing
+test of it (`test/test_registration.py`) mocks the backend entirely, so
+the dispatch *logic* was tested but the real construction path never was.
+It wasn't working. Three real bugs, one per non-Firedrake gymnasium-API
+backend, plus a fourth that broke Firedrake's own zero-argument case —
+found only by actually calling `gym.make(...)` against live backends, not
+by reading the code, and each confirmed live before and after the fix:
+
+1. **`SemiImplicitBDF` required `dt` positionally**, contradicting its own
+   parent classes' (`TransientSolver`, `NavierStokesTransientSolver`)
+   documented contract that `dt` defaults to the flow's `DEFAULT_DT` when
+   omitted (every flow class defines one specifically for this). Broke
+   `gym.make()` for all 5 registered Firedrake IDs unconditionally, and —
+   traced after the fact — turned out to be the exact same root cause
+   behind 2 of the "6 unrelated pre-existing failures" the previous
+   Examples Verification pass had flagged as out-of-scope
+   (`test_pinball.py::test_env`, `test_step.py::test_env`); both now pass
+   with no test changes. Fixed: `dt: float = None`, matching the parent
+   signature (`dt` is only ever forwarded, never used directly, so this
+   changes nothing for callers that do pass it).
+2. **MAIA's factory imported `hydrogym.maia.env_core` directly**,
+   bypassing `hydrogym.maia`'s own lazy `__getattr__` loader — the *only*
+   thing that ever imports `hydrogym/maia/envs/*.py`, and each of those
+   files' own module-level `register_environment(...)` call is the only
+   place any environment type ever reaches `_ENVIRONMENT_REGISTRY`.
+   Net effect: `from_hf()` reached through `gym.make()` always saw an
+   empty registry. Outside MPMD this raised immediately; **inside MPMD it
+   was worse** — confirmed live, a real `maia` process pinned at 99% CPU
+   for 6+ minutes with zero progress, because the Python side raised and
+   exited while the paired MAIA rank was already waiting for a handshake
+   that would now never arrive (exactly the MPMD partial-failure mode the
+   dev-tools' own docs elsewhere warn about). Fixed by importing via
+   package attribute access (`import hydrogym.maia as maia`), which
+   correctly triggers the lazy loader.
+3. **MAIA's `probe_locations` had no default and nothing checked for
+   `None`** before use — every registered MAIA ID crashed with
+   `TypeError: object of type 'NoneType' has no len()` even after fixing
+   (2). There is no universal sensible default (the probe grid is a
+   per-flow-geometry choice); `MaiaFlowEnv` now raises a clear
+   `ConfigError` naming what's needed, matching the precedent already set
+   by Nek's required `nproc`. `Cylinder_2D_Re200` gets a verified,
+   working default probe grid in `registration.py` (the wake-sampling
+   grid already used and re-verified many times this session in
+   `test_maia_env.py`), so it now works with **zero** extra arguments.
+   `RotaryCylinder_2D_Re1000`/`Cavity_2D_Re4140` deliberately get no
+   invented default — no verified-safe grid exists for either, and
+   guessing one would risk silently-wrong physics rather than a clear
+   error, which is the worse failure mode.
+4. **`hydrogym.jaxfluids.envs.__init__.py` was empty** — unlike every
+   other backend's `envs` package (Firedrake's re-exports
+   `Cylinder`/`Cavity`/`Pinball`/`Step`), it never re-exported
+   `Nozzle2D`/`Nozzle3D`, so `registration.py`'s `getattr(jxf_envs,
+   "Nozzle2D")` always raised `AttributeError` even though the class
+   existed at `hydrogym.jaxfluids.envs.nozzle.Nozzle2D`. Fixed to match
+   the established convention. Separately, `environment_name` was never
+   defaulted at all — there is no plain `"Nozzle2D"` HF environment, only
+   resolution-suffixed variants (`Nozzle2D_coarse`/`_fine`, confirmed via
+   `HfApi().list_repo_files`); now defaults to `_coarse`, matching
+   `examples/jaxfluids/test_jaxfluids_env.py`'s own default.
+
+**Verified live, after all four fixes, zero-argument `gym.make()` except
+where a real config requirement genuinely exists** (Nek's `nproc`, which
+must match the MPMD launch's worker count; MAIA's two IDs with no
+verified-safe probe default):
+- `gym.make("hydrogym/{Cylinder,RotaryCylinder,Cavity,Pinball,Step}-v0")` —
+  all 5, real Firedrake construction, real `reset()`/`step()`, sensible
+  rewards.
+- `gym.make("hydrogym-maia/Cylinder_2D_Re200-v0")` — real MPMD (`mpirun
+  -np 1 python ... : -np 1 maia ...`), real `reset()`/`step()`, clean
+  close, **zero extra arguments**.
+- `gym.make("hydrogym-nek/TCFmini_3D_Re180-v0", nproc=10)` — real MPMD
+  (`... : -np 10 nek5000`), real `reset()`/`step()`, clean close.
+- `gym.make("hydrogym-jaxfluids/Nozzle2D-v0")` — real JAX-Fluids
+  construction, real `reset()`/`step()`.
+- `gym.make("hydrogym/Cylinder-v0")` was also cross-checked against
+  the actual `test/test_registration.py` file: `test_pinball.py::test_env`/
+  `test_step.py::test_env` (independent evidence for fix 1) now pass.
+
+**Answering the actual question**: yes, `gym.make(id, **kwargs)` is now a
+genuine, working, mujoco/gymnasium-style unified entry point across every
+gymnasium-API backend (Firedrake, MAIA, Nek, JAX-Fluids — JAX remains
+deliberately unregistered, functional/JIT contract, see the original
+audit's Solver Interface Design). One call, `.reset()`/`.step()` behave
+identically regardless of what's happening underneath (in-process,
+MPMD, or otherwise), and every backend's own lower-level entry point
+(`hydrogym.firedrake.Cylinder`+`FlowEnv` directly, `hydrogym.maia.from_hf`,
+`NekEnv.from_hf`, the JAX-Fluids env classes directly, `hydrogym.jax`'s
+functional API) remains fully available and untouched — `gym.make()` is a
+thin, additive layer over them, not a replacement.
+
+**One honest caveat, not fixed, matching the previous pass's own
+precedent for out-of-scope pre-existing issues**: two of
+`test_registration.py`'s existing mocked tests (and one new one added
+here) fail when run as part of specific multi-file test combinations,
+while passing individually — the same test-order-dependent cross-test
+state leakage already documented in the Examples Verification pass as a
+pre-existing, unrelated issue. It affects the *mocked unit tests'*
+hermeticity only; the real, live, non-mocked `gym.make()` runs above are
+the actual correctness evidence for this section, and none of them are
+affected by it.
+
+Commits: `4eb509d` (SemiImplicitBDF), `73b0f95` (MAIA + JAX-Fluids),
+`09de9dc` (CHANGELOG).
