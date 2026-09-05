@@ -87,7 +87,7 @@ def snapshots_to_numpy(flow, filename, save_prefix, m):
 
 def linearize_dynamics(flow: FlowConfig, qB: fd.Function, adjoint: bool = False):
     solver = NewtonSolver(flow)
-    F = solver.steady_form(q=qB)
+    F = solver.steady_form(fd.split(qB))
     L = -fd.derivative(F, qB)
     if adjoint:
         return linalg.adjoint(L)

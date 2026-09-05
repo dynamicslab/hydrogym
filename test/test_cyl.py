@@ -128,7 +128,11 @@ def test_env():
 
 
 def test_linearize():
-    flow = hgym.Cylinder(mesh="medium")
+    # use_HF_data_manager=False: same checkpoint-ambiguity issue as
+    # test_steady above -- a Newton steady solve needs a near-equilibrium
+    # initial guess, not an arbitrary transient snapshot auto-inferred from
+    # the Hub checkpoint (see test_steady's comment / Finding C).
+    flow = hgym.Cylinder(mesh="medium", use_HF_data_manager=False)
 
     solver = hgym.NewtonSolver(flow)
     qB = solver.solve()
