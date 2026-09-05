@@ -5,7 +5,7 @@
   "options": {
     "firedrakeCommit": {
       "type": "string",
-      "default": "ef4c1bf9e6caa9c70dc75413f633c8f97551a4cc",
+      "default": "22c6bc44c79a06d576f49790d1a6d00dc10112ca",
       "description": "Firedrake git commit to install"
     },
     "hydrogymExtras": {
