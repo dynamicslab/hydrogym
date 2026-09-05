@@ -25,20 +25,20 @@ These examples are intended for:
 ## Example Types
 
 ### Steady-State Solvers (`solve-steady.py`)
-Find equilibrium solutions using Newton iteration:
+Find equilibrium solutions using Newton iteration (see `cylinder/solve-steady.py`
+for the full, runnable version with Reynolds-number ramping and output saving):
 ```python
-from hydrogym.firedrake import Cylinder, IPCS
-from hydrogym.firedrake.utils import solve_steady_state_stokes
+import hydrogym.firedrake as hgym
 
-flow = Cylinder(Re=100, mesh='medium')
-solver_parameters = {"snes_monitor": None}
+flow = hgym.Cylinder(Re=100, mesh="medium", use_HF_data_manager=False)
 solver = hgym.NewtonSolver(
     flow,
-    stabilization="gls",  
-    solver_parameters=solver_parameters,
+    stabilization="gls",
+    solver_parameters={"snes_monitor": None},
 )
 
-solver.solve()
+qB = solver.solve()
+CL, CD = flow.compute_forces()
 ```
 
 ### Direct Control (`pd-control.py`)

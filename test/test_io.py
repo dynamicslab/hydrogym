@@ -13,7 +13,7 @@ def test_checkpointing(tmp_dir="tmp"):
         "flow_config": {
             "mesh": "coarse",  # Default mesh
         },
-        "solver": hgym.IPCS,
+        "solver": hgym.SemiImplicitBDF,
     }
     env = hgym.FlowEnv(env_config)
 
@@ -22,7 +22,7 @@ def test_checkpointing(tmp_dir="tmp"):
         env.step(1)
 
     env.flow.save_checkpoint(checkpoint_path)
-    omega = env.flow.actuators[0].value
+    omega = env.flow.actuators[0].state
 
     # new environment loading checkpoint
     env_config2 = {
@@ -31,17 +31,17 @@ def test_checkpointing(tmp_dir="tmp"):
             "mesh": "coarse",  # Default mesh
             "restart": checkpoint_path,
         },
-        "solver": hgym.IPCS,
+        "solver": hgym.SemiImplicitBDF,
     }
     env2 = hgym.FlowEnv(env_config2)
 
     # env2.reset()
-    omega2 = env2.flow.actuators[0].value
+    omega2 = env2.flow.actuators[0].state
     assert omega == omega2
 
     # Check that resetting still clears the actuator state
     env2.reset()
-    omega3 = env2.flow.actuators[0].value
+    omega3 = env2.flow.actuators[0].state
     assert omega3 == 0.0
 
 
