@@ -78,9 +78,9 @@
       "dependsOn": []
     },
     "./features/petsc": {
-      "description": "PETSc 3.24.0 + OpenBLAS (required for Firedrake). Built with GCC + OpenMPI.",
+      "description": "PETSc 3.25.0 + OpenBLAS (required for Firedrake). Built with GCC + OpenMPI.",
       "options": {
-        "petscVersion": "PETSc version tag (default: v3.24.0)",
+        "petscVersion": "PETSc version tag (default: v3.25.0)",
         "withFiredrake": "Configure for Firedrake compatibility (default: true)"
       },
       "dependsOn": []
@@ -88,7 +88,7 @@
     "./features/firedrake": {
       "description": "Firedrake FE automation + HydroGym CPU venv with [maia,firedrake,nek] extras. Requires petsc feature.",
       "options": {
-        "firedrakeCommit": "Firedrake git commit (default: ef4c1bf9e6caa9c70dc75413f633c8f97551a4cc)",
+        "firedrakeCommit": "Firedrake git commit (default: 22c6bc44c79a06d576f49790d1a6d00dc10112ca)",
         "hydrogymExtras": "HydroGym extras (default: maia,firedrake,nek)"
       },
       "dependsOn": ["petsc"]
