@@ -52,7 +52,7 @@ class SemiImplicitBDF(NavierStokesTransientSolver):
     def __init__(
         self,
         flow: FlowConfig,
-        dt: float,
+        dt: float = None,
         order: int = 3,
         stabilization: str = "default",
         rtol=1e-6,
@@ -63,7 +63,11 @@ class SemiImplicitBDF(NavierStokesTransientSolver):
 
         Args:
             flow: Flow configuration (mesh, mixed space, BCs, forcing).
-            dt: Timestep size.
+            dt: Timestep size. Optional; defaults to the flow's
+                ``DEFAULT_DT`` if not given (see
+                ``NavierStokesTransientSolver``/``TransientSolver``, whose
+                contract this class previously broke by requiring ``dt``
+                positionally).
             order: Order of the BDF/extrapolation scheme (1-3).
             stabilization: Stabilization type; ``"default"`` resolves to the
                 flow's ``DEFAULT_STABILIZATION``. See ``ns_stabilization`` for
