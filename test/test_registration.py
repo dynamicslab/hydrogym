@@ -182,18 +182,37 @@ def fake_maia(monkeypatch):
         captured["call"] = (name, kwargs)
         return _SentinelEnv(marker="MAIA_ENV_SENTINEL")
 
-    maia = _fake_module()
-    env_core = _fake_module(from_hf=fake_from_hf)
-    maia.env_core = env_core  # `from hydrogym.maia import env_core` needs the attr
+    # _maia_make imports `hydrogym.maia` as a package and calls
+    # `maia.from_hf(...)` (attribute access, not a submodule import) -- see
+    # its comment for why: importing hydrogym.maia.env_core directly
+    # bypasses the package's lazy __getattr__-triggered env-class
+    # registration and leaves _ENVIRONMENT_REGISTRY empty. The fake module
+    # must expose `from_hf` as its own attribute to match.
+    maia = _fake_module(from_hf=fake_from_hf)
     monkeypatch.setitem(sys.modules, "hydrogym.maia", maia)
-    monkeypatch.setitem(sys.modules, "hydrogym.maia.env_core", env_core)
     return captured
 
 
 def test_maia_factory_forwards_kwargs(fake_maia):
     env = gym.make("hydrogym-maia/Cylinder_2D_Re200-v0", disable_env_checker=True, nproc=4)
     assert env.unwrapped.marker == "MAIA_ENV_SENTINEL"
-    assert fake_maia["call"] == ("Cylinder_2D_Re200", {"nproc": 4})
+    name, kwargs = fake_maia["call"]
+    assert name == "Cylinder_2D_Re200"
+    assert kwargs["nproc"] == 4
+    # Cylinder_2D_Re200 ships a verified default probe grid (see
+    # registration.py's _MAIA_ENVS) so gym.make() works with no probe_locations.
+    assert "probe_locations" in kwargs
+
+
+def test_maia_factory_env_without_default_probes_requires_them(fake_maia):
+    # RotaryCylinder_2D_Re1000 / Cavity_2D_Re4140 have no verified default
+    # probe grid -- the caller must supply one (same shape of requirement as
+    # Nek's nproc). No defaults means an empty kwargs dict reaches from_hf,
+    # which is where the real (unmocked) MaiaFlowEnv raises ConfigError.
+    gym.make("hydrogym-maia/RotaryCylinder_2D_Re1000-v0", disable_env_checker=True)
+    name, kwargs = fake_maia["call"]
+    assert name == "RotaryCylinder_2D_Re1000"
+    assert "probe_locations" not in kwargs
 
 
 @pytest.fixture
@@ -249,4 +268,16 @@ def test_jaxfluids_factory_merges_env_config(fake_jaxfluids):
         env_config={"a": 1},
         b=2,
     )
-    assert fake_jaxfluids["call"] == {"a": 1, "b": 2}
+    # environment_name defaults to the registered HF environment (there is
+    # no plain "Nozzle2D" HF environment, only resolution-suffixed variants
+    # -- see registration.py's _JAXFLUIDS_ENVS comment) unless overridden.
+    assert fake_jaxfluids["call"] == {"a": 1, "b": 2, "environment_name": "Nozzle2D_coarse"}
+
+
+def test_jaxfluids_factory_caller_can_override_environment_name(fake_jaxfluids):
+    gym.make(
+        "hydrogym-jaxfluids/Nozzle2D-v0",
+        disable_env_checker=True,
+        env_config={"environment_name": "Nozzle2D_fine"},
+    )
+    assert fake_jaxfluids["call"]["environment_name"] == "Nozzle2D_fine"
