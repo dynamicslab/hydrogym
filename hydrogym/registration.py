@@ -54,15 +54,44 @@ _FIREDRAKE_ENVS = {
 }
 
 # Representative MAIA environment names (verified in the from_hf docstring).
-_MAIA_ENVS = ["Cylinder_2D_Re200", "RotaryCylinder_2D_Re1000", "Cavity_2D_Re4140"]  # ns: hydrogym-maia
+# `probe_locations` has no universal default (the sensible probe grid is a
+# per-flow-geometry choice -- MaiaFlowEnv raises a clear ConfigError if it's
+# omitted, see env_core.py), so only environments with a verified-working
+# default grid get one supplied here; the others require the caller to pass
+# `probe_locations=` explicitly, same shape of requirement as Nek's `nproc`.
+# Cylinder_2D_Re200's default is the wake-sampling grid from
+# examples/maia/getting_started/test_maia_env.py's create_probe_locations
+# (8 downstream x 5 crossflow, x in [1, 8], y in [-1, 1]) -- run repeatedly
+# against the real solver with this exact grid, real sensible reward output.
+_MAIA_ENVS = {
+    "Cylinder_2D_Re200": {
+        "probe_locations": [
+            coord
+            for x in [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0]
+            for y in [-1.0, -0.5, 0.0, 0.5, 1.0]
+            for coord in (x, y)
+        ],
+        "obs_normalization_strategy": "U_inf",
+    },
+    "RotaryCylinder_2D_Re1000": {},
+    "Cavity_2D_Re4140": {},
+}  # ns: hydrogym-maia
 
 # Representative NEK environment (the documented smoke-test case; nproc must
 # match the MPMD launch, so it is a required make() kwarg here).
 _NEK_ENVS = ["TCFmini_3D_Re180"]  # ns: hydrogym-nek
 
 # Representative JAX-Fluids environments (constructed from an env_config
-# dict, as in examples/jaxfluids/).
-_JAXFLUIDS_ENVS = {"Nozzle2D": "Nozzle2D", "Nozzle3D": "Nozzle3D"}  # ns: hydrogym-jaxfluids
+# dict, as in examples/jaxfluids/). Maps gym ID suffix -> (env_class_name,
+# default HF environment_name). There is no plain "Nozzle2D"/"Nozzle3D" HF
+# environment -- only resolution-suffixed variants (confirmed via
+# HfApi().list_repo_files: Nozzle2D_coarse/_fine, Nozzle3D_coarse/_fine) --
+# so the gym ID's default must be one specific published environment;
+# "_coarse" matches examples/jaxfluids/test_jaxfluids_env.py's own default.
+_JAXFLUIDS_ENVS = {
+    "Nozzle2D": ("Nozzle2D", "Nozzle2D_coarse"),
+    "Nozzle3D": ("Nozzle3D", "Nozzle3D_coarse"),
+}  # ns: hydrogym-jaxfluids
 
 
 def _firedrake_make(flow_name: str):
@@ -80,11 +109,23 @@ def _firedrake_make(flow_name: str):
     return _make
 
 
-def _maia_make(environment_name: str):
+def _maia_make(environment_name: str, defaults: dict):
     def _make(**kwargs):
-        from hydrogym.maia.env_core import from_hf
+        # Import via the package (attribute access), not
+        # `from hydrogym.maia.env_core import from_hf`: hydrogym.maia lazily
+        # populates its MPI-dependent names -- including the env-class
+        # registration side effect of importing hydrogym.maia.envs.* -- only
+        # through its own __getattr__, which a direct submodule import
+        # bypasses entirely. Importing env_core directly leaves
+        # _ENVIRONMENT_REGISTRY empty, so from_hf() can't recognize any
+        # environment type ("Cylinder", "Pinball", ...) even though the
+        # class exists -- confirmed live: raises immediately outside MPMD,
+        # or strands the paired MAIA rank waiting forever for a handshake
+        # the crashed Python side never sends, inside MPMD.
+        import hydrogym.maia as maia
 
-        return from_hf(environment_name, **kwargs)
+        merged = {**defaults, **kwargs}
+        return maia.from_hf(environment_name, **merged)
 
     return _make
 
@@ -103,12 +144,14 @@ def _nek_make(environment_name: str):
     return _make
 
 
-def _jaxfluids_make(env_class_name: str):
+def _jaxfluids_make(env_class_name: str, default_environment_name: str):
     def _make(env_config: dict = None, **kwargs):
         from hydrogym.jaxfluids import envs as jxf_envs
 
         env_cls = getattr(jxf_envs, env_class_name)
-        return env_cls(env_config={**(env_config or {}), **kwargs})
+        merged = {**(env_config or {}), **kwargs}
+        merged.setdefault("environment_name", default_environment_name)
+        return env_cls(env_config=merged)
 
     return _make
 
@@ -123,14 +166,17 @@ def register_all() -> None:
     for env_id, flow_name in _FIREDRAKE_ENVS.items():
         gym.register(id=env_id, entry_point=_firedrake_make(flow_name))
 
-    for env_name in _MAIA_ENVS:
-        gym.register(id=f"hydrogym-maia/{env_name}-v0", entry_point=_maia_make(env_name))
+    for env_name, defaults in _MAIA_ENVS.items():
+        gym.register(id=f"hydrogym-maia/{env_name}-v0", entry_point=_maia_make(env_name, defaults))
 
     for env_name in _NEK_ENVS:
         gym.register(id=f"hydrogym-nek/{env_name}-v0", entry_point=_nek_make(env_name))
 
-    for env_name, env_class_name in _JAXFLUIDS_ENVS.items():
-        gym.register(id=f"hydrogym-jaxfluids/{env_name}-v0", entry_point=_jaxfluids_make(env_class_name))
+    for env_name, (env_class_name, default_environment_name) in _JAXFLUIDS_ENVS.items():
+        gym.register(
+            id=f"hydrogym-jaxfluids/{env_name}-v0",
+            entry_point=_jaxfluids_make(env_class_name, default_environment_name),
+        )
 
     _REGISTERED = True
 
