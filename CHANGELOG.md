@@ -65,6 +65,20 @@ budget and catch `NekDivergenceError` for Nek physics failure.
   defines `WARNING`) — any checkpoint-resolution error that should have
   logged a warning and fallen back gracefully instead crashed with an
   unrelated `AttributeError`.
+- `gym.make(...)` was broken for 2 of the 3 non-Firedrake gymnasium-API
+  backends, and for Firedrake's own zero-argument case:
+  - `SemiImplicitBDF` required `dt` positionally, contradicting its own
+    parent classes' documented "defaults to `flow.DEFAULT_DT`" contract
+    — broke every registered Firedrake ID's default construction.
+  - MAIA's `gym.make()` path imported `hydrogym.maia.env_core` directly,
+    bypassing the lazy loader that registers environment classes —
+    `from_hf()` always saw an empty registry. Fixed, plus MAIA now raises
+    a clear `ConfigError` (not a crash) when `probe_locations` is missing,
+    and `hydrogym-maia/Cylinder_2D_Re200-v0` ships a verified default
+    probe grid so it works with zero extra arguments.
+  - `hydrogym.jaxfluids.envs` never re-exported its environment classes
+    (unlike every other backend's `envs` package), and `registration.py`
+    never defaulted `environment_name` — both fixed.
 
 ### Removed
 
