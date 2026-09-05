@@ -41,6 +41,14 @@ def main():
     parser.add_argument("--nproc", type=int, default=10, help="Number of Nek5000 processes")
     parser.add_argument("--local-dir", type=str, default=None, help="Local fallback directory for environments")
     parser.add_argument("--config-file", type=str, default=None, help="Config file (None = auto-detect)")
+    parser.add_argument(
+        "--baseline-dudy",
+        type=float,
+        default=None,
+        help="Override baseline dU/dy for reward normalization. Required for wing-type envs "
+        "(e.g. NACA4412_3D_Re75000_AOA5) whose config has no normalization.dUdy/runner.dUdy "
+        "(reward there varies with streamwise position, not dU/dy) - see zeroshot_demo_pettingzoo.py.",
+    )
     args = parser.parse_args()
 
     # Create environment by directly calling NekEnv
@@ -59,12 +67,21 @@ def main():
     # Direct instantiation
     env = NekEnv(env_config=env_config)
 
+    if args.baseline_dudy is not None:
+        env.baseline_dudy = args.baseline_dudy
+
     # Modify the par file to ensure the simulation configuration is correct
     from hydrogym.nek.nek_lib.nek_utils import NEK_INIT
 
     nek_init = NEK_INIT(nek=env.conf.simulation, drl=env.conf.runner, rank_folder=env.run_folder)
-    nek_init.rewrite_REA_v19()  # Rewrite the par file, v19 corresponds to the new Nek5000 format
-    # The simulation will be reset, so the par file is to be written out at this point
+    # Rewrite the case's parameter file so the DRL control params actually
+    # take effect - v17 cases (.rea, e.g. NACA4412_3D_Re75000_AOA5) and v19
+    # cases (.par, e.g. TCFmini_3D_Re180) use different formats/writers.
+    if nek_init._is_v17():
+        nek_init.rewrite_REA_v17()
+    else:
+        nek_init.rewrite_REA_v19()
+    # The simulation will be reset, so the par/rea file is to be written out at this point
 
     print("\nEnvironment info:")
     print("=" * 80)
