@@ -62,7 +62,12 @@ You can then connect your local ParaView client (version 5.13) to `localhost:111
 
 ## Installing the HydroGym Python package
 
-If a local version of m-AIA is available in your environment (either via Docker or a native build), you can install the HydroGym MAIA extras:
+**Using one of the pre-built Docker/Apptainer images from Option 1 or 2?**
+HydroGym and its MAIA extras are already installed — skip this section.
+
+**Building m-AIA yourself (Option 3 below), or adding the MAIA extras to
+an existing environment that already has a local m-AIA build?** Install
+the HydroGym MAIA extras:
 
 ```bash
 pip install hydrogym[maia]

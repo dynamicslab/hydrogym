@@ -54,22 +54,28 @@ Valid `pstlPreset` values and the GPUs they correspond to:
 Not sure which one you have? Run `nvidia-smi --query-gpu=name,compute_cap
 --format=csv` on the host before building.
 
-## `third_party/m-AIA` submodule — requires RWTH GitLab access
+## `third_party/m-AIA` submodule
 
-`third_party/m-AIA` is a submodule of the private `wipmaiaml` dev tree
+`third_party/m-AIA` is a submodule of the `wipmaiaml` dev tree
 (`git.rwth-aachen.de/aia/MAIA/Solver.git`, branch `wipmaiaml`), for full
 RL-feature support — the LB jet-actuation boundary conditions (BC
 `2007`/`2008`) and the MPMD-based external flow-control channel that
-HydroGym's flow control cases depend on. **This repo requires RWTH GitLab
-access to clone**: `git clone --recurse-submodules` (or `git submodule
-update --init --recursive` after a plain clone) will prompt for your
-GitLab username and a Personal/Project Access Token when it reaches this
-submodule. Without access, `maia-gpu`/`maia-cpu` can't be built.
+HydroGym's flow control cases depend on. **This branch is now public** —
+a plain `git clone --recurse-submodules` (or `git submodule update --init
+--recursive` after a plain clone) needs no credentials to reach it, and a
+fresh clone + full submodule init has been verified to complete without
+any auth prompt.
 
-Do this on the **host**, before opening the devcontainer — the prompt
-needs a real terminal, and `postCreateCommand.sh`'s own fallback attempt
-to initialize a still-empty submodule runs non-interactively inside the
-container, so it can only fail with a clear error, not prompt you.
+One nested submodule of `wipmaiaml` itself, `include/PyJacReactionMechanisms`,
+remains a private RWTH GitLab repo and is **not** needed unless
+`ENABLE_PYJAC` is on — `maia-gpu`/`maia-cpu`'s `postCreateCommand.sh`
+deliberately excludes it from MAIA's own submodule init (see
+`include/Eigen include/cantera include/doctest include/hypre include/mfem
+include/sundials` in that script), so a blanket
+`git submodule update --init --recursive` from the top of this repo will
+fail at that one path — expected, not a sign anything else is broken; use
+the scoped commands `postCreateCommand.sh` itself uses instead if you're
+initializing submodules by hand.
 
 The submodule also doesn't ship `auxiliary/hosts/DEVCONTAINER.cmake` (the
 NVHPC/CUDA/library-path host config this container needs), since a host

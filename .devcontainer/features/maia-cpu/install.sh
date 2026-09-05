@@ -9,12 +9,14 @@
 # postCreateCommand.sh instead, once the mount is live. All this script does
 # is persist the chosen feature options for that later step.
 #
-# CAVEAT: third_party/m-AIA points at the private wipmaiaml dev tree
+# CAVEAT: third_party/m-AIA points at the wipmaiaml dev tree
 # (git.rwth-aachen.de/aia/MAIA/Solver.git, branch wipmaiaml) for full
 # RL-feature support (LB jet-actuation BCs 2007/2008, the MPMD flow-control
-# channel) - see .devcontainer/README.md. This repo requires RWTH GitLab
-# access; without it, `git submodule update --init` on third_party/m-AIA
-# fails and maia-gpu/maia-cpu can't be built.
+# channel) - see .devcontainer/README.md. This branch is now public and
+# clones without credentials; its own nested submodule
+# include/PyJacReactionMechanisms remains private RWTH GitLab and is
+# deliberately excluded from the init below (only needed if ENABLE_PYJAC
+# is on).
 
 set -euo pipefail
 
