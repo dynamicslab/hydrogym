@@ -51,6 +51,36 @@ class MaiaFlowEnv(gym.Env):
 
     SOLVER_TYPE: str = "MAIA_LB"
 
+    @staticmethod
+    def _resolve_num_substeps(cfg_section) -> int:
+        """
+        Resolve the per-actuation substep count from the environment's YAML
+        config section (e.g. cfg.maia).
+
+        ``num_substeps`` is the primary key (matching Firedrake's
+        non-deprecated name and core.py's actuation_config); the old
+        ``num_sim_substeps_per_actuation`` key keeps working with a
+        DeprecationWarning.
+
+        Raises:
+            ConfigError: If the section defines neither key.
+        """
+        import warnings
+
+        if "num_substeps" in cfg_section:
+            return cfg_section["num_substeps"]
+        if "num_sim_substeps_per_actuation" in cfg_section:
+            warnings.warn(
+                "num_sim_substeps_per_actuation in the environment config is deprecated, rename it to num_substeps",
+                DeprecationWarning,
+                stacklevel=3,
+            )
+            return cfg_section["num_sim_substeps_per_actuation"]
+        raise ConfigError(
+            "Environment config section defines neither 'num_substeps' nor (deprecated) "
+            "'num_sim_substeps_per_actuation'"
+        )
+
     def __init__(self, env_config: Dict):
         """
         Initialize the MaiaFlowEnv environment.
@@ -77,12 +107,16 @@ class MaiaFlowEnv(gym.Env):
         self.hf_repo_id = env_config.get("hf_repo_id", "dynamicslab/HydroGym-environments")
         self.local_fallback_dir = env_config.get("local_fallback_dir", None)
         self.use_clean_cache = env_config.get("use_clean_cache", True)
+        self.hf_token = env_config.get("hf_token", None)
+        self.hf_revision = env_config.get("hf_revision", None)
 
         self.data_manager = HFDataManager(
             repo_id=self.hf_repo_id,
             local_fallback_dir=self.local_fallback_dir,
             use_clean_cache=self.use_clean_cache,
             fallback_profile=self.SOLVER_TYPE,
+            token=self.hf_token,
+            revision=self.hf_revision,
         )
 
         # Environment identification
@@ -134,7 +168,7 @@ class MaiaFlowEnv(gym.Env):
 
         self.runtime_property_file = os.path.join(self.env_data_path, "properties_run.toml")
 
-        self.num_substeps_per_iteration = self.cfg.maia.num_sim_substeps_per_actuation
+        self.num_substeps_per_iteration = self._resolve_num_substeps(self.cfg.maia)
         self.observation_type = self.cfg.maia.observation_type
         self.max_episode_steps = self.cfg.env.max_episode_steps
         self.num_inputs = self.cfg.maia.num_action_inputs * self.cfg.env.n_agents
@@ -923,17 +957,23 @@ def from_hf(environment_name: str, hf_repo_id: str = "dynamicslab/HydroGym-envir
         raise ConfigError(f"Failed to create environment '{environment_name}' of type '{env_type}': {e}") from e
 
 
-def list_available_environments(hf_repo_id: str = "dynamicslab/HydroGym-environments") -> List[str]:
+def list_available_environments(
+    hf_repo_id: str = "dynamicslab/HydroGym-environments",
+    hf_token: Optional[str] = None,
+    hf_revision: Optional[str] = None,
+) -> List[str]:
     """
     List all available environments from HF Hub.
 
     Args:
         hf_repo_id: Hugging Face repository ID.
+        hf_token: Hugging Face access token (private/gated repos; ``None`` = ambient auth).
+        hf_revision: Git revision to pin the file listing to.
 
     Returns:
         List of environment names.
     """
-    data_manager = HFDataManager(repo_id=hf_repo_id)
+    data_manager = HFDataManager(repo_id=hf_repo_id, token=hf_token, revision=hf_revision)
     return data_manager.get_available_environments()
 
 

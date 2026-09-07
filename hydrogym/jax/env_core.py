@@ -57,6 +57,40 @@ class JAXFlowEnv(environment.Environment[EnvState, EnvParams]):
         action_space: Gymnax action space.
     """
 
+    # Solver profile used by HFDataManager when no sentinel file is found
+    # (offline / legacy data). Must be a key of data_manager.SOLVER_PROFILES.
+    SOLVER_TYPE: str = "JAX"
+
+    @staticmethod
+    def _resolve_num_substeps(cfg_section) -> int:
+        """
+        Resolve the per-actuation substep count from the environment's YAML
+        config section (e.g. cfg.jax).
+
+        ``num_substeps`` is the primary key (matching Firedrake's
+        non-deprecated name and core.py's actuation_config); the old
+        ``num_sim_substeps_per_actuation`` key keeps working with a
+        DeprecationWarning.
+
+        Raises:
+            ConfigError: If the section defines neither key.
+        """
+        import warnings
+
+        if "num_substeps" in cfg_section:
+            return cfg_section["num_substeps"]
+        if "num_sim_substeps_per_actuation" in cfg_section:
+            warnings.warn(
+                "num_sim_substeps_per_actuation in the environment config is deprecated, rename it to num_substeps",
+                DeprecationWarning,
+                stacklevel=3,
+            )
+            return cfg_section["num_sim_substeps_per_actuation"]
+        raise ConfigError(
+            "Environment config section defines neither 'num_substeps' nor (deprecated) "
+            "'num_sim_substeps_per_actuation'"
+        )
+
     def __init__(self, env_config: Dict):
         """
         Initialize the JAXFlowEnv environment.
@@ -82,9 +116,16 @@ class JAXFlowEnv(environment.Environment[EnvState, EnvParams]):
         self.hf_repo_id = env_config.get("hf_repo_id", "dynamicslab/HydroGym-environments")
         self.local_fallback_dir = env_config.get("local_fallback_dir", None)
         self.use_clean_cache = env_config.get("use_clean_cache", True)
+        self.hf_token = env_config.get("hf_token", None)
+        self.hf_revision = env_config.get("hf_revision", None)
 
         self.data_manager = HFDataManager(
-            repo_id=self.hf_repo_id, local_fallback_dir=self.local_fallback_dir, use_clean_cache=self.use_clean_cache
+            repo_id=self.hf_repo_id,
+            local_fallback_dir=self.local_fallback_dir,
+            use_clean_cache=self.use_clean_cache,
+            fallback_profile=self.SOLVER_TYPE,
+            token=self.hf_token,
+            revision=self.hf_revision,
         )
 
         # Environment identification
@@ -115,7 +156,7 @@ class JAXFlowEnv(environment.Environment[EnvState, EnvParams]):
 
         self.runtime_property_file = os.path.join(self.env_data_path, "properties_run.toml")
 
-        self.num_substeps_per_iteration = self.cfg.jax.num_sim_substeps_per_actuation
+        self.num_substeps_per_iteration = self._resolve_num_substeps(self.cfg.jax)
         self.observation_type = self.cfg.jax.observation_type
         self.max_episode_steps = self.cfg.env.max_episode_steps
         self.num_inputs = self.cfg.jax.num_action_inputs * self.cfg.env.n_agents
@@ -138,7 +179,7 @@ class JAXFlowEnv(environment.Environment[EnvState, EnvParams]):
         """
         Download and setup environment data from HF Hub.
 
-        First checks ~/.cache/maiagym/ for local data, otherwise falls back to data_manager.
+        First checks ~/.cache/jaxgym/ for local data, otherwise falls back to data_manager.
 
         Returns:
             Path to the local environment data directory.
@@ -147,7 +188,7 @@ class JAXFlowEnv(environment.Environment[EnvState, EnvParams]):
             ConfigError: If environment data cannot be retrieved.
         """
         # Check cache directory first
-        cache_dir = Path.home() / ".cache" / "maiagym" / self.environment_name
+        cache_dir = Path.home() / ".cache" / "jaxgym" / self.environment_name
         if cache_dir.exists() and cache_dir.is_dir():
             print(f"Using cached environment data from: {cache_dir}")
             return str(cache_dir)

@@ -58,7 +58,7 @@ class FlowConfig(PDEBase):
     FUNCTIONS = ("q",)  # tuple of functions necessary for the flow
 
     def __init__(self, velocity_order=None, **config):
-        self.Re = fd.Constant(ufl.real(config.get("Re", self.DEFAULT_REYNOLDS)))
+        self.Re = fd.Constant(ufl.real(config.pop("Re", self.DEFAULT_REYNOLDS)))
 
         if velocity_order is None:
             velocity_order = self.DEFAULT_VELOCITY_ORDER
@@ -85,21 +85,30 @@ class FlowConfig(PDEBase):
 
         # Process restart parameter - resolve environment names to checkpoint paths
         # or auto-infer from flow configuration
-        mesh = config.get("mesh", self.MESH_DIR)
+        # NOTE: the fallback must be the mesh NAME (DEFAULT_MESH, e.g. "medium"),
+        # not MESH_DIR (a filesystem path) -- the value is interpolated into the
+        # auto-inferred HF checkpoint env name below, so the old MESH_DIR
+        # fallback produced names like "..._FD" with a slash-containing path
+        # that could never match an environment on the Hub.
+        mesh = config.pop("mesh", self.DEFAULT_MESH)
         cache_dir = config.pop("cache_dir", None)  # Custom cache directory (optional)
         local_dir = config.pop("local_dir", None)  # Local fallback directory (optional)
         use_HF_data_manager = config.pop("use_HF_data_manager", True)  # Control HF data manager usage (default: True)
+        hf_token = config.pop("hf_token", None)  # HF access token, private/gated repos (optional)
+        hf_revision = config.pop("hf_revision", None)  # HF revision to pin downloads to (optional)
 
         # Extract numeric Reynolds number from Firedrake Constant
         Re_value = int(float(self.Re))
 
         resolved_restart = self._resolve_checkpoint(
-            restart=config.get("restart"),
+            restart=config.pop("restart", None),
             Re=Re_value,
             mesh=mesh,
             cache_dir=cache_dir,
             local_dir=local_dir,
             use_HF_data_manager=use_HF_data_manager,
+            hf_token=hf_token,
+            hf_revision=hf_revision,
         )
 
         # Store resolved checkpoint path for verification/debugging
@@ -109,7 +118,17 @@ class FlowConfig(PDEBase):
 
         super().__init__(**config)
 
-    def _resolve_checkpoint(self, restart, Re, mesh, cache_dir=None, local_dir=None, use_HF_data_manager=True):
+    def _resolve_checkpoint(
+        self,
+        restart,
+        Re,
+        mesh,
+        cache_dir=None,
+        local_dir=None,
+        use_HF_data_manager=True,
+        hf_token=None,
+        hf_revision=None,
+    ):
         """Resolve checkpoint parameter to actual file path(s).
 
             Handles four cases:
@@ -125,6 +144,8 @@ class FlowConfig(PDEBase):
             cache_dir: Custom cache directory (optional)
             local_dir: Local fallback directory (optional)
             use_HF_data_manager: Whether to use HF data manager for checkpoint resolution (default: True)
+            hf_token: HF access token, for private/gated repos (optional)
+            hf_revision: HF revision to pin downloads to (optional)
 
         Returns:
             None, str (resolved path), or list of str (resolved paths)
@@ -137,7 +158,13 @@ class FlowConfig(PDEBase):
             logging.log(logging.INFO, f"No checkpoint specified, attempting to auto-load: {env_name}")
 
             resolved = self._resolve_single_checkpoint(
-                env_name, cache_dir, local_dir, use_HF_data_manager=use_HF_data_manager, silent=True
+                env_name,
+                cache_dir,
+                local_dir,
+                use_HF_data_manager=use_HF_data_manager,
+                hf_token=hf_token,
+                hf_revision=hf_revision,
+                silent=True,
             )
             if resolved is None:
                 logging.log(logging.INFO, f"No checkpoint found for {env_name}, starting from zeros")
@@ -145,7 +172,12 @@ class FlowConfig(PDEBase):
 
         if isinstance(restart, str):
             return self._resolve_single_checkpoint(
-                restart, cache_dir, local_dir, use_HF_data_manager=use_HF_data_manager
+                restart,
+                cache_dir,
+                local_dir,
+                use_HF_data_manager=use_HF_data_manager,
+                hf_token=hf_token,
+                hf_revision=hf_revision,
             )
 
         elif isinstance(restart, (list, tuple)):
@@ -153,7 +185,12 @@ class FlowConfig(PDEBase):
             resolved = []
             for ckpt in restart:
                 resolved_ckpt = self._resolve_single_checkpoint(
-                    ckpt, cache_dir, local_dir, use_HF_data_manager=use_HF_data_manager
+                    ckpt,
+                    cache_dir,
+                    local_dir,
+                    use_HF_data_manager=use_HF_data_manager,
+                    hf_token=hf_token,
+                    hf_revision=hf_revision,
                 )
                 if resolved_ckpt is not None:
                     resolved.append(resolved_ckpt)
@@ -164,7 +201,14 @@ class FlowConfig(PDEBase):
             return None
 
     def _resolve_single_checkpoint(
-        self, checkpoint, cache_dir=None, local_dir=None, use_HF_data_manager=True, silent=False
+        self,
+        checkpoint,
+        cache_dir=None,
+        local_dir=None,
+        use_HF_data_manager=True,
+        hf_token=None,
+        hf_revision=None,
+        silent=False,
     ):
         """Resolve a single checkpoint path or environment name.
 
@@ -215,6 +259,8 @@ class FlowConfig(PDEBase):
                 local_fallback_dir=local_dir,  # Use local directory for offline/testing
                 use_clean_cache="copy",  # Use 'copy' for readable ckpts
                 fallback_profile="FIREDRAKE",
+                token=hf_token,  # Optional HF access token (private/gated repos)
+                revision=hf_revision,  # Optional revision to pin downloads to
             )
 
             # Get environment path (downloads if needed)

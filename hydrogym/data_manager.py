@@ -253,6 +253,8 @@ class HFDataManager:
         local_fallback_dir: Optional[str] = None,
         use_clean_cache: Union[bool, str] = True,
         fallback_profile: str = "MAIA_LB",
+        token: Optional[str] = None,
+        revision: Optional[str] = None,
     ):
         """
         Initialize the HF Data Manager.
@@ -261,6 +263,9 @@ class HFDataManager:
             repo_id: Hugging Face repository ID.
             cache_dir: Clean local cache directory (default: ``~/.cache/hydrogym``).
                 Only used for HF downloads; local_fallback_dir is used directly.
+                When explicitly set, it is also passed to ``snapshot_download`` so
+                the raw HF download cache lands under it instead of the
+                huggingface_hub default (~/.cache/huggingface).
             local_fallback_dir: Local directory with environment files used when HF
                 is unreachable. When available, used directly without cache layer.
             use_clean_cache:
@@ -272,9 +277,22 @@ class HFDataManager:
                 Defaults to ``'MAIA_LB'``.  Pass the environment class's
                 ``SOLVER_TYPE`` attribute to get the right fallback in offline /
                 legacy scenarios.
+            token: Hugging Face access token, for private/gated repos. ``None``
+                (default) preserves ambient authentication (``HF_TOKEN`` env var
+                or ``huggingface-cli login``).
+            revision: Git revision (branch name, tag, or commit hash) to pin
+                downloads and file listings to. ``None`` (default) uses the
+                repo's default branch.
         """
         self.repo_id = repo_id
+        self.token = token
+        self.revision = revision
         self.cache_dir = cache_dir or os.path.expanduser("~/.cache/hydrogym")
+        # cache_dir as the user actually passed it (None when defaulted). Only
+        # an explicitly-set cache_dir is forwarded to snapshot_download(); see
+        # the download helpers. ``cache_dir`` itself is never None so the clean
+        # cache layer keeps working unchanged.
+        self._hf_download_cache_dir = cache_dir
         self.local_fallback_dir = local_fallback_dir
         self.use_clean_cache = use_clean_cache
         self.fallback_profile = fallback_profile
@@ -332,8 +350,8 @@ class HFDataManager:
         # 3. Query HF file listing (no download, requires network)
         if HF_AVAILABLE:
             try:
-                api = HfApi()
-                repo_files = api.list_repo_files(self.repo_id, repo_type="dataset")
+                api = HfApi(token=self.token)
+                repo_files = api.list_repo_files(self.repo_id, repo_type="dataset", revision=self.revision)
                 for file_path in repo_files:
                     parts = file_path.split("/")
                     if len(parts) == 2 and parts[0] == env_name and parts[1] in _SENTINEL_TO_PROFILE:
@@ -360,8 +378,8 @@ class HFDataManager:
         """
         if HF_AVAILABLE:
             try:
-                api = HfApi()
-                repo_files = api.list_repo_files(self.repo_id, repo_type="dataset")
+                api = HfApi(token=self.token)
+                repo_files = api.list_repo_files(self.repo_id, repo_type="dataset", revision=self.revision)
 
                 env_names = set()
                 for file_path in repo_files:
@@ -528,6 +546,9 @@ class HFDataManager:
                     repo_type="dataset",
                     allow_patterns=f"{env_name}/**",
                     force_download=force_download,
+                    cache_dir=self._hf_download_cache_dir,
+                    token=self.token,
+                    revision=self.revision,
                 )
                 hf_env_path = os.path.join(hf_cache_path, env_name)
                 if os.path.exists(hf_env_path) and os.path.isdir(hf_env_path):
@@ -591,6 +612,9 @@ class HFDataManager:
                     repo_type="dataset",
                     allow_patterns=f"{env_name}/**",
                     force_download=force_download,
+                    cache_dir=self._hf_download_cache_dir,
+                    token=self.token,
+                    revision=self.revision,
                 )
                 hf_env_path = os.path.join(hf_cache_path, env_name)
                 if os.path.exists(hf_env_path) and os.path.isdir(hf_env_path):
@@ -630,6 +654,9 @@ class HFDataManager:
                     repo_type="dataset",
                     allow_patterns=f"{env_name}/**",
                     force_download=force_download,
+                    cache_dir=self._hf_download_cache_dir,
+                    token=self.token,
+                    revision=self.revision,
                 )
                 env_path = os.path.join(hf_cache_path, env_name)
                 if os.path.exists(env_path) and self._validate_environment_files(env_path, profile):

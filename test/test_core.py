@@ -179,6 +179,32 @@ class TestPDEBaseConstruction:
         with pytest.raises(ValueError, match="restart must be a string or list"):
             MockFlow(restart=5)
 
+    # -- unknown-key warning (audit Task 2.1) --------------------------------
+
+    def test_unknown_config_key_warns(self):
+        """Keys no subclass consumed reach PDEBase and must warn, not be
+        silently dropped (the audit's Finding: misspelled options vanished)."""
+        with pytest.warns(UserWarning, match="unrecognized_option") as record:
+            MockFlow(unrecognized_option=3)
+        assert any("no effect" in str(w.message) for w in record)
+
+    def test_valid_config_keys_raise_no_warning(self):
+        """All consumed keys (subclass-level, mesh, restart) must stay
+        warning-free -- this must never become a hard error for valid
+        Firedrake flow configs."""
+        import warnings
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            flow = MockFlow(initial_condition=5.0, mesh="foo.mesh", restart="ckpt_a")
+        assert flow.q == 10.0
+
+    def test_unknown_key_does_not_break_construction(self):
+        """Warning, not error: construction still succeeds."""
+        with pytest.warns(UserWarning):
+            flow = MockFlow(Re=100)  # e.g. a key a backend doesn't consume
+        assert flow.q == 1.0
+
     def test_reset_sets_state_and_time(self):
         flow = MockFlow()
         flow.q = 42.0

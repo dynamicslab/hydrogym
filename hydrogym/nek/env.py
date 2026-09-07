@@ -110,24 +110,32 @@ class NekEnv(gym.Env):
       environment_name: Name of environment on HuggingFace
       nproc: Number of MPI workers for Nek (required)
       hostfile: MPI hostfile path (default: '')
+      mpi_bind_to: MPI bind policy passed to mpirun via MPI.Info
+          (default: 'none' = unbound; e.g. 'core' binds ranks to cores)
       hf_repo_id: HuggingFace repository (default: 'dynamicslab/HydroGym-environments')
       use_clean_cache: Use fresh workspace (default: True)
       local_fallback_dir: Local directory for offline usage
       configuration_file: Override config file path
       run_root: Root directory for outputs (default: 'runs')
       run_name: Name for this run (default: '' = no subdirectory, use run_root directly)
-      reward_agg: Reward aggregation method ("mean" or "sum")
+      reward_agg: Reward aggregation method ("mean", "sum", or "median") - legacy
+          name, kept working
+      reward_aggregation: Same as reward_agg, primary name (matches core.py /
+          Firedrake); takes precedence when both are given
       ... (runtime overrides for config parameters)
 
     Args (Legacy pattern):
       conf: Configuration object (OmegaConf)
       run_root: Root directory for run outputs
       run_name: Name for this run (defaults to MPI rank)
-      reward_agg: How to aggregate per-actuator rewards ("mean" or "sum")
+      reward_agg: How to aggregate per-actuator rewards ("mean", "sum", or "median")
     """
 
     metadata = {"render_modes": ["human"]}
     SOLVER_TYPE = "NEK5000"
+    # MPI rank-binding policy passed to mpirun via MPI.Info ("bind_to").
+    # Overridable via the `mpi_bind_to` env_config key (MAIA pattern).
+    DEFAULT_MPI_BIND_TO = "none"
 
     def __init__(
         self,
@@ -136,6 +144,7 @@ class NekEnv(gym.Env):
         run_root: str = ".",
         run_name: Optional[str] = None,
         reward_agg: str = "mean",
+        reward_aggregation: Optional[str] = None,
         **kwargs,
     ):
         """
@@ -148,10 +157,40 @@ class NekEnv(gym.Env):
           run_name: Run name (auto-generate if None)
           reward_agg: Reward aggregation method
           **kwargs: Additional parameters (for backward compatibility)
+
+        Raises:
+          ValueError: If both 'conf' and 'env_config' are given, or an invalid
+            reward aggregation is requested.
+          UserWarning: If **kwargs is non-empty -- these are accepted for
+            backward compatibility but have NO effect; runtime overrides
+            belong in env_config (see NekEnv.from_hf).
         """
         # Determine which API is being used
         if conf is not None and env_config is not None:
             raise ValueError("Cannot provide both 'conf' and 'env_config'. Use one or the other.")
+
+        if kwargs:
+            warnings.warn(
+                f"NekEnv.__init__ got unsupported keyword argument(s) {sorted(kwargs)}; "
+                "they have no effect. Runtime configuration overrides belong in "
+                "env_config (see NekEnv.from_hf).",
+                stacklevel=2,
+            )
+
+        # ``reward_aggregation`` is the primary name (matching core.py's
+        # actuation_config / Firedrake); ``reward_agg`` is the legacy Nek
+        # name and keeps working unchanged.
+        if reward_aggregation is not None:
+            if reward_agg != "mean" and reward_agg != reward_aggregation:
+                warnings.warn(
+                    "Both reward_agg and reward_aggregation were provided with different values; "
+                    "using reward_aggregation",
+                    stacklevel=2,
+                )
+            reward_agg = reward_aggregation
+        if reward_agg not in ("mean", "sum", "median"):
+            raise ValueError(f"reward aggregation must be 'mean', 'sum', or 'median', got {reward_agg!r}")
+        self.reward_agg = reward_agg
 
         if conf is not None:
             # Legacy API
@@ -188,12 +227,16 @@ class NekEnv(gym.Env):
             - configuration_file: Override config path
             - run_root: Output directory (default: 'runs')
             - run_name: Run name (auto-generate if None)
-            - reward_agg: 'mean' or 'sum' (default: 'mean')
-            - normalize_input: Override normalization strategy
-            - nb_interactions: Override episode length
-            - random_init: Override IC randomization
-            - rescale_actions: Override action rescaling
-            - rew_mode: Override reward mode
+            - reward_agg: 'mean', 'sum', or 'median' (default: 'mean'); legacy name
+            - reward_aggregation: same as reward_agg, primary name (takes precedence)
+            - normalize_input: Override normalization strategy (shorthand)
+            - nb_interactions: Override episode length (shorthand)
+            - random_init: Override IC randomization (shorthand)
+            - rescale_actions: Override action rescaling (shorthand)
+            - rew_mode: Override reward mode (shorthand)
+            - '<section>.<param>': Override ANY existing config-tree entry by
+              dotted path (e.g. 'simulation.walltime'); unknown paths raise
+              ConfigError
 
         Returns:
           NekEnv instance
@@ -256,18 +299,44 @@ class NekEnv(gym.Env):
         self.environment_name = env_config["environment_name"]
         self.nproc = env_config["nproc"]
         self.hostfile = env_config.get("hostfile", "")
-        self.reward_agg = reward_agg
+
+        # reward_agg/reward_aggregation may also arrive via env_config (e.g.
+        # through from_hf(**kwargs)); the from_hf docstring documented this
+        # override but it was previously SILENTLY IGNORED (only the
+        # __init__-level kwarg was ever read, which from_hf never forwards).
+        # The `reward_agg` argument here is the value already resolved in
+        # __init__ from the reward_agg/reward_aggregation kwargs, so it wins
+        # whenever it is not at its "mean" default; env_config overrides
+        # (from_hf kwargs) win over the bare default:
+        #   resolved kwarg (incl. reward_aggregation) > env_config
+        #   ["reward_aggregation"] > env_config["reward_agg"] > "mean".
+        if "reward_aggregation" in env_config:
+            cfg_reward = env_config["reward_aggregation"]
+        elif reward_agg != "mean":
+            cfg_reward = reward_agg
+        elif "reward_agg" in env_config:
+            cfg_reward = env_config["reward_agg"]
+        else:
+            cfg_reward = reward_agg
+        if cfg_reward not in ("mean", "sum", "median"):
+            raise ValueError(f"reward aggregation must be 'mean', 'sum', or 'median', got {cfg_reward!r}")
+        self.reward_agg = cfg_reward
 
         # Initialize HF data manager
         self.hf_repo_id = env_config.get("hf_repo_id", "dynamicslab/HydroGym-environments")
         self.local_fallback_dir = env_config.get("local_fallback_dir", None)
         self.use_clean_cache = env_config.get("use_clean_cache", True)
+        self.hf_token = env_config.get("hf_token", None)
+        self.hf_revision = env_config.get("hf_revision", None)
+        self.mpi_bind_to = env_config.get("mpi_bind_to", self.DEFAULT_MPI_BIND_TO)
 
         self.data_manager = HFDataManager(
             repo_id=self.hf_repo_id,
             local_fallback_dir=self.local_fallback_dir,
             use_clean_cache=self.use_clean_cache,
             fallback_profile=self.SOLVER_TYPE,
+            token=self.hf_token,
+            revision=self.hf_revision,
         )
 
         # Download/get environment data
@@ -429,25 +498,79 @@ class NekEnv(gym.Env):
                     # Fallback: use configured path even if it doesn't exist yet
                     self.conf.simulation.restart_folder = os.path.join(self.env_data_path, restart_folder)
 
-    def _apply_runtime_overrides(self, env_config: Dict):
-        """Apply runtime overrides from env_config to loaded config."""
-        # Allow runtime override of certain parameters
-        override_map = {
-            "normalize_input": ("normalization", "normalize_input"),
-            "nb_interactions": ("episode", "max_interactions"),
-            "random_init": ("initial_conditions", "random_init"),
-            "rescale_actions": ("rl_interface", "rescale_actions"),
-            "rew_mode": ("episode", "reward_mode"),
+    # env_config keys that are consumed structurally by __init__/_init_from_hf
+    # (environment selection, HF/cache options, run layout, reward aggregation)
+    # and must never be interpreted as config-tree overrides.
+    RESERVED_ENV_CONFIG_KEYS = frozenset(
+        {
+            "environment_name",
+            "nproc",
+            "hostfile",
+            "hf_repo_id",
+            "use_clean_cache",
+            "local_fallback_dir",
+            "configuration_file",
+            "run_root",
+            "run_name",
+            "reward_agg",
+            "reward_aggregation",
+            "hf_token",
+            "hf_revision",
+            "mpi_bind_to",
         }
+    )
 
-        for key, (section, param) in override_map.items():
-            if key in env_config:
-                # Check if section exists in config
-                if hasattr(self.conf, section):
-                    cfg_section = getattr(self.conf, section)
-                    if hasattr(cfg_section, param):
-                        setattr(cfg_section, param, env_config[key])
-                        print(f"[NEK] Override: {section}.{param} = {env_config[key]}")
+    # Legacy shorthand keys, mapped to the config-tree path they set. Kept
+    # working unchanged; the dotted path is the general form.
+    SHORTHAND_OVERRIDES = {
+        "normalize_input": ("normalization", "normalize_input"),
+        "nb_interactions": ("episode", "max_interactions"),
+        "random_init": ("initial_conditions", "random_init"),
+        "rescale_actions": ("rl_interface", "rescale_actions"),
+        "rew_mode": ("episode", "reward_mode"),
+    }
+
+    def _apply_runtime_overrides(self, env_config: Dict):
+        """Apply runtime overrides from env_config to the loaded config.
+
+        Two key forms are supported (anything else is a ConfigError, not a
+        silent drop):
+
+        - Dotted config-tree paths, e.g. ``{"episode.max_interactions": 5}``
+          or ``{"simulation.walltime": 100}``. The path must already exist
+          in the loaded configuration.
+        - The five legacy shorthand keys in SHORTHAND_OVERRIDES, which map
+          to the same tree paths and keep working unchanged.
+
+        Reserved structural keys (RESERVED_ENV_CONFIG_KEYS) are ignored here;
+        they configure the environment machinery itself, not the solver
+        config.
+        """
+        for key, value in env_config.items():
+            if key in self.RESERVED_ENV_CONFIG_KEYS:
+                continue
+            if key in self.SHORTHAND_OVERRIDES:
+                section, param = self.SHORTHAND_OVERRIDES[key]
+                path = f"{section}.{param}"
+            elif "." in key:
+                path = key
+            else:
+                raise ConfigError(
+                    f"Unknown env_config override key {key!r}. Use a dotted "
+                    "config path (e.g. 'episode.max_interactions') or one of "
+                    f"the shorthand keys {sorted(self.SHORTHAND_OVERRIDES)}."
+                )
+
+            section_path, _, param = path.rpartition(".")
+            parent = OmegaConf.select(self.conf, section_path) if section_path else self.conf
+            if parent is None or param not in parent:
+                raise ConfigError(
+                    f"Runtime override path {path!r} does not exist in the "
+                    f"configuration for '{self.environment_name}'. Check the "
+                    "environment's config file for the correct section.param."
+                )
+            parent[param] = value
+            print(f"[NEK] Override: {path} = {value}")
 
     def _get_config_value(self, *paths, default=None):
         """
@@ -504,7 +627,7 @@ class NekEnv(gym.Env):
         # MPI info for Nek
         mpi_info = MPI.Info.Create()
         mpi_info.Set("wdir", f"{os.getcwd()}/{self.run_folder}")
-        mpi_info.Set("bind_to", "none")
+        mpi_info.Set("bind_to", getattr(self, "mpi_bind_to", self.DEFAULT_MPI_BIND_TO))
         if self.hostfile and self.hostfile != "":
             mpi_info.Set("hostfile", self.hostfile)
             print("[NEK] LOAD HOSTFILE!")
@@ -780,6 +903,8 @@ class NekEnv(gym.Env):
         # Aggregate reward
         if self.reward_agg == "sum":
             reward = float(np.sum(rewards_per_actuator))
+        elif self.reward_agg == "median":
+            reward = float(np.median(rewards_per_actuator))
         else:  # mean
             reward = float(np.mean(rewards_per_actuator))
 

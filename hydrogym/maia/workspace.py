@@ -32,6 +32,8 @@ class MaiaWorkspace:
         local_fallback_dir: Optional[str] = None,
         use_clean_cache: bool = True,
         solver_type: Optional[str] = None,
+        hf_token: Optional[str] = None,
+        hf_revision: Optional[str] = None,
     ):
         """
         Initialize the MAIA workspace.
@@ -43,6 +45,8 @@ class MaiaWorkspace:
             local_fallback_dir: Optional local fallback directory.
             use_clean_cache: Whether to use clean cache for HF downloads.
             solver_type: Solver profile key (``'MAIA_LB'`` or ``'MAIA_STRCTRD'``).
+            hf_token: Hugging Face access token (private/gated repos; ``None`` = ambient auth).
+            hf_revision: Git revision to pin HF downloads/listings to.
                 Auto-detected from sentinel files if ``None`` (recommended).
                 Defaults to ``'MAIA_LB'`` as fallback for legacy environments.
         """
@@ -54,6 +58,8 @@ class MaiaWorkspace:
             local_fallback_dir=local_fallback_dir,
             use_clean_cache=use_clean_cache,
             fallback_profile=solver_type or "MAIA_LB",
+            token=hf_token,
+            revision=hf_revision,
         )
 
         self.env_data_path: Optional[str] = None

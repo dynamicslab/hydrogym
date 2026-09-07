@@ -30,12 +30,14 @@ class FlowConfig(PDEBase):
     DEFAULT_OBS_SIZE = 8  # This correlates to a total observation size of 8x8 = 64.
 
     def __init__(self, **config):
-        self.k = config.get("k", self.DEFAULT_WAVENUMBER)
-        self.Re = config.get("Re", self.DEFAULT_REYNOLDS)
-        self.grid_size = config.get("grid_size", self.DEFAULT_GRID_SIZE)
-        self.domain_x = config.get("domain_x", self.DEFAULT_DOMAIN_X)
-        self.domain_y = config.get("domain_y", self.DEFAULT_DOMAIN_Y)
-        self.obs_size = config.get("obs_size", self.DEFAULT_OBS_SIZE)
+        # Keys are popped (not just read) so PDEBase's unknown-key warning
+        # (audit Task 2.1) only fires on genuinely unknown options.
+        self.k = config.pop("k", self.DEFAULT_WAVENUMBER)
+        self.Re = config.pop("Re", self.DEFAULT_REYNOLDS)
+        self.grid_size = config.pop("grid_size", self.DEFAULT_GRID_SIZE)
+        self.domain_x = config.pop("domain_x", self.DEFAULT_DOMAIN_X)
+        self.domain_y = config.pop("domain_y", self.DEFAULT_DOMAIN_Y)
+        self.obs_size = config.pop("obs_size", self.DEFAULT_OBS_SIZE)
         self.control_function = (
             jnp.zeros_like(self.load_mesh("default")[0]),
             jnp.zeros_like(self.load_mesh("default")[1]),
