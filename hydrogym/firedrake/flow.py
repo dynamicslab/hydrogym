@@ -111,7 +111,11 @@ class FlowConfig(PDEBase):
     an environment name is inferred from the class name, Reynolds number,
     and mesh, and a matching checkpoint is fetched from the Hugging Face
     Hub via the data manager (falling back to a zero initial condition if
-    none is found).
+    none is found). If the resolved environment has more than one
+    candidate checkpoint file, the pick is deterministic (sorted by
+    filename, last wins) but not guaranteed physically appropriate for
+    every use case -- pass an explicit checkpoint file path in ``restart``
+    if a specific one is required.
     """
 
     DEFAULT_REYNOLDS = 1
@@ -293,7 +297,7 @@ class FlowConfig(PDEBase):
             return resolved if resolved else None
 
         else:
-            logging.log(logging.WARN, f"Invalid restart type: {type(restart)}, ignoring")
+            logging.log(logging.WARNING, f"Invalid restart type: {type(restart)}, ignoring")
             return None
 
     def _resolve_single_checkpoint(
@@ -334,7 +338,7 @@ class FlowConfig(PDEBase):
                 return checkpoint
             else:
                 if not silent:
-                    logging.log(logging.WARN, f"Checkpoint path does not exist: {checkpoint}")
+                    logging.log(logging.WARNING, f"Checkpoint path does not exist: {checkpoint}")
                 return None
 
         # If HF data manager is disabled, don't try to resolve from HF Hub
@@ -362,30 +366,62 @@ class FlowConfig(PDEBase):
             # Get environment path (downloads if needed)
             env_path = dm.get_environment_path(checkpoint)
 
-            # Find checkpoint file(s) in the environment directory
-            checkpoint_files = list(Path(env_path).glob("checkpoint*.h5"))
+            # Find checkpoint file(s) in the environment directory. Sorted
+            # for a deterministic pick -- Path.glob() makes no ordering
+            # guarantee, so an unsorted list picks whichever file happened
+            # to land first in a given filesystem/download, which varies
+            # across downloads (Verification Addendum Finding C).
+            checkpoint_files = sorted(Path(env_path).glob("checkpoint*.h5"))
             if not checkpoint_files:
-                checkpoint_files = list(Path(env_path).glob("*.ckpt"))
+                checkpoint_files = sorted(Path(env_path).glob("*.ckpt"))
 
             if checkpoint_files:
-                resolved_path = str(checkpoint_files[0].resolve())
+                if len(checkpoint_files) > 1:
+                    # Multiple candidate files with no metadata saying which
+                    # one is canonical (e.g. a directory of timestamped
+                    # trajectory snapshots). An earlier version of this fix
+                    # special-cased the auto-inferred case (`silent=True`) to
+                    # fall back to a zero initial condition instead of
+                    # guessing -- reverted (Verification Addendum Finding C
+                    # follow-up): a zero-IC fallback is only appropriate for
+                    # a steady Newton solve's initial guess, not for e.g. a
+                    # short transient-integration test whose expected
+                    # results were calibrated against a real restart state
+                    # (`test_cyl.py::test_steady_rotation` regressed on this
+                    # exact case). This function has no way to know which of
+                    # those two contexts it's being called from, so it
+                    # cannot safely choose between "guess" and "don't" on
+                    # the caller's behalf -- only make the guess
+                    # deterministic (previously: unsorted `glob()`, so the
+                    # pick silently varied across downloads/filesystems).
+                    logging.log(
+                        logging.INFO if silent else logging.WARNING,
+                        f"{len(checkpoint_files)} candidate checkpoint files found for "
+                        f"'{checkpoint}'; using the last by sorted filename "
+                        f"({checkpoint_files[-1].name}). This pick is now deterministic "
+                        "but may not be the physically appropriate one for every use case "
+                        "(e.g. an unconverged snapshot as a steady-solve initial guess) -- "
+                        "pass an explicit checkpoint file path in `restart=` if a specific "
+                        "one is required.",
+                    )
+                resolved_path = str(checkpoint_files[-1].resolve())
                 logging.log(logging.INFO, f"✓ Checkpoint resolved: {resolved_path}")
                 return resolved_path
             else:
                 if not silent:
-                    logging.log(logging.WARN, f"No checkpoint file found in environment: {checkpoint}")
+                    logging.log(logging.WARNING, f"No checkpoint file found in environment: {checkpoint}")
                 return None
 
         except ImportError:
             if not silent:
                 logging.log(
-                    logging.WARN,
+                    logging.WARNING,
                     "HuggingFace Hub not available (pip install huggingface_hub). Checkpoint resolution disabled.",
                 )
             return None
         except Exception as e:
             if not silent:
-                logging.log(logging.WARN, f"Could not resolve checkpoint '{checkpoint}': {e}")
+                logging.log(logging.WARNING, f"Could not resolve checkpoint '{checkpoint}': {e}")
             return None
 
     def load_mesh(self, name: str) -> ufl.Mesh:
@@ -461,7 +497,7 @@ class FlowConfig(PDEBase):
                     f_self.assign(f_load)
                 except RuntimeError:
                     logging.log(
-                        logging.WARN,
+                        logging.WARNING,
                         f"Function {f_name} not found in checkpoint, defaulting to zero.",
                     )
 
