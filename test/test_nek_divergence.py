@@ -68,8 +68,9 @@ class FakeComm:
 def _make_env(monkeypatch):
     from unittest.mock import patch
 
-    with patch.object(NekEnv, "_init_from_hf", lambda self, *a, **k: None), patch.object(
-        NekEnv, "_init_from_legacy", lambda self, *a, **k: None
+    with (
+        patch.object(NekEnv, "_init_from_hf", lambda self, *a, **k: None),
+        patch.object(NekEnv, "_init_from_legacy", lambda self, *a, **k: None),
     ):
         env = NekEnv(env_config={"environment_name": "x", "nproc": 1})
 
@@ -93,9 +94,7 @@ def _make_env(monkeypatch):
 
     # _end_simulation does real MPI teardown (Finalize) -- record instead.
     env._end_simulation_calls = []
-    monkeypatch.setattr(
-        env, "_end_simulation", lambda farewell=False: env._end_simulation_calls.append(farewell)
-    )
+    monkeypatch.setattr(env, "_end_simulation", lambda farewell=False: env._end_simulation_calls.append(farewell))
     return env
 
 

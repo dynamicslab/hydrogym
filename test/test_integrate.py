@@ -69,9 +69,7 @@ class TestCollectRewardsForwarding:
         assert result is fake_method  # not a (flow, rewards) tuple
 
     def test_collect_rewards_returns_tuple(self, fake_method):
-        flow, rewards = integrate_fn(
-            fake_method, t_span=(0.0, 1.0), dt=0.25, collect_rewards=True, method="FakeBDF"
-        )
+        flow, rewards = integrate_fn(fake_method, t_span=(0.0, 1.0), dt=0.25, collect_rewards=True, method="FakeBDF")
         assert flow is fake_method
         assert isinstance(rewards, np.ndarray)
         assert rewards.shape == (n_steps((0.0, 1.0), 0.25),)
@@ -80,9 +78,7 @@ class TestCollectRewardsForwarding:
 
     def test_rewards_match_num_steps(self, fake_method):
         t_span = (0.0, 0.5)
-        _, rewards = integrate_fn(
-            fake_method, t_span=t_span, dt=0.1, collect_rewards=True, method="FakeBDF"
-        )
+        _, rewards = integrate_fn(fake_method, t_span=t_span, dt=0.1, collect_rewards=True, method="FakeBDF")
         assert len(rewards) == n_steps(t_span, 0.1)
 
 

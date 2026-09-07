@@ -1,31 +1,63 @@
 # Contributing Guide
 
-Thank you for your interest in contributing to Hydrogym! There are many ways to contribute, and appreciate any and all contributions. In case you have questions please do not hesitate to open an [issue](https://github.com/dynamicslab/hydrogym/issues) to open up a discussion.
+Thank you for contributing to HydroGym. For large changes or new solver backends, open an
+[issue](https://github.com/dynamicslab/hydrogym/issues) before implementation so the design can be discussed.
 
-## Getting started
+## Development setup
 
-1. Fork the library on GitHub.
-2. Clone and install the library in development mode
+Install [uv](https://docs.astral.sh/uv/), clone the repository, and create the locked development environment:
 
-    ```bash
-    git clone https://github.com/your-username-to-go-here/hydrogym.git
-    cd hydrogym
-    pip install -e .
-    ```
+```bash
+git clone https://github.com/<your-username>/hydrogym.git
+cd hydrogym
+uv sync --locked
+```
 
-3. Install the pre-commit hooks
+Add a solver extra when its external solver is already available:
 
-    ```bash
-    pip install pre-commit
-    pre-commit install
-    ```
+```bash
+uv sync --locked --extra maia
+uv sync --locked --extra nek
+uv sync --locked --extra jax
+uv sync --locked --extra jaxfluids
+```
 
-which will use [Black](https://black.readthedocs.io/en/stable/) and [isort](https://github.com/PyCQA/isort) to format the code before linting it with [flake8](https://flake8.pycqa.org/en/latest/).
+Firedrake is managed by its own environment. Inside the provided Firedrake container, install the locked Python
+dependencies additively without pruning Firedrake:
 
-## Making changes to the code
+```bash
+./scripts/bootstrap_firedrake.sh --dev
+```
 
-If possible, please try to add isolated tests for your changes where possible, and add comments regarding the verification of results against the respective results in literature. You can then subseqently add a pull-request against the main repository to add your changes.
+## Quality checks
+
+Run the same checks used by CI:
+
+```bash
+uv lock --check
+uv run ruff check .
+uv run ruff format --check --diff .
+uv run isort . --check-only --diff
+uv run codespell --toml pyproject.toml README.md CONTRIBUTING.md docs examples test hydrogym
+```
+
+Use `uv run ruff format .` and `uv run isort .` to apply formatting locally.
+
+## Tests and documentation
+
+Add focused tests for new behavior and verify scientific results against a cited reference where possible. The legacy
+suite under `test/` requires the Firedrake container; backend examples contain additional solver-specific smoke tests.
+
+Build the Python distributions and documentation with:
+
+```bash
+uv build --no-sources
+python scripts/verify_distribution.py dist
+cd docs
+npm ci
+npm run build
+```
 
 ## Code of Conduct
 
-We expect all participants to abide by the [Python Community Code of Conduct](https://www.python.org/psf/conduct/).
+All participants must follow the [Python Community Code of Conduct](https://www.python.org/psf/conduct/).

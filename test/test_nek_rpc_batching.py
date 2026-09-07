@@ -56,8 +56,10 @@ N_ACT = len(ACT_NID)
 # Wire values (float64 on the wire, exactly like the real protocol)
 STATE_PER_NODE = {
     nid: np.array(
-        [[1.0 + 10 * nid, 2.0 + 10 * nid, 3.0 + 10 * nid, 4.0 + 10 * nid],
-         [5.0 + 10 * nid, 6.0 + 10 * nid, 7.0 + 10 * nid, 8.0 + 10 * nid]]
+        [
+            [1.0 + 10 * nid, 2.0 + 10 * nid, 3.0 + 10 * nid, 4.0 + 10 * nid],
+            [5.0 + 10 * nid, 6.0 + 10 * nid, 7.0 + 10 * nid, 8.0 + 10 * nid],
+        ]
     )  # (NFLDC, TOTCTRL)
     for nid in NID_LIST
 }

@@ -77,10 +77,7 @@ def main():
     print(f"{'TOTAL':50s} {grand_have:3d}/{grand_total:<3d} {total_pct:6.1f}%")
     if fail_under is not None:
         if total_pct < fail_under:
-            print(
-                f"FAIL: docstring coverage {total_pct:.1f}% is below the "
-                f"{fail_under:.1f}% floor (audit Task 7.2)"
-            )
+            print(f"FAIL: docstring coverage {total_pct:.1f}% is below the {fail_under:.1f}% floor (audit Task 7.2)")
             sys.exit(1)
         print(f"OK: docstring coverage at or above the {fail_under:.1f}% floor")
 

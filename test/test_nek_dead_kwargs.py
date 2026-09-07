@@ -24,8 +24,9 @@ from hydrogym.nek.env import NekEnv  # noqa: E402
 def stubbed_env_init():
     from unittest.mock import patch
 
-    with patch.object(NekEnv, "_init_from_hf", lambda self, *a, **k: None), patch.object(
-        NekEnv, "_init_from_legacy", lambda self, *a, **k: None
+    with (
+        patch.object(NekEnv, "_init_from_hf", lambda self, *a, **k: None),
+        patch.object(NekEnv, "_init_from_legacy", lambda self, *a, **k: None),
     ):
         yield
 

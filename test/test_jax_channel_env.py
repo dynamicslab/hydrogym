@@ -50,9 +50,7 @@ class TestEnvConfigOverrides:
         constructed PseudoSpectralNavierStokes3D."""
         from hydrogym.jax.envs.channel import ChannelFlowSpectralEnv
 
-        env = ChannelFlowSpectralEnv(
-            {"initial_field_dir": str(synthetic_field_dir), "Nx": 48, "Ny": 48, "Nz": 48}
-        )
+        env = ChannelFlowSpectralEnv({"initial_field_dir": str(synthetic_field_dir), "Nx": 48, "Ny": 48, "Nz": 48})
 
         assert env.Nx == 48
         assert env.equation.Nx == 48 and env.equation.Ny == 48 and env.equation.Nz == 48

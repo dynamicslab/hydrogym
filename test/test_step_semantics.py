@@ -108,8 +108,9 @@ from hydrogym.nek.env import NekEnv  # noqa: E402
 def _make_nek_env(monkeypatch, flow_time=5.0, nb_interactions=3, tmax=10.0):
     from unittest.mock import patch
 
-    with patch.object(NekEnv, "_init_from_hf", lambda self, *a, **k: None), patch.object(
-        NekEnv, "_init_from_legacy", lambda self, *a, **k: None
+    with (
+        patch.object(NekEnv, "_init_from_hf", lambda self, *a, **k: None),
+        patch.object(NekEnv, "_init_from_legacy", lambda self, *a, **k: None),
     ):
         env = NekEnv(env_config={"environment_name": "x", "nproc": 1})
 

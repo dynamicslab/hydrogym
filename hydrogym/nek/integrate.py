@@ -61,9 +61,7 @@ def integrate(
         max_steps = num_steps
     elif max_steps is None:
         if t_span is None:
-            raise ValueError(
-                "integrate() needs a stop condition: pass t_span, max_steps, or num_steps."
-            )
+            raise ValueError("integrate() needs a stop condition: pass t_span, max_steps, or num_steps.")
 
     iter = 0
     t = t_start
