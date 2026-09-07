@@ -19,4 +19,15 @@ def __getattr__(name):
 
 
 # Explicitly list what's available at top level
-__all__ = ["CallbackBase", "FlowEnv", "PDEBase", "TransientSolver", "distributed", "firedrake", "jax", "jaxfluids", "maia", "nek"]
+__all__ = [
+    "CallbackBase",
+    "FlowEnv",
+    "PDEBase",
+    "TransientSolver",
+    "distributed",
+    "firedrake",
+    "jax",
+    "jaxfluids",
+    "maia",
+    "nek",
+]

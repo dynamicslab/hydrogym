@@ -56,7 +56,6 @@ def test_lazy_loader_defers_import_until_attribute_access():
     # attribute access a plain dict lookup and the test would fail on the
     # sys.modules assertion even though the loader itself works).
     saved = {k: sys.modules.pop(k) for k in list(sys.modules) if k == "hydrogym.jax" or k.startswith("hydrogym.jax.")}
-    import hydrogym
 
     cached_attr = None
     # NOTE: probe vars(), not hasattr -- hasattr() itself goes through
