@@ -14,7 +14,7 @@ maia/
 └── getting_started/       # START HERE - Standard RL interface
     ├── test_maia_env.py   # Interactive test script with MPMD
     ├── prepare_workspace.py  # Workspace setup utility
-    └── run_example_docker.sh # Docker runner script
+    └── run_example_docker.sh # HPC job runner script (loads env modules; not Docker despite the name)
 ```
 
 ## Quick Start
@@ -37,7 +37,7 @@ python prepare_workspace.py --env Cylinder_2D_Re200 --work-dir ./test_run
 
 # Step 2: Run with MPMD execution (1 Python process + 1 MAIA process)
 cd test_run
-mpirun -np 1 python ../test_maia_env.py --environment Cylinder_2D_Re200 : -np 1 maia properties.toml
+mpirun -np 1 python ../test_maia_env.py --environment Cylinder_2D_Re200 : -np 1 maia properties_run.toml
 ```
 
 **Note:** MAIA uses MPMD (Multiple Program Multiple Data) execution where Python and MAIA run as separate MPI programs that communicate.
@@ -51,7 +51,7 @@ mpirun -np 1 python ../test_maia_env.py --environment Cylinder_2D_Re200 : -np 1 
 **Key files:**
 - `test_maia_env.py` - Interactive testing with standard Gym API via MPMD
 - `prepare_workspace.py` - Utility to set up MAIA workspace directories
-- `run_example_docker.sh` - Docker execution script
+- `run_example_docker.sh` - HPC job runner script (loads environment modules and the EasyBuild venv; not Docker despite the historical "_docker" name)
 
 **Typical usage:**
 ```python
@@ -128,12 +128,14 @@ python getting_started/prepare_workspace.py --env Cylinder_2D_Re200 --work-dir .
 This downloads the environment data from Hugging Face Hub and creates symlinks to:
 ```
 my_run/
-├── properties.toml    # MAIA configuration
-├── grid               # Mesh files (symlinked)
-└── out/               # Solution output directory
+├── properties_run.toml      # MAIA run configuration (symlink)
+├── geometry.toml            # Geometry configuration (symlink)
+├── environment_config.yaml  # Environment/actuation configuration (symlink)
+├── out_lb/                  # Solver output dir (grid + restart files symlinked inside)
+└── stl/                     # STL geometry files (symlink)
 ```
 
-Then in your SLURM/PBS job script, the MAIA solver will find the workspace via the `properties.toml` path.
+Then in your SLURM/PBS job script, the MAIA solver will find the workspace via the `properties_run.toml` path.
 
 ### Offline Mode (No Internet on Compute Nodes)
 
@@ -170,7 +172,7 @@ import hydrogym.maia as maia
 env = maia.from_hf(
     'Cylinder_2D_Re200',
     probe_locations=[...],
-    local_fallback_dir='/scratch/my_project/hf_environments/,
+    local_fallback_dir='/scratch/my_project/hf_environments',
     use_clean_cache=False,  # Use existing cache, don't try to download
 )
 ```

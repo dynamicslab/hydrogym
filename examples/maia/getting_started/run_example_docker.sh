@@ -2,6 +2,12 @@
 #
 # Run MAIA single-agent tests and training with MPMD coupling.
 #
+# NOTE: despite the historical "_docker" suffix in the filename, this is an
+# HPC cluster job script, not a Docker entrypoint: it loads environment
+# modules (`module purge` / `module load MAIA/...`) and activates an
+# EasyBuild virtualenv. Submit it from a compute node (or wrap it in your
+# own sbatch/srun script).
+#
 # Usage:
 #     ./run_example_docker.sh                    # Test only
 #     ./run_example_docker.sh train              # Train SB3 agent
@@ -40,6 +46,7 @@ NPROC_MAIA=1   # num GPUs or cpu cores
 NUM_STEPS=100
 TOTAL_TIMESTEPS=50000
 MODE="${1:-test}"  # test or train
+EXIT_CODE=0        # exit status of the mpirun below (captured without tripping `set -e`)
 
 echo "=== MAIA Single Agent ==="
 echo "Mode: $MODE"
@@ -61,13 +68,15 @@ if [ "$MODE" == "train" ]; then
     echo "Properties file: $PROPERTIES_FILE"
     echo ""
 
+    # `|| EXIT_CODE=$?` captures a nonzero status without tripping `set -e`,
+    # so the reporting block after `fi` always executes.
     mpirun \
         -np 1 python ../train_sb3_maia.py \
             --env "$ENVIRONMENT" \
             --total-timesteps ${TOTAL_TIMESTEPS} \
             --algo PPO \
         : \
-        -np ${NPROC_MAIA} maia $PROPERTIES_FILE --silent
+        -np ${NPROC_MAIA} maia $PROPERTIES_FILE --silent || EXIT_CODE=$?
 
 else
     echo "=== Testing Environment ==="
@@ -88,10 +97,8 @@ else
             --environment "$ENVIRONMENT" \
             --num-steps ${NUM_STEPS} \
         : \
-        -np ${NPROC_MAIA} maia $PROPERTIES_FILE --silent
+        -np ${NPROC_MAIA} maia $PROPERTIES_FILE --silent || EXIT_CODE=$?
 fi
-
-EXIT_CODE=$?
 
 if [ $EXIT_CODE -eq 0 ]; then
     echo "✓ Completed successfully!"

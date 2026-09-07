@@ -96,29 +96,30 @@ for agent in env.agent_iter():
 
 ---
 
-### 4. [`4_from_hf/`](4_from_hf/) - HuggingFace Data Manager
+### 4. [`4_from_hf/`](4_from_hf/) - HuggingFace Packaged Environments
 **Interface:** Load pre-packaged environments from HuggingFace Hub or local directories
 **Use Case:** Using standardized, version-controlled environment configurations
 **SB3 Compatible:** ✅ Works with any env type
 
 ```python
-from hydrogym.nek import NekDataManager, NekEnv
+from hydrogym.nek import NekEnv
 
-# Initialize data manager
-dm = NekDataManager(local_dir="./packaged_envs")
-
-# Prepare workspace (downloads/extracts if needed)
-config = dm.prepare_workspace(
-    env_name="TCFmini_3D_Re180",
+# Load a pre-packaged environment from HuggingFace Hub (or a local
+# directory via local_fallback_dir) — workspace setup is automatic
+env = NekEnv.from_hf(
+    "TCFmini_3D_Re180",
     nproc=10,
+    use_clean_cache=False,
+    local_fallback_dir="./packaged_envs",  # optional
 )
 
-# Create environment
-env = NekEnv(env_config=config)
+# Standard Gym interface
+obs, info = env.reset()
+obs, reward, terminated, truncated, info = env.step(action)
 ```
 
 **Files:**
-- `test_nek_DM.py` - Data manager test
+- `test_nek_DM.py` - from_hf() loading test
 - `train_sb3_from_hf.py` - Training with HF environments
 - `run_from_hf_docker.sh` - Docker/MPI execution script
 
@@ -130,8 +131,7 @@ env = NekEnv(env_config=config)
 **SB3 Compatible:** ✅ Pass trained model as controller
 
 ```python
-from hydrogym import integrate
-from hydrogym.nek import NekEnv
+from hydrogym.nek import NekEnv, integrate
 
 # Train an RL agent
 env = NekEnv(env_config=config)
@@ -212,18 +212,11 @@ mpirun -np 1 python train_sb3_nek_direct.py \
 ## Requirements
 
 ### NEK5000 Setup
-NEK5000 must be compiled and the `nek5000` executable must be in your PATH or specified in the environment configuration. WE highly recommend using the provided Docker container.
+NEK5000 must be compiled and the `nek5000` executable must be in your PATH — the example launch lines invoke it directly as the second MPMD process group (`mpirun ... : -np 10 nek5000`), and there is no `nek_path`-style config key for it. We highly recommend using the provided Docker container.
 
 ```bash
 # Check NEK5000 is available
 which nek5000
-
-# Or set path explicitly in config
-env_config = {
-    'environment_name': 'TCFmini_3D_Re180',
-    'nek_path': '/path/to/nek5000',
-    'nproc': 10,
-}
 ```
 ---
 

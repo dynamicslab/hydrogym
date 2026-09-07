@@ -56,7 +56,7 @@ cd train_run
 mpirun -np 1 python ../train_sb3_pettingzoo.py \
   --env TCFmini_3D_Re180 \
   --nproc 10 \
-  --config-file ../configs/pettingzoo_tcfmini_re180.yml \
+  --config-file ../../configs/pettingzoo_tcfmini_re180.yml \
   --algo TD3 \
   --total-timesteps 5000000 \
   : -np 10 nek5000
@@ -68,7 +68,7 @@ cd train_run
 mpirun -np 1 python ../test_nek_pettingzoo.py \
   --env TCFmini_3D_Re180 \
   --nproc 10 \
-  --config-file ../configs/pettingzoo_tcfmini_re180.yml \
+  --config-file ../../configs/pettingzoo_tcfmini_re180.yml \
   --steps 2500 \
   : -np 10 nek5000
 ```

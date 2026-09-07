@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# PettingZoo reproducible config for TCFmini_3D_Re180
+# PettingZoo reproducible config for TCFlarge_3D_Re207
 # Intended to be used with prepare_workspace + mpirun from work_dir.
 
 runner:

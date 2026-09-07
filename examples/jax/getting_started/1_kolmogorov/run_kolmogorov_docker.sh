@@ -2,6 +2,12 @@
 #
 # Run Kolmogorov flow JAX environment for two control objectives:
 #
+# NOTE: despite the historical "_docker" suffix in the filename, this is an
+# HPC cluster job script, not a Docker entrypoint: it loads environment
+# modules (`module purge` / `module load`) and activates an EasyBuild
+# virtualenv. Submit it from a compute node (or wrap it in your own
+# sbatch/srun script).
+#
 #   Objective 1 -- Minimize TKE (suppress energy bursts)
 #       reward = -(reward_alpha * TKE + action_penalty),  reward_alpha > 0
 #       The agent is penalized for high turbulent kinetic energy and large

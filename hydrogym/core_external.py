@@ -31,16 +31,37 @@ Callers:
 from typing import Optional, Tuple
 
 import numpy as np
-from mpi4py import MPI
+
+# mpi4py is an optional backend dependency (pyproject: maia/nek extras), and
+# importing it has the side effect of initializing MPI -- which the package's
+# own __init__ deliberately avoids doing eagerly (MPMD-mode safety). Guard it
+# so the module (and the developer-template external skeleton that builds on
+# it) is importable in a plain Python environment; the split functions raise
+# a clear error if actually called without it.
+try:
+    from mpi4py import MPI
+
+    MPI_AVAILABLE = True
+except ImportError:  # pragma: no cover - exercised only without mpi4py
+    MPI = None
+    MPI_AVAILABLE = False
+
+
+def _require_mpi():
+    if not MPI_AVAILABLE:
+        raise ImportError(
+            "mpi4py is required for MPMD communicator splitting but is not installed. "
+            "Install it with e.g. `pip install mpi4py` (see the maia/nek extras in pyproject.toml)."
+        )
 
 
 def mpi_split(
-    comm_world: MPI.Comm,
+    comm_world: "MPI.Comm",
     nproc: Optional[int] = None,
     controller_rank: int = 0,
     intercomm_tag: int = 99,
     log_prefix: str = "[MPI_SPLIT] ",
-) -> MPI.Comm:
+) -> "MPI.Comm":
     """Split the MPMD world into a controller/worker inter-communicator
     (Nek protocol: rank 0 is the controller, ranks 1+ are the workers).
 
@@ -54,6 +75,7 @@ def mpi_split(
     Returns:
       Inter-communicator between controller and workers
     """
+    _require_mpi()
     mpi_rank = comm_world.Get_rank()
     mpi_size = comm_world.Get_size()
 
@@ -104,8 +126,8 @@ def mpi_split(
 
 
 def split_comm_by_appnum(
-    comm_world: MPI.Comm,
-) -> Tuple[int, MPI.Comm, int, int, MPI.Group, int, int]:
+    comm_world: "MPI.Comm",
+) -> Tuple[int, "MPI.Comm", int, int, "MPI.Group", int, int]:
     """Split the MPMD world by application number (MAIA protocol: works for
     any controller rank count; the remote application's root is discovered
     via group translation + Allreduce).
@@ -117,6 +139,7 @@ def split_comm_by_appnum(
       Tuple of (appnum, appComm, appRank, appNoRanks, appGroup,
       appRootInWorld, remoteRoot) for MaiaInterface to assign.
     """
+    _require_mpi()
     appnum = comm_world.Get_attr(MPI.APPNUM)
     rank_world = comm_world.Get_rank()
     app_comm = comm_world.Split(appnum, rank_world)
@@ -163,7 +186,7 @@ class ExternalProcessEnvMixin:
     INTERCOMM_TAG: int = 99
     MPI_SPLIT_LOG_PREFIX: str = "[MPI_SPLIT] "
 
-    def _split_mpmd_comm(self, comm_world: MPI.Comm, nproc: Optional[int] = None) -> MPI.Comm:
+    def _split_mpmd_comm(self, comm_world: "MPI.Comm", nproc: Optional[int] = None) -> "MPI.Comm":
         """Split the world and return the controller<->solver
         inter-communicator (rank-color strategy; see `mpi_split`)."""
         return mpi_split(
