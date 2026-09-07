@@ -4,6 +4,18 @@
 
 FROM nvcr.io/nvidia/nvhpc:26.5-devel-cuda_multi-ubuntu24.04
 
+# Only the maia-gpu feature (real NVHPC-toolchain build, see DEVCONTAINER.cmake's
+# /opt/maia_deps paths) needs the NVHPC/HPCX-toolchain library copies built
+# below - petsc/firedrake, maia-cpu and nek5000 all link exclusively against
+# the GNU-toolchain /opt/maia_deps_gnu copies further down this file (see
+# their install.sh/postCreateCommand.sh HDF5_HOME/LD_LIBRARY_PATH exports).
+# Building the NVHPC copies for those configs was pure wasted time (roughly
+# half this image's ~1h+ build) and a source of CI flakiness (nvc's llc
+# backend crashed compiling HDF5 under a GitHub Actions runner's resource
+# constraints) for no benefit, since nothing in those configs ever loads
+# them. Set to "true" only in devcontainer configs that use ./features/maia-gpu.
+ARG BUILD_GPU_LIBS=false
+
 # ============================================
 # System packages
 # ============================================
@@ -38,43 +50,55 @@ ENV LD_LIBRARY_PATH=${MAIA_LIB_HOME}/hdf5-1.14.5/lib:${MAIA_LIB_HOME}/parallel-n
 ENV UCX_TLS=cuda_copy,cuda_ipc,shm,self,sm,tcp
 
 # ============================================
-# Build Parallel-NetCDF 1.14.0
+# Build Parallel-NetCDF 1.14.0 (NVHPC toolchain - maia-gpu only, see BUILD_GPU_LIBS above)
 # ============================================
 WORKDIR /tmp/build_pnetcdf
-RUN wget -q https://parallel-netcdf.github.io/Release/pnetcdf-1.14.0.tar.gz && \
-    tar -xzf pnetcdf-1.14.0.tar.gz && cd pnetcdf-1.14.0 && \
-    export CC=mpicc CXX=mpicxx FC=mpifort F77=mpif77 && \
-    export CFLAGS="-O3 -fPIC" CXXFLAGS="-O3 -fPIC" FCFLAGS="-O3 -fPIC" FFLAGS="-O3 -fPIC" && \
-    ./configure --prefix=${MAIA_LIB_HOME}/parallel-netcdf-1.14.0 --enable-shared --disable-fortran && \
-    make -j"$(compute_parallelism.sh)" && make install && \
-    rm -rf /tmp/build_pnetcdf
+RUN if [ "$BUILD_GPU_LIBS" = "true" ]; then \
+      wget -q https://parallel-netcdf.github.io/Release/pnetcdf-1.14.0.tar.gz && \
+      tar -xzf pnetcdf-1.14.0.tar.gz && cd pnetcdf-1.14.0 && \
+      export CC=mpicc CXX=mpicxx FC=mpifort F77=mpif77 && \
+      export CFLAGS="-O3 -fPIC" CXXFLAGS="-O3 -fPIC" FCFLAGS="-O3 -fPIC" FFLAGS="-O3 -fPIC" && \
+      ./configure --prefix=${MAIA_LIB_HOME}/parallel-netcdf-1.14.0 --enable-shared --disable-fortran && \
+      make -j"$(compute_parallelism.sh)" && make install && \
+      rm -rf /tmp/build_pnetcdf; \
+    else \
+      echo "Skipping NVHPC-toolchain parallel-netcdf build (BUILD_GPU_LIBS=false)"; \
+    fi
 
 # ============================================
-# Build Parallel HDF5 1.14.5
+# Build Parallel HDF5 1.14.5 (NVHPC toolchain - maia-gpu only, see BUILD_GPU_LIBS above)
 # ============================================
 WORKDIR /tmp/build_hdf5
-RUN wget -q https://github.com/HDFGroup/hdf5/archive/refs/tags/hdf5_1.14.5.tar.gz -O hdf5-1.14.5.tar.gz && \
-    tar -xzf hdf5-1.14.5.tar.gz && cd hdf5-hdf5_1.14.5 && \
-    export CC=mpicc CXX=mpicxx FC=mpifort F77=mpif77 && \
-    export CFLAGS="-O3 -fPIC" CXXFLAGS="-O3 -fPIC" FCFLAGS="-O3 -fPIC" FFLAGS="-O3 -fPIC" && \
-    ./autogen.sh && \
-    ./configure --prefix=${MAIA_LIB_HOME}/hdf5-1.14.5 --enable-parallel --enable-shared --enable-fortran && \
-    make -j"$(compute_parallelism.sh)" && make install && \
-    rm -rf /tmp/build_hdf5
+RUN if [ "$BUILD_GPU_LIBS" = "true" ]; then \
+      wget -q https://github.com/HDFGroup/hdf5/archive/refs/tags/hdf5_1.14.5.tar.gz -O hdf5-1.14.5.tar.gz && \
+      tar -xzf hdf5-1.14.5.tar.gz && cd hdf5-hdf5_1.14.5 && \
+      export CC=mpicc CXX=mpicxx FC=mpifort F77=mpif77 && \
+      export CFLAGS="-O3 -fPIC" CXXFLAGS="-O3 -fPIC" FCFLAGS="-O3 -fPIC" FFLAGS="-O3 -fPIC" && \
+      ./autogen.sh && \
+      ./configure --prefix=${MAIA_LIB_HOME}/hdf5-1.14.5 --enable-parallel --enable-shared --enable-fortran && \
+      make -j"$(compute_parallelism.sh)" && make install && \
+      rm -rf /tmp/build_hdf5; \
+    else \
+      echo "Skipping NVHPC-toolchain HDF5 build (BUILD_GPU_LIBS=false)"; \
+    fi
 
 # ============================================
-# Build FFTW 3.3.10 (MPI + OpenMP + threads)
+# Build FFTW 3.3.10 (MPI + OpenMP + threads) (NVHPC toolchain - maia-gpu only, see BUILD_GPU_LIBS above)
 # ============================================
 WORKDIR /tmp/build_fftw
-RUN wget -q https://www.fftw.org/fftw-3.3.10.tar.gz && \
-    tar -xzf fftw-3.3.10.tar.gz && cd fftw-3.3.10 && \
-    export CC=mpicc CXX=mpicxx FC=mpifort F77=mpif77 && \
-    export CFLAGS="-O3 -fPIC" CXXFLAGS="-O3 -fPIC" FCFLAGS="-O3 -fPIC" FFLAGS="-O3 -fPIC" && \
-    ./configure --prefix=${MAIA_LIB_HOME}/fftw-3.3.10 \
-        --enable-shared --enable-mpi --enable-openmp --enable-threads \
-        --enable-fortran && \
-    make -j"$(compute_parallelism.sh)" && make install && \
-    rm -rf /tmp/build_fftw
+RUN if [ "$BUILD_GPU_LIBS" = "true" ]; then \
+      wget -q https://www.fftw.org/fftw-3.3.10.tar.gz && \
+      tar -xzf fftw-3.3.10.tar.gz && cd fftw-3.3.10 && \
+      export CC=mpicc CXX=mpicxx FC=mpifort F77=mpif77 && \
+      export CFLAGS="-O3 -fPIC" CXXFLAGS="-O3 -fPIC" FCFLAGS="-O3 -fPIC" FFLAGS="-O3 -fPIC" && \
+      ./configure --prefix=${MAIA_LIB_HOME}/fftw-3.3.10 \
+          --enable-shared --enable-mpi --enable-openmp --enable-threads \
+          --enable-fortran && \
+      make -j"$(compute_parallelism.sh)" && make install && \
+      rm -rf /tmp/build_fftw; \
+    else \
+      echo "Skipping NVHPC-toolchain FFTW build (BUILD_GPU_LIBS=false)"; \
+    fi
 
 # ============================================
 # Build a SECOND copy of Parallel-NetCDF / Parallel HDF5 / FFTW using the
