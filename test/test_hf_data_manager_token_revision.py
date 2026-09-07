@@ -101,7 +101,9 @@ class TestDataManagerThreading:
         """Profile detection goes through HfApi(token=...).list_repo_files(
         repo_id, repo_type, revision=...)."""
         _, api_calls = recording_hf
-        dm = HFDataManager(repo_id="t/r", use_clean_cache=False, fallback_profile="JAXFLUIDS", token="tok", revision="rev")
+        dm = HFDataManager(
+            repo_id="t/r", use_clean_cache=False, fallback_profile="JAXFLUIDS", token="tok", revision="rev"
+        )
         profile = dm._detect_solver_profile(ENV_NAME)
         assert profile == "JAXFLUIDS"
 
@@ -112,7 +114,9 @@ class TestDataManagerThreading:
 
     def test_get_available_environments_receives_token_and_revision(self, recording_hf):
         _, api_calls = recording_hf
-        dm = HFDataManager(repo_id="t/r", use_clean_cache=False, fallback_profile="JAXFLUIDS", token="tok", revision="rev")
+        dm = HFDataManager(
+            repo_id="t/r", use_clean_cache=False, fallback_profile="JAXFLUIDS", token="tok", revision="rev"
+        )
         dm.get_available_environments()
 
         listings = [k for name, k in api_calls if name == "list_repo_files"]
@@ -124,7 +128,9 @@ class TestDataManagerThreading:
         """token=None/revision=None must be forwarded (huggingface_hub treats
         None as ambient auth) -- i.e. exactly the pre-change effective call."""
         snapshot_calls, api_calls = recording_hf
-        dm = HFDataManager(repo_id="t/r", cache_dir=str(tmp_path / "c"), use_clean_cache=False, fallback_profile="JAXFLUIDS")
+        dm = HFDataManager(
+            repo_id="t/r", cache_dir=str(tmp_path / "c"), use_clean_cache=False, fallback_profile="JAXFLUIDS"
+        )
         dm.get_environment_path(ENV_NAME, force_download=True)
         assert snapshot_calls[0]["token"] is None
         assert snapshot_calls[0]["revision"] is None
@@ -157,7 +163,9 @@ class TestNekEnvConfigThreading:
         (tmp_path / "config.yaml").write_text("env: {}\n")
         monkeypatch.setattr(nek_env_mod, "HFDataManager", RecordingDataManager)
         monkeypatch.setattr(nek_env_mod.NekEnv, "_setup_environment_data", lambda self: str(tmp_path))
-        monkeypatch.setattr(nek_env_mod.NekEnv, "_resolve_configuration_file", lambda self, x: str(tmp_path / "config.yaml"))
+        monkeypatch.setattr(
+            nek_env_mod.NekEnv, "_resolve_configuration_file", lambda self, x: str(tmp_path / "config.yaml")
+        )
         monkeypatch.setattr(nek_env_mod.NekEnv, "_update_configuration_paths", lambda self: None)
         monkeypatch.setattr(nek_env_mod.NekEnv, "_apply_runtime_overrides", lambda self, ec: None)
         monkeypatch.setattr(nek_env_mod.NekEnv, "_create_session_file_early", lambda self: None)

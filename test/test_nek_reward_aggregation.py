@@ -28,8 +28,9 @@ from hydrogym.nek.env import NekEnv  # noqa: E402
 def stubbed_env_init():
     """Stub the conf/HF initialization branches so NekEnv can be constructed
     without a HuggingFace download or a live Nek5000 build."""
-    with patch.object(NekEnv, "_init_from_hf", lambda self, *a, **k: None), patch.object(
-        NekEnv, "_init_from_legacy", lambda self, *a, **k: None
+    with (
+        patch.object(NekEnv, "_init_from_hf", lambda self, *a, **k: None),
+        patch.object(NekEnv, "_init_from_legacy", lambda self, *a, **k: None),
     ):
         yield
 
@@ -72,9 +73,7 @@ class TestEnvConfigLevelOverride:
 
         monkeypatch.setattr(nek_env_mod, "HFDataManager", DummyDataManager)
         monkeypatch.setattr(NekEnv, "_setup_environment_data", lambda self: str(tmp_path))
-        monkeypatch.setattr(
-            NekEnv, "_resolve_configuration_file", lambda self, x: str(tmp_path / "config.yaml")
-        )
+        monkeypatch.setattr(NekEnv, "_resolve_configuration_file", lambda self, x: str(tmp_path / "config.yaml"))
         monkeypatch.setattr(NekEnv, "_update_configuration_paths", lambda self: None)
         monkeypatch.setattr(NekEnv, "_apply_runtime_overrides", lambda self, ec: None)
         monkeypatch.setattr(NekEnv, "_create_session_file_early", lambda self: None)

@@ -119,7 +119,15 @@ class FlowConfig(PDEBase):
         super().__init__(**config)
 
     def _resolve_checkpoint(
-        self, restart, Re, mesh, cache_dir=None, local_dir=None, use_HF_data_manager=True, hf_token=None, hf_revision=None
+        self,
+        restart,
+        Re,
+        mesh,
+        cache_dir=None,
+        local_dir=None,
+        use_HF_data_manager=True,
+        hf_token=None,
+        hf_revision=None,
     ):
         """Resolve checkpoint parameter to actual file path(s).
 
@@ -193,7 +201,14 @@ class FlowConfig(PDEBase):
             return None
 
     def _resolve_single_checkpoint(
-        self, checkpoint, cache_dir=None, local_dir=None, use_HF_data_manager=True, hf_token=None, hf_revision=None, silent=False
+        self,
+        checkpoint,
+        cache_dir=None,
+        local_dir=None,
+        use_HF_data_manager=True,
+        hf_token=None,
+        hf_revision=None,
+        silent=False,
     ):
         """Resolve a single checkpoint path or environment name.
 

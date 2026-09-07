@@ -28,6 +28,4 @@ def integrate(
         raise ValueError(f"`method` must be one of {METHODS.keys()}")
 
     solver = METHODS[method](flow, dt, **options)
-    return solver.solve(
-        t_span, callbacks=callbacks, controller=controller, collect_rewards=collect_rewards
-    )
+    return solver.solve(t_span, callbacks=callbacks, controller=controller, collect_rewards=collect_rewards)
