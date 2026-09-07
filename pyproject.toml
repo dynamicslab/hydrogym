@@ -144,7 +144,7 @@ known_first_party = ["hydrogym"]
 skip_glob = ["third_party/*"]
 
 [tool.codespell]
-skip = '*.svg,*.ipynb,./docs/package-lock.json,./third_party/*'
+skip = '*.svg,*.ipynb,./docs/package-lock.json,./third_party/*,./HYDROGYM_ENGINEERING_AUDIT_v2.md'
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

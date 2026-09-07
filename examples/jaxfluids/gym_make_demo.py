@@ -44,7 +44,9 @@ def main():
     for i in range(args.steps):
         action = env.action_space.sample()
         obs, reward, terminated, truncated, info = env.step(action)
-        print(f"  step {i + 1}/{args.steps}: reward={float(reward):.6f}, terminated={terminated}, truncated={truncated}")
+        print(
+            f"  step {i + 1}/{args.steps}: reward={float(reward):.6f}, terminated={terminated}, truncated={truncated}"
+        )
 
     env.close()
     print("Environment closed. Done.")

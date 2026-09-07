@@ -108,7 +108,7 @@ class TestHFConfigKeys:
         HFDataManager."""
         from hydrogym.jax.envs.channel import ChannelFlowSpectralEnv
 
-        env = ChannelFlowSpectralEnv(
+        ChannelFlowSpectralEnv(
             {
                 "hf_repo_id": "unit-test/repo",
                 "cache_dir": "/tmp/unit_test_cache",
@@ -125,7 +125,7 @@ class TestHFConfigKeys:
         passed when nothing is overridden must equal JAXFlowEnv's defaults."""
         from hydrogym.jax.envs.channel import ChannelFlowSpectralEnv
 
-        env = ChannelFlowSpectralEnv({})
+        ChannelFlowSpectralEnv({})
 
         assert recording_data_manager["repo_id"] == "dynamicslab/HydroGym-environments"
         assert recording_data_manager["cache_dir"] is None
