@@ -29,6 +29,16 @@ from .nek_lib.nek_utils import remove_sch
 from .nek_lib.reward_logger import RewardLogger
 
 
+class NekDivergenceError(RuntimeError):
+    """Raised when the Nek simulation's CFL number blows up during evolve.
+
+    Replaces the former bare ``exit()`` so the failure is catchable by RL
+    loops and gym wrappers. By the time this is raised the solver side has
+    already been shut down cleanly (TERMN sent, intercomm freed, MPI
+    finalized) -- the environment is not usable afterwards.
+    """
+
+
 class NekEnv(HFEnvConfigMixin, ExternalProcessEnvMixin, gym.Env):
     """
     Core Nek5000 environment with Gymnasium interface.
@@ -806,8 +816,10 @@ class NekEnv(HFEnvConfigMixin, ExternalProcessEnvMixin, gym.Env):
         Returns:
           observation: Flat array of observations, shape (n_actuators * obs_per_actuator,)
           reward: Scalar reward
-          terminated: Whether episode is done
-          truncated: Whether episode was truncated (always False for Nek)
+          terminated: Always False for Nek (physics failure raises
+              NekDivergenceError from _evolve instead)
+          truncated: Whether the episode budget was reached (simulation
+              end time tmax or nb_interactions RL steps)
           info: Additional information
         """
         # Validate action shape
@@ -839,17 +851,20 @@ class NekEnv(HFEnvConfigMixin, ExternalProcessEnvMixin, gym.Env):
         # Get new observation
         flow_time, observation = self._get_state()
 
-        # Check if done
-        terminated = False
+        # Check if done (audit Task 5.1: reaching the episode's simulation
+        # end time or step budget is a TRUNCATION, not a termination --
+        # terminated is reserved for physics failure, which surfaces as a
+        # raised NekDivergenceError from _evolve, not a returned flag).
+        truncated = False
         if flow_time > self.tmax:
-            terminated = True
+            truncated = True
 
         self.act_index += 1
         if self.act_index >= self.nb_interactions:
-            print(f"[STEP] ACT_INDEX={self.act_index}; TERMINATED == TRUE", flush=True)
-            terminated = True
+            print(f"[STEP] ACT_INDEX={self.act_index}; TRUNCATED == TRUE", flush=True)
+            truncated = True
 
-        truncated = False  # Nek doesn't use truncation
+        terminated = False
 
         info = {
             "time": flow_time,
@@ -876,19 +891,32 @@ class NekEnv(HFEnvConfigMixin, ExternalProcessEnvMixin, gym.Env):
         self.sub_comm.Recv([current_time, MPI.DOUBLE], 0, tag=1998)
         current_time = current_time[0]
 
-        # Receive state from each node
+        # Receive state from each node. Batched: post every per-node,
+        # per-field Irecv up front and wait once, instead of draining them
+        # one blocking Recv at a time (the solver side is untouched and keeps
+        # sending exactly the same point-to-point messages). The (source,
+        # tag) pairs and buffer layout below are identical to what the
+        # previous serial loop matched, so the same bytes land in the same
+        # slots; MPI matching (by source+tag, with non-overtaking order
+        # within a source+tag for nid=0's shared tag) preserves the per-field
+        # ordering. Performance-only change.
         state_buffer = np.ndarray(shape=(self.nNID, NFLDC, TOTCTRL), dtype=np.float64)
+        requests = []
         for ni, nid in enumerate(self.uniqID):
-            node_buffer = np.ndarray(shape=(NFLDC, TOTCTRL), dtype=np.float64)
             for t in range(NFLDC):
-                buffer = np.ndarray(shape=(TOTCTRL), dtype=np.float64)
-                self.sub_comm.Recv(
-                    [buffer, tag_dict["STATE"]["mpi_dtype"]],
-                    nid,
-                    tag=nid * (t + 1) + tag_dict["STATE"]["tag"],
+                requests.append(
+                    self.sub_comm.Irecv(
+                        [state_buffer[ni, t, :], tag_dict["STATE"]["mpi_dtype"]],
+                        nid,
+                        tag=nid * (t + 1) + tag_dict["STATE"]["tag"],
+                    )
                 )
-                node_buffer[t, :] = buffer[:]
-            state_buffer[ni, :, :] = self._normalize_state(node_buffer)
+        MPI.Request.Waitall(requests)
+
+        # Normalize each node's block exactly as before (per node, over the
+        # whole (NFLDC, TOTCTRL) block).
+        for ni in range(self.nNID):
+            state_buffer[ni, :, :] = self._normalize_state(state_buffer[ni, :, :])
 
         print("[NEK] STATE RECV", flush=True)
 
@@ -922,7 +950,14 @@ class NekEnv(HFEnvConfigMixin, ExternalProcessEnvMixin, gym.Env):
         # Apply ZNMF condition
         action = self._apply_znmf(action)
 
-        # Send actions to each node
+        # Send actions to each node. Batched: build every per-node buffer
+        # first, then post one Isend per node and wait once, instead of
+        # blocking on each send in turn (the solver side is untouched and
+        # keeps receiving exactly the same point-to-point messages). Same
+        # (dest, tag, dtype, byte content) as the previous serial loop.
+        # Performance-only change.
+        action_buffers = []
+        requests = []
         icount = 0
         for il, nid in enumerate(self.uniqID):
             _index = np.where((self.actuator_info["NID"] == nid))[0]
@@ -933,12 +968,16 @@ class NekEnv(HFEnvConfigMixin, ExternalProcessEnvMixin, gym.Env):
                 act_buffer[jl] = action[icount]
                 icount += 1
 
-            # Send buffer
-            self.sub_comm.Send(
-                [act_buffer, tag_dict["ACTION"]["mpi_dtype"]],
-                nid,
-                tag=nid + tag_dict["ACTION"]["tag"],
+            # Post the send; the buffer is kept alive until Waitall below
+            action_buffers.append(act_buffer)
+            requests.append(
+                self.sub_comm.Isend(
+                    [act_buffer, tag_dict["ACTION"]["mpi_dtype"]],
+                    nid,
+                    tag=nid + tag_dict["ACTION"]["tag"],
+                )
             )
+        MPI.Request.Waitall(requests)
 
         assert icount == self.n_actuators, ValueError("[NEK] Actuator count mismatch!")
         print(f"[NEK] ACTION for {icount} Actuators", flush=True)
@@ -970,8 +1009,17 @@ class NekEnv(HFEnvConfigMixin, ExternalProcessEnvMixin, gym.Env):
                     f"[WARNING] {i_evolv}/{self.ndrl} Current CFL {current_cfl} >= {self.target_cfl}!",
                     flush=True,
                 )
+                # Tell the solver side to shut down cleanly (TERMN + comm free
+                # + MPI finalize) BEFORE raising, so the MPMD job cannot hang
+                # if the caller chooses not to catch. Raising (instead of the
+                # former bare exit()) lets gym wrappers / RL loops observe the
+                # failure; the env is not usable afterwards either way.
                 self._end_simulation(farewell=True)
-                exit()
+                raise NekDivergenceError(
+                    f"CFL blew up at evolve step {i_evolv}/{self.ndrl}: "
+                    f"current_cfl={current_cfl} >= target_cfl={self.target_cfl}. "
+                    "The Nek simulation has been terminated (TERMN sent)."
+                )
 
             # Receive reward buffer at last step
             if i_evolv == self.ndrl:
