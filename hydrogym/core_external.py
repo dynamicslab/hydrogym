@@ -97,8 +97,7 @@ def mpi_split(
         local_leader=0, peer_comm=MPI.COMM_WORLD, remote_leader=1 - color, tag=intercomm_tag
     )
     print(
-        f"{log_prefix}Inter-comm created: local_size={sub_comm.Get_size()}, "
-        f"remote_size={sub_comm.Get_remote_size()}",
+        f"{log_prefix}Inter-comm created: local_size={sub_comm.Get_size()}, remote_size={sub_comm.Get_remote_size()}",
         flush=True,
     )
     return sub_comm
