@@ -3,7 +3,7 @@ HydroGym Nek5000 backend.
 
 Initialization Patterns:
 1. MAIA pattern (recommended):
-   env = NekEnv.from_hf('MiniChannel_Re180', nproc=10)
+   env = NekEnv.from_hf('TCFmini_3D_Re180', nproc=10)
 
 2. Legacy pattern (deprecated):
    conf = OmegaConf.load('config.yaml')

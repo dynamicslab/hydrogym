@@ -12,7 +12,7 @@ Shows how integrate() works with both RL policies and classical control function
 
 Usage:
     # MAIA pattern (recommended)
-    mpirun -np 1 python train_sb3_with_integrate.py --env MiniChannel_Re180 --nproc 10 : -np 10 nek5000
+    mpirun -np 1 python train_sb3_with_integrate.py --env TCFmini_3D_Re180 --nproc 10 : -np 10 nek5000
 
     # Legacy pattern with config
     mpirun -np 1 python train_sb3_with_integrate.py --config config.yml --nproc 10 : -np 10 nek5000
@@ -271,7 +271,7 @@ def main():
 
     # Environment specification (either --env or --config)
     parser.add_argument(
-        "--env", type=str, default=None, help="Environment name from HuggingFace (e.g., MiniChannel_Re180)"
+        "--env", type=str, default=None, help="Environment name from HuggingFace (e.g., TCFmini_3D_Re180)"
     )
     parser.add_argument("--config", type=str, default=None, help="Path to YAML configuration file (legacy, optional)")
     parser.add_argument("--nproc", type=int, required=True, help="Number of Nek5000 processes (required)")

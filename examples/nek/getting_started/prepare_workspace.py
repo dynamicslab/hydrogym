@@ -14,7 +14,7 @@ Usage:
 
     # From Hugging Face (when uploaded)
     python prepare_workspace.py \
-        --env MiniChannel_Re180 \
+        --env TCFmini_3D_Re180 \
         --work-dir ./test_run_001
 """
 
@@ -190,7 +190,7 @@ if __name__ == "__main__":
 
         # From Hugging Face
         python prepare_workspace.py \\
-            --env MiniChannel_Re180 \\
+            --env TCFmini_3D_Re180 \\
             --work-dir ./test_run_001
 
         # Custom cache directory
