@@ -59,16 +59,18 @@ You should now be able to connect from your local ParaView client — the local 
 
 ## Run environments
 
-HydroGym provides **88 environments** across 6 solver backends:
+HydroGym provides **89 environments** across 6 solver backends (counts are
+the environment configurations currently published on the
+[Hugging Face Hub](https://huggingface.co/dynamicslab/HydroGym-environments)):
 
 | Solver backend | Count | Description | Dimensions |
 | --- | ---: | --- | --- |
 | **Firedrake** `FEM` | 20 | Canonical flow control benchmarks | 2D |
 | **MAIA** `LBM` | 55 | Lattice Boltzmann method environments | 2D, 3D |
-| **MAIA** `STRUCTURED FV` | 8 | High-Reynolds turbulent boundary layers | 3D |
-| **NEK5000** `SEM` | 1 | Spectral element turbulent channel flow | 3D |
+| **MAIA** `STRUCTURED FV` | 4 | High-Reynolds turbulent boundary layers | 3D |
+| **NEK5000** `SEM` | 4 | Spectral element turbulent channel/airfoil flow | 3D |
 | **JAX** `SEM, FD` | 2 | Differentiable fluid dynamics | 2D, 3D |
-| **JAX-Fluids** `FVM` | 2 | Compressible jet engine control | 2D, 3D |
+| **JAX-Fluids** `FVM` | 4 | Compressible jet engine control | 2D, 3D |
 
 HydroGym interfaces with [Hugging Face](https://huggingface.co/datasets/dynamicslab/HydroGym-environments) to easily set up fluid environments. Hugging Face currently contains several pre-configured environments that can be loaded via `.from_hf()`. For instance, MAIA environments can be loaded as follows:
 
@@ -78,7 +80,7 @@ import hydrogym.maia as maia
 env = maia.from_hf("Cylinder_2D_Re200")
 ```
 
-Several pre-configured environments are available to load from Hugging Face. A list of environments and their exact naming conventions can be found [in this breakdown](https://github.com/dynamicslab/hydrogym/blob/main/existing_environments.yaml). For further detail on customizing environments and running RL scripts, jump to the [RL training](#rl-training) section.
+Several pre-configured environments are available to load from Hugging Face. The full list of environments and their exact naming conventions is the set of top-level folders on [the Hub dataset](https://huggingface.co/datasets/dynamicslab/HydroGym-environments) — each top-level directory is one environment, named `{Flow}_{dim}_{Re}[_{variant}]` (with a `_FD` suffix for the Firedrake environments). For further detail on customizing environments and running RL scripts, jump to the [RL training](#rl-training) section.
 
 ### MAIA
 
