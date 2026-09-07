@@ -15,7 +15,6 @@ import pytest
 from hydrogym import CallbackBase, FlowEnv, PDEBase, TransientSolver
 from hydrogym.core import ActuatorBase
 
-
 # --------------------------------------------------------------------------
 # Mock implementations of the core contract
 # --------------------------------------------------------------------------
