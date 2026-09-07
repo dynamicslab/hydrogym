@@ -58,7 +58,7 @@ jobs:
         run: |
           devcontainer up \
             --workspace-folder "${{ github.workspace }}" \
-            --config .devcontainer/firedrake-test.devcontainer.json \
+            --override-config .devcontainer/firedrake-test.devcontainer.json \
             --id-label devcontainer.config_variant=firedrake-test \
             --log-level info
 
