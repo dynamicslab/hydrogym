@@ -666,6 +666,7 @@ class KolmogorovFlow(JAXFlowEnvBase):
         Returns:
             Scalar mean TKE over all snapshots.
         """
+
         def one(omega_hat):
             """TKE of a single spectral vorticity snapshot."""
             return compute_tke(omega_hat, self.kx, self.ky, self.n)
