@@ -22,6 +22,15 @@ from hydrogym.jax.utils.utils import compute_real_velocity_point, compute_tke, c
 
 
 class FlowConfig(PDEBase):
+    """Flow configuration for the 2D Kolmogorov flow on a periodic square domain.
+
+    Holds the forcing wavenumber ``k``, Reynolds number ``Re``, grid size,
+    domain extents, and observation size, and provides the real/Fourier meshes,
+    the divergence-free initial condition, the sinusoidal forcing, and the
+    observation extraction used by the environment. The state stored in
+    ``self.vorticity`` (and ``self.state``) is the FFT of the vorticity field.
+    """
+
     DEFAULT_REYNOLDS = 200
     DEFAULT_WAVENUMBER = 4
     DEFAULT_GRID_SIZE = (64, 64)
@@ -30,6 +39,16 @@ class FlowConfig(PDEBase):
     DEFAULT_OBS_SIZE = 8  # This correlates to a total observation size of 8x8 = 64.
 
     def __init__(self, **config):
+        """Read the flow-configuration options and set up the control field.
+
+        Args:
+            **config: Optional overrides: ``k`` (forcing wavenumber, default 4),
+                ``Re`` (Reynolds number, default 200), ``grid_size`` ((ny, nx)
+                tuple, default (64, 64)), ``domain_x``/``domain_y`` (extent
+                tuples, default (0, 2π)), ``obs_size`` (observation grid side,
+                default 8). Remaining keys are forwarded to
+                :class:`~hydrogym.core.PDEBase`.
+        """
         # Keys are popped (not just read) so PDEBase's unknown-key warning
         # (audit Task 2.1) only fires on genuinely unknown options.
         self.k = config.pop("k", self.DEFAULT_WAVENUMBER)
@@ -59,6 +78,20 @@ class FlowConfig(PDEBase):
         return jnp.meshgrid(x, y, indexing="ij")
 
     def _calculate_velocity_point(self, state, k1, k2):
+        """Evaluate the velocity at a single observation point from a spectral vorticity state.
+
+        Reconstructs the velocity in Fourier space (via
+        :func:`~hydrogym.jax.utils.utils.compute_velocity_fft`) and evaluates
+        the real-space velocity at grid point ``(k1, k2)``.
+
+        Args:
+            state: Spectral vorticity field.
+            k1: x-index of the evaluation point.
+            k2: y-index of the evaluation point.
+
+        Returns:
+            Real-space velocity at that point (2-vector).
+        """
         # Calculate velocity point
         kx, ky = self.load_fft_mesh()
         uhat, vhat = compute_velocity_fft(state, kx, ky)
@@ -67,13 +100,25 @@ class FlowConfig(PDEBase):
         return point_velocity
 
     def state(self) -> jnp.array:
+        """Return the current flow state (the FFT'd vorticity field)."""
         return self.state
 
     def get_observations(self) -> jnp.array:
+        """Compute velocity-magnitude observations over the whole stored trajectory.
+
+        For each saved vorticity snapshot in ``self.vorticity``, the velocity is
+        reconstructed in Fourier space and evaluated on a regularly subsampled
+        grid of ``obs_size x obs_size`` points.
+
+        Returns:
+            Array of observations with a leading axis over the trajectory
+            (shape (n_saved, obs_size * obs_size)).
+        """
         n, m = self.grid_size
         divisor = n // self.obs_size
 
         def calculate_velocity(trajectory):
+            """Evaluate the velocity at every subsampled observation point of one snapshot."""
             points = [
                 self._calculate_velocity_point(trajectory, x, y)
                 for x in range(0, n, int(n / divisor))
@@ -82,6 +127,7 @@ class FlowConfig(PDEBase):
             return jnp.array(points)
 
         def scan_fn(carry, state):
+            """Observation for one trajectory snapshot (the carry is unused)."""
             obs_val = calculate_velocity(state)  # To use energy observation, swap this with calculate_energy
             return carry, obs_val
 
@@ -115,9 +161,11 @@ class FlowConfig(PDEBase):
 
         # Gradients of φ(x,y) #
         def dstream_func_dx(x, y):
+            """x-derivative of the stream function, ``d(phi)/dx = cos(x)``."""
             return jnp.cos(x)
 
         def dstream_func_dy(x, y):
+            """y-derivative of the stream function, ``d(phi)/dy = -sin(y)``."""
             return -jnp.sin(y)
 
         dudy = jax.grad(dstream_func_dy, argnums=1)
@@ -131,6 +179,7 @@ class FlowConfig(PDEBase):
         return self.vorticity
 
     def set_BCs(self):
+        """Apply boundary conditions (no-op; the domain is fully periodic)."""
         # Set the boundary conditions
         pass
 
@@ -148,11 +197,12 @@ class FlowConfig(PDEBase):
         return (jnp.sin(k * y), jnp.zeros_like(y))
 
     def evaluate_objective(self):
-        """Return a copy of the flow state"""
+        """Evaluate the control objective (not implemented; returns None)."""
         pass
 
     @property
     def nu(self):
+        """Kinematic viscosity ``1 / Re``."""
         return 1 / self.Re
 
     @property
@@ -182,6 +232,7 @@ class FlowConfig(PDEBase):
         pass
 
     def load_checkpoint(self, filename: str):
+        """Load a saved flow state from disk (not implemented)."""
         pass
 
 
@@ -202,6 +253,12 @@ class PseudoSpectralNavierStokes2D(IMEXEquation):
     """
 
     def __init__(self, flow: FlowConfig):
+        """Store the flow configuration and cache its Fourier and real-space meshes.
+
+        Args:
+            flow: The :class:`FlowConfig` providing the grid, viscosity, and
+                forcing for the equation.
+        """
         self.flow = flow
         self.grid = flow.load_fft_mesh()
         self.real_grid = flow.load_mesh("name")
@@ -274,10 +331,16 @@ class PseudoSpectralNavierStokes2D(IMEXEquation):
         return self.kx * cfy_hat - self.ky * cfx_hat
 
     def forcing_term(self):
-        """Computes the user-specified forcing term of the vorticity equation
-        Args:
-          omega_hat: Fourier transformed vorticity term
-          forcing: Forcing function as specified by environment or user
+        """Compute the environmental forcing term of the vorticity equation.
+
+        Evaluates the flow's ``forcing_function(k, x, y)`` in physical space,
+        transforms the (fx, fy) velocity forcing to Fourier space, and takes
+        its curl ``2i*pi * (fy_hat * kx - fx_hat * ky)`` to obtain the
+        vorticity-space forcing.
+
+        Returns:
+            The spectral forcing term of the same shape as the state, or
+            ``None`` if the flow defines no forcing function.
         """
         forcing_func = self.flow.forcing_function
         if forcing_func is not None:
@@ -303,6 +366,16 @@ class PseudoSpectralNavierStokes2D(IMEXEquation):
 
 @struct.dataclass
 class KolmogorovFlowState(environment.EnvState):
+    """Kolmogorov-flow environment state.
+
+    Attributes:
+        trajectory: Saved spectral vorticity snapshots of the last rollout
+            (leading axis over time).
+        omega_hat: Final spectral vorticity of the last rollout.
+        time: Number of RL steps taken in the current episode.
+        terminal: Whether the episode has terminated.
+    """
+
     trajectory: jnp.ndarray
     omega_hat: jnp.ndarray
     time: jnp.ndarray
@@ -311,6 +384,26 @@ class KolmogorovFlowState(environment.EnvState):
 
 @struct.dataclass
 class KolmogorovFlowParams(EnvParams):
+    """Gymnax parameters for the Kolmogorov-flow environment.
+
+    Attributes:
+        min_action: Lower bound of each control amplitude.
+        max_action: Upper bound of each control amplitude.
+        min_obs: Lower bound of the observation space (unbounded).
+        max_obs: Upper bound of the observation space (unbounded).
+        dt: DNS timestep of the integrator.
+        action_time: Physical time simulated per RL step.
+        save_time: Time interval between saved trajectory states.
+        k1, k2, k3, k4: Wavenumbers of the four sinusoidal control modes.
+        action_dim: Number of control amplitudes.
+        obs_dim: Flattened observation size.
+        max_episode_steps: Episode length in RL steps.
+        reward_alpha: Weight of the TKE term in the reward (the action
+            penalty is always weighted at 1).
+        include_grad: Whether gradient information is included (kept for
+            interface compatibility).
+    """
+
     min_action: float = -0.5
     max_action: float = 0.5
     min_obs: float = -jnp.inf
@@ -334,11 +427,30 @@ class KolmogorovFlowParams(EnvParams):
 
 
 class KolmogorovFlow(JAXFlowEnvBase):
+    """2D Kolmogorov-flow Gymnax environment.
+
+    Each RL step rolls the pseudo-spectral Navier-Stokes solver forward for
+    ``action_time`` of physical time with the four sinusoidal control modes
+    derived from the action vector. The observation is the time-mean of the
+    velocity magnitude over the rollout, sampled on an ``obs_size x obs_size``
+    grid; the reward combines the mean turbulent kinetic energy with an
+    L1 penalty on the action.
+    """
+
     def __init__(
         self,
         env_config: Optional[Dict] = None,
         flow_config: Optional[Dict] = None,
     ):
+        """Create the flow configuration, equation, and integrator.
+
+        Args:
+            env_config: Environment options; supports ``dt`` to override the
+                integrator timestep (default: the value in
+                :class:`KolmogorovFlowParams`).
+            flow_config: Options forwarded to :class:`FlowConfig` (``k``,
+                ``Re``, ``grid_size``, ``domain_x``, ``domain_y``, ``obs_size``).
+        """
         super().__init__(env_config)
 
         self.flow = FlowConfig(**(flow_config or {}))
@@ -360,10 +472,16 @@ class KolmogorovFlow(JAXFlowEnvBase):
 
     @property
     def name(self) -> str:
+        """Name of this environment."""
         return "KolmogorovFlow"
 
     @property
     def default_params(self) -> KolmogorovFlowParams:
+        """Default parameters, with ``obs_dim`` from the flow's ``obs_size`` and the optional ``dt`` override applied.
+
+        Returns:
+            A :class:`KolmogorovFlowParams` instance.
+        """
         dt_override = getattr(self, "_dt_override", None)
         kwargs = dict(action_dim=4, obs_dim=self.flow.obs_size**2)
         if dt_override is not None:
@@ -371,6 +489,15 @@ class KolmogorovFlow(JAXFlowEnvBase):
         return KolmogorovFlowParams(**kwargs)
 
     def action_space(self, params: Optional[KolmogorovFlowParams] = None):
+        """Return the (Box) action space bounded by the parameters' action limits.
+
+        Args:
+            params: Environment parameters; defaults to ``self.default_params``.
+
+        Returns:
+            Gymnax Box space of shape ``(params.action_dim,)`` with bounds
+            ``[params.min_action, params.max_action]``.
+        """
         params = params or self.default_params
         return spaces.Box(
             low=params.min_action,
@@ -379,6 +506,15 @@ class KolmogorovFlow(JAXFlowEnvBase):
         )
 
     def observation_space(self, params: KolmogorovFlowParams):
+        """Return the (Box) observation space bounded by the parameters' observation limits.
+
+        Args:
+            params: Environment parameters.
+
+        Returns:
+            Gymnax Box space of shape ``(params.obs_dim,)`` with bounds
+            ``[params.min_obs, params.max_obs]``.
+        """
         return spaces.Box(
             low=params.min_obs,
             high=params.max_obs,
@@ -386,6 +522,19 @@ class KolmogorovFlow(JAXFlowEnvBase):
         )
 
     def _control_field(self, action: jnp.ndarray, params: KolmogorovFlowParams) -> Tuple[jnp.ndarray, jnp.ndarray]:
+        """Convert the action vector into a physical-space forcing field.
+
+        Builds the x-forcing as the sum of four sinusoidal modes in y with
+        amplitudes ``a1..a4`` and wavenumbers ``params.k1..k4``; the y-forcing
+        is zero.
+
+        Args:
+            action: Control amplitudes, shape (4,).
+            params: Environment parameters.
+
+        Returns:
+            Tuple ``(forcing_x, forcing_y)`` of physical-space arrays.
+        """
         a1, a2, a3, a4 = action
         forcing_x = (
             a1 * jnp.sin(params.k1 * self.y)
@@ -402,9 +551,21 @@ class KolmogorovFlow(JAXFlowEnvBase):
         params: KolmogorovFlowParams,
         control_field: Optional[Tuple[jnp.ndarray, jnp.ndarray]] = None,
     ) -> Tuple[jnp.ndarray, jnp.ndarray]:
-        """
+        """Roll the pseudo-spectral solver forward for one ``action_time`` window.
+
+        Uses the integrator built at construction with the default parameters'
+        ``dt`` and ``save_time``.
+
+        Args:
+            omega_hat0: Initial spectral vorticity field.
+            params: Environment parameters (unused; the rollout settings come
+                from ``self.default_params``).
+            control_field: Optional tuple ``(forcing_x, forcing_y)`` of
+                physical-space control fields applied throughout the rollout.
+
         Returns:
-            final_state_hat, trajectory
+            Tuple ``(final_state_hat, trajectory)``: the final spectral
+            vorticity and the stacked saved states along the rollout.
         """
         default = self.default_params
         dt = float(default.dt)
@@ -422,14 +583,43 @@ class KolmogorovFlow(JAXFlowEnvBase):
         return final_state, trajectory
 
     def _calculate_velocity_point(self, omega_hat: jnp.ndarray, i: int, j: int):
+        """Evaluate the real-space velocity at grid point ``(i, j)`` from a spectral vorticity field.
+
+        Uses the precomputed Fourier mesh cached at construction.
+
+        Args:
+            omega_hat: Spectral vorticity field.
+            i: x-index of the evaluation point.
+            j: y-index of the evaluation point.
+
+        Returns:
+            Real-space velocity at that point (2-vector).
+        """
         uhat, vhat = compute_velocity_fft(omega_hat, self.kx, self.ky)
         return compute_real_velocity_point(uhat, vhat, i, j)
 
     def _trajectory_mean_obs(self, trajectory: jnp.ndarray) -> jnp.ndarray:
+        """Compute the time-mean velocity-magnitude observation over a rollout trajectory.
+
+        For each spectral vorticity snapshot the velocity is reconstructed in
+        Fourier space, transformed to physical space on the full grid once,
+        subsampled on a regular ``obs_size x obs_size`` grid (stride
+        ``grid_size // obs_size``, at least 1), converted to velocity
+        magnitude, and finally averaged over the snapshots.
+
+        Args:
+            trajectory: Array of spectral vorticity snapshots with a leading
+                time axis.
+
+        Returns:
+            Flattened array of shape ``(obs_size * obs_size,)`` with the
+            trajectory-mean velocity magnitude at each observation point.
+        """
         stride_x = max(1, self.n // self.flow.obs_size)
         stride_y = max(1, self.m // self.flow.obs_size)
 
         def obs_one_state(omega_hat):
+            """Velocity-magnitude observation (subsampled, flattened) for one spectral state."""
             # 1. Compute velocity in Fourier space for the whole grid ONCE
             uhat, vhat = compute_velocity_fft(omega_hat, self.kx, self.ky)
 
@@ -453,10 +643,32 @@ class KolmogorovFlow(JAXFlowEnvBase):
         params: KolmogorovFlowParams,
         key: Optional[chex.PRNGKey] = None,
     ) -> chex.Array:
+        """Compute the observation as the time-mean velocity magnitude over the rollout.
+
+        Args:
+            state: Current environment state.
+            params: Environment parameters (unused).
+            key: Unused; accepted for API compatibility.
+
+        Returns:
+            Flattened array of shape ``(params.obs_dim,)`` (see
+            :meth:`_trajectory_mean_obs`).
+        """
         return self._trajectory_mean_obs(state.trajectory)
 
     def _avg_tke(self, trajectory: jnp.ndarray) -> jnp.ndarray:
+        """Average the turbulent kinetic energy over a trajectory of spectral vorticity states.
+
+        Args:
+            trajectory: Array of spectral vorticity snapshots with a leading
+                time axis.
+
+        Returns:
+            Scalar mean TKE over all snapshots.
+        """
+
         def one(omega_hat):
+            """TKE of a single spectral vorticity snapshot."""
             return compute_tke(omega_hat, self.kx, self.ky, self.n)
 
         return jnp.mean(jax.vmap(one)(trajectory))
@@ -467,6 +679,17 @@ class KolmogorovFlow(JAXFlowEnvBase):
         trajectory: jnp.ndarray,
         params: KolmogorovFlowParams,
     ) -> jnp.ndarray:
+        """Compute the reward for a rollout as negative weighted TKE plus an L1 action penalty.
+
+        Args:
+            action: Control amplitudes applied during the rollout.
+            trajectory: Spectral vorticity snapshots produced by the rollout.
+            params: Environment parameters (``reward_alpha`` weights the TKE
+                term; the action penalty has weight 1).
+
+        Returns:
+            Scalar reward ``-(reward_alpha * mean_TKE + sum(|action|))``.
+        """
         energy = self._avg_tke(trajectory)
         action_penalty = jnp.sum(jnp.abs(action))
         return -(params.reward_alpha * energy + action_penalty)
@@ -476,6 +699,19 @@ class KolmogorovFlow(JAXFlowEnvBase):
         key: chex.PRNGKey,
         params: KolmogorovFlowParams,
     ):
+        """Reset the environment: initialize the flow and spin it up unactuated.
+
+        The initial divergence-free vorticity field is generated and rolled out
+        for one ``action_time`` window with no control; the resulting state
+        carries both the final spectral vorticity and the saved trajectory.
+
+        Args:
+            key: PRNG key (unused; the reset is deterministic).
+            params: Environment parameters.
+
+        Returns:
+            Tuple ``(obs, KolmogorovFlowState)`` at RL time 0.
+        """
         omega0 = self.flow.initialize_state()
 
         final_state, trajectory = self._rollout(
@@ -500,6 +736,24 @@ class KolmogorovFlow(JAXFlowEnvBase):
         action: chex.Array,
         params: KolmogorovFlowParams,
     ):
+        """Advance the environment by one RL step under the given action.
+
+        The action is clipped to the parameter bounds, converted into a
+        physical-space control field of four sinusoidal modes, and the flow is
+        rolled out for one ``action_time`` window. The observation is the
+        time-mean velocity magnitude over the rollout and the reward is the
+        weighted mean TKE plus the L1 action penalty (negated).
+
+        Args:
+            key: PRNG key (unused; the dynamics are deterministic).
+            state: Current environment state.
+            action: Control amplitudes for the four sinusoidal modes.
+            params: Environment parameters.
+
+        Returns:
+            Tuple ``(obs, next_state, reward, done, info)`` where ``info``
+            contains ``"discount"`` and ``"mean_tke"``.
+        """
         action = self._clip_action(action, params)
         control_field = self._control_field(action, params)
 

@@ -26,6 +26,13 @@ from hydrogym.hf_env_mixin import ConfigError, HFEnvConfigMixin
 
 
 class EnvParams(environment.EnvParams):
+    """Gymnax environment parameters extended with the environment config dictionary.
+
+    Attributes:
+        config: Environment configuration (grid sizes, control bounds, etc.)
+            as loaded from the environment's configuration file.
+    """
+
     config: dict
 
 
@@ -282,15 +289,66 @@ class JAXFlowEnv(HFEnvConfigMixin, environment.Environment[EnvState, EnvParams])
         self.cfg = omegaconf.OmegaConf.load(self.configuration_file)
 
     def reset_env(self, key: chex.PRNGKey, params: EnvParams) -> Tuple[chex.Array, EnvState]:
+        """Reset the environment to its initial condition.
+
+        Args:
+            key: PRNG key for stochastic resets.
+            params: Environment parameters.
+
+        Returns:
+            Tuple ``(obs, state)`` of the initial observation and state.
+
+        Raises:
+            NotImplementedError: Always; subclasses define the actual reset.
+        """
         raise NotImplementedError
 
     def get_obs(self, state: EnvState, params: EnvParams, key=None) -> chex.Array:
+        """Compute the observation from the current environment state.
+
+        Args:
+            state: Current environment state.
+            params: Environment parameters.
+            key: Optional PRNG key for stochastic observations.
+
+        Returns:
+            Observation array.
+
+        Raises:
+            NotImplementedError: Always; subclasses define the observation model.
+        """
         raise NotImplementedError
 
     def is_terminal(self, state: EnvState, params: EnvParams) -> jnp.ndarray:
+        """Whether the episode has ended.
+
+        An episode terminates when the state flags ``terminal`` or the elapsed
+        time reaches ``params.max_episode_steps``.
+
+        Args:
+            state: Current environment state.
+            params: Environment parameters.
+
+        Returns:
+            Boolean array indicating termination.
+        """
         return jnp.logical_or(state.terminal, state.time >= params.max_episode_steps)
 
     def step_env(self, key: chex.PRNGKey, state: EnvState, action: jnp.array, params: EnvParams):
+        """Advance the environment by one step under the given action.
+
+        Args:
+            key: PRNG key for stochastic transitions.
+            state: Current environment state.
+            action: Control (actuation) input.
+            params: Environment parameters.
+
+        Returns:
+            Tuple ``(obs, next_state, reward, done, info)``.
+
+        Raises:
+            NotImplementedError: Always; subclasses define the dynamics.
+        """
         raise NotImplementedError
 
 
@@ -306,16 +364,47 @@ class JAXFlowEnvBase(environment.Environment[EnvState, EnvParams]):
     """
 
     def __init__(self, env_config: Optional[dict] = None):
+        """Initialize the environment with an optional configuration dictionary.
+
+        Args:
+            env_config: Environment configuration options (e.g.
+                ``max_episode_steps``); defaults to an empty dict.
+        """
         self.env_config = env_config or {}
 
     def default_params(self) -> EnvParams:
+        """Return the environment's default parameters.
+
+        Sets ``self.max_episode_steps`` from ``env_config`` (default 1000) as a
+        side effect.
+
+        Returns:
+            Default environment parameters.
+
+        Raises:
+            NotImplementedError: Always; subclasses must provide the parameters.
+        """
         self.max_episode_steps = self.env_config.get("max_episode_steps", 1000)
         raise NotImplementedError
 
     def name(self) -> str:
+        """Return the environment's name.
+
+        Raises:
+            NotImplementedError: Always; subclasses must provide a name.
+        """
         raise NotImplementedError
 
     def action_space(self, params: Optional[EnvParams] = None):
+        """Return the (Box) action space bounded by the parameters' action limits.
+
+        Args:
+            params: Environment parameters; defaults to ``self.default_params``.
+
+        Returns:
+            Gymnax Box space of shape ``(params.action_dim,)`` with bounds
+            ``[params.min_action, params.max_action]``.
+        """
         params = params or self.default_params
         return spaces.Box(
             low=params.min_action,
@@ -324,6 +413,15 @@ class JAXFlowEnvBase(environment.Environment[EnvState, EnvParams]):
         )
 
     def observation_space(self, params: EnvParams):
+        """Return the (Box) observation space bounded by the parameters' observation limits.
+
+        Args:
+            params: Environment parameters.
+
+        Returns:
+            Gymnax Box space of shape ``(params.obs_dim,)`` with bounds
+            ``[params.min_obs, params.max_obs]``.
+        """
         return spaces.Box(
             low=params.min_obs,
             high=params.max_obs,
@@ -331,15 +429,58 @@ class JAXFlowEnvBase(environment.Environment[EnvState, EnvParams]):
         )
 
     def _clip_action(self, action: chex.Array, params: EnvParams) -> chex.Array:
+        """Clip an action to the environment's action space bounds.
+
+        Args:
+            action: Raw (unclipped) action array.
+            params: Environment parameters supplying ``min_action``/``max_action``.
+
+        Returns:
+            The action element-wise clipped into ``[min_action, max_action]``.
+        """
         return jnp.clip(action, params.min_action, params.max_action)
 
     def is_terminal(self, state: EnvState, params: EnvParams) -> jnp.ndarray:
+        """Whether the episode has ended (state flags ``terminal`` or time limit reached).
+
+        Args:
+            state: Current environment state.
+            params: Environment parameters.
+
+        Returns:
+            Boolean array indicating termination.
+        """
         return jnp.logical_or(state.terminal, state.time >= params.max_episode_steps)
 
     def reset_env(self, key: chex.PRNGKey, params: EnvParams) -> Tuple[chex.Array, EnvState]:
+        """Reset the environment to its initial condition.
+
+        Args:
+            key: PRNG key for stochastic resets.
+            params: Environment parameters.
+
+        Returns:
+            Tuple ``(obs, state)`` of the initial observation and state.
+
+        Raises:
+            NotImplementedError: Always; subclasses define the actual reset.
+        """
         raise NotImplementedError
 
     def get_obs(self, state: EnvState, params: EnvParams, key=None) -> chex.Array:
+        """Compute the observation from the current environment state.
+
+        Args:
+            state: Current environment state.
+            params: Environment parameters.
+            key: Optional PRNG key for stochastic observations.
+
+        Returns:
+            Observation array.
+
+        Raises:
+            NotImplementedError: Always; subclasses define the observation model.
+        """
         raise NotImplementedError
 
     def step_env(
@@ -349,6 +490,20 @@ class JAXFlowEnvBase(environment.Environment[EnvState, EnvParams]):
         action: chex.Array,
         params: EnvParams,
     ):
+        """Advance the environment by one step under the given action.
+
+        Args:
+            key: PRNG key for stochastic transitions.
+            state: Current environment state.
+            action: Control (actuation) input.
+            params: Environment parameters.
+
+        Returns:
+            Tuple ``(obs, next_state, reward, done, info)``.
+
+        Raises:
+            NotImplementedError: Always; subclasses define the dynamics.
+        """
         raise NotImplementedError
 
 
@@ -364,10 +519,16 @@ class GymnaxWrapper(object):
     """Base class for Gymnax wrappers."""
 
     def __init__(self, env):
+        """Wrap the given environment.
+
+        Args:
+            env: The Gymnax environment (or wrapper) being wrapped.
+        """
         self._env = env
 
     # provide proxy access to regular attributes of wrapped object
     def __getattr__(self, name):
+        """Proxy attribute access through to the wrapped environment."""
         return getattr(self._env, name)
 
 
@@ -375,9 +536,22 @@ class FlattenObservationWrapper(GymnaxWrapper):
     """Flatten the observations of the environment."""
 
     def __init__(self, env: environment.Environment):
+        """Wrap the given environment (see :class:`GymnaxWrapper`)."""
         super().__init__(env)
 
     def observation_space(self, params) -> spaces.Box:
+        """Return the wrapped environment's observation space, flattened to 1D.
+
+        Args:
+            params: Environment parameters.
+
+        Returns:
+            Gymnax Box space whose shape is the product of the underlying
+            space's shape, with the same bounds and dtype.
+
+        Raises:
+            AssertionError: If the wrapped space is not a Box.
+        """
         assert isinstance(self._env.observation_space(params), spaces.Box), "Only Box spaces are supported for now."
         return spaces.Box(
             low=self._env.observation_space(params).low,
@@ -390,6 +564,15 @@ class FlattenObservationWrapper(GymnaxWrapper):
     def reset(
         self, key: chex.PRNGKey, params: Optional[environment.EnvParams] = None
     ) -> Tuple[chex.Array, environment.EnvState]:
+        """Reset the wrapped environment and flatten the initial observation.
+
+        Args:
+            key: PRNG key for the reset.
+            params: Environment parameters (None uses the environment default).
+
+        Returns:
+            Tuple ``(obs, state)`` with the flattened observation.
+        """
         obs, state = self._env.reset(key, params)
         obs = jnp.reshape(obs, (-1,))
         return obs, state
@@ -402,6 +585,18 @@ class FlattenObservationWrapper(GymnaxWrapper):
         action: Union[int, float],
         params: Optional[environment.EnvParams] = None,
     ) -> Tuple[chex.Array, environment.EnvState, float, bool, dict]:
+        """Step the wrapped environment and flatten the returned observation.
+
+        Args:
+            key: PRNG key for the transition.
+            state: Current environment state.
+            action: Action to apply.
+            params: Environment parameters (None uses the environment default).
+
+        Returns:
+            Tuple ``(obs, state, reward, done, info)`` with the flattened
+            observation; all other values are passed through unchanged.
+        """
         obs, state, reward, done, info = self._env.step(key, state, action, params)
         obs = jnp.reshape(obs, (-1,))
         return obs, state, reward, done, info
@@ -409,6 +604,17 @@ class FlattenObservationWrapper(GymnaxWrapper):
 
 @struct.dataclass
 class LogEnvState:
+    """State bookkeeping for :class:`LogWrapper`.
+
+    Attributes:
+        env_state: The wrapped environment's own state.
+        episode_returns: Return accumulated so far in the current episode.
+        episode_lengths: Number of steps taken so far in the current episode.
+        returned_episode_returns: Return of the most recently completed episode.
+        returned_episode_lengths: Length of the most recently completed episode.
+        timestep: Total number of steps taken across all episodes.
+    """
+
     env_state: environment.EnvState
     episode_returns: float
     episode_lengths: int
@@ -421,12 +627,22 @@ class LogWrapper(GymnaxWrapper):
     """Log the episode returns and lengths."""
 
     def __init__(self, env: environment.Environment):
+        """Wrap the given environment (see :class:`GymnaxWrapper`)."""
         super().__init__(env)
 
     @partial(jax.jit, static_argnums=(0,))
     def reset(
         self, key: chex.PRNGKey, params: Optional[environment.EnvParams] = None
     ) -> Tuple[chex.Array, environment.EnvState]:
+        """Reset the wrapped environment and zero the episode bookkeeping.
+
+        Args:
+            key: PRNG key for the reset.
+            params: Environment parameters (None uses the environment default).
+
+        Returns:
+            Tuple ``(obs, LogEnvState)`` with all counters initialized to zero.
+        """
         obs, env_state = self._env.reset(key, params)
         state = LogEnvState(env_state, 0, 0, 0, 0, 0)
         return obs, state
@@ -439,6 +655,23 @@ class LogWrapper(GymnaxWrapper):
         action: Union[int, float],
         params: Optional[environment.EnvParams] = None,
     ) -> Tuple[chex.Array, environment.EnvState, float, bool, dict]:
+        """Step the wrapped environment, updating and exporting episode statistics.
+
+        Accumulates the running episode return/length and, on episode end,
+        freezes them into ``returned_episode_returns``/``returned_episode_lengths``
+        before resetting the running counters. These values (plus the global
+        timestep and an ``returned_episode`` done flag) are added to ``info``.
+
+        Args:
+            key: PRNG key for the transition.
+            state: Current :class:`LogEnvState`.
+            action: Action to apply to the wrapped environment.
+            params: Environment parameters (None uses the environment default).
+
+        Returns:
+            Tuple ``(obs, new LogEnvState, reward, done, info)`` with the
+            logging fields added to ``info``.
+        """
         obs, env_state, reward, done, info = self._env.step(key, state.env_state, action, params)
         new_episode_return = state.episode_returns + reward
         new_episode_length = state.episode_lengths + 1
@@ -458,18 +691,59 @@ class LogWrapper(GymnaxWrapper):
 
 
 class NavixGymnaxWrapper:
+    """Adapter exposing a Navix environment through the Gymnax-style API.
+
+    Wraps a Navix environment created from ``env_name`` and translates its
+    reset/step/space API into the ``(obs, state, reward, done, info)`` tuple
+    convention used by the other wrappers here.
+    """
+
     def __init__(self, env_name):
+        """Create the underlying Navix environment.
+
+        Args:
+            env_name: Name of the Navix environment (passed to ``navix.make``).
+        """
         self._env = nx.make(env_name)
 
     def reset(self, key, params=None):
+        """Reset the Navix environment.
+
+        Args:
+            key: PRNG key for the reset.
+            params: Unused; accepted for Gymnax API compatibility.
+
+        Returns:
+            Tuple ``(observation, timestep)`` from the Navix reset.
+        """
         timestep = self._env.reset(key)
         return timestep.observation, timestep
 
     def step(self, key, state, action, params=None):
+        """Step the Navix environment.
+
+        Args:
+            key: Unused; accepted for Gymnax API compatibility.
+            state: Current Navix timestep (used as the environment state).
+            action: Action to apply.
+            params: Unused; accepted for Gymnax API compatibility.
+
+        Returns:
+            Tuple ``(observation, timestep, reward, done, info)`` where ``info``
+            is always an empty dict.
+        """
         timestep = self._env.step(state, action)
         return timestep.observation, timestep, timestep.reward, timestep.is_done(), {}
 
     def observation_space(self, params):
+        """Return the flattened Navix observation space as a Gymnax Box.
+
+        Args:
+            params: Unused; accepted for Gymnax API compatibility.
+
+        Returns:
+            Gymnax Box with the Navix space's bounds, flattened shape, and dtype.
+        """
         return spaces.Box(
             low=self._env.observation_space.minimum,
             high=self._env.observation_space.maximum,
@@ -478,50 +752,134 @@ class NavixGymnaxWrapper:
         )
 
     def action_space(self, params):
+        """Return the Navix action space as a Gymnax Discrete space.
+
+        Args:
+            params: Unused; accepted for Gymnax API compatibility.
+
+        Returns:
+            Gymnax Discrete space with the number of Navix action categories.
+        """
         return spaces.Discrete(
             num_categories=self._env.action_space.maximum.item() + 1,
         )
 
 
 class ClipAction(GymnaxWrapper):
+    """Wrapper that clips actions to a fixed range before stepping the environment."""
+
     def __init__(self, env, low=-1.0, high=1.0):
+        """Wrap the environment and store the clipping bounds.
+
+        Args:
+            env: The environment being wrapped.
+            low: Lower bound for clipping actions.
+            high: Upper bound for clipping actions.
+        """
         super().__init__(env)
         self.low = low
         self.high = high
 
     def step(self, key, state, action, params=None):
-        """TODO: In theory the below line should be the way to do this."""
+        """Clip the action to ``[low, high]`` and step the wrapped environment.
+
+        Args:
+            key: PRNG key for the transition.
+            state: Current environment state.
+            action: Action to clip and apply.
+            params: Environment parameters.
+
+        Returns:
+            Tuple ``(obs, state, reward, done, info)`` from the wrapped environment.
+
+        Note:
+            TODO: In theory the clip bounds should come from the action space.
+        """
         # action = jnp.clip(action, self.env.action_space.low, self.env.action_space.high)
         action = jnp.clip(action, self.low, self.high)
         return self._env.step(key, state, action, params)
 
 
 class TransformObservation(GymnaxWrapper):
+    """Wrapper that applies a function to the observation after reset and step."""
+
     def __init__(self, env, transform_obs):
+        """Wrap the environment and store the observation transform.
+
+        Args:
+            env: The environment being wrapped.
+            transform_obs: Callable applied to every observation.
+        """
         super().__init__(env)
         self.transform_obs = transform_obs
 
     def reset(self, key, params=None):
+        """Reset the wrapped environment and transform the initial observation.
+
+        Args:
+            key: PRNG key for the reset.
+            params: Environment parameters.
+
+        Returns:
+            Tuple ``(transformed obs, state)``.
+        """
         obs, state = self._env.reset(key, params)
         return self.transform_obs(obs), state
 
     def step(self, key, state, action, params=None):
+        """Step the wrapped environment and transform the returned observation.
+
+        Args:
+            key: PRNG key for the transition.
+            state: Current environment state.
+            action: Action to apply.
+            params: Environment parameters.
+
+        Returns:
+            Tuple ``(transformed obs, state, reward, done, info)``.
+        """
         obs, state, reward, done, info = self._env.step(key, state, action, params)
         return self.transform_obs(obs), state, reward, done, info
 
 
 class TransformReward(GymnaxWrapper):
+    """Wrapper that applies a function to the reward after each step."""
+
     def __init__(self, env, transform_reward):
+        """Wrap the environment and store the reward transform.
+
+        Args:
+            env: The environment being wrapped.
+            transform_reward: Callable applied to every reward.
+        """
         super().__init__(env)
         self.transform_reward = transform_reward
 
     def step(self, key, state, action, params=None):
+        """Step the wrapped environment and transform the returned reward.
+
+        Args:
+            key: PRNG key for the transition.
+            state: Current environment state.
+            action: Action to apply.
+            params: Environment parameters.
+
+        Returns:
+            Tuple ``(obs, state, transformed reward, done, info)``.
+        """
         obs, state, reward, done, info = self._env.step(key, state, action, params)
         return obs, state, self.transform_reward(reward), done, info
 
 
 class VecEnv(GymnaxWrapper):
+    """Wrapper that vectorizes the wrapped environment's reset and step over batched keys/states/actions."""
+
     def __init__(self, env):
+        """Wrap the environment and install vmapped reset/step methods.
+
+        Args:
+            env: The environment being wrapped.
+        """
         super().__init__(env)
         self.reset = jax.vmap(self._env.reset, in_axes=(0, None))
         self.step = jax.vmap(self._env.step, in_axes=(0, 0, 0, None))
@@ -529,6 +887,15 @@ class VecEnv(GymnaxWrapper):
 
 @struct.dataclass
 class NormalizeVecObsEnvState:
+    """Running-normalization bookkeeping for :class:`NormalizeVecObservation`.
+
+    Attributes:
+        mean: Running per-dimension mean of the observations.
+        var: Running per-dimension variance of the observations.
+        count: Running count of observations seen so far.
+        env_state: The wrapped environment's own state.
+    """
+
     mean: jnp.ndarray
     var: jnp.ndarray
     count: float
@@ -536,10 +903,27 @@ class NormalizeVecObsEnvState:
 
 
 class NormalizeVecObservation(GymnaxWrapper):
+    """Wrapper that normalizes vectorized observations with a running mean/variance.
+
+    Statistics are updated from the batch of observations at every reset/step
+    (Welford-style parallel-variant merge) and observations are returned as
+    ``(obs - mean) / sqrt(var + 1e-8)``.
+    """
+
     def __init__(self, env):
+        """Wrap the given environment (see :class:`GymnaxWrapper`)."""
         super().__init__(env)
 
     def reset(self, key, params=None):
+        """Reset the wrapped environment and initialize/update the observation statistics.
+
+        Args:
+            key: PRNG key for the reset.
+            params: Environment parameters.
+
+        Returns:
+            Tuple ``(normalized obs, NormalizeVecObsEnvState)``.
+        """
         obs, state = self._env.reset(key, params)
         state = NormalizeVecObsEnvState(
             mean=jnp.zeros_like(obs),
@@ -571,6 +955,22 @@ class NormalizeVecObservation(GymnaxWrapper):
         return (obs - state.mean) / jnp.sqrt(state.var + 1e-8), state
 
     def step(self, key, state, action, params=None):
+        """Step the wrapped environment and normalize the observation batch.
+
+        The running mean/variance are first merged with the batch statistics of
+        the new observations; the returned observation is the batch normalized
+        with the updated statistics.
+
+        Args:
+            key: PRNG key for the transition.
+            state: Current :class:`NormalizeVecObsEnvState`.
+            action: Batched actions to apply.
+            params: Environment parameters.
+
+        Returns:
+            Tuple ``(normalized obs, updated NormalizeVecObsEnvState, reward,
+            done, info)``.
+        """
         obs, env_state, reward, done, info = self._env.step(key, state.env_state, action, params)
 
         batch_mean = jnp.mean(obs, axis=0)
@@ -604,6 +1004,16 @@ class NormalizeVecObservation(GymnaxWrapper):
 
 @struct.dataclass
 class NormalizeVecRewEnvState:
+    """Running-normalization bookkeeping for :class:`NormalizeVecReward`.
+
+    Attributes:
+        mean: Running mean of the discounted episode returns.
+        var: Running variance of the discounted episode returns.
+        count: Running count of return samples seen so far.
+        return_val: Current discounted episode return per environment.
+        env_state: The wrapped environment's own state.
+    """
+
     mean: jnp.ndarray
     var: jnp.ndarray
     count: float
@@ -612,11 +1022,34 @@ class NormalizeVecRewEnvState:
 
 
 class NormalizeVecReward(GymnaxWrapper):
+    """Wrapper that normalizes vectorized rewards by the running variance of the discounted returns.
+
+    Rewards are accumulated per environment with discount factor ``gamma`` and
+    each reward is divided by ``sqrt(var + 1e-8)`` of the running return
+    statistics.
+    """
+
     def __init__(self, env, gamma):
+        """Wrap the environment and store the discount factor.
+
+        Args:
+            env: The environment being wrapped.
+            gamma: Discount factor used to accumulate episode returns.
+        """
         super().__init__(env)
         self.gamma = gamma
 
     def reset(self, key, params=None):
+        """Reset the wrapped environment and zero the return statistics.
+
+        Args:
+            key: PRNG key for the reset.
+            params: Environment parameters.
+
+        Returns:
+            Tuple ``(obs, NormalizeVecRewEnvState)`` with mean 0, variance 1,
+            and zeroed per-environment returns.
+        """
         obs, state = self._env.reset(key, params)
         batch_count = obs.shape[0]
         state = NormalizeVecRewEnvState(
@@ -629,6 +1062,23 @@ class NormalizeVecReward(GymnaxWrapper):
         return obs, state
 
     def step(self, key, state, action, params=None):
+        """Step the wrapped environment and scale the reward by the running return std.
+
+        The discounted episode return is updated per environment
+        (``return_val * gamma * (1 - done) + reward``) and merged into the
+        running mean/variance statistics; the reward is then divided by
+        ``sqrt(var + 1e-8)`` before being returned.
+
+        Args:
+            key: PRNG key for the transition.
+            state: Current :class:`NormalizeVecRewEnvState`.
+            action: Batched actions to apply.
+            params: Environment parameters.
+
+        Returns:
+            Tuple ``(obs, updated NormalizeVecRewEnvState, scaled reward, done,
+            info)``.
+        """
         obs, env_state, reward, done, info = self._env.step(key, state.env_state, action, params)
         return_val = state.return_val * self.gamma * (1 - done) + reward
 

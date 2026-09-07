@@ -29,20 +29,43 @@ class DampedActuator(ActuatorBase):
         damping: float,
         state: float = 0.0,
     ):
+        """Initialize the actuator.
+
+        Args:
+            damping (float): Damping coefficient ``k/m = 1/tau``, i.e. the
+                inverse time constant of the low-pass filter.
+            state (float, optional): Initial actuator state. Default 0.0.
+        """
         self.alpha = damping
         self._x = pyadjoint.AdjFloat(state)
         self.x = fd.Constant(state)
 
     @property
     def state(self) -> np.ndarray:
+        """Current actuator state as a scalar value."""
         return self.x.values()[0]
 
     @state.setter
     def state(self, u: float):
+        """Set the actuator state directly.
+
+        Args:
+            u (float): New state value.
+        """
         self._x = pyadjoint.AdjFloat(u)
         self.x.assign(u)
 
     def step(self, u: float, dt: float):
-        """Update the state of the actuator"""
+        """Advance the actuator state by ``dt`` with control input ``u``.
+
+        Applies the exact zero-order-hold solution of the first-order
+        damped dynamics: ``x <- u + (x - u) * exp(-alpha * dt)``, and
+        annotates the update for use with Firedrake/Pyadjoint
+        differentiable programming.
+
+        Args:
+            u (float): Control input (target state) held over the step.
+            dt (float): Time step size.
+        """
         self._x = u + (self._x - u) * exp(-self.alpha * dt)
         self.x.assign(self._x, annotate=True)
