@@ -1,0 +1,18 @@
+!     missing definitions in SOLN
+      integer LVT1, LVT2, LBT1, LBT2, LPTMSK, LPTSOL, LORDER2, JP
+
+      real BQ
+      real VXLAG, VYLAG, VZLAG, TLAG, VGRADT1, VGRADT2,
+     $     ABX1, ABY1, ABZ1, ABX2, ABY2, ABZ2, VDIFF_E,
+     $     VX, VY, VZ, T, VTRANS, VDIFF, BFX, BFY, BFZ, CFLF, C_VX
+      real BX, BY, BZ, PM, BMX, BMY, BMZ,
+     $     BBX1, BBY1, BBZ1, BBX2, BBY2, BBZ2, BXLAG, BYLAG, BZLAG,
+     $     PMLAG
+
+      real PR, PRLAG, QTL, USRDIV
+      real V1MASK, V2MASK, V3MASK, PMASK, TMASK, OMASK, VMULT, TMULT,
+     $     B1MASK, B2MASK, B3MASK, BPMASK
+      real VXP, VYP, VZP, PRP, TP, BQP, BFXP, BFYP, BFZP,
+     $     VXLAGP, VYLAGP, VZLAGP, PRLAGP, TLAGP,
+     $     EXX1P, EXY1P, EXZ1P, EXX2P, EXY2P, EXZ2P,
+     $     VGRADT1P, VGRADT2P

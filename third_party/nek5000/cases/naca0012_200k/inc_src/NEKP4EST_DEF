@@ -1,0 +1,102 @@
+!     definitions of variables in SIZE
+      integer LDIM,LX1,LY1,LZ1,LELT,LELV,LXD,LYD,LZD,LELX,LELY,LELZ
+      integer LZL,LX2,LY2,LZ2,LX3,LY3,LZ3
+      integer LP,LELG
+      integer LPELV,LPELT,LPERT,LPX1,LPY1,LPZ1,LPX2,LPY2,LPZ2
+      integer LBELV,LBELT,LBX1,LBY1,LBZ1,LBX2,LBY2,LBZ2
+      integer LX1M,LY1M,LZ1M,LDIMT,LDIMT1,LDIMT3
+      integer LELGEC,LXYZ2,LXZ21,LMAXV,LMAXT,LMAXP,LXZ
+      integer LORDER,MAXOBJ,MAXMBR,LHIS
+      integer LCTMP0,LCTMP1,LVEC,MXPREV,LGMRES,LMVEC,LSVEC,LSTORE
+      integer MAXMOR,NELV,NELT,NX1,NY1,NZ1,NX2,NY2,NZ2
+      integer NX3,NY3,NZ3,NDIM,NFIELD,NPERT,NID,NIO,NXD,NYD,NZD
+      integer LXO,LPART,LXS,LYS,LZS,LFDM
+
+!     missing definitions in PARALLEL
+      integer NELGT_MAX,NELG,NELGV,NELGT
+
+!     missing definitions in INPUT            
+      integer MATYPE, NKTONV, NHIS, LOCHIS, NPSCAL, IPSCO, IPSCAL
+      integer IRSTV, IRSTT, IRSTIM, NMEMBER, NOBJ, IFLDMHD, NGEOM
+      integer IGROUP, MATINDX,MATIDS,IMATIE,IBCSTS
+      integer NEACT, IEACT, NUMSTS, NUMFLU, NUMOTH, NUMBCS
+
+      real PARAM, RSTIM, VNEKTON, CPFLD, CPGRP, QINTEG
+      real BC, CURVE, CERROR
+      real XC, YC, ZC
+
+!     missing definitions in TOPOL
+      integer NCMP
+      integer IEDGE ,IEDGEF ,ICEDG ,IEDGFC ,ICFACE , INDX, INVEDG
+
+!     missing definitions in WZ
+      real ZGM1, ZGM2, ZGM3, ZAM1, ZAM2, ZAM3
+      real WXM1, WYM1, WZM1, W3M1, WXM2, WYM2, WZM2, W3M2, WXM3, WYM3,
+     $     WZM3, W3M3, WAM1, WAM2, WAM3, W2AM1, W2CM1, W2AM2, W2CM2,
+     $     W2AM3, W2CM3
+
+!     missing definitions in GEOM
+      real XM1, XM2, YM1, YM2, ZM1, ZM2, RX
+      real RXM1, SXM1, TXM1, RXM2, SXM2, TXM2,
+     $     RYM1, SYM1, TYM1, RYM2, SYM2, TYM2,
+     $     RZM1, SZM1, TZM1, RZM2, SZM2, TZM2
+      real G1M1, G2M1, G3M1, G4M1, G5M1, G6M1
+      real UNX, UNY, UNZ, T1X, T1Y, T1Z, T2X, T2Y, T2Z, AREA, DLAM
+      real VNX, VNY, VNZ, V1X, V1Y, V1Z, V2X, V2Y, V2Z
+
+!     missing definitions in SOLN
+      integer LVT1, LVT2, LBT1, LBT2, LPTMSK, LPTSOL, LORDER2, JP
+
+      real BQ
+      real VXLAG, VYLAG, VZLAG, TLAG, VGRADT1, VGRADT2,
+     $     ABX1, ABY1, ABZ1, ABX2, ABY2, ABZ2, VDIFF_E,
+     $     VX, VY, VZ, T, VTRANS, VDIFF, BFX, BFY, BFZ, CFLF, C_VX
+      real BX, BY, BZ, PM, BMX, BMY, BMZ,
+     $     BBX1, BBY1, BBZ1, BBX2, BBY2, BBZ2, BXLAG, BYLAG, BZLAG,
+     $     PMLAG
+
+      real PR, PRLAG, QTL, USRDIV
+      real V1MASK, V2MASK, V3MASK, PMASK, TMASK, OMASK, VMULT, TMULT,
+     $     B1MASK, B2MASK, B3MASK, BPMASK
+      real VXP, VYP, VZP, PRP, TP, BQP, BFXP, BFYP, BFZP,
+     $     VXLAGP, VYLAGP, VZLAGP, PRLAGP, TLAGP,
+     $     EXX1P, EXY1P, EXZ1P, EXX2P, EXY2P, EXZ2P,
+     $     VGRADT1P, VGRADT2P
+
+!     missing definitions in TSTEP
+      real TIME,TIMEF,FINTIM,TIMEIO
+     $     ,DT,DTLAG,DTINIT,DTINVM,COURNO,CTARG
+     $     ,AB,BD,ABMSH
+     $     ,AVDIFF,AVTRAN,VOLFLD
+     $     ,TOLREL,TOLABS,TOLHDF,TOLPDF,TOLEV,TOLNL,PRELAX
+     $     ,TOLPS,TOLHS,TOLHR,TOLHV,TOLHT,TOLHE
+     $     ,VNRMH1,VNRMSM,VNRML2,VNRML8,VMEAN
+     $     ,TNRMH1,TNRMSM,TNRML2
+     $     ,TNRML8,TMEAN
+
+      integer IFIELD,IMESH,ISTEP,NSTEPS,IOSTEP,LASTEP,IOCOMM
+     $     ,INSTEP
+     $     ,NAB,NBD,NBDINP,NTAUBD 
+     $     ,NMXH,NMXP,NMXE,NMXNL,NINTER
+     $     ,NELFLD
+     $     ,NCONV,NCONV_MAX
+
+      real PI,BETAG,GTHETA
+      
+!     missing definitions in RESTART
+      integer LELR, MAX_RST
+      integer NXR,NYR,NZR,NELR,NELGR,ISTPR,IFILER,NFILER
+     $		,NXO,NYO,NZO,NRG,NFILEO,NPROC_O,NFLDR,NELB,NELBR
+     $     ,iHeaderSize
+      
+      real TIMER
+       
+!     missing definitions in NONCON
+      integer noncon_f, noncon_e, noncon_ip, mortar, imin, mort_m,
+     $        mortar_edge
+      real umult, xsp, ysp, zsp, xch, ych, zch, 
+     $     rtwid, stwid, dtrk, rs
+       
+!     missing definitions in MASS
+      real BM1, BM2, BINVM1, BINTM1, BM2INV, BAXM1, BM1LAG,
+     $     VOLVM1,VOLVM2,VOLTM1,VOLTM2,YINVM1

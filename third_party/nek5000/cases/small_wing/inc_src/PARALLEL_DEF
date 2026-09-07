@@ -1,0 +1,2 @@
+!     missing definitions in PARALLEL
+      integer NELGT_MAX,NELG,NELGV,NELGT,NDG_FACEX

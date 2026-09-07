@@ -1,0 +1,9 @@
+function M = sai0(A)
+	v = diag(A);
+	[m,n]=size(A);
+	v2 = 0*v;
+	for i=1:n
+		v2(n)=A(:,i)'*A(:,i);
+	end
+	M = diag(sparse(v./v2));
+end

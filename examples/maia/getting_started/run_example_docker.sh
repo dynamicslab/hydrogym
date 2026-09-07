@@ -8,16 +8,27 @@
 
 set -e
 
+# MAIA_VARIANT selects both the module and the venv together, so they can't
+# drift out of sync the way a hardcoded module name can silently stop
+# matching the venv/image you're actually running in (see
+# https://github.com/dynamicslab/hydrogym/issues/259). Override with
+# `MAIA_VARIANT=cpu ./run_example_docker.sh` if you're on a CPU-only
+# node/image; must match the module actually available in your environment
+# (e.g. an older image may ship MAIA/1.0-NVHPC-24.11-SystemCUDA-GPU instead
+# of MAIA/1.0-NVHPC-26.1 -- check `module avail MAIA` if this fails).
+MAIA_VARIANT="${MAIA_VARIANT:-gpu}"
+case "$MAIA_VARIANT" in
+  gpu) MAIA_MODULE="MAIA/1.0-NVHPC-26.1" ;;
+  cpu) MAIA_MODULE="MAIA/1.0-gompi-2024a-SystemCUDA-CPU" ;;
+  *) echo "MAIA_VARIANT must be 'gpu' or 'cpu', got: $MAIA_VARIANT" >&2; exit 1 ;;
+esac
+
 # Load MAIA solver module
-# GPU version: MAIA/1.0-NVHPC-26.1
-# CPU version: MAIA/1.0-gompi-2024a-SystemCUDA-CPU
 module purge
-module load MAIA/1.0-NVHPC-26.1
+module load "$MAIA_MODULE"
 
 # Activate Python environment
-# GPU version: source /home/easybuild/venvs/hydrogym_gpu/bin/activate
-# CPU version: source /home/easybuild/venvs/hydrogym_cpu/bin/activate
-source /home/easybuild/venvs/hydrogym_gpu/bin/activate
+source "/home/easybuild/venvs/hydrogym_${MAIA_VARIANT}/bin/activate"
 
 export OMP_NUM_THREADS=1
 

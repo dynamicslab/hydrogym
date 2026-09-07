@@ -1,0 +1,19 @@
+c
+c     Steady variables
+c
+      real            tauss(ldimt1), txnext(ldimt1)
+      common /sspar1/ tauss        , txnext
+
+      integer nsskip
+      common /sspar2/ nsskip
+
+      logical         ifskip, ifmodp, ifssvt, ifstst(ldimt1)
+     $              ,                 ifexvt, ifextr(ldimt1)
+      common /sspar3/ ifskip, ifmodp, ifssvt, ifstst
+     $              ,                 ifexvt, ifextr
+
+      real dvnnh1,dvnnsm,dvnnl2,dvnnl8,dvdfh1,dvdfsm,
+     $     dvdfl2,dvdfl8,dvprh1,dvprsm,dvprl2,dvprl8
+      common /ssnorm/ dvnnh1, dvnnsm, dvnnl2, dvnnl8
+     $              , dvdfh1, dvdfsm, dvdfl2, dvdfl8
+     $              , dvprh1, dvprsm, dvprl2, dvprl8

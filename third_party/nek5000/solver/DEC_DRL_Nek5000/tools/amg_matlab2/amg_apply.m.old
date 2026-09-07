@@ -1,0 +1,17 @@
+function x = amg_apply(data,m,n,l,b)
+  if data.n(l)==0
+    x = zeros(0,1);
+  elseif data.n(l)==1
+    x = full(1/data.A{l})*b;
+  else
+    C = data.C{l}; F = ~C;
+    x = zeros(data.n(l),1);
+    x(F) = iterate(data.Af{l},data.Bf{l},b(F),m);
+    r = b - data.A{l}*x;
+    r(C) = r(C) + data.Ws{l}'*r(F);
+    x(C) = amg_apply(data,m,n,l+1,r(C));
+    x(F) = x(F) + data.Wr{l}*x(C);
+    r = b - data.A{l}*x;
+    x(F) = x(F) + iterate(data.Af{l},data.Bf{l},r(F),n);
+  end
+end

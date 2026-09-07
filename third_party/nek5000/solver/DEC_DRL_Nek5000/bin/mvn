@@ -1,0 +1,6 @@
+mv $1.box $2.box
+mv $1.rea $2.rea
+mv $1.usr $2.usr
+mv $1.map $2.map
+mv $1.sep $2.sep
+mv $1.re2 $2.re2

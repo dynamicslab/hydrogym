@@ -1,0 +1,22 @@
+c
+c     Elemental derivative operators
+c
+      real dxm1 (lx1,lx1), dxm12 (lx2,lx1)
+     $   , dym1 (ly1,ly1), dym12 (ly2,ly1)
+     $   , dzm1 (lz1,lz1), dzm12 (lz2,lz1)
+     $   , dxtm1(lx1,lx1), dxtm12(lx1,lx2)
+     $   , dytm1(ly1,ly1), dytm12(ly1,ly2)
+     $   , dztm1(lz1,lz1), dztm12(lz1,lz2)
+     $   , dxm3 (lx3,lx3), dxtm3 (lx3,lx3)
+     $   , dym3 (ly3,ly3), dytm3 (ly3,ly3)
+     $   , dzm3 (lz3,lz3), dztm3 (lz3,lz3)
+     $   , dcm1 (ly1,ly1), dctm1 (ly1,ly1)
+     $   , dcm3 (ly3,ly3), dctm3 (ly3,ly3)
+     $   , dcm12(ly2,ly1), dctm12(ly1,ly2)
+     $   , dam1 (ly1,ly1), datm1 (ly1,ly1)
+     $   , dam12(ly2,ly1), datm12(ly1,ly2)
+     $   , dam3 (ly3,ly3), datm3 (ly3,ly3)
+      common /dxyz/ dxm1,dxm12,dym1,dym12,dzm1,dzm12,dxtm1,dxtm12,dytm1
+     $             ,dytm12,dztm1,dztm12,dxm3,dxtm3,dym3,dytm3,dzm3
+     $             ,dztm3,dcm1,dctm1,dcm3,dctm3,dcm12,dctm12,dam1,datm1
+     $             ,dam12,datm12,dam3,datm3

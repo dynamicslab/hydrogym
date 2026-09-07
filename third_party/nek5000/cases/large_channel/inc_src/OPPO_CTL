@@ -1,0 +1,54 @@
+! ======================================
+! The object for Opposition control 
+! ======================================
+! Define the control regin
+        real ctrlxs,ctrlxe,ctrlys,ctrlye
+        parameter(ctrlxs=0) !Reth = 300 
+        parameter(ctrlxe=1) ! Reth = 500 
+        parameter(ctrlys=0.0)
+        parameter(ctrlye=0.1)
+! Define the y+, viscosity and u_tau
+        real ypctrl,nuctrl
+        ! parameter (ypctrl=15.0)     ! y_plus
+        parameter (nuctrl=1.3333e-5)  ! Viscosity 
+
+! YW: Nov 24 2023 Basic variable used during running
+        integer ctrl_comp         ! The frequency of control
+        integer numctrl           ! The real number of points of wall points at each RANk
+        integer nfldc             ! Number of fields to be interplotaed
+        parameter(nfldc=1)        ! Vx, Vy, Vz Dimension, set as 1 
+        integer uniqz             ! The number of the points need to be used in control
+        integer icount            ! Count times of being actuated
+
+! YW: Coordinates of control and sesning plane, as well as the u_taw for distance between them 
+        real crdctl(LDIM,totctrl)  ! Interpolated coord points of ctrl points
+        real crdwall(LDIM,totctrl) ! Interpolated coord points of wall points
+!       real utau(LDIM,totctrl)    ! u_taw for computing y = y_plus * nu / u_tau
+
+! YW:   For interplotation of sensing plane call "findpts" and "findpts_eval"
+        integer iwk(totctrl,3) ! Working array
+        real    rwk(totctrl,3) ! Working array 
+        integer proc(totctrl)
+! YW:   The instantaneous velocity array 
+        real vctl(totctrl)   ! Velocity and curl on Control points 
+        real vwall(totctrl)  ! Velocity we sampled from contorl points This is ONLY TEST              
+
+! YW:   Prior information of wall 
+        integer inth_hpts1, inth_hpts2
+        integer nfeat                   ! "Library" of prior infomation
+        parameter (nfeat=5)
+        integer grdwall(nfeat,totctrl)    ! the Number of Rank [1] and the local order [2] of the wall point in the mesh 
+
+! YW:   For Rotating Angle to compute the Wall-normal velocity 
+        ! real body_sin(LX1,LY1,LZ1,LELT),body_cos(LX1,LY1,LZ1,LELT) 
+        real ACTION(LX1,LY1,LZ1,LELT)
+
+        common /stat_ctlsi/  ctrl_comp,numctrl,inth_hpts1,inth_hpts2
+        common /stat_ctliv/  iwk         ! integer for ctrl
+        common /stat_ctlrv/  crdctl,crdwall,vctl,rwk  !Real for ctrl 
+        common /stat_wallrv/ vwall,ACTION    ! Real for wall test
+        common /stat_bf/     grdwall                            ! real for ctrl buffer
+
+        ! For Common block of Angle 
+        ! common / oppo_angle / body_sin, body_cos
+        

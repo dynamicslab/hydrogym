@@ -1,0 +1,35 @@
+C
+C     Interpolation operators
+C
+      real ixm12 (lx2,lx1),  ixm21 (lx1,lx2)
+     $    ,iym12 (ly2,ly1),  iym21 (ly1,ly2)
+     $    ,izm12 (lz2,lz1),  izm21 (lz1,lz2)
+     $    ,ixtm12(lx1,lx2),  ixtm21(lx2,lx1)
+     $    ,iytm12(ly1,ly2),  iytm21(ly2,ly1)
+     $    ,iztm12(lz1,lz2),  iztm21(lz2,lz1)
+     $    ,ixm13 (lx3,lx1),  ixm31 (lx1,lx3)
+     $    ,iym13 (ly3,ly1),  iym31 (ly1,ly3)
+     $    ,izm13 (lz3,lz1),  izm31 (lz1,lz3)
+     $    ,ixtm13(lx1,lx3),  ixtm31(lx3,lx1)
+     $    ,iytm13(ly1,ly3),  iytm31(ly3,ly1)
+     $    ,iztm13(lz1,lz3),  iztm31(lz3,lz1)
+      common /ixyz/ ixm12,iym12,izm12,ixm21,iym21,izm21
+     $            , ixtm12,iytm12,iztm12,ixtm21,iytm21,iztm21
+     $            , ixm13,iym13,izm13,ixm31,iym31,izm31
+     $            , ixtm13,iytm13,iztm13,ixtm31,iytm31,iztm31
+
+      real iam12 (ly2,ly1),  iam21 (ly1,ly2)
+     $    ,iatm12(ly1,ly2),  iatm21(ly2,ly1)
+     $    ,iam13 (ly3,ly1),  iam31 (ly1,ly3)
+     $    ,iatm13(ly1,ly3),  iatm31(ly3,ly1)
+     $    ,icm12 (ly2,ly1),  icm21 (ly1,ly2)
+     $    ,ictm12(ly1,ly2),  ictm21(ly2,ly1)
+     $    ,icm13 (ly3,ly1),  icm31 (ly1,ly3)
+     $    ,ictm13(ly1,ly3),  ictm31(ly3,ly1)
+     $    ,iajl1 (ly1,ly1),  iatjl1(ly1,ly1)
+     $    ,iajl2 (ly2,ly2),  iatjl2(ly2,ly2)
+     $    ,ialj3 (ly3,ly3),  iatlj3(ly3,ly3)
+     $    ,ialj1 (ly1,ly1),  iatlj1(ly1,ly1)
+      common /ixyza/ iam12,iam21,iatm12,iatm21,iam13,iam31,iatm13,iatm31
+     $             , icm12,icm21,ictm12,ictm21,icm13,icm31,ictm13,ictm31
+     $             , iajl1,iatjl1,iajl2,iatjl2,ialj3,iatlj3,ialj1,iatlj1

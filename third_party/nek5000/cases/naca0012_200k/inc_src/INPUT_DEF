@@ -1,0 +1,9 @@
+!     missing definitions in INPUT            
+      integer MATYPE, NKTONV, NHIS, LOCHIS, IPSCAL, NPSCAL, IPSCO
+      integer IFLDMHD, IRSTV, IRSTT, IRSTIM, NMEMBER, NOBJ, NGEOM
+      integer IGROUP, MATINDX,MATIDS,IMATIE,IBCSTS
+      integer NEACT, IEACT, NUMSTS, NUMFLU, NUMOTH, NUMBCS
+
+      real PARAM, RSTIM, VNEKTON, CPFLD, CPGRP, QINTEG
+      real BC, CURVE, CERROR
+      real XC, YC, ZC

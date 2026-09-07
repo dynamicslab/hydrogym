@@ -1,0 +1,24 @@
+!     variables speciffic to point time series for 2D statistics
+      integer nfldm             ! array dimensions
+      parameter(nfldm=2*LDIM+1)
+
+      integer npts              ! local number of points
+      integer npoints           ! global number of points
+
+      integer inth_hpts         ! findpts_setup communicator
+
+      integer ipts(LHIS)        ! global point number
+      integer rcode(LHIS)       ! error code
+      integer elid(LHIS)        ! ownership element
+      integer proc(LHIS)        ! ownership processor
+
+      real pts(LDIM,LHIS)       ! point position
+      real fieldout(nfldm,LHIS) ! collected field values
+      real dist(LHIS)           ! distance from the nearest grid point
+      real rst(LHIS*LDIM)       ! r,s,t coordinates in element
+
+!     common blocks
+      common /stat_hptsi/ npts, npoints,inth_hpts
+      common /stat_hptsiv/ ipts,rcode,elid,proc 
+      common /stat_hptsrv/ pts, fieldout, dist, rst
+

@@ -1,0 +1,5 @@
+      real                rhst,ftime
+      common /flowtimers/ rhst,ftime
+
+      integer               flio_freq
+      common /iofreq_fluid/ flio_freq

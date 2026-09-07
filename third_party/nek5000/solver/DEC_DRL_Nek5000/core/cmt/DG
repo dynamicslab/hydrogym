@@ -1,0 +1,14 @@
+      integer             iface_flux(lx1*lz1*2*ldim,lelt)
+      common /cdg_arrays/ iface_flux
+
+      integer dg_hndl,ndg_face
+      common /cdg_ints/ dg_hndl,ndg_face
+
+      integer        vertex((2**ldim)*lelt)
+      common /ivrtx/ vertex
+
+      integer         mid,mp,nekcomm,nekgroup,nekreal
+      common /nekmpi/ mid,mp,nekcomm,nekgroup,nekreal
+
+      common /facewz/ wghtc(lx1*lz1), wghtf(lxd*lzd)
+     >              , zptf(lxd),wgtf(lxd)
