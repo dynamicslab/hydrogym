@@ -25,6 +25,7 @@ from hydrogym.nek.env import NekEnv  # noqa: E402
 
 @pytest.fixture
 def real_init_from_hf(monkeypatch, tmp_path):
+    from hydrogym import core_external
     from hydrogym.nek import env as nek_env_mod
 
     (tmp_path / "config.yaml").write_text("env: {}\n")
@@ -34,7 +35,9 @@ def real_init_from_hf(monkeypatch, tmp_path):
     monkeypatch.setattr(NekEnv, "_update_configuration_paths", lambda self: None)
     monkeypatch.setattr(NekEnv, "_apply_runtime_overrides", lambda self, ec: None)
     monkeypatch.setattr(NekEnv, "_create_session_file_early", lambda self: None)
-    monkeypatch.setattr(nek_env_mod, "mpi_split", lambda comm, nproc=None: None)
+    # NekEnv delegates the split to ExternalProcessEnvMixin._split_mpmd_comm,
+    # which resolves mpi_split from core_external's module namespace.
+    monkeypatch.setattr(core_external, "mpi_split", lambda comm, nproc=None, **kw: None)
     monkeypatch.setattr(NekEnv, "_initialize", lambda self: None)
     monkeypatch.chdir(tmp_path)
 

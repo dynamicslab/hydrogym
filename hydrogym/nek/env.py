@@ -19,7 +19,9 @@ import pandas as pd
 from mpi4py import MPI
 from omegaconf import OmegaConf
 
+from hydrogym.core_external import ExternalProcessEnvMixin, mpi_split  # noqa: F401  (mpi_split re-exported)
 from hydrogym.data_manager import HFDataManager
+from hydrogym.hf_env_mixin import ConfigError, HFEnvConfigMixin
 
 from .configs import Config
 from .nek_lib.lglnodes import lglnodes
@@ -27,65 +29,7 @@ from .nek_lib.nek_utils import remove_sch
 from .nek_lib.reward_logger import RewardLogger
 
 
-class ConfigError(Exception):
-    """Exception raised for configuration-related errors."""
-
-    pass
-
-
-def mpi_split(comm_world: MPI.Comm, nproc: Optional[int] = None) -> MPI.Comm:
-    """
-    Split MPI world into master/worker inter-communicator.
-
-    Args:
-      comm_world: MPI communicator
-      nproc: Expected number of Nek workers (for validation)
-
-    Returns:
-      Inter-communicator between controller and workers
-    """
-    mpi_rank = comm_world.Get_rank()
-    mpi_size = comm_world.Get_size()
-
-    if mpi_size < 2:
-        raise RuntimeError(
-            "MPI world size must be >= 2 to create the Nek inter-communicator. "
-            "Launch with MPMD, e.g. `mpirun -n 1 python ... : -n N ./nek5000`, "
-            "so rank 0 can connect to the Nek worker ranks."
-        )
-
-    # Validate MPI size matches nproc
-    if nproc is not None:
-        expected_size = 1 + nproc  # 1 controller + N workers
-        if mpi_size != expected_size:
-            raise RuntimeError(
-                f"MPI world size mismatch: expected {expected_size} "
-                f"(1 controller + {nproc} workers), got {mpi_size}. "
-                f"Launch with: mpirun -n 1 python ... : -n {nproc} ./nek5000"
-            )
-
-    if mpi_rank == 0:
-        color = 0
-    else:
-        color = 1
-
-    local_comm = comm_world.Split(color, mpi_rank)
-    print(
-        f"[MPI_SPLIT] World rank {mpi_rank}, color {color}, "
-        f"local_comm size: {local_comm.Get_size()}, "
-        f"local rank: {local_comm.Get_rank()}",
-        flush=True,
-    )
-
-    sub_comm = local_comm.Create_intercomm(local_leader=0, peer_comm=MPI.COMM_WORLD, remote_leader=1, tag=99)
-    print(
-        f"[MPI_SPLIT] Inter-comm created: local_size={sub_comm.Get_size()}, remote_size={sub_comm.Get_remote_size()}",
-        flush=True,
-    )
-    return sub_comm
-
-
-class NekEnv(gym.Env):
+class NekEnv(HFEnvConfigMixin, ExternalProcessEnvMixin, gym.Env):
     """
     Core Nek5000 environment with Gymnasium interface.
 
@@ -133,6 +77,11 @@ class NekEnv(gym.Env):
 
     metadata = {"render_modes": ["human"]}
     SOLVER_TYPE = "NEK5000"
+
+    # Per-backend cache directory under ~/.cache, and log prefix for the
+    # HFEnvConfigMixin resolution messages (Nek tags all its prints).
+    HF_CACHE_NAMESPACE = "nekgym"
+    LOG_PREFIX = "[NEK] "
     # MPI rank-binding policy passed to mpirun via MPI.Info ("bind_to").
     # Overridable via the `mpi_bind_to` env_config key (MAIA pattern).
     DEFAULT_MPI_BIND_TO = "none"
@@ -282,7 +231,7 @@ class NekEnv(gym.Env):
 
         # MPI communicator required by Nek
         comm_world = MPI.COMM_WORLD
-        self.sub_comm = mpi_split(comm_world, nproc=self.nproc)
+        self.sub_comm = self._split_mpmd_comm(comm_world, nproc=self.nproc)
 
         # Initialize the environment (this sets n_actuators, obs_per_actuator, etc.)
         self._initialize()
@@ -379,7 +328,7 @@ class NekEnv(gym.Env):
 
         # MPI communicator required by Nek
         comm_world = MPI.COMM_WORLD
-        self.sub_comm = mpi_split(comm_world, nproc=self.nproc)
+        self.sub_comm = self._split_mpmd_comm(comm_world, nproc=self.nproc)
 
         # Initialize the environment
         self._initialize()
@@ -415,40 +364,19 @@ class NekEnv(gym.Env):
         print(f"  Case: {casename}")
         print(f"  Work directory: {run_folder_abs}")
 
-    def _setup_environment_data(self):
-        """
-        Download and setup environment data from HF Hub.
-
-        First checks ~/.cache/nekgym/ for local data, otherwise falls back to data_manager.
-
-        Returns:
-            Path to the local environment data directory.
-        """
-        from pathlib import Path
-
-        # Check cache directory first (like MAIA does)
-        cache_dir = Path.home() / ".cache" / "nekgym" / self.environment_name
-        if cache_dir.exists() and cache_dir.is_dir():
-            print(f"[NEK] Using cached environment data from: {cache_dir}")
-            return str(cache_dir)
-
-        # Fall back to data_manager if cache doesn't exist
-        try:
-            env_path = self.data_manager.get_environment_path(self.environment_name)
-            print(f"[NEK] Using environment data from: {env_path}")
-            return env_path
-        except Exception as e:
-            raise ConfigError(f"Failed to setup environment data for {self.environment_name}: {e}")
-
     def _resolve_configuration_file(self, config_file_input: Optional[str]) -> Optional[str]:
-        """
-        Resolve configuration file path.
+        """Resolve configuration file path.
 
-        Args:
-          config_file_input: Can be None (auto-detect), absolute path, or filename
-
-        Returns:
-          Absolute path to config file, or None if not found
+        NOTE (HFEnvConfigMixin divergence): NekEnv keeps its own SIMPLIFIED
+        resolution instead of the mixin's, deliberately. Differences from
+        the mixin default (all long-standing Nek behavior, preserved here
+        so the mixin migration stays behavior-neutral):
+          - None auto-detects only environment_config.yaml then config.yaml
+            (the mixin's _find_configuration_file also tries env_config.yaml,
+            environment.yaml, <env>.yaml and config_*.y*ml globs).
+          - A missing absolute path or unknown filename returns None (the
+            caller's "no configuration file" ConfigError then fires) where
+            the mixin raises a more specific ConfigError immediately.
         """
         # If None, look for config files in environment directory (try multiple names)
         if config_file_input is None:
