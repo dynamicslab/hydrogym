@@ -1,7 +1,7 @@
 # DockerFile for an environment into which firedrake can be installed.
 #   entirely based on:
 #   https://github.com/firedrakeproject/firedrake/blob/master/docker/Dockerfile.env
-FROM ubuntu:22.04
+FROM ubuntu:26.04
 
 # Update and install required packages for Firedrake
 USER root

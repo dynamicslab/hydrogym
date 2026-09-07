@@ -1,12 +1,14 @@
 # Full Firedrake pre-installed with all of it enabled
 FROM lpaehler/hydrogym-env:stable
 
+COPY --from=ghcr.io/astral-sh/uv:0.12.5 /uv /uvx /bin/
+
 # Activation of the virtual environment
 RUN bash -c "source firedrake/bin/activate"
 
 # Clone HydroGym
 RUN bash -c "git clone https://github.com/dynamicslab/hydrogym.git"
 
-# Installation of HydroGym's dependencies, and only the
-# the dependencies
-RUN bash -c "cd hydrogym && pip install -r requirements.txt"
+# Install the locked dependencies additively into the existing Firedrake
+# environment, then install HydroGym in editable mode.
+RUN bash -c "cd hydrogym && ./scripts/bootstrap_firedrake.sh --dev"
