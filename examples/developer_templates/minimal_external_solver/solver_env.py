@@ -50,7 +50,7 @@ class StubSolverEnv(ExternalProcessEnvMixin, gym.Env):
 
     def __init__(self, env_config: dict = None):
         config = dict(env_config or {})
-        self.nproc = int(config.pop("nproc", 4))          # solver worker ranks
+        self.nproc = int(config.pop("nproc", 4))  # solver worker ranks
         self.hostfile = config.pop("hostfile", None)
         self.mpi_bind_to = config.pop("mpi_bind_to", "none")
         self.num_substeps = int(config.pop("num_substeps", 1))
