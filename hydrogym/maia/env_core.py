@@ -146,6 +146,15 @@ class MaiaFlowEnv(HFEnvConfigMixin, gym.Env):
         # Standard initialization
         self.is_testing = env_config.get("is_testing", False)
         self.probe_locations = env_config.get("probe_locations")
+        if self.probe_locations is None:
+            raise ConfigError(
+                "'probe_locations' must be specified in env_config -- there is no "
+                "universal default (the sensible probe grid is a per-flow-geometry "
+                "choice). Example for a 2D flow: probe_locations=[x0, y0, x1, y1, ...] "
+                "(flattened coordinate pairs); see MaiaFlowEnv's docstring / "
+                "examples/maia/getting_started/test_maia_env.py's create_probe_locations "
+                "for a worked example."
+            )
         self.obs_normalization_strategy = env_config.get("obs_normalization_strategy", "none")
 
         valid_strategies = ["U_inf", "probewise_mean_std", "none", "customized"]

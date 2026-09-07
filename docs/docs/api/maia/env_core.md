@@ -9,18 +9,10 @@ Core MaiaGym Environment Module
 This module provides the base environment class for CFD reinforcement learning
 with Hugging Face Hub integration for configuration management.
 
-## ConfigError Objects
-
-```python
-class ConfigError(Exception)
-```
-
-Exception raised for configuration-related errors.
-
 ## MaiaFlowEnv Objects
 
 ```python
-class MaiaFlowEnv(gym.Env)
+class MaiaFlowEnv(HFEnvConfigMixin, gym.Env)
 ```
 
 Base MaiaFlowEnv with Hugging Face Hub integration for configuration management.
@@ -64,11 +56,19 @@ Initialize the MaiaFlowEnv environment.
   &#x27;none&#x27;, &#x27;customized&#x27;.
   - obs_loc (list): Required if strategy is &#x27;customized&#x27;.
   - obs_scale (list): Required if strategy is &#x27;customized&#x27;.
+  - nproc (int): Optional. Expected number of m-AIA solver
+  ranks in the MPMD launch. When given, validated against
+  the actual MPI world at construction time; a mismatch
+  raises a clear ``RuntimeError`` naming the fix, instead
+  of failing confusingly downstream. Omit to skip this
+  check (default).
   
 
 **Raises**:
 
 - `ConfigError` - If required configuration is missing or invalid.
+- `RuntimeError` - If ``nproc`` is given and does not match the
+  actual number of m-AIA solver ranks in the MPMD job.
 
 #### get\_environment\_files\_info
 
@@ -195,6 +195,9 @@ Advance the state of the environment by one step.
 **Returns**:
 
   Tuple of (observation, reward, terminated, truncated, info).
+  terminated is always False (no in-band physics-failure signal);
+  truncated becomes True once the step budget
+  (max_episode_steps) is reached.
 
 #### reset
 
@@ -365,7 +368,9 @@ Factory function to create any MaiaGym environment from Hugging Face Hub.
 
 ```python
 def list_available_environments(
-        hf_repo_id: str = "dynamicslab/HydroGym-environments") -> List[str]
+        hf_repo_id: str = "dynamicslab/HydroGym-environments",
+        hf_token: Optional[str] = None,
+        hf_revision: Optional[str] = None) -> List[str]
 ```
 
 List all available environments from HF Hub.
@@ -373,6 +378,8 @@ List all available environments from HF Hub.
 **Arguments**:
 
 - `hf_repo_id` - Hugging Face repository ID.
+- `hf_token` - Hugging Face access token (private/gated repos; ``None`` = ambient auth).
+- `hf_revision` - Git revision to pin the file listing to.
   
 
 **Returns**:

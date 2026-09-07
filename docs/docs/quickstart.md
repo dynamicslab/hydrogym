@@ -72,7 +72,33 @@ the environment configurations currently published on the
 | **JAX** `SEM, FD` | 2 | Differentiable fluid dynamics | 2D, 3D |
 | **JAX-Fluids** `FVM` | 4 | Compressible jet engine control | 2D, 3D |
 
-HydroGym interfaces with [Hugging Face](https://huggingface.co/datasets/dynamicslab/HydroGym-environments) to easily set up fluid environments. Hugging Face currently contains several pre-configured environments that can be loaded via `.from_hf()`. For instance, MAIA environments can be loaded as follows:
+### The standard entry point: `gym.make()`
+
+The recommended way to start any environment is gymnasium's `gym.make()`
+— one call, the same shape regardless of backend:
+
+```python
+import gymnasium as gym
+import hydrogym.registration
+
+env = gym.make("hydrogym/Cylinder-v0")           # Firedrake
+env = gym.make("hydrogym-maia/Cylinder_2D_Re200-v0")  # MAIA (real MPMD underneath)
+env = gym.make("hydrogym-nek/TCFmini_3D_Re180-v0", nproc=10)  # Nek5000 (real MPMD underneath)
+env = gym.make("hydrogym-jaxfluids/Nozzle2D-v0")  # JAX-Fluids
+
+obs, info = env.reset()
+obs, reward, terminated, truncated, info = env.step(env.action_space.sample())
+```
+
+MAIA and Nek5000 must still be launched as MPMD jobs (`mpirun -np 1
+python script.py : -np N maia/nek5000 ...`) — `gym.make()` constructs and
+wires up the coupling once inside that job, it does not remove the need
+for it. JAX is the one backend not reachable through `gym.make()`: it
+implements a functional/JIT (`gymnax`-style) contract for
+`jax.jit`/`jax.vmap`/`jax.lax.scan` compatibility, incompatible with
+`gymnasium.Env`'s `self`-mutating shape — see `examples/jax/`.
+
+HydroGym interfaces with [Hugging Face](https://huggingface.co/datasets/dynamicslab/HydroGym-environments) to easily set up fluid environments; `gym.make()` resolves environment data from there automatically. Every backend's lower-level, native construction path (used internally by `gym.make()`, and fully supported directly) also remains available — for instance, MAIA environments can be loaded via `.from_hf()`:
 
 ```python
 import hydrogym.maia as maia

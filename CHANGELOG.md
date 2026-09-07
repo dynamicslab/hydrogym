@@ -65,6 +65,42 @@ budget and catch `NekDivergenceError` for Nek physics failure.
   defines `WARNING`) — any checkpoint-resolution error that should have
   logged a warning and fallen back gracefully instead crashed with an
   unrelated `AttributeError`.
+- `gym.make(...)` was broken for 2 of the 3 non-Firedrake gymnasium-API
+  backends, and for Firedrake's own zero-argument case:
+  - `SemiImplicitBDF` required `dt` positionally, contradicting its own
+    parent classes' documented "defaults to `flow.DEFAULT_DT`" contract
+    — broke every registered Firedrake ID's default construction.
+  - MAIA's `gym.make()` path imported `hydrogym.maia.env_core` directly,
+    bypassing the lazy loader that registers environment classes —
+    `from_hf()` always saw an empty registry. Fixed, plus MAIA now raises
+    a clear `ConfigError` (not a crash) when `probe_locations` is missing,
+    and `hydrogym-maia/Cylinder_2D_Re200-v0` ships a verified default
+    probe grid so it works with zero extra arguments.
+  - `hydrogym.jaxfluids.envs` never re-exported its environment classes
+    (unlike every other backend's `envs` package), and `registration.py`
+    never defaulted `environment_name` — both fixed.
+- `hydrogym/firedrake/utils/modeling.py::linearize_dynamics` called
+  `NewtonSolver.steady_form()` with an un-split `fd.Function`, but
+  `steady_form` immediately unpacks its argument as `(u, p) = q`,
+  expecting the already-split tuple `NewtonSolver.solve()` itself
+  provides via `fd.split(q)`. Raised `ValueError: too many values to
+  unpack`; previously masked because the only caller
+  (`test_cyl.py::test_linearize`) always diverged before reaching this
+  code path (see the `test_steady` checkpoint-ambiguity fix below, which
+  applies to `test_linearize` too).
+- `docs/docs/api/` (generated via `pydoc-markdown`) had drifted from
+  source: a stale NEK5000 default environment name
+  (`MiniChannel_Re180`, which doesn't exist), missing pages for modules
+  added this cycle, and stale pages for removed modules. Regenerated;
+  also fixed `hydrogym/registration.py`'s module docstring, whose bare
+  `import ...`-leading code example broke Docusaurus's MDX build once
+  regenerated (rewritten as a proper `Examples:`/`>>>` block).
+- `examples/nek/getting_started/README.md`: sections 2 and 3 documented
+  a nonexistent factory call and (for section 3) claimed
+  `NekPettingZooEnv` implements PettingZoo's turn-based AEC interface —
+  it is actually a `pettingzoo.ParallelEnv` subclass, same dict-based,
+  simultaneous-action shape as section 2. Both fixed and live-verified
+  against real MPMD Nek5000 runs.
 
 ### Removed
 
