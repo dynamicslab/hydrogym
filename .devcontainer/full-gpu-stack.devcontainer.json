@@ -7,7 +7,8 @@
     // actually set by features["./features/maia-gpu"].pstlPreset below.
     "args": {
       "PSTL_PRESET": "ada",
-      "BUILD_TYPE": "production"
+      "BUILD_TYPE": "production",
+      "BUILD_GPU_LIBS": "true"
     }
   },
   "features": {
