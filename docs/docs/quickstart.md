@@ -58,18 +58,18 @@ You should now be able to connect from your local ParaView client — the local 
 
 ## Run environments
 
-HydroGym provides **88 environments** across 6 solver backends:
+The Hugging Face dataset stores named directories of pre-configured solver case data. A directory listing is an input-data inventory; it does not establish that every case can be instantiated with every optional backend or solver version. Use the matching backend guide and run a case-specific smoke test before training.
 
-| Solver backend | Count | Description | Dimensions |
-| --- | ---: | --- | --- |
-| **Firedrake** `FEM` | 20 | Canonical flow control benchmarks | 2D |
-| **MAIA** `LBM` | 55 | Lattice Boltzmann method environments | 2D, 3D |
-| **MAIA** `STRUCTURED FV` | 8 | High-Reynolds turbulent boundary layers | 3D |
-| **NEK5000** `SEM` | 1 | Spectral element turbulent channel flow | 3D |
-| **JAX** `SEM, FD` | 2 | Differentiable fluid dynamics | 2D, 3D |
-| **JAX-Fluids** `FVM` | 2 | Compressible jet engine control | 2D, 3D |
+| Solver backend | Method | Description | Dimensions |
+| --- | --- | --- | --- |
+| **Firedrake** | FEM | Canonical flow control benchmarks | 2D |
+| **MAIA** | Lattice Boltzmann | Flow control cases | 2D, 3D |
+| **MAIA** | Structured finite volume | High-Reynolds turbulent boundary layers | 3D |
+| **NEK5000** | Spectral element | Turbulent channel flow | 3D |
+| **JAX** | Spectral / finite difference | Differentiable fluid dynamics | 2D, 3D |
+| **JAX-Fluids** | Finite volume | Compressible flow control | 2D, 3D |
 
-HydroGym interfaces with [Hugging Face](https://huggingface.co/datasets/dynamicslab/HydroGym-environments) to easily set up fluid environments. Hugging Face currently contains several pre-configured environments that can be loaded via `.from_hf()`. For instance, MAIA environments can be loaded as follows:
+HydroGym interfaces with [Hugging Face](https://huggingface.co/datasets/dynamicslab/HydroGym-environments) to retrieve pre-configured case data via backend-specific `.from_hf()` methods. For instance, MAIA case data can be requested as follows:
 
 ```python
 import hydrogym.maia as maia
@@ -77,7 +77,7 @@ import hydrogym.maia as maia
 env = maia.from_hf("Cylinder_2D_Re200")
 ```
 
-Several pre-configured environments are available to load from Hugging Face. A list of environments and their exact naming conventions can be found [in this breakdown](https://github.com/dynamicslab/hydrogym/blob/main/existing_environments.yaml). For further detail on customizing environments and running RL scripts, jump to the [RL training](#rl-training) section.
+The Hub’s top-level directory names are case-data IDs, not evidence that each directory has been instantiated or validated with the current solver stack. See the [dataset](https://huggingface.co/datasets/dynamicslab/HydroGym-environments) for current IDs and naming conventions. For further detail on customizing cases and running RL scripts, jump to the [RL training](#rl-training) section.
 
 ### MAIA
 

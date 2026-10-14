@@ -11,19 +11,19 @@
 
 # HydroGym: Reinforcement Learning for Fluid Dynamics
 
-**61+ environments | 6 solver backends | 2D & 3D | Ready for RL training**
+**Six solver backends | 2D & 3D | Gymnasium-compatible interface**
 
 HydroGym is a comprehensive platform for applying reinforcement learning to fluid dynamics and flow control. With environments ranging from canonical benchmarks to turbulent flows, HydroGym provides a standardized Gymnasium-compatible interface for training RL agents on challenging CFD problems.
 
 ## Key Features
 
-- **Diverse Environments**: 61+ pre-configured environments across 6 CFD solvers
+- **Hub Case Data**: Pre-configured solver case data is published in the HydroGym Hugging Face dataset
 - **Standard RL Interface**: Gymnasium-compatible API works with Stable-Baselines3, RLlib, and other RL libraries
 - **Compute Efficient**: Highly optimized GPU & CPU backends for efficient RL deployment ranging from local workstations to exascale HPC systems
 - **Scalable**: MPI-parallelized solvers with distributed RL training support
-- **Multiple Backends**: Finite Element (Firedrake), Lattice Boltzmann (MAIA LBM), Finite Volume (MAIA FV), Spectral Element (NEK5000), Fully Differentiable solvers (JAX-Fluids)
+- **Multiple Backends**: Finite Element (Firedrake), Lattice Boltzmann (MAIA), Finite Volume (MAIA FV and JAX-Fluids), Spectral Element (NEK5000), and differentiable solvers (JAX)
 - **2D & 3D**: From simple 2D benchmarks to complex 3D turbulent flows (Re up to 400,000)
-- **Research-Ready**: Managed by a complementary HuggingFace repository
+- **Named Case Data**: Backend APIs can retrieve compatible cases from the Hub by directory ID
 
 ## Quick Start with Docker (Recommended)
 
@@ -41,18 +41,18 @@ docker pull clagemann/hydrogym-rocm-6.3.3:latest
 # Run container
 docker run -it --gpus all clagemann/hydrogym-nvhpc-26.1_cuda-12.9_turing_ampere:latest
 ```
-## Available Environments
+## Solver Backends and Hub Case Data
 
-HydroGym provides **61 environments** across 6 solver backends:
+At dataset revision [`cf5ef6748443ae72e9647f398487e98d421a7243`](https://huggingface.co/datasets/dynamicslab/HydroGym-environments/tree/cf5ef6748443ae72e9647f398487e98d421a7243), the Hub contains 89 top-level case-data directories. This is a file inventory, not a count of independently instantiable or runtime-validated environments. The lookup follows the Hub's default revision unless a revision is pinned, so the inventory can change.
 
-| Solver Backend | Count | Description | Dimensions |
-|----------------|-------|-------------|------------|
-| **Firedrake** (FEM) | 20 | Canonical flow control benchmarks | 2D |
-| **MAIA LBM** | 55 | Lattice Boltzmann method environments | 2D, 3D |
-| **MAIA Structured FV** | 8 | High-Reynolds turbulent boundary layers | 3D |
-| **NEK5000** | 2 | Spectral element turbulent channel flow | 3D |
-| **JAX** | 2 | Differentiable fluid dynamics | 2D, 3D |
-| **JAX-Fluids** | 2 | Compressible shock vector control | 2D, 3D |
+| Solver Backend | Method | Description | Dimensions |
+|----------------|--------|-------------|------------|
+| **Firedrake** | FEM | Canonical flow control benchmarks | 2D |
+| **MAIA LBM** | Lattice Boltzmann | Flow control benchmarks | 2D, 3D |
+| **MAIA Structured FV** | Finite volume | High-Reynolds turbulent boundary layers | 3D |
+| **NEK5000** | Spectral element | Turbulent channel flow | 3D |
+| **JAX** | Differentiable solvers | Fluid dynamics | 2D, 3D |
+| **JAX-Fluids** | Differentiable finite volume | Compressible flow control | 2D, 3D |
 
 ### Environment Categories
 
