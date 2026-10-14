@@ -23,7 +23,7 @@ HydroGym is a comprehensive platform for applying reinforcement learning to flui
 - **Scalable**: MPI-parallelized solvers with distributed RL training support
 - **Multiple Backends**: Finite Element (Firedrake), Lattice Boltzmann (MAIA), Finite Volume (MAIA FV and JAX-Fluids), Spectral Element (NEK5000), and differentiable solvers (JAX)
 - **2D & 3D**: From simple 2D benchmarks to complex 3D turbulent flows (Re up to 400,000)
-- **Named Case Data**: Backend APIs can retrieve compatible cases from the Hub by directory ID
+- **Named Case Data**: Some backend APIs retrieve case data from the Hub by case-data ID; supported loaders vary by backend
 
 ## Quick Start with Docker (Recommended)
 
@@ -83,7 +83,7 @@ At dataset revision [`cf5ef6748443ae72e9647f398487e98d421a7243`](https://hugging
 
 ## Environment Checkpoints
 
-All required environment checkpoints are available via [HuggingFace](https://huggingface.co/datasets/dynamicslab/HydroGym-environments/tree/main) and are downloaded on the fly when an environment is first created (internet connection required). If no internet connection is available at runtime — e.g. on compute nodes in HPC clusters — you can pre-download the environment files as outlined in [examples/maia/README.md](examples/maia/README.md).
+Pre-configured case data is published through [Hugging Face](https://huggingface.co/datasets/dynamicslab/HydroGym-environments). Whether files are downloaded during environment setup, and how to stage them for offline use, depends on the selected backend. Follow its backend guide; MAIA offline usage is described in [examples/maia/README.md](examples/maia/README.md).
 
 ## Examples
 

@@ -69,7 +69,7 @@ The Hugging Face dataset stores named directories of pre-configured solver case 
 | **JAX** | Spectral / finite difference | Differentiable fluid dynamics | 2D, 3D |
 | **JAX-Fluids** | Finite volume | Compressible flow control | 2D, 3D |
 
-HydroGym interfaces with [Hugging Face](https://huggingface.co/datasets/dynamicslab/HydroGym-environments) to retrieve pre-configured case data via backend-specific `.from_hf()` methods. For instance, MAIA case data can be requested as follows:
+HydroGym publishes named case data on [Hugging Face](https://huggingface.co/datasets/dynamicslab/HydroGym-environments), but loader APIs vary by backend. MAIA exposes `maia.from_hf(...)`; NEK exposes `NekEnv.from_hf(...)` with a required `nproc` argument. See the [MAIA](installation/maia) and [NEK5000](installation/nek5000) guides for their loading paths and prerequisites. For example, MAIA case data can be requested as follows:
 
 ```python
 import hydrogym.maia as maia
