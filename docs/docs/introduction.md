@@ -12,7 +12,7 @@ The central design goal is to make it straightforward to apply standard RL tooli
 
 Pre-configured case data is distributed through [Hugging Face Hub](https://huggingface.co/datasets/dynamicslab/HydroGym-environments). A directory being present in the dataset does not by itself establish that it instantiates with a particular backend version. Pre-built Docker images are available for solver backends; follow the backend-specific installation and verification instructions before training.
 
-The six presently supported solver backends are:
+The six backend integrations are:
 
 | Backend | Method | Dimensions |
 |---------|--------|---|

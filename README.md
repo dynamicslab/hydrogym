@@ -43,7 +43,7 @@ docker run -it --gpus all clagemann/hydrogym-nvhpc-26.1_cuda-12.9_turing_ampere:
 ```
 ## Solver Backends and Hub Case Data
 
-At dataset revision [`cf5ef6748443ae72e9647f398487e98d421a7243`](https://huggingface.co/datasets/dynamicslab/HydroGym-environments/tree/cf5ef6748443ae72e9647f398487e98d421a7243), the Hub contains 89 top-level case-data directories. This is a file inventory, not a count of independently instantiable or runtime-validated environments. The lookup follows the Hub's default revision unless a revision is pinned, so the inventory can change.
+At dataset revision [`cf5ef6748443ae72e9647f398487e98d421a7243`](https://huggingface.co/datasets/dynamicslab/HydroGym-environments/tree/cf5ef6748443ae72e9647f398487e98d421a7243), the Hub contains 89 top-level case-data directories. This is a file inventory, not a count of independently instantiable or runtime-validated environments. HydroGym's runtime environment listing follows the Hub's default branch when no dataset revision is specified, so the inventory can change.
 
 | Solver Backend | Method | Description | Dimensions |
 |----------------|--------|-------------|------------|
