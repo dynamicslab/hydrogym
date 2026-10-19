@@ -13,7 +13,7 @@ All scripts live in [`examples/nek/getting_started/2_parallel_env/`](https://git
 ```python
 from hydrogym.nek import NekEnv, NekParallelEnv
 
-env_config = {'environment_name': 'TCFmini_3D_Re180', 'nproc': 10}
+env_config = {"environment_name": "TCFmini_3D_Re180", "nproc": 10}
 base_env = NekEnv(env_config=env_config)
 
 env = NekParallelEnv(base_env)

@@ -19,6 +19,7 @@ Each subdirectory demonstrates a specific environment or training workflow:
 
 ```python
 import jax
+
 jax.config.update("jax_enable_x64", True)  # required for JIT stability
 
 from hydrogym.jax.envs.kolmogorov import KolmogorovFlow
@@ -32,7 +33,7 @@ params = env.default_params
 params = params.replace(reward_alpha=1.0)
 
 jit_reset = jax.jit(env.reset_env)
-jit_step  = jax.jit(env.step_env)
+jit_step = jax.jit(env.step_env)
 
 key = jax.random.PRNGKey(0)
 obs, state = jit_reset(key, params)
@@ -71,13 +72,13 @@ env = ChannelFlowSpectralEnv(env_config={"dtype": "float32"})  # or "float64"
 params = env.default_params
 
 jit_reset = jax.jit(env.reset_env)
-jit_step  = jax.jit(env.step_env)
+jit_step = jax.jit(env.step_env)
 
 key = jax.random.PRNGKey(0)
 obs, state = jit_reset(key, params)
 
 # Zero action: passive turbulence evolution (baseline)
-action = jnp.zeros((params.action_dim,))   # shape (24,)
+action = jnp.zeros((params.action_dim,))  # shape (24,)
 obs, state, reward, done, info = jit_step(key, state, action, params)
 # reward = -WSS;  WSS ≈ 0.0019 for uncontrolled Re_tau=180
 ```

@@ -30,11 +30,11 @@ Find equilibrium solutions using Newton iteration:
 from hydrogym.firedrake import Cylinder, IPCS
 from hydrogym.firedrake.utils import solve_steady_state_stokes
 
-flow = Cylinder(Re=100, mesh='medium')
+flow = Cylinder(Re=100, mesh="medium")
 solver_parameters = {"snes_monitor": None}
 solver = hgym.NewtonSolver(
     flow,
-    stabilization="gls",  
+    stabilization="gls",
     solver_parameters=solver_parameters,
 )
 

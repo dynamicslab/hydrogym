@@ -159,10 +159,10 @@ from hydrogym import FlowEnv
 import hydrogym.firedrake as hgym
 
 env_config = {
-    'flow': hgym.Cylinder,
-    'flow_config': {'mesh': 'medium', 'Re': 100},
-    'solver': hgym.SemiImplicitBDF,
-    'solver_config': {'dt': 1e-2},
+    "flow": hgym.Cylinder,
+    "flow_config": {"mesh": "medium", "Re": 100},
+    "solver": hgym.SemiImplicitBDF,
+    "solver_config": {"dt": 1e-2},
 }
 
 env = FlowEnv(env_config)
@@ -176,13 +176,13 @@ for _ in range(100):
 ### Example 2: Multi-Substep Simulation
 ```python
 env_config = {
-    'flow': hgym.Cylinder,
-    'flow_config': {'mesh': 'medium', 'Re': 100},
-    'solver': hgym.SemiImplicitBDF,
-    'solver_config': {'dt': 1e-2},
-    'actuation_config': {
-        'num_substeps': 5,              # Run 5 solver steps per action
-        'reward_aggregation': 'mean',   # Average rewards over substeps
+    "flow": hgym.Cylinder,
+    "flow_config": {"mesh": "medium", "Re": 100},
+    "solver": hgym.SemiImplicitBDF,
+    "solver_config": {"dt": 1e-2},
+    "actuation_config": {
+        "num_substeps": 5,  # Run 5 solver steps per action
+        "reward_aggregation": "mean",  # Average rewards over substeps
     },
 }
 
@@ -199,16 +199,18 @@ from stable_baselines3 import PPO
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 
+
 def make_env():
     env_config = {
-        'flow': hgym.Cylinder,
-        'flow_config': {'mesh': 'medium', 'Re': 100},
-        'solver': hgym.SemiImplicitBDF,
-        'solver_config': {'dt': 1e-2},
-        'actuation_config': {'num_substeps': 2},
+        "flow": hgym.Cylinder,
+        "flow_config": {"mesh": "medium", "Re": 100},
+        "solver": hgym.SemiImplicitBDF,
+        "solver_config": {"dt": 1e-2},
+        "actuation_config": {"num_substeps": 2},
     }
     env = FlowEnv(env_config)
     return Monitor(env)
+
 
 env = DummyVecEnv([make_env])
 env = VecNormalize(env, norm_obs=True, norm_reward=True, clip_obs=10.0)
@@ -229,14 +231,14 @@ python train_sb3_firedrake.py --env cylinder --algo PPO --total-timesteps 100000
 ```python
 # Checkpoints are automatically inferred from flow config and downloaded from HF Hub
 env_config = {
-    'flow': hgym.Cylinder,
-    'flow_config': {
-        'mesh': 'medium',
-        'Re': 100,
+    "flow": hgym.Cylinder,
+    "flow_config": {
+        "mesh": "medium",
+        "Re": 100,
         # No 'restart' specified - automatically loads 'Cylinder_2D_Re100_medium_FD'
     },
-    'solver': hgym.SemiImplicitBDF,
-    'solver_config': {'dt': 1e-2},
+    "solver": hgym.SemiImplicitBDF,
+    "solver_config": {"dt": 1e-2},
 }
 
 env = FlowEnv(env_config)
@@ -248,15 +250,15 @@ print(f"Loaded checkpoint: {env.flow.checkpoint_path}")
 ```python
 # Use local checkpoints without HF Hub (for offline/testing)
 env_config = {
-    'flow': hgym.Cylinder,
-    'flow_config': {
-        'mesh': 'medium',
-        'Re': 100,
-        'local_dir': '/workspace/my_checkpoints',  # Local directory
+    "flow": hgym.Cylinder,
+    "flow_config": {
+        "mesh": "medium",
+        "Re": 100,
+        "local_dir": "/workspace/my_checkpoints",  # Local directory
         # Automatically loads: /workspace/my_checkpoints/Cylinder_2D_Re100_medium_FD/*.ckpt
     },
-    'solver': hgym.SemiImplicitBDF,
-    'solver_config': {'dt': 1e-2},
+    "solver": hgym.SemiImplicitBDF,
+    "solver_config": {"dt": 1e-2},
 }
 
 env = FlowEnv(env_config)
@@ -265,18 +267,18 @@ env = FlowEnv(env_config)
 ### Example 6: Multiple Checkpoints for Curriculum Learning
 ```python
 env_config = {
-    'flow': hgym.Pinball,
-    'flow_config': {
-        'mesh': 'fine',
-        'Re': 30,
-        'restart': [
-            'checkpoint_early.h5',
-            'checkpoint_mid.h5',
-            'checkpoint_late.h5',
+    "flow": hgym.Pinball,
+    "flow_config": {
+        "mesh": "fine",
+        "Re": 30,
+        "restart": [
+            "checkpoint_early.h5",
+            "checkpoint_mid.h5",
+            "checkpoint_late.h5",
         ],
     },
-    'solver': hgym.SemiImplicitBDF,
-    'solver_config': {'dt': 1e-2},
+    "solver": hgym.SemiImplicitBDF,
+    "solver_config": {"dt": 1e-2},
 }
 
 env = FlowEnv(env_config)
@@ -293,15 +295,15 @@ import numpy as np
 wake_probes = [(x, 0.0) for x in np.linspace(1.0, 10.0, 20)]
 
 env_config = {
-    'flow': hgym.Cylinder,
-    'flow_config': {
-        'mesh': 'medium',
-        'Re': 100,
-        'observation_type': 'velocity_probes',
-        'probes': wake_probes,
+    "flow": hgym.Cylinder,
+    "flow_config": {
+        "mesh": "medium",
+        "Re": 100,
+        "observation_type": "velocity_probes",
+        "probes": wake_probes,
     },
-    'solver': hgym.SemiImplicitBDF,
-    'solver_config': {'dt': 1e-2},
+    "solver": hgym.SemiImplicitBDF,
+    "solver_config": {"dt": 1e-2},
 }
 
 env = FlowEnv(env_config)
@@ -314,20 +316,20 @@ print(f"Observation shape: {obs.shape}")  # (40,) for 20 probes × 2 velocity co
 from hydrogym.firedrake.io import CheckpointCallback, LogCallback
 
 env_config = {
-    'flow': hgym.Cavity,
-    'flow_config': {'mesh': 'fine', 'Re': 7500},
-    'solver': hgym.SemiImplicitBDF,
-    'solver_config': {'dt': 1e-4},
-    'callbacks': [
+    "flow": hgym.Cavity,
+    "flow_config": {"mesh": "fine", "Re": 7500},
+    "solver": hgym.SemiImplicitBDF,
+    "solver_config": {"dt": 1e-4},
+    "callbacks": [
         CheckpointCallback(
             interval=1000,
-            filename='cavity_checkpoint.h5',
+            filename="cavity_checkpoint.h5",
         ),
         LogCallback(
             postprocess=lambda flow: flow.get_observations(),
             nvals=1,
             interval=10,
-            filename='cavity_log.txt',
+            filename="cavity_log.txt",
         ),
     ],
 }
@@ -353,9 +355,9 @@ HydroGym provides flexible checkpoint management with automatic inference and Hu
 ```python
 flow_config = {
     # Checkpoint configuration
-    'restart': None,  # or path, environment name, or list
-    'local_dir': '/path/to/local/checkpoints',  # For offline/testing
-    'cache_dir': '/path/to/custom/cache',  # Custom HF cache location
+    "restart": None,  # or path, environment name, or list
+    "local_dir": "/path/to/local/checkpoints",  # For offline/testing
+    "cache_dir": "/path/to/custom/cache",  # Custom HF cache location
 }
 ```
 
