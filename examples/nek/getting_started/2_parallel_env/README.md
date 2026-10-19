@@ -8,7 +8,7 @@ Dict-based multi-agent interface where each actuator is treated as a separate ag
 from hydrogym.nek import NekEnv, NekParallelEnv
 
 # Create base environment
-env_config = {'environment_name': 'TCFmini_3D_Re180', 'nproc': 10}
+env_config = {"environment_name": "TCFmini_3D_Re180", "nproc": 10}
 base_env = NekEnv(env_config=env_config)
 
 # Wrap with parallel interface

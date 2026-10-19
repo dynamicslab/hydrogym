@@ -126,9 +126,9 @@ Then on the compute node, point HydroGym at the local copy:
 import hydrogym.maia as maia
 
 env = maia.from_hf(
-    'Cylinder_2D_Re200',
+    "Cylinder_2D_Re200",
     probe_locations=[...],
-    local_fallback_dir='/scratch/$USER/hf_environments',
+    local_fallback_dir="/scratch/$USER/hf_environments",
     use_clean_cache=False,
 )
 ```

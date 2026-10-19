@@ -56,9 +56,9 @@ Both environments are JIT-compiled via `jax.jit` in the runner scripts, which co
 
 ```python
 jit_reset = jax.jit(env.reset_env)
-jit_step  = jax.jit(env.step_env)
+jit_step = jax.jit(env.step_env)
 
-obs, state = jit_reset(key, params)           # triggers compilation
+obs, state = jit_reset(key, params)  # triggers compilation
 obs, state, reward, done, info = jit_step(key, state, action, params)  # full GPU speed
 ```
 
@@ -74,7 +74,7 @@ The first call compiles (takes ~1–2 minutes); all subsequent calls run at full
 Override via `env_config`:
 ```python
 # Kolmogorov: float64 is the default and required for JIT stability
-env = KolmogorovFlow(env_config={"dt": 5e-4})          # smaller dt for fp32 experiments
+env = KolmogorovFlow(env_config={"dt": 5e-4})  # smaller dt for fp32 experiments
 
 # Channel: toggle precision
 env = ChannelFlowSpectralEnv(env_config={"dtype": "float64"})
@@ -99,7 +99,7 @@ env = KolmogorovFlow(env_config={}, flow_config={})
 params = env.default_params
 
 jit_reset = jax.jit(env.reset_env)
-jit_step  = jax.jit(env.step_env)
+jit_step = jax.jit(env.step_env)
 
 key = jax.random.PRNGKey(0)
 obs, state = jit_reset(key, params)

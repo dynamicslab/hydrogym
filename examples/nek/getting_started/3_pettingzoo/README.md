@@ -8,7 +8,7 @@ PettingZoo-compatible wrapper for ecosystem integration and production-ready SB3
 from hydrogym.nek import NekEnv, make_pettingzoo_env
 
 # Create base environment
-env_config = {'environment_name': 'TCFmini_3D_Re180', 'nproc': 10}
+env_config = {"environment_name": "TCFmini_3D_Re180", "nproc": 10}
 base_env = NekEnv(env_config=env_config)
 
 # Wrap with PettingZoo interface

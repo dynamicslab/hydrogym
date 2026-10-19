@@ -144,8 +144,10 @@ To add a controller to the system, simply specify the desired controller under `
 ```python
 x, y = flow.load_mesh(name="")
 
+
 def control_func(a, k, y):
     return (a * jnp.sin(k * y), jnp.zeros_like(y))
+
 
 flow.control_function = control_func(-0.6, 4, y)
 final, trajectory = solver.solve(dt, flow, (0, end_time), callbacks, None, save_n=1)

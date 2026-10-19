@@ -14,7 +14,7 @@ All scripts live in [`examples/nek/getting_started/3_pettingzoo/`](https://githu
 from hydrogym.nek import NekEnv
 from hydrogym.nek.pettingzoo_env import make_pettingzoo_env
 
-env_config = {'environment_name': 'TCFmini_3D_Re180', 'nproc': 10}
+env_config = {"environment_name": "TCFmini_3D_Re180", "nproc": 10}
 base_env = NekEnv(env_config=env_config)
 
 env = make_pettingzoo_env(base_env)
