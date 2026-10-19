@@ -72,7 +72,7 @@ nek = [
     "pettingzoo>=1.24.0",
     "pymech>=1.4.0",
     "stable-baselines3>=2.7.1",
-    "supersuit==3.10.0",
+    "supersuit==3.11.0",
     "tensorboard>=2.0.0",
 ]
 jax = [
@@ -118,7 +118,7 @@ all = [
     "pymech>=1.4.0",
     "pyvista",
     "stable-baselines3>=2.7.1",
-    "supersuit==3.10.0",
+    "supersuit==3.11.0",
     "tensorboard>=2.0.0",
     "toml>=0.10.0",
     "tree-math",
