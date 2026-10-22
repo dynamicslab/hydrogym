@@ -1,0 +1,37 @@
+# HydroGym turbulent open channel, Re_tau = 207 (pettingzoo_tcflarge_re207.yml), generic NekRS interface.
+# Everything here is read by Python; the par file only marks the boundaries that may be actuated
+# ([CASEDATA] hydrogymBoundaries = 1).
+environment:
+  nproc: 1                 # NekRS ranks (one GPU each)
+  steps_per_action: 13     # ndrl
+  episode_actions: 0       # 0 = never truncate
+  target_cfl: 2.0          # terminate the episode if the CFL of any solver step reaches this
+
+actuators:
+  boundaries: [1]          # must be a subset of hydrogymBoundaries
+  # one actuator per wall GLL node, including the copies of shared edge/corner nodes (released HydroGym layout)
+  positions: {source: boundary_nodes, boundary: 1, nodes: all, sort: [x]}
+  # alternatives:
+  #   positions: {source: grid, x: {start: 0.1, stop: 6.2, num: 16}, y: 0.0, z: {start: 0.1, stop: 3.0, num: 8}}
+  #   footprint: {type: gaussian, sigma: [0.05, null, 0.05]}      # null = unbounded along that axis
+  #   footprint: {type: box, half_width: [0.1, null, 0.05]}
+  #   direction: {angle: 30, towards: [1, 0, 0]}                  # blowing angle from the inward normal [deg]
+  #   jets: [{position: [1, 0, 1], footprint: {type: gaussian, sigma: [0.1, null, 0.1]}, amplitude: 0.1}, ...]
+  footprint: {type: point}
+  direction: normal
+  amplitude: 0.063         # wall velocity for action 1 (ctrl_max_amp)
+  znmf: uniform            # none | uniform (subtract the mean wall-normal flux) | actions (subtract the mean action)
+  resolution_check: {mode: error, min_nodes_per_width: 2.0}   # error | warn | off
+
+probes:
+  fields: [u, v]
+  subtract_plane_mean: y   # u' = u - <u>(y)
+  positions: {source: actuator_offset, offset: [0.0, 0.0724637681159420, 0.0]}   # y+ = 15 above each actuator
+  normalization: 0.0630    # u_tau
+
+reward:
+  type: wall_shear
+  boundary: 1
+  quantity: gradient       # gradient (dU/dn averaged over the wall) | force (viscous drag / (mu A))
+  baseline_dudy: 13.10
+  average: legacy          # legacy running mean of drl_reward.f | mean

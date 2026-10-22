@@ -1,0 +1,14 @@
+# Short TD3 run on the channel (train_td3.py): channel_re207.yml plus episodes and a snapshot library of
+# initial conditions, as random_init = 6 of pettingzoo_tcflarge_re207.yml.
+base: channel_re207.yml
+environment:
+  episode_actions: 300     # paper: nb_interactions 2500
+initial_conditions:
+  source: snapshots
+  snapshots:
+    count: 6
+    interval: 1300         # 5.2 convective time units between the states (zero actuation)
+    warmup: 0
+    save: runs/td3/snaps/tcf
+  selection: random
+  settle_steps: 0

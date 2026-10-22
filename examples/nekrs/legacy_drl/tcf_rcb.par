@@ -1,0 +1,37 @@
+# NekRS port of the HydroGym turbulent open channel TCFlarge_3D_Re207 with the DRL coupling of
+# channel_case/large_channel/drl (see tcf.udf). Same numerics as ../tcf.par (uncontrolled); the bottom wall
+# takes the wall-normal velocity imposed by the controller.
+userSections = CASEDATA
+
+[GENERAL]
+polynomialOrder = 7               # Nek5000 lx1 = 8
+cubaturePolynomialOrder = 11      # Nek5000 lxd = 12
+startFrom = "rs6tcf0.f00004 + time=0"
+stopAt = numSteps
+numSteps = 10000000               # the controller ends the run (TERMN)
+dt = 4.0e-3                       # fixed, as in Nek5000 (variableDt = no)
+timeStepper = tombo3              # Nek5000 bdf3 / ext3
+checkpointControl = steps
+checkpointInterval = 0
+constFlowRate = meanVelocity=1.0 + direction=X   # Nek5000 param(54) = -1, param(55) = 1
+
+[MESH]
+partitioner = rcb               # spreads the wall over ranks (multi-rank protocol test)
+
+[FLUID PRESSURE]
+residualTol = 1e-06
+
+[FLUID VELOCITY]
+boundaryTypeMap = udfDirichlet, zeroDirichletY/zeroNeumann   # 1: actuated wall y = 0, 2: symmetry y = 1
+viscosity = 1/3300.0              # Re_b = U_b h / nu
+rho = 1.0
+residualTol = 1e-08
+
+[CASEDATA]
+ndrl = 13                         # UPARAM(1): solver steps per action
+znmf = 1                          # UPARAM(2): zero net mass flux by the solver
+yPlusSensing = 15.0               # UPARAM(3)
+reTau = 207.0                     # UPARAM(4)
+gllUnique = 0                     # UPARAM(8): 0 as in the released HydroGym (rewrite_REA_v19 omits it)
+totctrl = 5760                    # >= wall points per rank (5760 on 1 rank with gllUnique = 0)
+statInterval = 13                 # steps between wall-shear log entries (wall.dat), 0 = off

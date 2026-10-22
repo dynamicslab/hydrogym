@@ -141,3 +141,11 @@ examples/nek/getting_started/*/ci_test_run*/
 
 # VSCode
 .vscode/
+
+# NekRS examples: run outputs, fetched case files, built driver
+examples/nekrs/**/runs/
+examples/nekrs/**/*.re2
+examples/nekrs/**/rs6tcf0.f0*
+examples/nekrs/mpmd/nekrs-mpmd
+examples/nekrs/**/.cache/
+examples/nekrs/**/__pycache__/

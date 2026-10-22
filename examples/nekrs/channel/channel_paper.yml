@@ -1,0 +1,13 @@
+# Paper reproduction (Exp. 11 channel training, pettingzoo_tcflarge_re207.yml runner block): episodes of
+# nb_interactions = 2500 actions, random_init = 6 initial conditions. The library is the one built by the short
+# TD3 run (channel_td3.yml, zero actuation, 1300 steps apart), so all seeds start from the same 6 states.
+base: channel_re207.yml
+environment:
+  episode_actions: 2500
+initial_conditions:
+  source: snapshots
+  snapshots:
+    count: 6
+    load: runs/td3/snaps/tcf
+  selection: random
+  settle_steps: 0

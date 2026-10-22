@@ -1,0 +1,7 @@
+# channel_re207.yml with a snapshot library for the episode-reset test (tests/reset_test.py)
+base: channel_re207.yml
+initial_conditions:
+  source: snapshots
+  snapshots: {count: 2, interval: 26, warmup: 0, save: runs/reset/snaps/tcf}
+  selection: random
+  settle_steps: 0

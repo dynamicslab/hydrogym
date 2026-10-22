@@ -1,0 +1,580 @@
+// NekRS port of the HydroGym DRL coupling of the turbulent open channel TCFlarge_3D_Re207.
+// Port of channel_case/large_channel/drl/drl_{main,init,state,action,reward,IO}.f (spec: channel_case/DRL_SPEC.md),
+// so that hydrogym/nek/env.py talks to NekRS unchanged. Launch (MPMD, see ../run_drl.sh):
+//   mpirun -n 1 python client.py : -n N env NEKRS_MPMD_COLOR=1 ../mpmd/nekrs-mpmd --setup tcf.par
+//
+// Protocol (rank 0 of the controller is the remote leader, intercommunicator tag 99):
+//   requests  5 x MPI_CHARACTER, tag 22, received on solver rank 0 and broadcast
+//   INTAL     node_list (one MPI_INTEGER per solver rank, tag 1996), then per rank with points
+//             NUMCTRL (NID+10000), element/face/ix/iy/iz (NID+20000..60000), x/y/z (NID+100000/200000/300000)
+//   STATE     TIME (1998), |CFL| (1999), u', v' at the sensing points (NID*il+70000, il = 1, 2)
+//   CNTRL     TOTCTRL actions per rank (NID+90000)
+//   EVOLV     |CFL| (1999) every step for ndrl steps, running-mean wall dU/dy per point (NID+80000) at the last
+//   RSETS     no-op that lets the solver advance one step (as in Fortran)
+//   TERMN     stop
+
+#include <mpi.h>
+#include "pointInterpolation.hpp"
+#include "opSEM.hpp"
+
+static int ndrl = 13;           // UPARAM(1): solver steps per action
+static int znmf = 1;            // UPARAM(2): 1 = zero net mass flux applied by the solver
+static double yPlusSensing = 15; // UPARAM(3)
+static double reTau = 207;      // UPARAM(4)
+static int gllUnique = 0;       // UPARAM(8): 0 = all 64 nodes of a wall face (HydroGym release), 1 = 49 (facindf)
+static int totctrl = 128;       // MPI buffer length per rank (TOTCTRL in inc_src/DRL and the YAML)
+static int statInterval = 0;    // steps between wall-shear log entries (0 = off)
+
+static MPI_Comm drlComm = MPI_COMM_NULL;
+static bool evolving = false;
+static int iEvolv = 1;
+
+// registered wall points (Fortran pos_agt/info_agt), in the order sent to Python
+struct wallPoint {
+  dlong vol;               // volume index e*Np + k*Nq*Nq + j*Nq + i
+  int info[5];             // global element (1-based), face (Nek5000 numbering), ix, iy, iz (1-based)
+  double x, y, z;
+};
+static std::vector<wallPoint> pts;
+
+static std::vector<dlong> agentFaceVol; // all nodes of faces carrying points (msk_act for ZNMF)
+static std::vector<int> nodeLevel;      // GLL y-level of every local node (for the x-z plane means)
+static int nLevels = 0;
+static std::vector<double> levelWeight; // global sum of mass-matrix weights per level
+static int wallLevel = 0;
+
+static std::vector<dfloat> invDx;       // 1/GLL spacing in x, y, z per node (for the CFL)
+
+static std::unique_ptr<pointInterpolation_t> interp;
+static std::vector<double> rwd;          // running mean of the wall dU/dy (rwd_agt)
+
+#ifdef __okl__
+
+void udfDirichlet(bcData *bc)
+{
+  if (isField("fluid velocity")) {
+    // ACTUATE_JET in tcf.usr: wall-normal blowing/suction, no slip in x and z
+    bc->uxFluid = 0;
+    bc->uyFluid = bc->usrwrk[bc->idxVol];
+    bc->uzFluid = 0;
+  }
+}
+
+#endif
+
+static void logWallShear(double time, int tstep)
+{
+  auto mesh = nrs->meshV;
+
+  static occa::memory o_bidWall;
+  static dfloat areaWall = 0;
+  if (!o_bidWall.isInitialized()) {
+    std::vector<int> bidWall = {1};
+    o_bidWall = platform->device.malloc<int>(bidWall.size(), bidWall.data());
+
+    auto o_one = platform->deviceMemoryPool.reserve<dfloat>(mesh->Nlocal);
+    platform->linAlg->fill(mesh->Nlocal, 1.0, o_one);
+    areaWall = mesh->surfaceAreaMultiplyIntegrate(o_bidWall, o_one);
+  }
+
+  auto o_Sij = nrs->strainRate();
+  auto forces = nrs->aeroForces(o_bidWall, o_Sij);
+  o_Sij.free();
+
+  dfloat mue, rho;
+  platform->options.getArgs("FLUID VISCOSITY", mue);
+  platform->options.getArgs("FLUID DENSITY", rho);
+  const auto tauw = std::abs(forces->viscousFriction()[0]) / areaWall;
+  const auto dudy = tauw / mue;
+  const auto utau = std::sqrt(tauw / rho);
+  delete forces;
+
+  if (platform->comm.mpiRank() == 0) {
+    static bool first = true;
+    const char *fname = std::getenv("DRL_WALLDAT"); // set per run by ../run_drl.sh
+    std::ofstream f(fname ? fname : "wall.dat", first ? std::ios::trunc : std::ios::app);
+    if (first) {
+      f << "# step time area dUdy_wall u_tau Re_tau" << std::endl;
+      first = false;
+    }
+    f << tstep << " " << std::setprecision(10) << time << " " << areaWall << " " << dudy << " " << utau << " "
+      << utau * rho / mue << std::endl;
+  }
+}
+
+// x-z plane mean (Nek5000 planar_avg in z, then x) at every GLL y-level, weighted with the unassembled mass
+// matrix. Summing over all local copies of a node is what gs_op(bm1*u)/gs_op(bm1) does in Fortran.
+static std::vector<double> planeMeans(const std::vector<dfloat> &fld, const std::vector<dfloat> &w)
+{
+  std::vector<double> m(nLevels, 0.0);
+  for (dlong n = 0; n < (dlong)nodeLevel.size(); n++) {
+    m[nodeLevel[n]] += w[n] * fld[n];
+  }
+  MPI_Allreduce(MPI_IN_PLACE, m.data(), nLevels, MPI_DOUBLE, MPI_SUM, platform->comm.mpiComm());
+  for (int l = 0; l < nLevels; l++) {
+    m[l] /= levelWeight[l];
+  }
+  return m;
+}
+
+static std::vector<dfloat> massWeights()
+{
+  auto mesh = nrs->meshV;
+  std::vector<dfloat> w(mesh->Nlocal);
+  mesh->o_LMM.copyTo(w.data(), mesh->Nlocal);
+  return w;
+}
+
+// |COURNO|: same definition as nrs_t::computeCFL (cflHex3D) for an axis-aligned mesh, where
+// |u . grad r| / dr = |u| / dx with dx the GLL spacing (centred inside, one-sided at the element faces)
+static double computeCFL()
+{
+  auto mesh = nrs->meshV;
+  const auto offset = nrs->fluid->fieldOffset;
+  std::vector<dfloat> U(3 * offset);
+  nrs->fluid->o_U.copyTo(U.data(), 3 * offset);
+  double dt = nrs->dt[0];
+  double cfl = 0;
+  for (dlong n = 0; n < mesh->Nlocal; n++) {
+    double c = 0;
+    for (int d = 0; d < 3; d++) c += std::abs(U[n + d * offset]) * invDx[3 * n + d];
+    cfl = std::max(cfl, c * dt);
+  }
+  MPI_Allreduce(MPI_IN_PLACE, &cfl, 1, MPI_DOUBLE, MPI_MAX, platform->comm.mpiComm());
+  return cfl;
+}
+
+// GLL spacings of the axis-aligned box mesh; aborts if an element is not axis-aligned
+static void setupSpacing(const std::vector<dfloat> &x, const std::vector<dfloat> &y, const std::vector<dfloat> &z)
+{
+  auto mesh = nrs->meshV;
+  const int Nq = mesh->Nq;
+  const int N = Nq - 1;
+  const std::vector<dfloat> *c[3] = {&x, &y, &z};
+  invDx.resize(3 * mesh->Nlocal);
+  int bad = 0;
+  for (dlong e = 0; e < mesh->Nelements; e++) {
+    for (int k = 0; k < Nq; k++) {
+      for (int j = 0; j < Nq; j++) {
+        for (int i = 0; i < Nq; i++) {
+          const int idx[3] = {i, j, k};
+          const dlong n = e * mesh->Np + k * Nq * Nq + j * Nq + i;
+          for (int d = 0; d < 3; d++) {
+            const int stride = (d == 0) ? 1 : (d == 1) ? Nq : Nq * Nq;
+            const dlong n0 = n - idx[d] * stride;
+            const auto &cd = *c[d];
+            const int im = std::max(idx[d] - 1, 0);
+            const int ip = std::min(idx[d] + 1, N);
+            const double h = (cd[n0 + ip * stride] - cd[n0 + im * stride]) / ((idx[d] == 0 || idx[d] == N) ? 1.0 : 2.0);
+            invDx[3 * n + d] = 1.0 / std::abs(h);
+          }
+          // axis alignment: x depends on i only, y on j only, z on k only
+          const dlong nx0 = e * mesh->Np + i;
+          const dlong ny0 = e * mesh->Np + j * Nq;
+          const dlong nz0 = e * mesh->Np + k * Nq * Nq;
+          if (std::abs(x[n] - x[nx0]) > 1e-10 || std::abs(y[n] - y[ny0]) > 1e-10 || std::abs(z[n] - z[nz0]) > 1e-10) {
+            bad++;
+          }
+        }
+      }
+    }
+  }
+  MPI_Allreduce(MPI_IN_PLACE, &bad, 1, MPI_INT, MPI_SUM, platform->comm.mpiComm());
+  nekrsCheck(bad > 0, platform->comm.mpiComm(), EXIT_FAILURE, "mesh is not axis-aligned (%d nodes)\n", bad);
+}
+
+// drl_init: register_wall_pts, sort_wall_pts and the sensing points
+static void drlInit()
+{
+  auto mesh = nrs->meshV;
+  const int N = mesh->Nq - 1;
+  const int Nq = mesh->Nq;
+  const auto [x, y, z] = mesh->xyzHost();
+  const auto w = massWeights();
+  setupSpacing(x, y, z);
+
+  // NekRS face f -> Nek5000 face (preprocessor notation), inverse of faceMap in meshNekReader.cpp
+  const int nekFace[6] = {5, 1, 2, 3, 4, 6};
+
+  // Nek5000 loops over local elements in lglel order; NekRS keeps the order of nek's local elements
+  std::vector<int> elems(mesh->Nelements);
+  std::iota(elems.begin(), elems.end(), 0);
+
+  for (int e : elems) {
+    const auto eg = nek::localElementIdToGlobal(e);
+    for (int nf = 1; nf <= 6; nf++) {
+      int f = 0;
+      while (nekFace[f] != nf) f++;
+      if (mesh->EToB[f + e * mesh->Nfaces] != 1) continue;
+
+      // facind (all nodes) or facindf (indices 1..N-1 in the in-plane directions), loops iz, iy, ix
+      int lo[3] = {0, 0, 0};
+      int hi[3] = {N, N, N};
+      if (gllUnique) {
+        hi[0] = hi[1] = hi[2] = N - 1;
+      }
+      const int dir = (nf == 2 || nf == 4) ? 0 : (nf == 1 || nf == 3) ? 1 : 2;
+      const int fixed = (nf == 1 || nf == 4 || nf == 5) ? 0 : N;
+      lo[dir] = hi[dir] = fixed;
+
+      for (int k = lo[2]; k <= hi[2]; k++) {
+        for (int j = lo[1]; j <= hi[1]; j++) {
+          for (int i = lo[0]; i <= hi[0]; i++) {
+            wallPoint p;
+            p.vol = e * mesh->Np + k * Nq * Nq + j * Nq + i;
+            p.info[0] = static_cast<int>(eg + 1);
+            p.info[1] = nf;
+            p.info[2] = i + 1;
+            p.info[3] = j + 1;
+            p.info[4] = k + 1;
+            p.x = x[p.vol];
+            p.y = y[p.vol];
+            p.z = z[p.vol];
+            pts.push_back(p);
+          }
+        }
+      }
+
+      for (int m = 0; m < mesh->Nfp; m++) {
+        agentFaceVol.push_back(e * mesh->Np + mesh->faceNodes[f * mesh->Nfp + m]);
+      }
+    }
+  }
+
+  // sort_wall_pts: bubble sort by x, ascending (stable)
+  std::stable_sort(pts.begin(), pts.end(), [](const wallPoint &a, const wallPoint &b) { return a.x < b.x; });
+
+  const int numctrl = pts.size();
+  int maxctrl = numctrl;
+  MPI_Allreduce(MPI_IN_PLACE, &maxctrl, 1, MPI_INT, MPI_MAX, platform->comm.mpiComm());
+  nekrsCheck(maxctrl > totctrl,
+             platform->comm.mpiComm(),
+             EXIT_FAILURE,
+             "NUMCTRL = %d exceeds TOTCTRL = %d, raise casedata totctrl and simulation.TOTCTRL\n",
+             maxctrl,
+             totctrl);
+
+  // GLL y-levels of the box mesh: distinct y coordinates (requires y = const planes of nodes)
+  {
+    const double tol = 1e-9;
+    std::vector<double> yl(y.begin(), y.end());
+    std::sort(yl.begin(), yl.end());
+    std::vector<double> yu;
+    for (auto v : yl) {
+      if (yu.empty() || v - yu.back() > tol) yu.push_back(v);
+    }
+    int nl = yu.size();
+    const int size = platform->comm.mpiCommSize();
+    std::vector<int> counts(size), displ(size, 0);
+    MPI_Allgather(&nl, 1, MPI_INT, counts.data(), 1, MPI_INT, platform->comm.mpiComm());
+    for (int r = 1; r < size; r++) displ[r] = displ[r - 1] + counts[r - 1];
+    std::vector<double> all(displ[size - 1] + counts[size - 1]);
+    MPI_Allgatherv(yu.data(), nl, MPI_DOUBLE, all.data(), counts.data(), displ.data(), MPI_DOUBLE,
+                   platform->comm.mpiComm());
+    std::sort(all.begin(), all.end());
+    std::vector<double> levels;
+    for (auto v : all) {
+      if (levels.empty() || v - levels.back() > tol) levels.push_back(v);
+    }
+    nLevels = levels.size();
+
+    nodeLevel.resize(mesh->Nlocal);
+    for (dlong n = 0; n < mesh->Nlocal; n++) {
+      auto it = std::lower_bound(levels.begin(), levels.end(), y[n] - tol);
+      nodeLevel[n] = it - levels.begin();
+    }
+    wallLevel = 0;
+
+    levelWeight.assign(nLevels, 0.0);
+    for (dlong n = 0; n < mesh->Nlocal; n++) {
+      levelWeight[nodeLevel[n]] += w[n];
+    }
+    MPI_Allreduce(MPI_IN_PLACE, levelWeight.data(), nLevels, MPI_DOUBLE, MPI_SUM, platform->comm.mpiComm());
+
+    nekrsCheck(nLevels != (mesh->Nq - 1) * 8 + 1 && platform->comm.mpiRank() == 0,
+               MPI_COMM_SELF,
+               EXIT_FAILURE,
+               "found %d GLL y-levels, expected %d (8 element rows)\n",
+               nLevels,
+               (mesh->Nq - 1) * 8 + 1);
+    for (const auto &p : pts) {
+      nekrsCheck(nodeLevel[p.vol] != wallLevel, MPI_COMM_SELF, EXIT_FAILURE, "%s\n", "wall point not at y-level 0");
+    }
+  }
+
+  // sensing points: wall point + (0, y+/Re_tau, 0), located with findpts
+  {
+    std::vector<dfloat> xs, ys, zs;
+    for (const auto &p : pts) {
+      xs.push_back(p.x);
+      ys.push_back(p.y + yPlusSensing / reTau);
+      zs.push_back(p.z);
+    }
+    interp = std::make_unique<pointInterpolation_t>(mesh, platform->comm.mpiComm());
+    interp->setPoints(xs, ys, zs);
+    interp->find();
+  }
+
+  rwd.assign(std::max(numctrl, 1), 0.0);
+
+  long long ntot = numctrl;
+  MPI_Allreduce(MPI_IN_PLACE, &ntot, 1, MPI_LONG_LONG, MPI_SUM, platform->comm.mpiComm());
+  if (platform->comm.mpiRank() == 0) {
+    std::cout << "[NEK] DRL: " << ntot << " wall points (gllUnique=" << gllUnique << "), max " << maxctrl
+              << " per rank, TOTCTRL=" << totctrl << ", " << nLevels << " GLL y-levels, sensing at y="
+              << yPlusSensing / reTau << std::endl;
+  }
+}
+
+// drl_info_out
+static void drlInfoOut()
+{
+  const int rank = platform->comm.mpiRank();
+  const int size = platform->comm.mpiCommSize();
+  int numctrl = pts.size();
+
+  std::vector<int> nodeList(size);
+  MPI_Gather(&numctrl, 1, MPI_INT, nodeList.data(), 1, MPI_INT, 0, platform->comm.mpiComm());
+  if (rank == 0) {
+    MPI_Send(nodeList.data(), size, MPI_INTEGER, 0, 1996, drlComm);
+  }
+
+  if (numctrl == 0) return;
+
+  MPI_Send(&numctrl, 1, MPI_INTEGER, 0, rank + 10000, drlComm);
+  std::vector<int> ibuf(totctrl);
+  for (int k = 0; k < 5; k++) {
+    std::fill(ibuf.begin(), ibuf.end(), 0);
+    for (int p = 0; p < numctrl; p++) ibuf[p] = pts[p].info[k];
+    MPI_Send(ibuf.data(), totctrl, MPI_INTEGER, 0, rank + 10000 * (k + 2), drlComm);
+  }
+  std::vector<double> dbuf(totctrl);
+  for (int k = 0; k < 3; k++) {
+    std::fill(dbuf.begin(), dbuf.end(), 0.0);
+    for (int p = 0; p < numctrl; p++) dbuf[p] = (k == 0) ? pts[p].x : (k == 1) ? pts[p].y : pts[p].z;
+    MPI_Send(dbuf.data(), totctrl, MPI_DOUBLE, 0, rank + 100000 * (k + 1), drlComm);
+  }
+}
+
+// drl_state + drl_state_out: plane-mean-subtracted u and v at the sensing points
+static void drlState(double time)
+{
+  auto mesh = nrs->meshV;
+  const auto offset = nrs->fluid->fieldOffset;
+  const int rank = platform->comm.mpiRank();
+  const int numctrl = pts.size();
+
+  const double cfl = computeCFL();
+  if (rank == 0) {
+    MPI_Send(&time, 1, MPI_DOUBLE, 0, 1998, drlComm);
+    MPI_Send(&cfl, 1, MPI_DOUBLE, 0, 1999, drlComm);
+  }
+
+  const auto w = massWeights();
+  std::vector<dfloat> fld(2 * offset, 0.0);
+  for (int c = 0; c < 2; c++) {
+    std::vector<dfloat> u(mesh->Nlocal);
+    nrs->fluid->o_U.copyTo(u.data(), mesh->Nlocal, c * offset);
+    const auto m = planeMeans(u, w);
+    for (dlong n = 0; n < mesh->Nlocal; n++) {
+      fld[n + c * offset] = u[n] - m[nodeLevel[n]];
+    }
+  }
+
+  auto o_fld = platform->deviceMemoryPool.reserve<dfloat>(2 * offset);
+  o_fld.copyFrom(fld.data(), 2 * offset);
+  const int nOut = std::max(numctrl, 1);
+  auto o_out = platform->deviceMemoryPool.reserve<dfloat>(2 * nOut);
+  interp->eval(2, offset, o_fld, nOut, o_out);
+  std::vector<dfloat> out(2 * nOut);
+  o_out.copyTo(out.data(), 2 * nOut);
+
+  if (numctrl == 0) return;
+  std::vector<double> buf(totctrl);
+  for (int il = 1; il <= 2; il++) {
+    std::fill(buf.begin(), buf.end(), 0.0);
+    for (int p = 0; p < numctrl; p++) buf[p] = out[p + (il - 1) * nOut];
+    MPI_Send(buf.data(), totctrl, MPI_DOUBLE, 0, rank * il + 70000, drlComm);
+  }
+}
+
+// drl_action: recv_Actions, then znmf_avg (UPARAM(2) = 1) or the plain mask
+static void drlAction()
+{
+  auto mesh = nrs->meshV;
+  const auto offset = nrs->fluid->fieldOffset;
+  const int rank = platform->comm.mpiRank();
+  const int numctrl = pts.size();
+
+  std::vector<dfloat> wrk(offset, 0.0);
+  if (numctrl > 0) {
+    std::vector<double> buf(totctrl);
+    MPI_Recv(buf.data(), totctrl, MPI_DOUBLE, 0, rank + 90000, drlComm, MPI_STATUS_IGNORE);
+    for (int p = 0; p < numctrl; p++) wrk[pts[p].vol] = buf[p];
+  }
+
+  std::vector<dfloat> uy(offset, 0.0);
+  if (znmf == 1) {
+    // velV = dssum(ACTIONS): duplicated copies (gllUnique=0) are added, not averaged
+    auto o_v = platform->deviceMemoryPool.reserve<dfloat>(offset);
+    o_v.copyFrom(wrk.data(), offset);
+    oogs::startFinish(o_v, 1, offset, ogsDfloat, ogsAdd, mesh->oogs);
+    std::vector<dfloat> velV(offset);
+    o_v.copyTo(velV.data(), offset);
+
+    const auto avg = planeMeans(velV, massWeights())[wallLevel];
+    for (auto n : agentFaceVol) uy[n] = velV[n] - avg;
+
+    if (rank == 0) std::cout << "[NEK] ZNMF: wall mean of dssum(actions) removed: " << avg << std::endl;
+  } else {
+    for (const auto &p : pts) uy[p.vol] = wrk[p.vol];
+  }
+
+  platform->app->bc->o_usrwrk.copyFrom(uy.data(), offset);
+
+  // diagnostics: net wall flux (zero with ZNMF) and the largest imposed velocity
+  static occa::memory o_bidWall;
+  if (!o_bidWall.isInitialized()) {
+    std::vector<int> bidWall = {1};
+    o_bidWall = platform->device.malloc<int>(bidWall.size(), bidWall.data());
+  }
+  const auto flux = mesh->surfaceAreaMultiplyIntegrate(o_bidWall, platform->app->bc->o_usrwrk);
+  double cmdMax = 0, uyMax = 0;
+  for (int p = 0; p < numctrl; p++) cmdMax = std::max(cmdMax, (double)std::abs(wrk[pts[p].vol]));
+  for (auto n : agentFaceVol) uyMax = std::max(uyMax, (double)std::abs(uy[n]));
+  MPI_Allreduce(MPI_IN_PLACE, &cmdMax, 1, MPI_DOUBLE, MPI_MAX, platform->comm.mpiComm());
+  MPI_Allreduce(MPI_IN_PLACE, &uyMax, 1, MPI_DOUBLE, MPI_MAX, platform->comm.mpiComm());
+  if (rank == 0) {
+    std::cout << "[NEK] ACTION: wall flux=" << flux << " max|commanded|=" << cmdMax << " max|uy wall|=" << uyMax
+              << std::endl;
+  }
+}
+
+// drl_reward + drl_reward_out: plane-averaged wall dU/dy (element-local gradient, as gradm1), running mean
+static void drlReward(int i)
+{
+  auto mesh = nrs->meshV;
+  const auto offset = nrs->fluid->fieldOffset;
+  const int rank = platform->comm.mpiRank();
+  const int numctrl = pts.size();
+
+  // strongGrad without averaging returns JW * grad element by element
+  auto o_grad = opSEM::strongGrad(mesh, offset, nrs->fluid->o_U.slice(0, mesh->Nlocal), false);
+  std::vector<dfloat> jwdudy(mesh->Nlocal);
+  o_grad.copyTo(jwdudy.data(), mesh->Nlocal, 1 * offset);
+  o_grad.free();
+
+  double s = 0;
+  for (dlong n = 0; n < mesh->Nlocal; n++) {
+    if (nodeLevel[n] == wallLevel) s += jwdudy[n];
+  }
+  MPI_Allreduce(MPI_IN_PLACE, &s, 1, MPI_DOUBLE, MPI_SUM, platform->comm.mpiComm());
+  const double dudy = s / levelWeight[wallLevel];
+
+  for (int p = 0; p < numctrl; p++) {
+    rwd[p] = (i == 1) ? dudy : (rwd[p] * i + dudy) / (i + 1);
+  }
+
+  const double cfl = computeCFL();
+  if (rank == 0) {
+    MPI_Send(&cfl, 1, MPI_DOUBLE, 0, 1999, drlComm);
+    std::cout << "[NEK] REWARD i_evolv=" << i << " dUdy_wall=" << dudy << " CFL=" << cfl << std::endl;
+  }
+
+  if (i == ndrl && numctrl > 0) {
+    std::vector<double> buf(totctrl, 0.0);
+    for (int p = 0; p < numctrl; p++) buf[p] = rwd[p];
+    MPI_Send(buf.data(), totctrl, MPI_DOUBLE, 0, rank + 80000, drlComm);
+  }
+}
+
+// DRL_main, called after every step
+static void drlMain(double time, int tstep)
+{
+  MPI_Comm comm = platform->comm.mpiComm();
+  const int rank = platform->comm.mpiRank();
+
+  if (tstep == 0) {
+    MPI_Intercomm_create(comm, 0, MPI_COMM_WORLD, 0, 99, &drlComm);
+    if (rank == 0) std::cout << "[NEK] INTERCOMM ESTABLISHED!" << std::endl;
+    drlInit();
+    return;
+  }
+
+  while (true) {
+    if (evolving && iEvolv != ndrl) {
+      iEvolv++;
+      break;
+    }
+    evolving = false;
+    iEvolv = 1;
+
+    char request[6] = {0};
+    if (rank == 0) {
+      MPI_Recv(request, 5, MPI_CHARACTER, 0, 22, drlComm, MPI_STATUS_IGNORE);
+      std::cout << "[NEK] RECV REQUEST: " << request << " (step " << tstep << ")" << std::endl;
+    }
+    MPI_Bcast(request, 5, MPI_CHARACTER, 0, comm);
+    const std::string req(request, 5);
+
+    if (req == "STATE") {
+      drlState(time);
+      MPI_Barrier(comm);
+    } else if (req == "CNTRL") {
+      drlAction();
+      MPI_Barrier(comm);
+    } else if (req == "TERMN") {
+      if (rank == 0) std::cout << "[TERMN] DISCONNECT!" << std::endl;
+      MPI_Barrier(comm);
+      std::cout << std::flush;
+      fflush(stdout);
+      fflush(stderr);
+      MPI_Finalize();
+      // exitt0; _Exit skips the NekRS static destructors, which would call MPI after MPI_Finalize
+      std::_Exit(EXIT_SUCCESS);
+    } else if (req == "RSETS") {
+      // Fortran sets a flag that is never read (drl_if_restart); the solver just advances one step
+      MPI_Barrier(comm);
+      if (rank == 0) std::cout << "[NEK] RESTART Time Evolution! (no-op, as in Nek5000)" << std::endl;
+      break;
+    } else if (req == "EVOLV") {
+      evolving = true;
+      break;
+    } else if (req == "INTAL") {
+      MPI_Barrier(comm);
+      drlInfoOut();
+    } else {
+      nekrsAbort(comm, EXIT_FAILURE, "unknown DRL request <%s>\n", req.c_str());
+    }
+  }
+
+  MPI_Barrier(comm);
+  if (evolving) drlReward(iEvolv);
+}
+
+void UDF_Setup0(MPI_Comm comm, setupAide &options)
+{
+  platform->par->extract("casedata", "statinterval", statInterval);
+  platform->par->extract("casedata", "ndrl", ndrl);
+  platform->par->extract("casedata", "znmf", znmf);
+  platform->par->extract("casedata", "yplussensing", yPlusSensing);
+  platform->par->extract("casedata", "retau", reTau);
+  platform->par->extract("casedata", "gllunique", gllUnique);
+  platform->par->extract("casedata", "totctrl", totctrl);
+}
+
+void UDF_Setup()
+{
+  // zero wall velocity until the first CNTRL
+  platform->app->bc->o_usrwrk.resize(nrs->fluid->fieldOffset);
+  platform->linAlg->fill(nrs->fluid->fieldOffset, 0.0, platform->app->bc->o_usrwrk);
+}
+
+void UDF_ExecuteStep(double time, int tstep)
+{
+  drlMain(time, tstep);
+
+  if (statInterval > 0 && tstep % statInterval == 0) {
+    logWallShear(time, tstep);
+  }
+}

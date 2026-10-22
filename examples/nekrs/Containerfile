@@ -1,0 +1,17 @@
+# HydroGym NekRS image: the NekRS 26.0 CUDA-aware image plus this branch of hydrogym (editable install in the
+# venv), the MPMD driver nekrs-mpmd (in $NEKRS_HOME/bin) and mpi4py on the venv path. Built by build_image.sh.
+ARG BASE=localhost/hydrogym-nekrs:26.0-gpumpi-turing_ampere
+FROM ${BASE}
+ARG BRANCH=nekrs-backend
+USER easybuild
+COPY hydrogym.bundle /tmp/hydrogym.bundle
+RUN cd /home/easybuild/hydrogym \
+ && git fetch -q /tmp/hydrogym.bundle ${BRANCH}:${BRANCH} \
+ && git checkout -q ${BRANCH} \
+ && git log --oneline -1
+RUN bash -lc "module load NekRS/26.0-gompi-2024a-CUDAaware \
+ && cd /home/easybuild/hydrogym/examples/nekrs/mpmd && ./build.sh \
+ && install -m 755 nekrs-mpmd \$NEKRS_HOME/bin/ && rm nekrs-mpmd"
+# mpi4py from its module directory without loading the module (which would swap in the non-CUDA-aware Open MPI)
+RUN echo /home/easybuild/eb_software/software/mpi4py/4.0.1-gompi-2024a-SystemCUDA/lib/python3.12/site-packages \
+      > /home/easybuild/venvs/hydrogym_gpu/lib/python3.12/site-packages/mpi4py_easybuild.pth

@@ -1,0 +1,27 @@
+# NekRS port of the HydroGym turbulent open channel TCFlarge_3D_Re207 (Nek5000 case channel_case/large_channel,
+# parameters from pettingzoo_tcflarge_re207.yml). Uncontrolled flow.
+userSections = CASEDATA
+
+[GENERAL]
+polynomialOrder = 7               # Nek5000 lx1 = 8
+cubaturePolynomialOrder = 11      # Nek5000 lxd = 12
+startFrom = "rs6tcf0.f00004 + time=0"
+stopAt = numSteps
+numSteps = 25000
+dt = 4.0e-3                       # fixed, as in Nek5000 (variableDt = no)
+timeStepper = tombo3              # Nek5000 bdf3 / ext3
+checkpointControl = steps
+checkpointInterval = 0
+constFlowRate = meanVelocity=1.0 + direction=X   # Nek5000 param(54) = -1, param(55) = 1
+
+[FLUID PRESSURE]
+residualTol = 1e-06
+
+[FLUID VELOCITY]
+boundaryTypeMap = zeroDirichlet, zeroDirichletY/zeroNeumann   # 1: wall y = 0, 2: symmetry y = 1
+viscosity = 1/3300.0              # Re_b = U_b h / nu
+rho = 1.0
+residualTol = 1e-08
+
+[CASEDATA]
+statInterval = 10                 # steps between wall-shear log entries

@@ -1,0 +1,35 @@
+--- driver.cpp.orig	2026-10-22 16:06:16.276221000 +0800
++++ driver.cpp	2026-10-22 16:06:25.605755000 +0800
+@@ -94,11 +94,20 @@
+     MPI_Comm_rank(MPI_COMM_WORLD, &worldRank);
+   }
+ 
+-  MPI_Barrier(MPI_COMM_WORLD);
+-  const double time0 = MPI_Wtime(); 
++  // HydroGym MPMD launch (mpirun -n 1 python ... : -n N nekrs-mpmd ...): the controller splits MPI_COMM_WORLD by
++  // color (0 = controller, 1 = solver, hydrogym/nek/env.py mpi_split), so the solver must take part in the same
++  // split instead of using MPI_COMM_WORLD. The UDF creates the intercommunicator (tag 99) on the solver communicator.
++  const char* mpmdColor = std::getenv("NEKRS_MPMD_COLOR");
+ 
+   MPI_Comm commGlobal;
+-  MPI_Comm_dup(MPI_COMM_WORLD, &commGlobal);
++  if (mpmdColor) {
++    MPI_Comm_split(MPI_COMM_WORLD, std::atoi(mpmdColor), worldRank, &commGlobal);
++    MPI_Barrier(commGlobal);
++  } else {
++    MPI_Barrier(MPI_COMM_WORLD);
++    MPI_Comm_dup(MPI_COMM_WORLD, &commGlobal);
++  }
++  const double time0 = MPI_Wtime();
+ 
+   MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN);
+ 
+@@ -143,7 +152,7 @@
+       MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE); // terminates all processes
+      
+     } else {
+-      MPI_Barrier(MPI_COMM_WORLD); // waiting to be terminated
++      MPI_Barrier(mpmdColor ? commGlobal : MPI_COMM_WORLD); // waiting to be terminated
+     } 
+   };
+ 

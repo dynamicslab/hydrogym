@@ -1,0 +1,5 @@
+# smoke test of train_td3.py: short episodes, two snapshots
+base: ../channel_td3.yml
+environment: {episode_actions: 20}
+initial_conditions:
+  snapshots: {count: 2, interval: 26, save: runs/td3_smoke/snaps/tcf}
