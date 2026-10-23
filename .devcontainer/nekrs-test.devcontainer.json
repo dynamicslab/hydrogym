@@ -18,7 +18,6 @@
     "--gpus=all",
     "--net=host",
     "--ipc=host",
-    "--shm-size=8g",
     "--hostname=LocalGPU",
     "--cap-add=SYS_ADMIN"
   ],

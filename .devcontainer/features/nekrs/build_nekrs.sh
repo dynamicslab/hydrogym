@@ -9,6 +9,7 @@
 #   MPMD_SRC      examples/nekrs/mpmd (driver.cpp, build.sh)
 #   BACKEND       CUDA | HIP
 #   GPUARCH       CMAKE_CUDA_ARCHITECTURES ("80;86") or CMAKE_HIP_ARCHITECTURES (gfx942)
+#   CUDA_VERSION  CUDA only: toolkit version below NVHPC's CUDA_HOME (13.2, 12.9)
 #   GPUMPI        true | false  (NEKRS_GPU_MPI)
 #   BUILDTYPE     CMAKE_BUILD_TYPE
 #   MPI_BIN       directory with the MPI compiler wrappers (mpicc, mpicxx, mpif77)
@@ -64,11 +65,19 @@ case "${BACKEND}" in
         # find_package(CUDAToolkit) looks in CUDA_HOME, but NVHPC ships
         # cuBLAS/cuSPARSE/cuRAND/cuSOLVER (needed by GPU HYPRE) separately
         # under math_libs/.
+        # NVHPC's cuda_multi layout keeps one toolkit per version below
+        # CUDA_HOME (cuda/13.2, cuda/12.9); CUDA_VERSION picks one.
+        CUDA_ROOT="${CUDA_HOME}"
         MATH_LIBS="${NVHPC_ROOT:-}/math_libs"
+        if [[ -n "${CUDA_VERSION:-}" && -d "${CUDA_HOME}/${CUDA_VERSION}" ]]; then
+            CUDA_ROOT="${CUDA_HOME}/${CUDA_VERSION}"
+            MATH_LIBS="${MATH_LIBS}/${CUDA_VERSION}"
+        fi
         backend_args=(
             -DOCCA_ENABLE_CUDA=ON -DOCCA_ENABLE_HIP=OFF
             -DCMAKE_CUDA_ARCHITECTURES="${GPUARCH}"
-            -DCUDAToolkit_ROOT="${CUDA_HOME}"
+            -DCMAKE_CUDA_COMPILER="${CUDA_ROOT}/bin/nvcc"
+            -DCUDAToolkit_ROOT="${CUDA_ROOT}"
             -DCMAKE_PREFIX_PATH="${MATH_LIBS}"
             -DCMAKE_INCLUDE_PATH="${MATH_LIBS}/include"
             -DCMAKE_LIBRARY_PATH="${MATH_LIBS}/lib64"

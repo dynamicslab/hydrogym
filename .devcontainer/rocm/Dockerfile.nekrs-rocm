@@ -103,7 +103,8 @@ RUN uv venv /opt/venvs/nekrs --seed && \
     /opt/venvs/nekrs/bin/pip install --no-cache-dir torch --index-url ${TORCH_INDEX} && \
     MPICC=${NEKRS_HOME}/mpi/bin/mpicc /opt/venvs/nekrs/bin/pip install --no-cache-dir --no-binary mpi4py \
         -e "/opt/hydrogym[nekrs]" && \
-    /opt/venvs/nekrs/bin/python -c "import hydrogym.nekrs; from mpi4py import MPI; print(MPI.Get_library_version().splitlines()[0])"
+    /opt/venvs/nekrs/bin/python -c "import hydrogym.nekrs, mpi4py; print('mpi4py built with', mpi4py.get_config())"
+# (not MPI_Init here: UCX finds no GPU during the image build and Open MPI then aborts)
 ENV PATH=/opt/venvs/nekrs/bin:${PATH} \
     OMP_NUM_THREADS=1
 

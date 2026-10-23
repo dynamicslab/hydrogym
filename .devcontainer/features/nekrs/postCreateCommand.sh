@@ -29,6 +29,7 @@ fi
 CUDAARCH="${CUDAARCH:-80;86}"
 GPUMPI="${GPUMPI:-true}"
 BUILDTYPE="${BUILDTYPE:-RelWithDebInfo}"
+CUDAVERSION="${CUDAVERSION:-13.2}"
 
 echo "=== NekRS Post-Create Setup ==="
 
@@ -46,7 +47,7 @@ if [[ -x "${NEKRS_HOME}/bin/nekrs" && -x "${NEKRS_HOME}/bin/nekrs-mpmd" ]]; then
     echo "NekRS already installed at ${NEKRS_HOME} - skipping build."
 else
     NEKRS_SRC="${NEKRS_SRC}" NEKRS_HOME="${NEKRS_HOME}" MPMD_SRC=/workspace/examples/nekrs/mpmd \
-    BACKEND=CUDA GPUARCH="${CUDAARCH}" GPUMPI="${GPUMPI}" BUILDTYPE="${BUILDTYPE}" \
+    BACKEND=CUDA GPUARCH="${CUDAARCH}" CUDA_VERSION="${CUDAVERSION}" GPUMPI="${GPUMPI}" BUILDTYPE="${BUILDTYPE}" \
     MPI_BIN="${HPCX_ROOT}/bin" MPI_CC=gcc MPI_CXX=g++ MPI_FC=gfortran \
         bash "${FEATURE_DIR}/build_nekrs.sh"
 fi

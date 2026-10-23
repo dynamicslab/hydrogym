@@ -10,6 +10,7 @@ set -euo pipefail
 CUDAARCH="${CUDAARCH:-80;86}"
 GPUMPI="${GPUMPI:-true}"
 BUILDTYPE="${BUILDTYPE:-RelWithDebInfo}"
+CUDAVERSION="${CUDAVERSION:-13.2}"
 
 echo "=== NekRS Feature Installation ==="
 echo "CUDA architectures: ${CUDAARCH}  GPU-aware MPI: ${GPUMPI}  build type: ${BUILDTYPE}"
@@ -20,6 +21,7 @@ cat > "${CONFIG_DIR}/nekrs.env" <<EOT
 CUDAARCH="${CUDAARCH}"
 GPUMPI=${GPUMPI}
 BUILDTYPE=${BUILDTYPE}
+CUDAVERSION=${CUDAVERSION}
 EOT
 
 echo "Options saved to ${CONFIG_DIR}/nekrs.env"

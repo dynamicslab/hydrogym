@@ -1,0 +1,26 @@
+CUDA 13's CCCL 3 dropped thrust::pair, which the HYPRE vendored in NekRS 26.0 uses for two reduce_by_key results
+("namespace thrust has no member pair"). auto works with CCCL 2/3 and rocThrust alike.
+diff -ru a/3rd_party/hypre/src/seq_mv/csr_matop_device.c b/3rd_party/hypre/src/seq_mv/csr_matop_device.c
+--- a/3rd_party/hypre/src/seq_mv/csr_matop_device.c	2026-10-23 21:04:51.755824567 +0800
++++ b/3rd_party/hypre/src/seq_mv/csr_matop_device.c	2026-10-23 21:04:51.762824567 +0800
+@@ -1034,7 +1034,7 @@
+    hypre_assert(new_end.first - reduced_col_indices == new_end.second - reduced_col_nnz);
+    num_reduced_col_indices = new_end.first - reduced_col_indices;
+ #else
+-   thrust::pair<HYPRE_Int*, HYPRE_Int*> new_end =
++   auto new_end =
+       HYPRE_THRUST_CALL(reduce_by_key, A_j_sorted, A_j_sorted + nnz_A,
+                         thrust::make_constant_iterator(1),
+                         reduced_col_indices,
+diff -ru a/3rd_party/hypre/src/utilities/device_utils.c b/3rd_party/hypre/src/utilities/device_utils.c
+--- a/3rd_party/hypre/src/utilities/device_utils.c	2026-10-23 21:04:51.775824567 +0800
++++ b/3rd_party/hypre/src/utilities/device_utils.c	2026-10-23 21:04:51.782824567 +0800
+@@ -1491,7 +1491,7 @@
+ #else
+       HYPRE_THRUST_CALL(sort_by_key, map2, map2 + ny, y);
+ 
+-      thrust::pair<HYPRE_Int*, HYPRE_Real*> new_end = HYPRE_THRUST_CALL( reduce_by_key,
++      auto new_end = HYPRE_THRUST_CALL( reduce_by_key,
+                                                                          map2,
+                                                                          map2 + ny,
+                                                                          y,

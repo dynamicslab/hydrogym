@@ -22,6 +22,15 @@
       ],
       "default": "RelWithDebInfo",
       "description": "CMAKE_BUILD_TYPE"
+    },
+    "cudaVersion": {
+      "type": "string",
+      "enum": [
+        "13.2",
+        "12.9"
+      ],
+      "default": "13.2",
+      "description": "CUDA toolkit from NVHPC's cuda_multi install. 13.2 needs a driver for CUDA >= 13.0 (r580+); 12.9 for older drivers."
     }
   },
   "dependsOn": [],
