@@ -71,6 +71,23 @@ fi
 
 chmod -R +x "${NEK_CORE}/bin" "${NEK_CORE}/core" "${TOOLBOX_SRC}" "${NEK_CORE_DEC}/core" 2>/dev/null || true
 
+# NEK_CORE is a submodule pinned to plain upstream Nek5000, whose drive.f
+# hands all of MPI_COMM_WORLD to nek_init - in hydrogym's MPMD launch that
+# includes the Python controller rank, so DRL_main's MPI_INTERCOMM_CREATE
+# hangs forever. The fix (split world rank 0 off before nek_init) can't be
+# committed upstream, so it lives here as a patch applied to the checked-out
+# submodule. Idempotent: skips if the reverse patch applies (already there).
+DRIVE_PATCH="${NEK_ROOT}/patches/nek5000-drive-mpmd-comm-split.patch"
+if git -C "${NEK_CORE}" apply --reverse --check "${DRIVE_PATCH}" 2>/dev/null; then
+    echo "drive.f MPMD comm-split patch already applied."
+elif git -C "${NEK_CORE}" apply "${DRIVE_PATCH}"; then
+    echo "Applied drive.f MPMD comm-split patch to ${NEK_CORE}/core/drive.f"
+else
+    echo "ERROR: could not apply ${DRIVE_PATCH} to ${NEK_CORE} (submodule pin changed?)."
+    echo "Without it, mini_channel/large_channel hang at the DRL MPMD handshake."
+    exit 1
+fi
+
 build_kth_case() {
     local case_dir="$1" case_name="$2" pplist="$3" usr="$4"
 
