@@ -26,11 +26,11 @@
     "cudaVersion": {
       "type": "string",
       "enum": [
-        "13.2",
-        "12.9"
+        "12.9",
+        "13.2"
       ],
-      "default": "13.2",
-      "description": "CUDA toolkit from NVHPC's cuda_multi install. 13.2 needs a driver for CUDA >= 13.0 (r580+); 12.9 for older drivers."
+      "default": "12.9",
+      "description": "CUDA toolkit from NVHPC's cuda_multi install. 12.9: the HYPRE vendored in NekRS 26.0 does not build with CUDA 13's CCCL 3 (thrust::pair, thrust::make_reverse_iterator, ... removed or no longer included), so 13.2 only works once NekRS updates HYPRE."
     }
   },
   "dependsOn": [],
@@ -38,6 +38,6 @@
   "containerEnv": {
     "NEKRS_HOME": "/workspace/third_party/nekrs/install",
     "PATH": "/workspace/third_party/nekrs/install/bin:${PATH}",
-    "OCCA_CUDA_COMPILER": "nvcc"
+    "OCCA_CUDA_COMPILER": "/workspace/third_party/nekrs/install/cuda/bin/nvcc"
   }
 }

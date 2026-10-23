@@ -10,7 +10,7 @@ set -euo pipefail
 CUDAARCH="${CUDAARCH:-80;86}"
 GPUMPI="${GPUMPI:-true}"
 BUILDTYPE="${BUILDTYPE:-RelWithDebInfo}"
-CUDAVERSION="${CUDAVERSION:-13.2}"
+CUDAVERSION="${CUDAVERSION:-12.9}"
 
 echo "=== NekRS Feature Installation ==="
 echo "CUDA architectures: ${CUDAARCH}  GPU-aware MPI: ${GPUMPI}  build type: ${BUILDTYPE}"

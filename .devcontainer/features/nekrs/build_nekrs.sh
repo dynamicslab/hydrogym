@@ -73,6 +73,17 @@ case "${BACKEND}" in
             CUDA_ROOT="${CUDA_HOME}/${CUDA_VERSION}"
             MATH_LIBS="${MATH_LIBS}/${CUDA_VERSION}"
         fi
+        # The NVHPC image's CPATH points at the default CUDA's math_libs (and
+        # NCCL/NVSHMEM, not needed here), which shadows the chosen version's
+        # headers in every compile; its LD_LIBRARY_PATH likewise, so the
+        # libraries are found through RPATH instead
+        # (CMAKE_INSTALL_RPATH_USE_LINK_PATH below).
+        export CPATH="${MATH_LIBS}/include"
+        # OCCA JIT-compiles the kernels with $OCCA_CUDA_COMPILER (default:
+        # nvcc on PATH, i.e. NVHPC's default CUDA); the feature points that at
+        # this link so kernels and libraries come from the same toolkit.
+        mkdir -p "${NEKRS_HOME}/cuda/bin"
+        ln -sfn "${CUDA_ROOT}/bin/nvcc" "${NEKRS_HOME}/cuda/bin/nvcc"
         backend_args=(
             -DOCCA_ENABLE_CUDA=ON -DOCCA_ENABLE_HIP=OFF
             -DCMAKE_CUDA_ARCHITECTURES="${GPUARCH}"
@@ -81,6 +92,7 @@ case "${BACKEND}" in
             -DCMAKE_PREFIX_PATH="${MATH_LIBS}"
             -DCMAKE_INCLUDE_PATH="${MATH_LIBS}/include"
             -DCMAKE_LIBRARY_PATH="${MATH_LIBS}/lib64"
+            -DCMAKE_INSTALL_RPATH_USE_LINK_PATH=ON
         )
         ;;
     HIP)
@@ -104,7 +116,11 @@ cmake -S "${NEKRS_SRC}" -B "${BUILD_DIR}" -G "Unix Makefiles" \
     -DENABLE_HYPRE_GPU=ON -DENABLE_ADIOS=OFF -DENABLE_CVODE=OFF \
     -DNEKRS_GPU_MPI="${gpu_mpi}" \
     2>&1 | tee "${NEKRS_SRC}/cmake.log"
-make -j"$(compute_parallelism.sh)" -C "${BUILD_DIR}" install 2>&1 | tail -40
+if ! make -j"$(compute_parallelism.sh)" -C "${BUILD_DIR}" install > "${NEKRS_SRC}/make.log" 2>&1; then
+    grep -n -B2 -A8 -m5 -E "error:|Error [0-9]" "${NEKRS_SRC}/make.log" || tail -80 "${NEKRS_SRC}/make.log"
+    echo "ERROR: NekRS build failed - full log in ${NEKRS_SRC}/make.log"
+    exit 1
+fi
 if [[ ! -x "${NEKRS_HOME}/bin/nekrs" ]]; then
     echo "ERROR: NekRS build failed - ${NEKRS_HOME}/bin/nekrs not found"
     exit 1

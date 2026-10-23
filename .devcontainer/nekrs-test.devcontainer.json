@@ -10,6 +10,9 @@
       // time. "80;86" = A100 / RTX 30-series / A6000 - see
       // features/nekrs/devcontainer-feature.json.
       "cudaArch": "80;86",
+      // 12.9, not the base image's default 13.2 - see cudaVersion in
+      // features/nekrs/devcontainer-feature.json.
+      "cudaVersion": "12.9",
       "gpuMpi": true
     }
   },
