@@ -84,9 +84,13 @@ case "${BACKEND}" in
         export HYPRE_VENDOR_MATH_PATH="${MATH_LIBS}"
         # OCCA JIT-compiles the kernels with $OCCA_CUDA_COMPILER (default:
         # nvcc on PATH, i.e. NVHPC's default CUDA); the feature points that at
-        # this link so kernels and libraries come from the same toolkit.
+        # this wrapper so kernels and libraries come from the same toolkit
+        # (not a symlink: nvcc finds its headers relative to the path it was
+        # called by).
         mkdir -p "${NEKRS_HOME}/cuda/bin"
-        ln -sfn "${CUDA_ROOT}/bin/nvcc" "${NEKRS_HOME}/cuda/bin/nvcc"
+        rm -f "${NEKRS_HOME}/cuda/bin/nvcc"
+        printf '#!/bin/sh\nexec %s/bin/nvcc "$@"\n' "${CUDA_ROOT}" > "${NEKRS_HOME}/cuda/bin/nvcc"
+        chmod 755 "${NEKRS_HOME}/cuda/bin/nvcc"
         backend_args=(
             -DOCCA_ENABLE_CUDA=ON -DOCCA_ENABLE_HIP=OFF
             -DCMAKE_CUDA_ARCHITECTURES="${GPUARCH}"
