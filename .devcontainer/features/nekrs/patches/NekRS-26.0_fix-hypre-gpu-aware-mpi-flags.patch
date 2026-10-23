@@ -1,0 +1,13 @@
+With NEKRS_GPU_MPI=ON the two hypre configure flags were appended as one list element, so configure received
+"--enable-gpu-aware-mpi --with-cxxstandard=17" as a single argument and aborted ("invalid feature name").
+--- nekRS-26.0/cmake/hypre.cmake.orig
++++ nekRS-26.0/cmake/hypre.cmake
+@@ -89,7 +89,7 @@
+ endif()
+ 
+ if(NEKRS_GPU_MPI)
+-  list(APPEND HYPRE_CONFIGURE_FLAGS "--enable-gpu-aware-mpi --with-cxxstandard=17")
++  list(APPEND HYPRE_CONFIGURE_FLAGS "--enable-gpu-aware-mpi" "--with-cxxstandard=17")
+ endif()
+ 
+   set(HYPRE_INSTALL_DIR ${CMAKE_CURRENT_BINARY_DIR}/HYPRE_BUILD_DEVICE-prefix)

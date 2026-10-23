@@ -13,3 +13,7 @@
 	path = third_party/m-AIA
 	url = https://git.rwth-aachen.de/aia/MAIA/Solver.git
 	branch = wipmaiaml
+[submodule "third_party/nekrs"]
+	path = third_party/nekrs
+	url = https://github.com/Nek5000/nekRS.git
+	ignore = dirty

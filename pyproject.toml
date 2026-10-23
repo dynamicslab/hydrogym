@@ -77,6 +77,17 @@ nek = [
     "supersuit==3.10.0",
     "tensorboard>=2.0.0",
 ]
+nekrs = [
+    "matplotlib>=3.7",
+    "mpi4py>=4.0.0",
+    "omegaconf>=2.1.0",
+    "pettingzoo>=1.24.0",
+    "pymech>=1.4.0",
+    "pyyaml>=6.0",
+    "stable-baselines3>=2.7.1",
+    "supersuit==3.10.0",
+    "tensorboard>=2.0.0",
+]
 jax = [
     "chex",
     "flax",
@@ -121,6 +132,7 @@ all = [
     "psutil>=7.2.2",
     "pymech>=1.4.0",
     "pyvista",
+    "pyyaml>=6.0",
     "stable-baselines3>=2.7.1",
     "supersuit==3.10.0",
     "tensorboard>=2.0.0",

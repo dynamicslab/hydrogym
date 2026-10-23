@@ -149,3 +149,6 @@ examples/nekrs/**/rs6tcf0.f0*
 examples/nekrs/mpmd/nekrs-mpmd
 examples/nekrs/**/.cache/
 examples/nekrs/**/__pycache__/
+
+# devcontainer: site-specific CA certificates (see .devcontainer/base/extra-ca-certs/README.md)
+.devcontainer/base/extra-ca-certs/*.crt

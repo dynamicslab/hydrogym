@@ -24,6 +24,17 @@ RUN apt-get update && apt-get install -y \
 COPY compute_parallelism.sh /usr/local/bin/compute_parallelism.sh
 RUN chmod +x /usr/local/bin/compute_parallelism.sh
 
+# Site CA certificates (TLS-intercepting proxies), before the first
+# download below - see extra-ca-certs/README.md. No-op if the directory only
+# holds the README. The ENV lines point Python (pip, requests/Hugging Face)
+# and uv at the system bundle, which then includes them.
+COPY extra-ca-certs/ /usr/local/share/ca-certificates/extra/
+RUN update-ca-certificates
+ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt \
+    REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt \
+    PIP_CERT=/etc/ssl/certs/ca-certificates.crt \
+    UV_NATIVE_TLS=1
+
 # ============================================
 # Environment variables
 # ============================================

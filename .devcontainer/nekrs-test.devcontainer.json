@@ -1,0 +1,28 @@
+{
+  "name": "TEST: nekrs only",
+  "build": {
+    "dockerfile": "base/Dockerfile.base"
+  },
+  "features": {
+    "./features/nekrs": {
+      // cudaArch only covers the ahead-of-time compiled parts (HYPRE); OCCA
+      // JIT-compiles the solver kernels for whatever GPU it finds at run
+      // time. "80;86" = A100 / RTX 30-series / A6000 - see
+      // features/nekrs/devcontainer-feature.json.
+      "cudaArch": "80;86",
+      "gpuMpi": true
+    }
+  },
+  "runArgs": [
+    // Docker; with podman (CDI) use "--device=nvidia.com/gpu=all" instead.
+    "--gpus=all",
+    "--net=host",
+    "--ipc=host",
+    "--shm-size=8g",
+    "--hostname=LocalGPU",
+    "--cap-add=SYS_ADMIN"
+  ],
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind",
+  "workspaceFolder": "/workspace",
+  "remoteUser": "root"
+}

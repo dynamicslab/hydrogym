@@ -1649,6 +1649,7 @@ all = [
     { name = "psutil" },
     { name = "pymech" },
     { name = "pyvista" },
+    { name = "pyyaml" },
     { name = "stable-baselines3" },
     { name = "supersuit" },
     { name = "tensorboard" },
@@ -1720,6 +1721,18 @@ nek = [
     { name = "supersuit" },
     { name = "tensorboard" },
 ]
+nekrs = [
+    { name = "matplotlib", version = "3.10.9", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "matplotlib", version = "3.11.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "mpi4py" },
+    { name = "omegaconf" },
+    { name = "pettingzoo" },
+    { name = "pymech" },
+    { name = "pyyaml" },
+    { name = "stable-baselines3" },
+    { name = "supersuit" },
+    { name = "tensorboard" },
+]
 
 [package.dev-dependencies]
 dev = [
@@ -1780,10 +1793,12 @@ requires-dist = [
     { name = "matplotlib", marker = "extra == 'jax'", specifier = ">=3.7" },
     { name = "matplotlib", marker = "extra == 'jaxfluids'", specifier = ">=3.7" },
     { name = "matplotlib", marker = "extra == 'nek'", specifier = ">=3.7" },
+    { name = "matplotlib", marker = "extra == 'nekrs'", specifier = ">=3.7" },
     { name = "mpi4py", marker = "extra == 'all'", specifier = ">=4.0.0" },
     { name = "mpi4py", marker = "extra == 'firedrake'", specifier = ">=4.0.0" },
     { name = "mpi4py", marker = "extra == 'maia'", specifier = ">=4.0.0" },
     { name = "mpi4py", marker = "extra == 'nek'", specifier = ">=4.0.0" },
+    { name = "mpi4py", marker = "extra == 'nekrs'", specifier = ">=4.0.0" },
     { name = "navix", marker = "extra == 'all'" },
     { name = "navix", marker = "extra == 'jax'" },
     { name = "numpy", specifier = ">=1.23" },
@@ -1792,33 +1807,41 @@ requires-dist = [
     { name = "omegaconf", marker = "extra == 'jaxfluids'", specifier = ">=2.1.0" },
     { name = "omegaconf", marker = "extra == 'maia'", specifier = ">=2.1.0" },
     { name = "omegaconf", marker = "extra == 'nek'", specifier = ">=2.1.0" },
+    { name = "omegaconf", marker = "extra == 'nekrs'", specifier = ">=2.1.0" },
     { name = "optax", marker = "extra == 'all'" },
     { name = "optax", marker = "extra == 'jaxfluids'" },
     { name = "pandas", specifier = ">=2.1.0" },
     { name = "pettingzoo", marker = "extra == 'all'", specifier = ">=1.24.0" },
     { name = "pettingzoo", marker = "extra == 'nek'", specifier = ">=1.24.0" },
+    { name = "pettingzoo", marker = "extra == 'nekrs'", specifier = ">=1.24.0" },
     { name = "psutil", marker = "extra == 'all'", specifier = ">=7.2.2" },
     { name = "psutil", marker = "extra == 'firedrake'", specifier = ">=7.2.2" },
     { name = "pymech", marker = "extra == 'all'", specifier = ">=1.4.0" },
     { name = "pymech", marker = "extra == 'nek'", specifier = ">=1.4.0" },
+    { name = "pymech", marker = "extra == 'nekrs'", specifier = ">=1.4.0" },
     { name = "pyvista", marker = "extra == 'all'" },
     { name = "pyvista", marker = "extra == 'jaxfluids'" },
+    { name = "pyyaml", marker = "extra == 'all'", specifier = ">=6.0" },
+    { name = "pyyaml", marker = "extra == 'nekrs'", specifier = ">=6.0" },
     { name = "scipy", specifier = ">=1.7.0" },
     { name = "stable-baselines3", marker = "extra == 'all'", specifier = ">=2.7.1" },
     { name = "stable-baselines3", marker = "extra == 'maia'", specifier = ">=2.7.1" },
     { name = "stable-baselines3", marker = "extra == 'nek'", specifier = ">=2.7.1" },
+    { name = "stable-baselines3", marker = "extra == 'nekrs'", specifier = ">=2.7.1" },
     { name = "supersuit", marker = "extra == 'all'", specifier = "==3.10.0" },
     { name = "supersuit", marker = "extra == 'nek'", specifier = "==3.10.0" },
+    { name = "supersuit", marker = "extra == 'nekrs'", specifier = "==3.10.0" },
     { name = "tensorboard", marker = "extra == 'all'", specifier = ">=2.0.0" },
     { name = "tensorboard", marker = "extra == 'maia'", specifier = ">=2.0.0" },
     { name = "tensorboard", marker = "extra == 'nek'", specifier = ">=2.0.0" },
+    { name = "tensorboard", marker = "extra == 'nekrs'", specifier = ">=2.0.0" },
     { name = "toml", marker = "extra == 'all'", specifier = ">=0.10.0" },
     { name = "toml", marker = "extra == 'jax'", specifier = ">=0.10.0" },
     { name = "toml", marker = "extra == 'maia'", specifier = ">=0.10.0" },
     { name = "tree-math", marker = "extra == 'all'" },
     { name = "tree-math", marker = "extra == 'jax'" },
 ]
-provides-extras = ["firedrake", "maia", "nek", "jax", "jaxfluids", "all"]
+provides-extras = ["firedrake", "maia", "nek", "nekrs", "jax", "jaxfluids", "all"]
 
 [package.metadata.requires-dev]
 dev = [

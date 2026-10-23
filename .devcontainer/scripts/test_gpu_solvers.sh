@@ -10,6 +10,13 @@
 # Usage:
 #   ./test_gpu_solvers.sh                                   # all 4 GPU-stack tests
 #   TESTS="maia_gpu jax_kolmogorov" ./test_gpu_solvers.sh    # subset
+#   DOCKER=podman TESTS=nekrs_channel ./test_gpu_solvers.sh  # podman
+#
+# nekrs_channel runs in the nekrs-test container (falls back to
+# full-gpu-stack if that one composes the nekrs feature), with its own
+# NEKRS_TIMEOUT_SECS (default 1800): the first NekRS run JIT-compiles all
+# OCCA kernels (~10-15 min on an A6000), later runs reuse the cache in
+# examples/nekrs/channel/.cache/devcontainer and take ~1 min.
 #
 # IMPORTANT - internet/Hugging Face Hub dependency:
 #   maia_gpu and jax_channel download environment/checkpoint data from the
@@ -86,15 +93,45 @@ cd /workspace/examples/jaxfluids
 python test_jaxfluids_env.py
 '
 
-DEFAULT_TESTS="maia_gpu jax_kolmogorov jax_channel jaxfluids"
+# NekRS channel at Re_tau 180: 3 opposition-control actions on one GPU
+# (NP=1 - multi-rank runs need working GPU peer-to-peer or UCX_TLS without
+# cuda_ipc). The mesh and initial field come from Hugging Face on first use.
+CMD[nekrs_channel]='
+set -e
+export OMP_NUM_THREADS=1 NEKRS_CACHE_DIR=/workspace/examples/nekrs/channel/.cache/devcontainer
+cd /workspace/examples/nekrs
+/opt/venvs/nekrs/bin/python fetch_case.py
+cd channel
+NP=1 RUN=runs/ci_test ./run.sh --policy oppo --steps 3
+'
+
+GPU_STACK_TESTS="maia_gpu jax_kolmogorov jax_channel jaxfluids"
+NEKRS_TESTS="nekrs_channel"
+DEFAULT_TESTS="${GPU_STACK_TESTS} ${NEKRS_TESTS}"
 TESTS="${TESTS:-${DEFAULT_TESTS}}"
 TIMEOUT_SECS="${TIMEOUT_SECS:-90}"
 
-run_solver_tests "${CID_GPU}"
-rc=$?
+# Split TESTS by the container each one runs in.
+ALL_TESTS="${TESTS}"
+gpu_tests="" nekrs_tests=""
+for t in ${ALL_TESTS}; do
+  if [[ " ${NEKRS_TESTS} " == *" ${t} "* ]]; then nekrs_tests+=" ${t}"; else gpu_tests+=" ${t}"; fi
+done
+
+rc=0
+if [[ -n "${gpu_tests// }" ]]; then
+  TESTS="${gpu_tests}"
+  run_solver_tests "${CID_GPU}" || rc=1
+fi
+if [[ -n "${nekrs_tests// }" ]]; then
+  CID_NEKRS="$(container_for nekrs-test)"
+  CID_NEKRS="${CID_NEKRS:-${CID_GPU}}"
+  [[ -z "${CID_NEKRS}" ]] && echo "WARNING: no running container labeled devcontainer.config_variant=nekrs-test"
+  TESTS="${nekrs_tests}" TIMEOUT_SECS="${NEKRS_TIMEOUT_SECS:-1800}" run_solver_tests "${CID_NEKRS}" || rc=1
+fi
 
 echo ""
-echo "Reminder: maia_gpu and jax_channel need internet access to Hugging"
+echo "Reminder: maia_gpu, jax_channel and nekrs_channel need internet access to Hugging"
 echo "Face Hub on first run - a FAIL there may be a network issue, not a"
 echo "solver/container regression. Check the log."
 

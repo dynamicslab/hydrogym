@@ -1,0 +1,16 @@
+hypre's HIP build gets no GPU target from NekRS 26.0 (only the CUDA branch sets HYPRE_CUDA_SM), so its kernels
+are compiled for the compiler's default GPU. Pass CMAKE_HIP_ARCHITECTURES through as hypre's --offload-arch list.
+--- a/cmake/hypre.cmake	2026-10-23 20:19:40.219791345 +0800
++++ b/cmake/hypre.cmake	2026-10-23 20:19:40.258791345 +0800
+@@ -86,6 +86,11 @@
+   list(APPEND HYPRE_DEP "roc::rocsolver")
+ 
+   set(HYPRE_BACKEND "--with-hip")
++  # without an explicit target hypre's HIP kernels are built for the compiler's default GPU
++  if(CMAKE_HIP_ARCHITECTURES)
++    string(REPLACE ";" " " _hypre_hip_arch "${CMAKE_HIP_ARCHITECTURES}")
++    set(HYPRE_DEVICE_ARCH "HYPRE_CUDA_SM=${_hypre_hip_arch}")
++  endif()
+ endif()
+ 
+ if(NEKRS_GPU_MPI)

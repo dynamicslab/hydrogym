@@ -15,9 +15,10 @@
 # come (hit this for real with nek5000 - see conversation history). Without
 # a uniform timeout, one broken test silently blocks the whole run.
 
+# DOCKER=podman to use podman instead of docker.
 container_for() {
   # Prints the first running container ID labeled devcontainer.config_variant=$1
-  docker ps --filter "label=devcontainer.config_variant=$1" --format '{{.ID}}' | head -1
+  "${DOCKER:-docker}" ps --filter "label=devcontainer.config_variant=$1" --format '{{.ID}}' | head -1
 }
 
 # Runs ${TESTS} (space-separated names) against the single container id in
@@ -53,7 +54,7 @@ run_solver_tests() {
 
     local step_start step_elapsed timing rc evidence
     step_start=$(date +%s)
-    docker exec "${cid}" timeout -k 10 "${TIMEOUT_SECS}" bash -c "${cmd}" 2>&1 | tee "${log_file}"
+    "${DOCKER:-docker}" exec "${cid}" timeout -k 10 "${TIMEOUT_SECS}" bash -c "${cmd}" 2>&1 | tee "${log_file}"
     rc=${PIPESTATUS[0]}
     step_elapsed=$(( $(date +%s) - step_start ))
     timing="[$(( step_elapsed / 60 ))m $(( step_elapsed % 60 ))s]"

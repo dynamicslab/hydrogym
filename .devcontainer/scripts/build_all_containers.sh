@@ -6,19 +6,20 @@
 # conversation history for how that silently reused the wrong container).
 #
 # Usage:
-#   ./build_all_containers.sh                         # from scratch, all 8 configs
+#   ./build_all_containers.sh                         # from scratch, all 9 configs
 #   NO_CACHE=0 ./build_all_containers.sh               # reuse Docker layer cache (much faster)
 #   CONFIGS="full-gpu-stack full-cpu-stack" ./build_all_containers.sh   # subset
+#   DOCKER_PATH=podman ./build_all_containers.sh       # podman instead of docker
 #
 # "From scratch" = --remove-existing-container (always recreate the
 # container) + --build-no-cache by default (genuinely rebuilds every image
 # layer - including the ~15-25min from-source parallel-netcdf/HDF5/FFTW
 # builds in base/Dockerfile.base, built TWICE for two toolchains - for EVERY
-# one of the 8 configs below, since each is an independent image build).
+# one of the 9 configs below, since each is an independent image build).
 # That is expensive: with NO_CACHE=1 (the default) expect this to take
 # several hours total, not minutes. Set NO_CACHE=0 to let Docker reuse
 # cached layers across configs (the base image layers are identical across
-# all 8 configs, so this is dramatically faster) while still forcing a fresh
+# all 9 configs, so this is dramatically faster) while still forcing a fresh
 # CONTAINER + a fresh postCreateCommand run for each one.
 #
 # Configs run SEQUENTIALLY, not in parallel: several postCreateCommand steps
@@ -48,6 +49,7 @@ declare -A CONFIG_FILES=(
   [maia-gpu-test]="maia-gpu-test.devcontainer.json"
   [maia-cpu-test]="maia-cpu-test.devcontainer.json"
   [nek5000-test]="nek5000-test.devcontainer.json"
+  [nekrs-test]="nekrs-test.devcontainer.json"
   [petsc-test]="petsc-test.devcontainer.json"
   [firedrake-test]="firedrake-test.devcontainer.json"
   [full-cpu-stack]="full-cpu-stack.devcontainer.json"
@@ -59,7 +61,7 @@ declare -A CONFIG_FILES=(
 # are last since they duplicate work already done individually above them
 # when NO_CACHE=0 (fast); with NO_CACHE=1 they just take as long as everything
 # else, independently.
-DEFAULT_ORDER="default maia-gpu-test maia-cpu-test nek5000-test petsc-test firedrake-test full-cpu-stack full-gpu-stack"
+DEFAULT_ORDER="default maia-gpu-test maia-cpu-test nek5000-test nekrs-test petsc-test firedrake-test full-cpu-stack full-gpu-stack"
 CONFIGS="${CONFIGS:-${DEFAULT_ORDER}}"
 
 echo "=== build_all_containers.sh ==="
@@ -94,6 +96,7 @@ for name in ${CONFIGS}; do
   echo "==================================================================="
 
   args=(up
+    ${DOCKER_PATH:+--docker-path "${DOCKER_PATH}"}
     --workspace-folder "${WORKSPACE_FOLDER}"
     --override-config "${DEVCONTAINER_DIR}/${file}"
     --id-label "devcontainer.config_variant=${name}"

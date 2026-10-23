@@ -1,0 +1,34 @@
+{
+  "name": "NekRS GPU Spectral Element Solver",
+  "description": "Builds NekRS 26.0 (third_party/nekrs submodule) with OCCA CUDA, GPU HYPRE and GPU-aware MPI (HPC-X Open MPI with GNU compilers), plus HydroGym's nekrs-mpmd driver (examples/nekrs/mpmd) and a hydrogym[nekrs] venv with mpi4py built against the same MPI.",
+  "version": "1.0.0",
+  "options": {
+    "cudaArch": {
+      "type": "string",
+      "default": "80;86",
+      "description": "CMAKE_CUDA_ARCHITECTURES for the ahead-of-time compiled parts (HYPRE etc). OCCA kernels are JIT-compiled for the GPU found at run time, so this is not the only GPU the build runs on. Examples: 75 (Turing), 80;86 (Ampere), 89 (Ada), 90 (Hopper)."
+    },
+    "gpuMpi": {
+      "type": "boolean",
+      "default": true,
+      "description": "NEKRS_GPU_MPI: pass device buffers straight to MPI (HPC-X is CUDA-aware). Turn off on hosts where GPU peer-to-peer is broken and runs use more than one rank (or set UCX_TLS without cuda_ipc at run time instead)."
+    },
+    "buildType": {
+      "type": "string",
+      "enum": [
+        "RelWithDebInfo",
+        "Release",
+        "Debug"
+      ],
+      "default": "RelWithDebInfo",
+      "description": "CMAKE_BUILD_TYPE"
+    }
+  },
+  "dependsOn": [],
+  "postCreateCommand": "bash /workspace/.devcontainer/features/nekrs/postCreateCommand.sh",
+  "containerEnv": {
+    "NEKRS_HOME": "/workspace/third_party/nekrs/install",
+    "PATH": "/workspace/third_party/nekrs/install/bin:${PATH}",
+    "OCCA_CUDA_COMPILER": "nvcc"
+  }
+}
