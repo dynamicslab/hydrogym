@@ -79,6 +79,9 @@ case "${BACKEND}" in
         # libraries are found through RPATH instead
         # (CMAKE_INSTALL_RPATH_USE_LINK_PATH below).
         export CPATH="${MATH_LIBS}/include"
+        # HYPRE's configure guesses math_libs next to CUDA_HOME, i.e. the
+        # default version (patches/NekRS-26.0_hypre-vendor-math-path.patch).
+        export HYPRE_VENDOR_MATH_PATH="${MATH_LIBS}"
         # OCCA JIT-compiles the kernels with $OCCA_CUDA_COMPILER (default:
         # nvcc on PATH, i.e. NVHPC's default CUDA); the feature points that at
         # this link so kernels and libraries come from the same toolkit.

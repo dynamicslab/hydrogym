@@ -1,0 +1,23 @@
+HYPRE's configure locates cuBLAS/cuSPARSE/cuRAND/cuSOLVER as
+$CUDA_HOME/include, else $CUDA_HOME/../math_libs or ../../math_libs. In the
+NVHPC multi-CUDA layout (cuda/12.9, math_libs/12.9, math_libs/include ->
+13.2/include) that picks the default toolkit's math libraries instead of the
+ones matching cuda/12.9 (cublas_api.h: "cudaEmulationSpecialValuesSupport is
+undefined"). Let an explicit HYPRE_VENDOR_MATH_PATH in the environment win;
+the later cuBLAS/cuRAND/cuSOLVER checks already look there first.
+
+diff --git a/3rd_party/hypre/src/configure b/3rd_party/hypre/src/configure
+index 462c196a..8d2cf4cf 100755
+--- a/3rd_party/hypre/src/configure
++++ b/3rd_party/hypre/src/configure
+@@ -10261,6 +10261,10 @@ fi
+ 
+ if test "$hypre_using_cusparse" = "yes"
+ then
++   if test -n "${HYPRE_VENDOR_MATH_PATH}" && test -r "${HYPRE_VENDOR_MATH_PATH}/include/cusparse.h"
++   then
++      hypre_found_cusparse=yes
++   fi
+    as_ac_File=`printf "%s\n" "ac_cv_file_${HYPRE_CUDA_PATH}/include/cusparse.h" | $as_tr_sh`
+ { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for ${HYPRE_CUDA_PATH}/include/cusparse.h" >&5
+ printf %s "checking for ${HYPRE_CUDA_PATH}/include/cusparse.h... " >&6; }
