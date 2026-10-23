@@ -1,0 +1,18 @@
+ *** Wall definitions ***
+2    Number of walls 'nwalls'; .le. maxwalls
+5    Number of global parameters 'nwallpar'; .le. maxwallpar
+1    Number of parameters row for each wall 'npwallpar'; .le. maxpwallpar
+ *** Global parameters 'wallpar(i)'***
+0.0                time independent amplitude (subroutine tripf)
+10.0               time dependent amplitude (subroutine tripf)
+0.008                tdt (subroutine tripf)
+60                  num_nodes (subroutine tripf -> rand_gen)
+0.002     dstar (subroutine userf)
+ *** Wall definitions: direction // x y z // p1x p1y p1z // p2x p2y p2z // ... ***
+ *** Parameters per wall : 'pwallpar(coord,i,wall)' ***
+z                direction
+0.1 0.0665 0.      coordinates of the line (the direction coordinate is unused)
+0.008 0.002 0.         user parameters for this wall (npwallpar lines of 3 numbers)
+z                next wall
+0.1 -0.0288 0.
+0.008 0.002 0.

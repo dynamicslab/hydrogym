@@ -1,0 +1,72 @@
+c
+c     Perturbation variables
+c
+c     Eigenvalue arrays and pointers for Global Tensor Product 
+      integer lelg_sm,ltfdm2,leig2,leig,lfdm0
+c     parameter (lelg_sm=2)
+c     parameter (ltfdm2 =2)
+c     parameter (lelg_sm=lelg)
+c     parameter (ltfdm2=2*lx2*ly2*lz2*lelt)
+c     parameter (leig2=2*lx2*lx2*(lelx*lelx+lely*lely+lelz*lelz))
+c     parameter (leig =2*lx2*(lelx+lely+lelz))
+
+      parameter (lfdm0 = 1-lfdm)
+      parameter (lelg_sm=lfdm0+lfdm*lelg)
+      parameter (ltfdm2 =lfdm0+lfdm*2*lx2*ly2*lz2*lelt)
+      parameter (leig2  =lfdm0+lfdm*2*lx2*lx2
+     $                             *(lelx*lelx+lely*lely+lelz*lelz))
+      parameter (leig   =lfdm0+lfdm*2*lx2*(lelx+lely+lelz))
+
+      integer        neigx ,neigy ,neigz
+     $             , pvalx ,pvaly ,pvalz 
+     $             , pvecx ,pvecy ,pvecz 
+      common /peigi/ neigx ,neigy ,neigz
+     $             , pvalx ,pvaly ,pvalz 
+     $             , pvecx ,pvecy ,pvecz 
+
+      real           sp(leig2),spt(leig2),eigp(leig),wavep(ltfdm2)
+      common /eigpr/ sp       ,spt       ,eigp      ,wavep
+c
+      integer        msp(3,2),mlp(3,2)
+      common /eigpi/ msp     ,mlp
+
+c     Logical, array and geometry data for tensor-product box
+      logical          ifycrv,ifzper,ifgfdm,ifgtp,ifemat
+      common /perlog/  ifycrv,ifzper,ifgfdm,ifgtp,ifemat
+
+      integer nelx,nely,nelz,nelxy,lex2pst(3),pst2lex(3)
+     $       ,ngfdm_p(3),ngfdm_v(3,2)
+      common /gfdmic/  nelx,nely,nelz,nelxy,lex2pst,pst2lex
+     $                ,ngfdm_p,ngfdm_v
+
+c     Complete exchange arrays for pressure
+c     real part_in(0:lp),part_out(0:lp)
+c     common /gfdmcx/  part_in,part_out
+
+      integer lp_small
+      parameter (lp_small=256)
+
+      integer part_in(0:lp_small),part_out(0:lp_small)
+     $       ,msg_id(0:lp_small,2),mcex
+      common /gfdmcx/ part_in,part_out,msg_id,mcex
+
+c     Permutation arrays for gfdm pressure solve
+      integer tpn1(ltfdm2),tpn2(ltfdm2),tpn3(ltfdm2),ind23(ltfdm2)
+      common /gfdmia/ tpn1,tpn2,tpn3,ind23
+
+      integer lfdx,lfdy,lfdz
+      parameter (lfdx =lfdm0+lfdm*lx2*lelx)
+      parameter (lfdy =lfdm0+lfdm*ly2*lely)
+      parameter (lfdz =lfdm0+lfdm*lz2*lelz)
+      real  xgtp(0:lelx),ygtp(0:lely),zgtp(0:lelz)
+     $     ,xmlt(lfdx),ymlt(lfdy),zmlt(lfdz)
+      common /pergeo/ xgtp,ygtp,zgtp,xmlt,ymlt,zmlt
+
+c     Metrics for 2D x tensor-product solver
+      real  rx2 (lx2,ly2,lelv), ry2  (lx2,ly2,lelv)
+     $    , sx2 (lx2,ly2,lelv), sy2  (lx2,ly2,lelv)
+     $    , w2d (lx2,ly2,lelv), bxyi (lx1,ly1,lelv)
+      common /permet/ rx2,ry2,sx2,sy2,w2d,bxyi
+
+      character*3      gtp_cbc(6,0:ldimt1+1)
+      common /gtpcbc/  gtp_cbc

@@ -1,0 +1,12 @@
+c
+c    Dealiasing variables
+c
+      real vxd(lxd,lyd,lzd,lelv)
+     $   , vyd(lxd,lyd,lzd,lelv)
+     $   , vzd(lxd,lyd,lzd,lelv)
+      common /solnd/ vxd, vyd, vzd
+
+      real imd1(lx1,lxd), imd1t(lxd,lx1)
+     $   , im1d(lxd,lx1), im1dt(lx1,lxd)
+     $   , pmd1(lx1,lxd), pmd1t(lxd,lx1)
+      common /interpd/ imd1, imd1t, im1d, im1dt, pmd1, pmd1t

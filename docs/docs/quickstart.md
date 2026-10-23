@@ -6,22 +6,23 @@ sidebar_position: 2
 
 ## Start with Docker (Recommended)
 
-For machines with NVIDIA GPUs (CUDA):
+Pre-built images ship m-AIA together with all MPI, CUDA/ROCm, and
+HydroGym dependencies already installed and on the `PATH` — see
+[MAIA installation](./installation/maia) for the full, canonical list of
+image tags (one per GPU architecture / ROCm) and for Apptainer/Singularity
+instructions. For NVIDIA GPUs (Hopper/Blackwell shown; use the
+`_turing_ampere` tag instead for older NVIDIA GPUs):
 
 ```bash
-docker pull clagemann/maia-cuda-12.8.1:latest
+docker pull clagemann/hydrogym-nvhpc-26.1_cuda-12.9_hopper_blackwell
+docker run -it --gpus all clagemann/hydrogym-nvhpc-26.1_cuda-12.9_hopper_blackwell
 ```
 
 For AMD GPUs (ROCm):
 
 ```bash
-docker pull clagemann/maia-rocm-6.3.3:latest
-```
-
-Run container:
-
-```bash
-docker run -it --gpus all clagemann/maia-cuda-12.8.1:latest
+docker pull clagemann/hydrogym-rocm-6.3.3:latest
+docker run -it clagemann/hydrogym-rocm-6.3.3:latest
 ```
 
 ## Start with Apptainer
@@ -29,13 +30,13 @@ docker run -it --gpus all clagemann/maia-cuda-12.8.1:latest
 Note that in order to interface with a shared cluster, it is necessary to convert the available MAIA docker container to the apptainer format, using the `apptainer pull` command followed by the host of the docker container:
 
 ```bash
-apptainer pull docker://clagemann/maia-cuda-12.8.1:latest
+apptainer pull docker://clagemann/hydrogym-nvhpc-26.1_cuda-12.9_hopper_blackwell
 ```
 
 This will convert the docker build file into the necessary `.sif` format for running with apptainer. To run the MAIA apptainer, run `apptainer run` such as below with CUDA enabled and bound to the workspace in the `.sif` environment:
 
 ```bash
-apptainer run --nv --bind $(pwd):/workspace maia-cuda-12.8.1_latest.sif
+apptainer run --nv --bind $(pwd):/workspace clagemann_hydrogym-nvhpc-26.1_cuda-12.9_hopper_blackwell.sif
 ```
 
 Note that the above likely should be run with the additional necessary resources allocated (i.e. in a Slurm environment, launch the apptainer within an interactive session or within an `sbatch` file). Once the apptainer is launched, you can run HydroGym training with access to the full MAIA backend.
