@@ -1,0 +1,15 @@
+ROCm 7 ships __syncwarp, __shfl_*_sync, __any_sync etc. (amd_warp_sync_functions.h), which collide with the
+mask-less shims hypre's device_utils.h defines for HIP ("static declaration of '__syncwarp' follows non-static
+declaration"). Opt out of the HIP versions for hypre's build, so it keeps its shims as on ROCm 6 (no-op there:
+the macro is only read by ROCm >= 6.2's header).
+--- a/cmake/hypre.cmake	2026-10-24 18:05:06.696751003 +0800
++++ b/cmake/hypre.cmake	2026-10-24 18:05:06.732751004 +0800
+@@ -71,6 +71,8 @@
+   enable_language(HIP)
+ 
+   set(HYPRE_DEVICE_COMPILER ${CMAKE_CXX_COMPILER}) # used for device + host code
++  # ROCm >= 7 defines the CUDA-style *_sync warp functions itself, clashing with hypre's HIP shims
++  string(APPEND HYPRE_FLAGS_EXTRA " -DHIP_DISABLE_WARP_SYNC_BUILTINS")
+   set(HYPRE_COMPILER_C_FLAGS ${HYPRE_FLAGS_EXTRA})
+   set(HYPRE_COMPILER_CXX_FLAGS ${HYPRE_FLAGS_EXTRA})
+   set(HYPRE_DEVICE_COMPILER_FLAGS ${HYPRE_FLAGS_EXTRA})
