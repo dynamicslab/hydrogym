@@ -8,13 +8,16 @@
 # hydrogym/ (a clean `git archive` of the repo plus the extra CA certificates
 # and the channel case files) and nekrs/ (the third_party/nekrs submodule).
 #
-# ROCm 6.4.4: last release of the 6.x series, so the widest range of amdgpu
-# kernel drivers it runs on, and none of the ROCm 7 API removals (e.g.
-# warpSize no longer constexpr) the HYPRE/OCCA versions vendored in NekRS
-# 26.0 were not written for. MPI: UCX + Open MPI 5 built with ROCm support,
-# so NEKRS_GPU_MPI can hand device buffers to MPI.
+# ROCm 7.2.4 (= the AAC MI300A cluster's default rocm module): the ROCm 6.4.4
+# runtime hangs there in NekRS's first findpts kernels under the newer amdgpu
+# driver (6.19.x). The ROCm 7 warp-sync built-ins clash with the HIP shims of
+# the HYPRE vendored in NekRS 26.0
+# (features/nekrs/patches/NekRS-26.0_hypre-hip-warp-sync.patch). For older
+# drivers, ROCM_IMAGE=docker.io/rocm/dev-ubuntu-24.04:6.4.4-complete still
+# builds. MPI: UCX + Open MPI 5 built with ROCm support, so NEKRS_GPU_MPI can
+# hand device buffers to MPI.
 
-ARG ROCM_IMAGE=docker.io/rocm/dev-ubuntu-24.04:6.4.4-complete
+ARG ROCM_IMAGE=docker.io/rocm/dev-ubuntu-24.04:7.2.4-complete
 FROM ${ROCM_IMAGE}
 
 ARG GPU_ARCH=gfx942
