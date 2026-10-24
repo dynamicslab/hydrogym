@@ -1,0 +1,238 @@
+# HydroGym for AMD GPUs (default target MI300A/MI300X, gfx942): NekRS (HIP),
+# m-AIA (HIP, hipstdpar), Nek5000 and Firedrake (CPU), JAX-Fluids.
+#
+# Self-contained, unlike the devcontainer features: the solvers, the MPMD
+# drivers, the venvs and the NekRS channel case files are all built/copied in
+# at image build time, so the image runs on cluster nodes without network
+# access (podman save / load, or apptainer pull). Built by
+# .devcontainer/scripts/build_rocm_image.sh, whose build context holds
+# hydrogym/ (a clean `git archive` of the repo plus the extra CA certificates
+# and the channel case files), nekrs/ (third_party/nekrs), maia/
+# (third_party/m-AIA with its Eigen and doctest submodules) and nek5000/
+# (third_party/nek5000 with the KTH Nek5000 and Toolbox submodules).
+#
+# One MPI for everything: UCX + Open MPI 5 (gcc/gfortran underneath) built
+# with ROCm support, so NEKRS_GPU_MPI can hand device buffers to MPI. NekRS
+# and m-AIA call it through their own wrappers that swap the C++ compiler
+# for a HIP-capable one ($NEKRS_HOME/mpi/bin, /opt/maia/wrap).
+#
+# Python environments:
+#   /opt/venvs/hydrogym   hydrogym[maia,nek,nekrs,jaxfluids], CPU torch, JAX
+#                         (on PATH; /opt/venvs/nekrs is a link to it)
+#   /opt/venvs/firedrake  Firedrake + hydrogym[firedrake]
+#                         (source /opt/venvs/firedrake/bin/activate)
+# Solvers: nekrs, nekrs-mpmd and maia on PATH; Nek5000 case binaries in
+# /opt/nek5000/cases/<case>/nek5000 (pass the directory as nek-path).
+#
+# ROCm 7.2.4 (= the AAC MI300A cluster's default rocm module): the ROCm 6.4.4
+# runtime hangs there in NekRS's first findpts kernels under the newer amdgpu
+# driver (6.19.x). The ROCm 7 warp-sync built-ins clash with the HIP shims of
+# the HYPRE vendored in NekRS 26.0
+# (features/nekrs/patches/NekRS-26.0_hypre-hip-warp-sync.patch). For older
+# drivers, ROCM_IMAGE=docker.io/rocm/dev-ubuntu-24.04:6.4.4-complete still
+# builds NekRS.
+
+ARG ROCM_IMAGE=docker.io/rocm/dev-ubuntu-24.04:7.2.4-complete
+FROM ${ROCM_IMAGE}
+
+ARG GPU_ARCH=gfx942
+ARG GPU_MPI=true
+ARG UCX_VERSION=1.19.0
+ARG OMPI_VERSION=5.0.8
+# The controller networks are small and run on the CPU rank; the CPU build of
+# torch keeps the image several GB smaller than the ROCm one.
+ARG TORCH_INDEX=https://download.pytorch.org/whl/cpu
+
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    cmake build-essential gfortran git wget curl ca-certificates pkg-config \
+    autoconf automake libtool libnuma-dev zlib1g-dev \
+    python3 python3-dev python3-venv \
+    && rm -rf /var/lib/apt/lists/*
+
+# Site CA certificates (TLS-intercepting proxies) - see
+# .devcontainer/base/extra-ca-certs/README.md.
+COPY hydrogym/.devcontainer/base/extra-ca-certs/ /usr/local/share/ca-certificates/extra/
+RUN update-ca-certificates
+ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt \
+    REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt \
+    PIP_CERT=/etc/ssl/certs/ca-certificates.crt \
+    UV_NATIVE_TLS=1
+
+COPY hydrogym/.devcontainer/base/compute_parallelism.sh /usr/local/bin/compute_parallelism.sh
+RUN chmod +x /usr/local/bin/compute_parallelism.sh
+
+ENV ROCM_PATH=/opt/rocm \
+    UCX_HOME=/opt/ucx \
+    MPI_HOME=/opt/ompi
+ENV PATH=${MPI_HOME}/bin:${UCX_HOME}/bin:${ROCM_PATH}/bin:${PATH} \
+    LD_LIBRARY_PATH=${MPI_HOME}/lib:${UCX_HOME}/lib:${ROCM_PATH}/lib
+
+# ============================================
+# UCX + Open MPI with ROCm support
+# ============================================
+WORKDIR /tmp/build_ucx
+RUN wget -q https://github.com/openucx/ucx/releases/download/v${UCX_VERSION}/ucx-${UCX_VERSION}.tar.gz && \
+    tar -xzf ucx-${UCX_VERSION}.tar.gz && cd ucx-${UCX_VERSION} && \
+    ./contrib/configure-release --prefix=${UCX_HOME} --with-rocm=${ROCM_PATH} --without-cuda \
+        --enable-mt --without-java && \
+    make -j"$(compute_parallelism.sh)" && make install && \
+    rm -rf /tmp/build_ucx
+
+WORKDIR /tmp/build_ompi
+RUN wget -q https://download.open-mpi.org/release/open-mpi/v${OMPI_VERSION%.*}/openmpi-${OMPI_VERSION}.tar.bz2 && \
+    tar -xjf openmpi-${OMPI_VERSION}.tar.bz2 && cd openmpi-${OMPI_VERSION} && \
+    ./configure --prefix=${MPI_HOME} --with-ucx=${UCX_HOME} --with-rocm=${ROCM_PATH} \
+        --without-cuda --enable-mca-no-build=btl-uct CC=gcc CXX=g++ FC=gfortran && \
+    make -j"$(compute_parallelism.sh)" && make install && \
+    rm -rf /tmp/build_ompi
+# UCX for point-to-point and one-sided (the only path that understands
+# device buffers); containers run as root.
+ENV OMPI_MCA_pml=ucx \
+    OMPI_MCA_osc=ucx \
+    OMPI_ALLOW_RUN_AS_ROOT=1 \
+    OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1
+
+# ============================================
+# NekRS (HIP) + nekrs-mpmd
+# ============================================
+COPY nekrs /opt/src/nekrs
+COPY hydrogym/.devcontainer/features/nekrs /opt/src/nekrs-feature
+COPY hydrogym/examples/nekrs/mpmd /opt/src/nekrs-mpmd
+ENV NEKRS_HOME=/opt/nekrs \
+    NEKRS_BACKEND=HIP
+# amdclang/amdclang++ underneath the MPI wrappers: NekRS builds HYPRE's
+# device code with its C++ compiler (cmake/hypre.cmake), so it has to be
+# HIP-capable.
+RUN NEKRS_SRC=/opt/src/nekrs MPMD_SRC=/opt/src/nekrs-mpmd \
+    BACKEND=HIP GPUARCH="${GPU_ARCH}" GPUMPI="${GPU_MPI}" BUILDTYPE=RelWithDebInfo \
+    MPI_BIN=${MPI_HOME}/bin MPI_CC=${ROCM_PATH}/llvm/bin/amdclang \
+    MPI_CXX=${ROCM_PATH}/llvm/bin/amdclang++ MPI_FC=gfortran \
+        bash /opt/src/nekrs-feature/build_nekrs.sh && \
+    rm -rf /opt/src/nekrs/build
+ENV PATH=${NEKRS_HOME}/bin:${PATH}
+
+# ============================================
+# Libraries for m-AIA and the CPU solvers
+# ============================================
+# Host CPU target for the code compiled here (the image is built on a
+# different machine than the cluster nodes): Zen 4 = the MI300A's cores.
+ARG MAIA_MARCH=znver4
+ARG PETSC_VERSION=v3.25.0
+ARG FIREDRAKE_COMMIT=22c6bc44c79a06d576f49790d1a6d00dc10112ca
+# JAX for JAX-Fluids. The ROCm plugin uses the image's ROCm; JAX_PIP=jax for
+# a CPU-only JAX.
+ARG JAX_PIP="jax[rocm7-local]"
+# Portable x86 optimisation for the CPU-only builds (Nek5000, PETSc).
+ARG CPU_OPTFLAGS="-O3 -march=x86-64-v3 -mtune=generic"
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    flex bison libopenblas-dev liblapack-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV MAIA_LIB_HOME=/opt/maia_deps
+WORKDIR /tmp/build_maia_deps
+RUN export CC=mpicc CXX=mpicxx FC=mpifort F77=mpif77 \
+        CFLAGS="-O3 -fPIC" CXXFLAGS="-O3 -fPIC" FCFLAGS="-O3 -fPIC" FFLAGS="-O3 -fPIC" && \
+    jobs="$(compute_parallelism.sh)" && \
+    wget -q https://parallel-netcdf.github.io/Release/pnetcdf-1.14.0.tar.gz && \
+    tar -xzf pnetcdf-1.14.0.tar.gz && (cd pnetcdf-1.14.0 && \
+        ./configure --prefix=${MAIA_LIB_HOME}/parallel-netcdf-1.14.0 --enable-shared --disable-fortran && \
+        make -j"${jobs}" && make install) && \
+    wget -q https://github.com/HDFGroup/hdf5/archive/refs/tags/hdf5_1.14.5.tar.gz -O hdf5-1.14.5.tar.gz && \
+    tar -xzf hdf5-1.14.5.tar.gz && (cd hdf5-hdf5_1.14.5 && \
+        ./configure --prefix=${MAIA_LIB_HOME}/hdf5-1.14.5 --enable-parallel --enable-shared --disable-fortran && \
+        make -j"${jobs}" && make install) && \
+    wget -q https://www.fftw.org/fftw-3.3.10.tar.gz && \
+    tar -xzf fftw-3.3.10.tar.gz && (cd fftw-3.3.10 && \
+        ./configure --prefix=${MAIA_LIB_HOME}/fftw-3.3.10 --enable-shared --enable-mpi --enable-threads && \
+        make -j"${jobs}" && make install) && \
+    rm -rf /tmp/build_maia_deps
+# Not on LD_LIBRARY_PATH: m-AIA links them statically, and this HDF5 would
+# shadow PETSc's for Firedrake's h5py.
+
+# ============================================
+# m-AIA (HIP, hipstdpar)
+# ============================================
+COPY maia /opt/src/m-AIA
+COPY hydrogym/.devcontainer/rocm/build_maia_rocm.sh hydrogym/.devcontainer/rocm/ROCMCONTAINER.cmake /opt/src/maia-rocm/
+RUN MAIA_SRC=/opt/src/m-AIA GPU_ARCH="${GPU_ARCH}" MAIA_MARCH="${MAIA_MARCH}" \
+        bash /opt/src/maia-rocm/build_maia_rocm.sh && \
+    rm -rf /opt/src/m-AIA
+ENV PATH=/opt/maia/bin:${PATH}
+
+# ============================================
+# Nek5000 cases (CPU)
+# ============================================
+COPY nek5000 /opt/nek5000
+COPY hydrogym/.devcontainer/features/nek5000/build_nek5000.sh /opt/src/build_nek5000.sh
+RUN NEK_ROOT=/opt/nek5000 MPI_FC=${MPI_HOME}/bin/mpifort MPI_CC=${MPI_HOME}/bin/mpicc MPI_BIN=${MPI_HOME}/bin \
+        bash /opt/src/build_nek5000.sh && \
+    find /opt/nek5000/cases -name '*.o' -delete
+
+# ============================================
+# PETSc (CPU), configured as firedrake-configure does
+# ============================================
+# Options from `firedrake-configure --show-petsc-configure-options` at
+# FIREDRAKE_COMMIT, with portable optimisation flags instead of -march=native.
+ENV PETSC_DIR=/opt/petsc \
+    PETSC_ARCH=arch-firedrake-default
+RUN git clone --depth 1 --branch ${PETSC_VERSION} https://gitlab.com/petsc/petsc.git ${PETSC_DIR} && \
+    cd ${PETSC_DIR} && \
+    python3 ./configure PETSC_ARCH=${PETSC_ARCH} \
+        --with-cc=mpicc --with-cxx=mpicxx --with-fc=mpifort \
+        --COPTFLAGS="${CPU_OPTFLAGS}" --CXXOPTFLAGS="${CPU_OPTFLAGS}" --FOPTFLAGS="${CPU_OPTFLAGS}" \
+        --with-c2html=0 --with-debugging=0 --with-fortran-bindings=0 --with-shared-libraries=1 \
+        --with-strict-petscerrorcode \
+        --download-bison --download-fftw --download-hdf5 --download-hwloc --download-hypre \
+        --download-metis --download-mumps --download-netcdf --download-pnetcdf --download-ptscotch \
+        --download-scalapack --download-suitesparse --download-superlu_dist --download-zlib && \
+    make PETSC_DIR=${PETSC_DIR} PETSC_ARCH=${PETSC_ARCH} all && \
+    rm -rf ${PETSC_DIR}/.git ${PETSC_DIR}/${PETSC_ARCH}/externalpackages ${PETSC_DIR}/${PETSC_ARCH}/obj
+
+# ============================================
+# Firedrake venv
+# ============================================
+# Order as in features/firedrake/install.sh: petsc4py 3.25 needs Cython < 3.1
+# and setuptools < 72 to build, h5py and Firedrake a newer setuptools. Pinned
+# to the releases current at FIREDRAKE_COMMIT: firedrake-rtree 2026.3 dropped
+# get_lib_filename(), which its setup.py calls. Firedrake's build imports
+# petsc4py (MPI_Init): shared memory instead of UCX, which finds no device
+# during the image build.
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh && mv /root/.local/bin/uv /usr/local/bin/uv
+RUN git clone https://github.com/firedrakeproject/firedrake.git /opt/src/firedrake && \
+    cd /opt/src/firedrake && git checkout ${FIREDRAKE_COMMIT} && \
+    uv venv /opt/venvs/firedrake --seed && . /opt/venvs/firedrake/bin/activate && \
+    export OMPI_MCA_pml=ob1 OMPI_MCA_osc=^ucx OMPI_MCA_btl=self,sm \
+        CC=mpicc CXX=mpicxx HDF5_MPI=ON HDF5_DIR=${PETSC_DIR}/${PETSC_ARCH} MPICC=mpicc && \
+    printf 'firedrake-rtree==2026.2.0\nlibsupermesh==2026.0\n' > /tmp/firedrake-constraints.txt && \
+    export PIP_CONSTRAINT=/tmp/firedrake-constraints.txt && \
+    pip install --no-cache-dir -r requirements-build.txt && \
+    pip install --no-cache-dir "cython<3.1" && \
+    pip install --no-cache-dir --no-binary mpi4py mpi4py && \
+    pip install --no-cache-dir --no-build-isolation --no-binary h5py h5py && \
+    pip install --no-cache-dir "setuptools<72" && \
+    pip install --no-cache-dir --no-build-isolation ${PETSC_DIR}/src/binding/petsc4py && \
+    pip install --no-cache-dir --upgrade setuptools && \
+    pip install --no-cache-dir --no-build-isolation . && \
+    cd / && rm -rf /opt/src/firedrake /tmp/firedrake-constraints.txt && \
+    OMP_NUM_THREADS=1 python -c "import firedrake, importlib.metadata as m; print('firedrake', m.version('firedrake'))"
+
+# ============================================
+# HydroGym venvs
+# ============================================
+COPY hydrogym /opt/hydrogym
+RUN uv venv /opt/venvs/hydrogym --seed && \
+    /opt/venvs/hydrogym/bin/pip install --no-cache-dir torch --index-url ${TORCH_INDEX} && \
+    MPICC=${MPI_HOME}/bin/mpicc /opt/venvs/hydrogym/bin/pip install --no-cache-dir --no-binary mpi4py \
+        -e "/opt/hydrogym[maia,nek,nekrs,jaxfluids]" "${JAX_PIP}" \
+        "jaxfluids @ git+https://github.com/tumaer/JAXFLUIDS.git@main" && \
+    ln -s hydrogym /opt/venvs/nekrs && \
+    /opt/venvs/nekrs/bin/python -c "import importlib.metadata as m, mpi4py, jax, jaxfluids; print('hydrogym', m.version('hydrogym'), 'jax', jax.__version__, '- mpi4py built with', mpi4py.get_config())" && \
+    /opt/venvs/firedrake/bin/pip install --no-cache-dir -e "/opt/hydrogym[firedrake]"
+# (not MPI_Init or jax.devices() here: no GPU during the image build, and
+# Open MPI's UCX setup then aborts)
+ENV PATH=/opt/venvs/hydrogym/bin:${PATH} \
+    OMP_NUM_THREADS=1
+
+WORKDIR /opt/hydrogym/examples/nekrs/channel

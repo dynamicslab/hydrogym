@@ -94,6 +94,32 @@ solver's source lives inside this one clone: `third_party/m-AIA` (MAIA,
 see caveat above), `third_party/nek5000` (Nek5000 core + KTH Toolbox +
 case sources), `third_party/firedrake`.
 
+## AMD GPUs: self-contained ROCm image
+
+`rocm/Dockerfile.hydrogym-rocm` is a standalone image (not a devcontainer)
+for AMD clusters, default target gfx942 (MI300A/MI300X) on ROCm 7.2.4. Unlike
+the features above, everything is built in at image build time, so it runs
+offline under apptainer or podman:
+
+- NekRS (HIP) + `nekrs-mpmd`, m-AIA (hipstdpar, `maia` on PATH; the wrapper
+  sets `HSA_XNACK=1`), the Nek5000 case binaries in
+  `/opt/nek5000/cases/<case>/nek5000`, PETSc + Firedrake (CPU).
+- `/opt/venvs/hydrogym` (on PATH, also reachable as `/opt/venvs/nekrs`):
+  `hydrogym[maia,nek,nekrs,jaxfluids]`, CPU torch, ROCm JAX, JAX-Fluids.
+  `/opt/venvs/firedrake`: Firedrake + `hydrogym[firedrake]`.
+- One MPI (UCX + Open MPI 5 with ROCm). Without an AMD GPU (e.g. a smoke
+  test on another machine) UCX cannot start, so pass
+  `-e OMPI_MCA_pml=ob1 -e OMPI_MCA_osc=^ucx -e OMPI_MCA_btl=self,sm`.
+
+```bash
+.devcontainer/scripts/build_rocm_image.sh        # -> hydrogym-rocm:rocm7.2.4-gfx942, from HEAD
+GPU_ARCH="gfx90a;gfx942" .devcontainer/scripts/build_rocm_image.sh
+```
+
+The build context comes from `git archive` plus the solver submodules
+(`third_party/nekrs`, `third_party/m-AIA` with `include/Eigen` and
+`include/doctest`, the KTH Nek5000/Toolbox), so they must be initialised.
+
 ## Gotchas
 
 - **Build parallelism is RAM-aware, not a flat `-j16`**: the base image

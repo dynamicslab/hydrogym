@@ -1,7 +1,7 @@
 #!/bin/bash
 # Configure, build and install NekRS (CUDA or HIP) plus HydroGym's nekrs-mpmd
 # driver. Shared by features/nekrs/postCreateCommand.sh (CUDA, at container
-# start) and rocm/Dockerfile.nekrs-rocm (HIP, at image build time).
+# start) and rocm/Dockerfile.hydrogym-rocm (HIP, at image build time).
 #
 # Environment:
 #   NEKRS_SRC     NekRS source tree (the third_party/nekrs submodule)

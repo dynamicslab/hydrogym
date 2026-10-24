@@ -21,13 +21,13 @@ on an RTX A6000 (500 episodes: ~9 h, more on a shared GPU), so for wall-time-lim
 
 ## AMD MI300A (AAC cluster, apptainer)
 
-m-AIA comes from the ROCm image `docker.io/clagemann/hydrogym-rocm-6.3.3:v0.1` (hipstdpar build
-for gfx942, module `MAIA/1.0-HIPCC-7.1-OMPI-5.0.5-SystemROCm-6.3.3`); the Python side is a venv
-on the shared file system built inside that image. Paths are set in [`aac_env.sh`](aac_env.sh)
-(`REPO`, `BASE`, ...).
+Everything runs in the HydroGym ROCm image `docker.io/kl126162/hydrogym-rocm:rocm7.2.4-gfx942`
+([`.devcontainer/rocm/Dockerfile.hydrogym-rocm`](../../../.devcontainer/rocm/Dockerfile.hydrogym-rocm):
+m-AIA hipstdpar build for gfx942 on ROCm 7.2.4, hydrogym venv); only the training script is taken
+from the `REPO` checkout. Paths are set in [`aac_env.sh`](aac_env.sh) (`REPO`, `BASE`, ...).
 
 ```bash
-# login node (network): image, venv, HF case download into $BASE/hf_cache and $BASE/cases
+# login node (network): image, HF case download into $BASE/hf_cache and $BASE/cases
 cd ~/hydrogym/examples/maia/paper_baselines
 ./setup_aac.sh
 # 3 runs on one node, one APU each; resubmits itself every ~7.5 h until all are done
@@ -37,5 +37,4 @@ RUNS="PPO:0 DDPG:0 TD3:0" ENV=Pinball_3D_Re150 sbatch run_aac.sbatch
 
 Runs go to `$BASE/runs/<ENV>/<algo>_s<seed>/` (case workspace, `train-<jobid>.log`, results in
 `out/`). `HSA_XNACK=1` is set because the hipstdpar build relies on unified memory for host
-allocations. If m-AIA hangs or faults on the cluster's newer amdgpu driver (as the ROCm 6.4
-NekRS image did), the image's ROCm 6.3 user space is the first suspect.
+allocations (the image's `maia` wrapper sets it as well).
