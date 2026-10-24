@@ -28,7 +28,11 @@ DOCKER="${DOCKER:-podman}"
 REF="${REF:-HEAD}"
 GPU_ARCH="${GPU_ARCH:-gfx942}"
 GPU_MPI="${GPU_MPI:-true}"
-TAG="${TAG:-hydrogym-nekrs-rocm:26.0-rocm6.4.4-${GPU_ARCH//;/_}}"
+# ROCm version for the default tag: from ROCM_IMAGE (e.g. ...:7.2.4-complete)
+# or the Dockerfile's default.
+rocm_image="${ROCM_IMAGE:-$(sed -n 's/^ARG ROCM_IMAGE=//p' "${REPO_ROOT}/.devcontainer/rocm/Dockerfile.nekrs-rocm")}"
+rocm_version="${rocm_image##*:}"; rocm_version="${rocm_version%%-*}"
+TAG="${TAG:-hydrogym-nekrs-rocm:26.0-rocm${rocm_version}-${GPU_ARCH//;/_}}"
 STAGE_DIR="${STAGE_DIR:-$(mktemp -d /tmp/hydrogym-rocm-ctx.XXXXXX)}"
 LOG_DIR="${REPO_ROOT}/.devcontainer/build-logs"
 mkdir -p "${LOG_DIR}" "${STAGE_DIR}/hydrogym" "${STAGE_DIR}/nekrs"
