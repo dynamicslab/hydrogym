@@ -36,7 +36,7 @@ def verify_wheel(wheel: Path, expected_data: set[str]) -> None:
     assert normalized_archive_data(names) == expected_data
     assert metadata["Name"] == "hydrogym"
     assert metadata["Version"] == "1.0.0"
-    assert metadata["Requires-Python"].replace(" ", "") == ">=3.10,<3.15"
+    assert metadata["Requires-Python"].replace(" ", "") == ">=3.11,<3.15"
     assert set(metadata.get_all("Provides-Extra", [])) == EXPECTED_EXTRAS
 
     requirements = metadata.get_all("Requires-Dist", [])

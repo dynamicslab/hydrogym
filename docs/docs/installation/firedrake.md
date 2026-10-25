@@ -39,7 +39,7 @@ For a native installation of Firedrake, we have to follow [Firedrake's Installat
 |---|---|
 | **Supported OS** | Ubuntu (officially supported), ARM macOS, any Linux distribution |
 | **Not supported** | Intel macOS (dropped), native Windows (use WSL2) |
-| **Python** | 3.10 or newer |
+| **Python** | 3.11 or newer |
 | **macOS extras** | Homebrew and Xcode must be up to date; use the Homebrew-managed Python, not the system Python |
 
 ### Step 1 — Install system packages
