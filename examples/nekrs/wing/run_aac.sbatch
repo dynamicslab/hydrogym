@@ -3,6 +3,8 @@
 #SBATCH --partition=PPAC_MI300A_SPX
 #SBATCH --account=m-aia
 #SBATCH --nodes=1
+#SBATCH --ntasks-per-node=5         # mpirun slots: deploy.py + NP = 4 NekRS ranks
+#SBATCH --exclusive                 # the whole node: all 4 APUs and CPU cores
 #SBATCH --time=08:00:00
 #SBATCH --output=%x-%j.out
 # Wing deployment of one controller on one MI300A node (4 APUs, NekRS NP=4) in the HydroGym ROCm image:
@@ -26,17 +28,20 @@ TRIP_MODES="${TRIP_MODES:-}"     # spanwise modes of the trip (empty: the par's 
 EXTRA_ARGS="${EXTRA_ARGS:-}"      # further deploy.py arguments, e.g. "--chunk 100 --alpha 0.5"
 
 mkdir -p "$RUN"
+actions_done() { python3 -c "import json; print(json.load(open('$RUN/state.json'))['actions'])" 2>/dev/null || echo 0; }
+before=$(actions_done)
 apptainer exec --rocm --cleanenv --bind "$REPO" --bind "$HOME" \
     --env PYTHONPATH="$REPO",NEKRS_BACKEND=HIP,OMP_NUM_THREADS=1${ROCR_VISIBLE_DEVICES:+,ROCR_VISIBLE_DEVICES=$ROCR_VISIBLE_DEVICES} \
     "$SIF" bash -c "cd $HERE && NP=$NP RUN=$RUN TRIP_MODES=$TRIP_MODES ./run.sh --policy $POLICY --actions $ACTIONS --max-hours $MAX_HOURS $EXTRA_ARGS" \
     > "$RUN/deploy-${SLURM_JOB_ID:-local}.log" 2>&1
 rc=$?
-done=$(python3 -c "import json; print(json.load(open('$RUN/state.json'))['actions'])" 2>/dev/null || echo 0)
-echo "exit $rc, $done of $ACTIONS actions"
-if (( done < ACTIONS )) && (( done > ${PREV_DONE:--1} )) && [[ -n "${SLURM_JOB_ID:-}" ]]; then
+done=$(actions_done)
+echo "exit $rc, $done of $ACTIONS actions ($before at the start of this job)"
+# resubmit only if this job made progress (a failing setup must not loop)
+if (( done < ACTIONS )) && (( done > before )) && [[ -n "${SLURM_JOB_ID:-}" ]]; then
     echo "resubmitting"
     POLICY="$POLICY" RUN="$RUN" ACTIONS="$ACTIONS" NP="$NP" MAX_HOURS="$MAX_HOURS" EXTRA_ARGS="$EXTRA_ARGS" TRIP_MODES="$TRIP_MODES" \
-        PREV_DONE="$done" SIF="$SIF" sbatch --export=ALL run_aac.sbatch
+        SIF="$SIF" sbatch --export=ALL run_aac.sbatch
 elif (( done < ACTIONS )); then
     echo "no progress in this job - not resubmitting, see $RUN/deploy-*.log"
 fi
