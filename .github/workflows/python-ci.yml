@@ -1,8 +1,20 @@
 name: Python CI
 
+# Skip runs that only touch the JavaScript-based documentation site. Markdown
+# under docs/ is re-included because the spelling check covers it.
 on:
   push:
+    paths:
+      - "**"
+      - "!docs/**"
+      - "docs/**/*.md"
+      - "docs/**/*.mdx"
   pull_request:
+    paths:
+      - "**"
+      - "!docs/**"
+      - "docs/**/*.md"
+      - "docs/**/*.mdx"
 
 permissions:
   contents: read
