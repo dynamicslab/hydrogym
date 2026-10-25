@@ -27,3 +27,4 @@ regularization = hpfrt + nModes = 2 + scalingCoeff = 2000   # rt_filter.f: f = -
 
 [CASEDATA]
 hydrogymBoundaries = 2            # the control window (udfDirichlet, usrwrk slots 0..2)
+tripModes = 60                    # spanwise sine modes of the trip signal (num_modes of naca_wing.wall)

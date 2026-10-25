@@ -6,6 +6,7 @@
 # Usage: GPU=1,2,3,4 NP=4 RUN=runs/zero ./run.sh --policy zero --actions 2500
 #        GPU=1,2,3,4 NP=4 RUN=runs/td3_s0 ./run.sh --policy td3:$PWD/../channel/runs/paper_s0/td3_final.zip
 #        GPU=1 NP=1 RUN=runs/smoke PAR=naca_wing_smoke.par CONF=wing_smoke.yml ./run.sh --policy oc --actions 4
+#        GPU=1,2,3,4 NP=4 RUN=runs/zero_trip30 TRIP_MODES=30 ./run.sh --policy zero
 #        (arguments go to SCRIPT; --nproc, --run-root and --conf are set here; START: initial field, default
 #        restart/rs8naca_wing0.f00008 from prepare_case.py)
 HERE=$(cd "$(dirname "$0")" && pwd)
@@ -25,7 +26,7 @@ if [ ! -d /home/easybuild/venvs ] && [ -z "$NEKRS_HOME" ] && [ ! -d /opt/venvs/n
     case "$D/" in "$REPO"/*) ;; *) EXTRA_START="-v $D:$D:ro" ;; esac
   fi
   EXTRA="$EXTRA $EXTRA_START" exec "$HERE/../podman.sh" \
-    "NP=$NP PAR=$PAR CONF=$CONF RUN=$RUN SCRIPT=$SCRIPT START=$START ./run.sh $*"
+    "NP=$NP PAR=$PAR CONF=$CONF RUN=$RUN SCRIPT=$SCRIPT START=$START TRIP_MODES=$TRIP_MODES ./run.sh $*"
 fi
 
 mkdir -p "$RUN"
@@ -34,6 +35,8 @@ ln -sf "$REPO/third_party/nek5000/cases/naca0012_200k/naca_wing.re2" "$RUNDIR/na
 ln -sf "$HERE/naca_wing.usr" "$RUNDIR/naca_wing.usr"
 ln -sf "$HERE/naca_wing.udf" "$RUNDIR/naca_wing.udf"
 cp "$HERE/$PAR" "$RUNDIR/naca_wing.par"
+# TRIP_MODES: number of spanwise modes of the trip signal (default of the par: 60, as naca_wing.wall)
+[ -n "$TRIP_MODES" ] && sed -i "s/^tripModes *=.*/tripModes = $TRIP_MODES/" "$RUNDIR/naca_wing.par"
 # initial field: the last chunk of an earlier launch, else START
 LAST=""
 if [ -f "$RUNDIR/state.json" ]; then

@@ -24,7 +24,7 @@ import time
 
 import numpy as np
 
-from hydrogym.nekrs import NekRSFlowEnv
+from hydrogym.nekrs import NekRSFlowEnv, NekRSInterface
 from hydrogym.nekrs import layout
 
 p = argparse.ArgumentParser()
@@ -42,23 +42,34 @@ p.add_argument("--max-hours", type=float, default=0, help="write a chunk and sto
 p.add_argument("--stochastic", action="store_true", help="td3: sample instead of the deterministic action")
 args = p.parse_args()
 
+
+
+def stop(msg):
+    """Exit before the env exists: NekRS is already waiting for the controller, release it (TERMN) first."""
+    NekRSInterface(args.nproc).finishRun()
+    raise SystemExit(msg)
+
+
 state_file = os.path.join(args.run_root, "state.json")
 state = {"actions": 0, "chunks": [], "policy": args.policy}
 if os.path.exists(state_file):
     with open(state_file) as f:
         state = json.load(f)
     if state["policy"] != args.policy:
-        raise SystemExit(f"{args.run_root} was started with --policy {state['policy']}, not {args.policy}")
+        stop(f"{args.run_root} was started with --policy {state['policy']}, not {args.policy}")
 if state["actions"] >= args.actions:
-    raise SystemExit(f"{args.run_root}: all {args.actions} actions done")
+    stop(f"{args.run_root}: all {args.actions} actions done")
 
 model = None
 if args.policy.startswith("td3:"):
-    from stable_baselines3 import TD3
+    try:
+        from stable_baselines3 import TD3
 
-    model = TD3.load(args.policy[4:], device="cpu")
+        model = TD3.load(args.policy[4:], device="cpu")
+    except Exception as e:
+        stop(f"cannot load the policy {args.policy[4:]}: {e!r}")
 elif args.policy not in ("zero", "oc", "ub"):
-    raise SystemExit(f"unknown policy {args.policy}")
+    stop(f"unknown policy {args.policy}")
 
 # the env logs (steps.jsonl, solver_steps.csv) go to one directory per launch
 env = NekRSFlowEnv(args.conf, run_root=os.path.join(args.run_root, f"log{state['actions']:06d}"), nproc=args.nproc)

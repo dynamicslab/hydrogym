@@ -6,7 +6,8 @@
 //   bid 4  outlet: zero-gradient velocity, Dirichlet p = -0.5 |u_f|^2 0.5 (1 - tanh(u_f,x)) of the frozen field
 //   RT filter of rt_filter.f = [FLUID VELOCITY] regularization = hpfrt + nModes = 2 + scalingCoeff = 2000
 //   trip of tripf.f: y forcing at (0.1, +-0.0468) that replaces the y component of the RT term where
-//   |f| >= 1e-10, with the ran2 call sequence of the Fortran case
+//   |f| >= 1e-10, with the ran2 call sequence of the Fortran case; [CASEDATA] tripModes = spanwise sine modes
+//   of the random signal (num_modes, 60 in naca_wing.wall; the signal is not normalized, rms ~ sqrt(modes / 2))
 // The frozen field goes to bc_frozen0.f00000 and the trip time origin to trip_origin.txt in the run directory;
 // a relaunch that finds them (chunked runs, deploy.py) keeps the far field and continues the trip realization.
 #include "hydrogym_nekrs.hpp" // NEKRS_UDF_INCLUDES = <repo>/hydrogym/nekrs/udf (run.sh)
@@ -87,7 +88,8 @@ void udfDirichlet(bcData *bc)
 namespace
 {
 // tripf.f / naca_wing.wall / forparam.i
-constexpr int nWalls = 2, nModes = 60;
+constexpr int nWalls = 2;
+int nModes = 60; // num_modes of naca_wing.wall, [CASEDATA] tripModes
 constexpr double tripX[nWalls] = {0.1, 0.1}, tripY[nWalls] = {0.0468, -0.0468};
 constexpr double radX = 0.004, radY = 0.001;
 constexpr double tamps = 0.0, tampt = 10.0, tdt = 0.004;
@@ -332,26 +334,33 @@ void setupTrip()
   const std::string file = "trip_origin.txt";
   resumed = exists(file);
   if (resumed) {
-    double v[2] = {0, 0};
+    double v[3] = {0, 0, 60};
     if (platform->comm.mpiRank() == 0) {
       std::ifstream in(file);
       in >> v[0] >> v[1];
+      if (!(in >> v[2])) v[2] = 60; // written before tripModes existed
     }
-    MPI_Bcast(v, 2, MPI_DOUBLE, 0, platform->comm.mpiComm());
+    MPI_Bcast(v, 3, MPI_DOUBLE, 0, platform->comm.mpiComm());
     tripOrigin = v[0];
     tripDt = v[1];
+    nekrsCheck(static_cast<int>(v[2]) != nModes,
+               platform->comm.mpiComm(),
+               EXIT_FAILURE,
+               "tripModes = %d, but this run directory was started with %d\n",
+               nModes,
+               static_cast<int>(v[2]));
   } else {
     platform->options.getArgs("START TIME", tripOrigin);
     if (platform->comm.mpiRank() == 0) {
       std::ofstream out(file);
-      out << std::setprecision(17) << tripOrigin << " " << tripDt << "\n";
+      out << std::setprecision(17) << tripOrigin << " " << tripDt << " " << nModes << "\n";
     }
   }
 
   long long nAll = nTrip;
   MPI_Allreduce(MPI_IN_PLACE, &nAll, 1, MPI_LONG_LONG, MPI_SUM, platform->comm.mpiComm());
   if (platform->comm.mpiRank() == 0) {
-    std::cout << "[WING] trip: " << nAll << " forced nodes, span " << zLength << ", RT strength " << chiRT
+    std::cout << "[WING] trip: " << nAll << " forced nodes, " << nModes << " spanwise modes, span " << zLength << ", RT strength " << chiRT
               << ", origin t = " << tripOrigin << (resumed ? " (resumed)" : "") << std::endl;
   }
 }
@@ -360,6 +369,9 @@ void setupTrip()
 void UDF_Setup0(MPI_Comm comm, setupAide &options)
 {
   hgnek::setup0();
+  std::string s;
+  if (platform->par->extract("casedata", "tripmodes", s)) nModes = std::stoi(s);
+  nekrsCheck(nModes < 1, comm, EXIT_FAILURE, "[CASEDATA] tripModes = %d\n", nModes);
 }
 
 void UDF_Setup()
