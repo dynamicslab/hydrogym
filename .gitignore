@@ -152,3 +152,4 @@ examples/nekrs/**/__pycache__/
 
 # devcontainer: site-specific CA certificates (see .devcontainer/base/extra-ca-certs/README.md)
 .devcontainer/base/extra-ca-certs/*.crt
+examples/nekrs/wing/restart/

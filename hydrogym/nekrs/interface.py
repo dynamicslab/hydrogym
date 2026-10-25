@@ -17,7 +17,7 @@ import warnings
 import numpy as np
 from mpi4py import MPI
 
-PROTOCOL_VERSION = 2
+PROTOCOL_VERSION = 3
 TAG_CMD, TAG_INT, TAG_DBL, TAG_RINT, TAG_RDBL, TAG_RMSG = 22, 23, 24, 25, 26, 27
 
 FIELD_CODES = {"u": 0, "v": 1, "w": 2, "p": 3}
@@ -199,6 +199,28 @@ class NekRSInterface:
         """Advance n solver steps; rows [tstep, time, dt, CFL, 6 values per monitor] for every step."""
         ri, rd = self.request("STEPS", [n])
         return rd.reshape(int(ri[0]), int(ri[1]))
+
+    def wall_data(self, bid: int, geometry: bool = True) -> Dict[str, np.ndarray]:
+        """
+        Viscous traction mu (grad u + grad u^T) . n and pressure at every GLL node of the boundary faces (one
+        entry per face copy, so sum(w * f) integrates f over the boundary). With geometry: xyz, the surface
+        quadrature weight w and the unit normal into the fluid; the node order is the same on every call.
+        """
+        ri, rd = self.request("WALLS", [bid, int(geometry)])
+        n = int(ri[0])
+        out = {}
+        if geometry:
+            geo = rd[: 7 * n].reshape(n, 7)
+            out.update(xyz=geo[:, :3].copy(), w=geo[:, 3].copy(), normal=geo[:, 4:].copy())
+            rd = rd[7 * n :]
+        val = rd.reshape(n, 4)
+        out.update(traction=val[:, :3].copy(), p=val[:, 3].copy())
+        return out
+
+    def write_field(self, name: str) -> float:
+        """Write u, p (fp64) to the NekRS field file <name>0.f00000 in the case directory; returns the time."""
+        _, rd = self.request("WRFLD", list(name.encode()))
+        return float(rd[0])
 
     # ------------------------------------------------------------------ episode reset
 

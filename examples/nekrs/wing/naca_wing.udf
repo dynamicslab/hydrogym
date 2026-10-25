@@ -1,0 +1,377 @@
+// NACA0012 wing, Re_c = 200k, AoA 0 (HydroGym NACA0012_3D_Re200000_AOA0, Nek5000 case
+// third_party/nek5000/cases/naca0012_200k) with the generic HydroGym control interface. Port of naca_wing.usr
+// (see ../notes/naca0012_wing_spec.md, sections 2-5):
+//   bid 1  wing, no slip                       bid 2  suction-side control window x in (0.25, 0.86), actuated
+//   bid 3  far field: Dirichlet with the velocity frozen at the start of the run (usponge)
+//   bid 4  outlet: zero-gradient velocity, Dirichlet p = -0.5 |u_f|^2 0.5 (1 - tanh(u_f,x)) of the frozen field
+//   RT filter of rt_filter.f = [FLUID VELOCITY] regularization = hpfrt + nModes = 2 + scalingCoeff = 2000
+//   trip of tripf.f: y forcing at (0.1, +-0.0468) that replaces the y component of the RT term where
+//   |f| >= 1e-10, with the ran2 call sequence of the Fortran case
+// The frozen field goes to bc_frozen0.f00000 and the trip time origin to trip_origin.txt in the run directory;
+// a relaunch that finds them (chunked runs, deploy.py) keeps the far field and continues the trip realization.
+#include "hydrogym_nekrs.hpp" // NEKRS_UDF_INCLUDES = <repo>/hydrogym/nekrs/udf (run.sh)
+
+#ifdef __okl__
+
+// usrwrk: slots 0..2 actuation (hgnek), 3..5 frozen velocity, 6 frozen outlet pressure
+void udfDirichlet(bcData *bc)
+{
+  if (isField("fluid velocity")) {
+    const int s = (bc->id == 2) ? 0 : 3;
+    bc->uxFluid = bc->usrwrk[bc->idxVol + (s + 0) * bc->fieldOffset];
+    bc->uyFluid = bc->usrwrk[bc->idxVol + (s + 1) * bc->fieldOffset];
+    bc->uzFluid = bc->usrwrk[bc->idxVol + (s + 2) * bc->fieldOffset];
+  } else if (isField("fluid pressure")) {
+    bc->pFluid = bc->usrwrk[bc->idxVol + 6 * bc->fieldOffset];
+  }
+}
+
+@kernel void frozenPressure(const dlong N, const dlong offset, @ restrict const dfloat *U, @ restrict dfloat *P)
+{
+  for (dlong n = 0; n < N; ++n; @tile(p_blockSize, @outer, @inner)) {
+    const dfloat u = U[n + 0 * offset];
+    const dfloat v = U[n + 1 * offset];
+    const dfloat w = U[n + 2 * offset];
+    P[n] = -0.5 * (u * u + v * v + w * w) * 0.5 * (1.0 - tanh(u));
+  }
+}
+
+// trip forcing f = g_up fz_up(z) + g_lo fz_lo(z) on the y momentum where |f| >= 1e-10; there the RT term of
+// hpfrt (added after the user source: -chi (v - F v), F the 1D low-pass matrix, fMT[k Nq + n] = F[n][k])
+// is cancelled, as userf replaces it
+@kernel void tripForce(const dlong n,
+                       const int Nq,
+                       const int nz,
+                       const dlong offset,
+                       const dfloat chi,
+                       @ restrict const dlong *idx,
+                       @ restrict const int *zid,
+                       @ restrict const dfloat *g,
+                       @ restrict const dfloat *fz,
+                       @ restrict const dfloat *fMT,
+                       @ restrict const dfloat *U,
+                       @ restrict dfloat *EXT)
+{
+  for (dlong t = 0; t < n; ++t; @tile(p_blockSize, @outer, @inner)) {
+    const dlong id = idx[t];
+    const dfloat f = g[2 * t] * fz[zid[t]] + g[2 * t + 1] * fz[nz + zid[t]];
+    if (fabs(f) >= 1e-10) {
+      dfloat rt = 0;
+      if (chi != 0) {
+        const int Np = Nq * Nq * Nq;
+        const dlong e = id / Np;
+        const int r = id - e * Np;
+        const int i = r % Nq, j = (r / Nq) % Nq, k = r / (Nq * Nq);
+        const dlong base = offset + e * Np;
+        dfloat fv = 0;
+        for (int c = 0; c < Nq; c++) {
+          for (int b = 0; b < Nq; b++) {
+            const dfloat fkj = fMT[c * Nq + k] * fMT[b * Nq + j];
+            for (int a = 0; a < Nq; a++) {
+              fv += fkj * fMT[a * Nq + i] * U[base + c * Nq * Nq + b * Nq + a];
+            }
+          }
+        }
+        rt = chi * (U[base + r] - fv);
+      }
+      EXT[id + offset] += f + rt;
+    }
+  }
+}
+
+#endif
+
+#include <fstream>
+#include "lowPassFilter.hpp"
+
+namespace
+{
+// tripf.f / naca_wing.wall / forparam.i
+constexpr int nWalls = 2, nModes = 60;
+constexpr double tripX[nWalls] = {0.1, 0.1}, tripY[nWalls] = {0.0468, -0.0468};
+constexpr double radX = 0.004, radY = 0.001;
+constexpr double tamps = 0.0, tampt = 10.0, tdt = 0.004;
+constexpr double pi = 3.1415926535897932385;
+
+// Numerical Recipes ran2 as in tripf.f (shuffled LCG, m = 714025)
+struct ran2_t {
+  long idum = 0, iy = 0, ir[97] = {};
+  bool init = false;
+  double operator()()
+  {
+    constexpr long m = 714025, ia = 1366, ic = 150889;
+    if (idum < 0 || !init) {
+      init = true;
+      idum = (ic - idum) % m;
+      for (int j = 0; j < 97; j++) {
+        idum = (ia * idum + ic) % m;
+        ir[j] = idum;
+      }
+      idum = (ia * idum + ic) % m;
+      iy = idum;
+    }
+    const int j = (97 * iy) / m;
+    iy = ir[j];
+    idum = (ia * idum + ic) % m;
+    ir[j] = idum;
+    return iy * (1.0 / m);
+  }
+};
+
+// state of tripf: phases of the random spanwise signals fzt2 (time independent), fzt3, fzt4 (old, new)
+struct trip_t {
+  ran2_t ran2;
+  std::vector<double> phase[3]; // [set][wall * nModes + m]
+  bool have[3] = {false, false, false};
+  long ntdt = 0;
+  double b = 0;
+
+  void draw(int s)
+  {
+    phase[s].resize(nWalls * nModes);
+    for (int w = 0; w < nWalls; w++) {
+      for (int m = 0; m < nModes; m++) phase[s][w * nModes + m] = 2 * pi * ran2();
+    }
+    have[s] = true;
+  }
+  void start() // usrdat3
+  {
+    ran2.idum = -32;
+    ran2();
+  }
+  void advance(double time, bool first) // tripf, first = (istep == 1)
+  {
+    if (first) {
+      draw(0);
+      ntdt = -2;
+    }
+    const long now = static_cast<long>(time / tdt);
+    for (long i = ntdt + 1; i <= now; i++) {
+      phase[1] = phase[2];
+      have[1] = have[2];
+      draw(2);
+    }
+    ntdt = now;
+    const double p = (time - ntdt * tdt) / tdt;
+    b = p * p * (3 - 2 * p);
+  }
+  double signal(int s, int w, double z, double zlength) const // rand_func
+  {
+    if (!have[s]) return 0;
+    double v = 0;
+    for (int m = 1; m <= nModes; m++) v += std::sin(2 * pi * m * z / zlength + phase[s][w * nModes + m - 1]);
+    return v;
+  }
+  double fzt1(int w, double z, double zlength) const
+  {
+    return tamps * signal(0, w, z, zlength) + (1 - b) * tampt * signal(1, w, z, zlength) +
+           b * tampt * signal(2, w, z, zlength);
+  }
+};
+
+trip_t trip;
+double tripOrigin = 0, tripDt = 0, zLength = 1;
+bool resumed = false;
+std::vector<double> tripZ; // distinct z of the local trip nodes
+dlong nTrip = 0;
+dfloat chiRT = 0;
+occa::memory o_tripIdx, o_tripZid, o_tripG, o_tripFz, o_lowPass;
+
+bool exists(const std::string &name)
+{
+  int ok = 0;
+  if (platform->comm.mpiRank() == 0) ok = std::ifstream(name).good();
+  MPI_Bcast(&ok, 1, MPI_INT, 0, platform->comm.mpiComm());
+  return ok;
+}
+
+void userSource(double time)
+{
+  if (nTrip == 0) return;
+  tripForce(nTrip,
+            nrs->meshV->Nq,
+            static_cast<int>(tripZ.size()),
+            nrs->fluid->fieldOffset,
+            chiRT,
+            o_tripIdx,
+            o_tripZid,
+            o_tripG,
+            o_tripFz,
+            o_lowPass,
+            nrs->fluid->o_U,
+            nrs->fluid->o_EXT);
+}
+
+void updateTrip(double time, int tstep)
+{
+  if (tstep == 0) {
+    trip.start();
+    trip.advance(tripOrigin, false);
+    if (resumed) {
+      // replay the run from the origin: istep 1 at origin + dt, then up to now
+      trip.advance(tripOrigin + tripDt, true);
+      trip.advance(time, false);
+    }
+  } else {
+    trip.advance(time, !resumed && tstep == 1);
+  }
+  if (tripZ.empty()) return;
+  std::vector<dfloat> fz(nWalls * tripZ.size());
+  for (int w = 0; w < nWalls; w++) {
+    for (size_t k = 0; k < tripZ.size(); k++) fz[w * tripZ.size() + k] = trip.fzt1(w, tripZ[k], zLength);
+  }
+  o_tripFz.copyFrom(fz.data(), fz.size());
+}
+
+void setupFrozenField()
+{
+  auto mesh = nrs->meshV;
+  auto &f = *nrs->fluid;
+  const auto offset = f.fieldOffset;
+  auto &o_w = platform->app->bc->o_usrwrk;
+  const std::string file = "bc_frozen0.f00000";
+
+  if (platform->options.getArgs("RESTART FILE NAME").empty()) {
+    // no start file (smoke tests): uniform free stream
+    auto o_uy = f.o_U.slice(offset, 2 * offset);
+    platform->linAlg->fill(mesh->Nlocal, 1.0, f.o_U);
+    platform->linAlg->fill(2 * offset, 0.0, o_uy);
+  }
+
+  if (exists(file)) {
+    // relaunch: load the frozen field of the first launch (restartFromFiles writes o_U, o_P and START TIME)
+    std::string startTime;
+    platform->options.getArgs("START TIME", startTime);
+    auto o_U0 = platform->device.malloc<dfloat>(f.fieldOffsetSum);
+    auto o_P0 = platform->device.malloc<dfloat>(offset);
+    o_U0.copyFrom(f.o_U, f.fieldOffsetSum);
+    o_P0.copyFrom(f.o_P, offset);
+    nrs->restartFromFiles({file + "+U+P"});
+    o_w.copyFrom(f.o_U, 3 * offset, hgnek::userSlot(0), 0);
+    o_w.copyFrom(f.o_P, offset, hgnek::userSlot(3), 0);
+    f.o_U.copyFrom(o_U0, f.fieldOffsetSum);
+    f.o_P.copyFrom(o_P0, offset);
+    platform->options.setArgs("START TIME", startTime);
+    if (platform->comm.mpiRank() == 0) std::cout << "[WING] frozen far field read from " << file << std::endl;
+  } else {
+    o_w.copyFrom(f.o_U, 3 * offset, hgnek::userSlot(0), 0);
+    frozenPressure(mesh->Nlocal, offset, o_w.slice(hgnek::userSlot(0)), o_w.slice(hgnek::userSlot(3)));
+    double t0 = 0;
+    platform->options.getArgs("START TIME", t0);
+    std::vector<deviceMemory<dfloat>> u, p;
+    for (int d = 0; d < 3; d++) u.emplace_back(o_w.slice(hgnek::userSlot(d), mesh->Nlocal));
+    p.emplace_back(o_w.slice(hgnek::userSlot(3), mesh->Nlocal));
+    nrs->writeToFile("bc_frozen", t0, mesh, {{"velocity", u}, {"pressure", p}}, false, true);
+    if (platform->comm.mpiRank() == 0) std::cout << "[WING] far field frozen at t = " << t0 << std::endl;
+  }
+}
+
+void setupTrip()
+{
+  auto mesh = nrs->meshV;
+  const auto [x, y, z] = mesh->xyzHost();
+  double zmin = 1e300, zmax = -1e300;
+  for (dlong n = 0; n < mesh->Nlocal; n++) {
+    zmin = std::min(zmin, (double)z[n]);
+    zmax = std::max(zmax, (double)z[n]);
+  }
+  MPI_Allreduce(MPI_IN_PLACE, &zmin, 1, MPI_DOUBLE, MPI_MIN, platform->comm.mpiComm());
+  MPI_Allreduce(MPI_IN_PLACE, &zmax, 1, MPI_DOUBLE, MPI_MAX, platform->comm.mpiComm());
+  zLength = (zmax > zmin) ? zmax - zmin : 1.0;
+
+  // nodes where a trip Gaussian is not negligible (|f| <= 1e-30 * 60 * 10 elsewhere, far below 1e-10)
+  std::vector<dlong> idx;
+  std::vector<dfloat> g;
+  for (dlong n = 0; n < mesh->Nlocal; n++) {
+    double gw[nWalls];
+    for (int w = 0; w < nWalls; w++) {
+      const double dx = (x[n] - tripX[w]) / radX, dy = (y[n] - tripY[w]) / radY;
+      gw[w] = std::exp(-dx * dx - dy * dy);
+    }
+    if (std::max(gw[0], gw[1]) > 1e-30) {
+      idx.push_back(n);
+      g.insert(g.end(), {(dfloat)gw[0], (dfloat)gw[1]});
+    }
+  }
+  nTrip = idx.size();
+
+  // the spanwise signal depends on z only: tabulate it at the distinct z of the local trip nodes
+  std::vector<double> zs;
+  for (auto n : idx) zs.push_back(z[n]);
+  std::sort(zs.begin(), zs.end());
+  const double tol = 1e-8 * zLength;
+  tripZ.clear();
+  for (auto v : zs) {
+    if (tripZ.empty() || v - tripZ.back() > tol) tripZ.push_back(v);
+  }
+  std::vector<int> zid(nTrip);
+  for (dlong t = 0; t < nTrip; t++) {
+    auto it = std::lower_bound(tripZ.begin(), tripZ.end(), z[idx[t]] - tol);
+    zid[t] = it - tripZ.begin();
+  }
+
+  if (nTrip) {
+    o_tripIdx = platform->device.malloc<dlong>(nTrip, idx.data());
+    o_tripZid = platform->device.malloc<int>(nTrip, zid.data());
+    o_tripG = platform->device.malloc<dfloat>(2 * nTrip, g.data());
+    o_tripFz = platform->device.malloc<dfloat>(nWalls * tripZ.size());
+  }
+
+  if (platform->options.compareArgs("FLUID VELOCITY REGULARIZATION METHOD", "HPFRT")) {
+    int nModesRT = 0;
+    platform->options.getArgs("FLUID VELOCITY HPFRT MODES", nModesRT);
+    platform->options.getArgs("FLUID VELOCITY HPFRT STRENGTH", chiRT);
+    chiRT = std::abs(chiRT);
+    o_lowPass = lowPassFilterSetup(mesh, nModesRT);
+  } else {
+    o_lowPass = platform->device.malloc<dfloat>(1);
+  }
+
+  // time origin of the trip realization (the start of the first launch)
+  platform->options.getArgs("DT", tripDt);
+  const std::string file = "trip_origin.txt";
+  resumed = exists(file);
+  if (resumed) {
+    double v[2] = {0, 0};
+    if (platform->comm.mpiRank() == 0) {
+      std::ifstream in(file);
+      in >> v[0] >> v[1];
+    }
+    MPI_Bcast(v, 2, MPI_DOUBLE, 0, platform->comm.mpiComm());
+    tripOrigin = v[0];
+    tripDt = v[1];
+  } else {
+    platform->options.getArgs("START TIME", tripOrigin);
+    if (platform->comm.mpiRank() == 0) {
+      std::ofstream out(file);
+      out << std::setprecision(17) << tripOrigin << " " << tripDt << "\n";
+    }
+  }
+
+  long long nAll = nTrip;
+  MPI_Allreduce(MPI_IN_PLACE, &nAll, 1, MPI_LONG_LONG, MPI_SUM, platform->comm.mpiComm());
+  if (platform->comm.mpiRank() == 0) {
+    std::cout << "[WING] trip: " << nAll << " forced nodes, span " << zLength << ", RT strength " << chiRT
+              << ", origin t = " << tripOrigin << (resumed ? " (resumed)" : "") << std::endl;
+  }
+}
+} // namespace
+
+void UDF_Setup0(MPI_Comm comm, setupAide &options)
+{
+  hgnek::setup0();
+}
+
+void UDF_Setup()
+{
+  hgnek::setup(4);
+  setupFrozenField();
+  setupTrip();
+  nrs->userSource = &userSource;
+}
+
+void UDF_ExecuteStep(double time, int tstep)
+{
+  updateTrip(time, tstep);
+  hgnek::executeStep(time, tstep);
+}

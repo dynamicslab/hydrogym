@@ -23,6 +23,9 @@
 //   void UDF_Setup() { hgnek::setup(); }
 //   void UDF_ExecuteStep(double time, int tstep) { hgnek::executeStep(time, tstep); }
 //
+// usrwrk holds the actuation (u, v, w: slots 0..2, fieldOffset apart); hgnek::setup(k) appends k slots for the
+// case (hgnek::userSlot(i) = offset of slot 3 + i), e.g. a frozen far-field (see examples/nekrs/wing).
+//
 // Wire protocol (intercommunicator with the controller, created with tag 99 as in hydrogym/nek/env.py).
 // Every request is   command (5 x MPI_CHAR, tag 22), int payload (MPI_INT, tag 23), double payload (tag 24)
 // Every reply is     ints [status, ...] (tag 25), doubles (tag 26), message (MPI_CHAR, tag 27, may be empty)
@@ -53,6 +56,10 @@
 //          The solver clock keeps running, the actuation is set to zero.
 //   SNAPF  ints [op (0 write, 1 read), slot, chars of path] -> ints [0, tstep], dbl [time]: snapshot slot to or
 //          from path_r<rank> (binary, checked against partition, order and mesh on read)
+//   WALLS  ints [bid, geometry (0/1)] -> ints [0, n], dbl [(x, y, z, w, nx, ny, nz) x n if geometry,
+//          (tx, ty, tz, p) x n]: viscous traction mu (grad u + grad u^T) . n and pressure at every GLL node of
+//          the boundary faces (one entry per face copy, rank order; w = surface quadrature weight, n into the fluid)
+//   WRFLD  ints [chars of the name] -> dbl [time]: write u, p (fp64) to the NekRS field file <name>0.f00000
 //   TERMN  stop (no reply)
 
 #ifndef __okl__
@@ -69,7 +76,7 @@
 namespace hgnek
 {
 
-static constexpr int version = 2;
+static constexpr int version = 3;
 static constexpr int tagCmd = 22, tagInt = 23, tagDbl = 24, tagRInt = 25, tagRDbl = 26, tagRMsg = 27;
 
 static MPI_Comm inter = MPI_COMM_NULL;
@@ -130,6 +137,14 @@ static MPI_Comm comm()
 static int rank()
 {
   return platform->comm.mpiRank();
+}
+
+// characters sent as ints
+static std::string text(const std::vector<int> &in, size_t from)
+{
+  std::string s;
+  for (size_t i = from; i < in.size(); i++) s.push_back(static_cast<char>(in[i]));
+  return s;
 }
 
 // ---------------------------------------------------------------- messaging
@@ -831,6 +846,68 @@ static void recordStep(double time, int tstep)
   if (o_Sij.isInitialized()) o_Sij.free();
 }
 
+// viscous traction and pressure at the boundary GLL nodes (element-local gradient, as wallGradient)
+static void cmdWalls(const std::vector<int> &in)
+{
+  auto mesh = nrs->meshV;
+  if (in.size() != 2) return reply(1, {}, {}, "WALLS expects [bid, geometry]");
+  const int bid = in[0];
+  const auto offset = nrs->fluid->fieldOffset;
+  dfloat mue = 0;
+  platform->options.getArgs("FLUID VISCOSITY", mue);
+
+  std::vector<int> sel;
+  for (int k = 0; k < (int)bnodes.size(); k++) {
+    if (bnodes[k].bid == bid) sel.push_back(k);
+  }
+  int nAll = sel.size();
+  MPI_Allreduce(MPI_IN_PLACE, &nAll, 1, MPI_INT, MPI_SUM, comm());
+  if (nAll == 0) return reply(1, {}, {}, "WALLS: boundary id " + std::to_string(bid) + " has no faces");
+
+  std::vector<dfloat> lmm(mesh->Nlocal), p(mesh->Nlocal);
+  mesh->o_LMM.copyTo(lmm.data(), mesh->Nlocal);
+  nrs->fluid->o_P.copyTo(p.data(), mesh->Nlocal);
+  std::vector<double> g(9 * sel.size()); // g[9 s + 3 i + j] = du_i/dx_j
+  for (int c = 0; c < 3; c++) {
+    auto o_grad = opSEM::strongGrad(mesh, offset, nrs->fluid->o_U.slice(c * offset, mesh->Nlocal), false);
+    std::vector<dfloat> gr(3 * offset);
+    o_grad.copyTo(gr.data(), 3 * offset);
+    o_grad.free();
+    for (size_t s = 0; s < sel.size(); s++) {
+      const auto v = bnodes[sel[s]].vol;
+      for (int d = 0; d < 3; d++) g[9 * s + 3 * c + d] = gr[v + d * offset] / lmm[v];
+    }
+  }
+  std::vector<double> geo, val;
+  for (size_t s = 0; s < sel.size(); s++) {
+    const auto &b = bnodes[sel[s]];
+    if (in[1]) geo.insert(geo.end(), {b.x[0], b.x[1], b.x[2], b.w, b.n[0], b.n[1], b.n[2]});
+    for (int i = 0; i < 3; i++) {
+      double t = 0;
+      for (int j = 0; j < 3; j++) t += mue * (g[9 * s + 3 * i + j] + g[9 * s + 3 * j + i]) * b.n[j];
+      val.push_back(t);
+    }
+    val.push_back(p[b.vol]);
+  }
+  auto ag = gatherv(geo, MPI_DOUBLE);
+  auto av = gatherv(val, MPI_DOUBLE);
+  if (rank() != 0) return;
+  ag.insert(ag.end(), av.begin(), av.end());
+  reply(0, {nAll}, ag);
+}
+
+static void cmdWrfld(const std::vector<int> &in)
+{
+  if (in.empty()) return reply(1, {}, {}, "WRFLD expects the file name");
+  auto mesh = nrs->meshV;
+  const auto offset = nrs->fluid->fieldOffset;
+  std::vector<deviceMemory<dfloat>> u, p;
+  for (int d = 0; d < 3; d++) u.emplace_back(nrs->fluid->o_U.slice(d * offset, mesh->Nlocal));
+  p.emplace_back(nrs->fluid->o_P.slice(0, mesh->Nlocal));
+  nrs->writeToFile(text(in, 0), curTime, mesh, {{"velocity", u}, {"pressure", p}}, false, true);
+  reply(0, {}, {curTime});
+}
+
 // ---------------------------------------------------------------- episode reset
 
 // o_ADV (lagged advection terms) is private in fluidSolver_t; an explicit template instantiation may name
@@ -883,13 +960,6 @@ struct snapshot {
   int tstep;
 };
 static std::map<int, snapshot> snaps;
-
-static std::string text(const std::vector<int> &in, size_t from)
-{
-  std::string s;
-  for (size_t i = from; i < in.size(); i++) s.push_back(static_cast<char>(in[i]));
-  return s;
-}
 
 static void cmdSnaps(const std::vector<int> &in)
 {
@@ -1110,6 +1180,10 @@ static void serve()
       cmdReset(in);
     } else if (req == "SNAPF") {
       cmdSnapf(in);
+    } else if (req == "WALLS") {
+      cmdWalls(in);
+    } else if (req == "WRFLD") {
+      cmdWrfld(in);
     } else if (req == "STEPS") {
       if (in.size() != 1 || in[0] < 1) {
         reply(1, {}, {}, "STEPS expects [n >= 1]");
@@ -1135,11 +1209,18 @@ static void setup0()
   }
 }
 
-static void setup()
+
+// usrwrk offset of the case's slot i (0 <= i < the count passed to setup)
+static dlong userSlot(int i)
 {
-  // three velocity components per volume node, zero until the first ACTUA
-  platform->app->bc->o_usrwrk.resize(3 * nrs->fluid->fieldOffset);
-  platform->linAlg->fill(3 * nrs->fluid->fieldOffset, 0.0, platform->app->bc->o_usrwrk);
+  return (3 + i) * nrs->fluid->fieldOffset;
+}
+
+static void setup(int userSlots = 0)
+{
+  // three velocity components per volume node, zero until the first ACTUA, then the case's own slots
+  platform->app->bc->o_usrwrk.resize((3 + userSlots) * nrs->fluid->fieldOffset);
+  platform->linAlg->fill((3 + userSlots) * nrs->fluid->fieldOffset, 0.0, platform->app->bc->o_usrwrk);
 }
 
 static void executeStep(double time, int tstep)

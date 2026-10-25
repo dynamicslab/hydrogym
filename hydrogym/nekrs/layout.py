@@ -8,7 +8,8 @@ A position block is a mapping with a `source`:
   grid             x, y, z: a value, a list, or {start, stop, num}; order: [slowest, ..., fastest] (default x, y, z)
   boundary_nodes   boundary: bid, nodes: all | facindf | unique   (GLL nodes of the boundary, from the solver;
                    'all' keeps the copies of shared edge/corner nodes, as the released HydroGym channel)
-  actuator_offset  offset: [dx, dy, dz] and/or normal_distance: d   (probes only: actuator centre + offset)
+  actuator_offset  offset: [dx, dy, dz] and/or normal_distance: d   (probes only: actuator centre + offset; d is a
+                   value or one value per actuator, e.g. a wall-unit distance resolved by the environment)
 
 and an optional `sort: [x, z, ...]` (stable lexicographic sort by those coordinates, first key primary).
 """
@@ -62,7 +63,8 @@ def positions(spec: Dict, iface=None, actuators: Optional[Dict] = None) -> Tuple
         if "normal_distance" in spec:
             if "normal" not in actuators:
                 raise ValueError("normal_distance needs actuators placed on boundary_nodes")
-            xyz = xyz + float(spec["normal_distance"]) * actuators["normal"]
+            d = np.asarray(spec["normal_distance"], dtype=float).reshape(-1, 1)
+            xyz = xyz + d * actuators["normal"]
         extra = {"actuator": np.arange(len(xyz))}
     else:
         raise ValueError(f"unknown position source '{src}'")
@@ -107,3 +109,37 @@ def direction_arrays(spec, n: int) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
             np.full(n, np.deg2rad(float(spec["angle"]))),
         )
     raise ValueError(f"unknown direction {spec}")
+
+
+def group_ids(xyz: np.ndarray, axes, tol: Optional[float] = None) -> np.ndarray:
+    """
+    Label per point such that points whose coordinates along `axes` agree within tol share a label (e.g. the
+    spanwise lines of an extruded mesh for axes [x, y]). Groups are split axis by axis at gaps larger than tol,
+    so round-off between element copies of the same GLL position does not separate them. Default tol: 1e-6 of
+    the largest coordinate range.
+    """
+    xyz = np.asarray(xyz, dtype=float)
+    if tol is None:
+        tol = 1e-6 * max(float(np.ptp(xyz, axis=0).max()), 1e-300)
+    labels = np.zeros(len(xyz), dtype=int)
+    for a in axes:
+        v = xyz[:, "xyz".index(a)]
+        order = np.lexsort((v, labels))
+        lab, vs = labels[order], v[order]
+        brk = np.ones(len(v), dtype=bool)
+        brk[1:] = (lab[1:] != lab[:-1]) | (np.diff(vs) > tol)
+        labels = np.empty_like(labels)
+        labels[order] = np.cumsum(brk) - 1
+    return labels
+
+
+def group_mean(values: np.ndarray, labels: np.ndarray, weights: Optional[np.ndarray] = None) -> np.ndarray:
+    """Weighted mean of values[n] or values[n, k] over each label, returned per point."""
+    values = np.asarray(values, dtype=float)
+    w = np.ones(len(labels)) if weights is None else np.asarray(weights, dtype=float)
+    n = int(labels.max()) + 1
+    ws = np.bincount(labels, w, n)
+    if values.ndim == 1:
+        return (np.bincount(labels, w * values, n) / ws)[labels]
+    m = np.stack([np.bincount(labels, w * values[:, k], n) / ws for k in range(values.shape[1])], axis=1)
+    return m[labels]

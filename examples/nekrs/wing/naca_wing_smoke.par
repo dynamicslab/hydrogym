@@ -1,0 +1,29 @@
+# Smoke test of the wing case at N = 3 from a uniform free stream (no start file): checks the boundary ids,
+# frozen far field, trip, actuators and probes on 1-2 GPUs. Otherwise identical to naca_wing.par.
+userSections = CASEDATA
+
+[GENERAL]
+polynomialOrder = 3               # smoke test only
+cubaturePolynomialOrder = 5
+stopAt = numSteps
+numSteps = 100000000              # the controller ends the run (TERMN)
+dt = 1.5e-5                       # fixed, as in Nek5000 (param 12 = -1.5e-5)
+timeStepper = tombo3              # Nek5000 bdf3 / ext3 (param 27 = 3)
+checkpointControl = steps
+checkpointInterval = 0            # chunks are written by the controller (WRFLD)
+
+[MESH]
+partitioner = rcb
+
+[FLUID PRESSURE]
+residualTol = 1e-06
+
+[FLUID VELOCITY]
+boundaryTypeMap = zeroDirichlet, udfDirichlet, udfDirichlet, zeroNeumann   # 1 wing, 2 control window, 3 far field, 4 outlet
+viscosity = 1/200000.0
+rho = 1.0
+residualTol = 1e-08
+regularization = hpfrt + nModes = 2 + scalingCoeff = 2000   # rt_filter.f: f = -2000 (I - F) u, Legendre basis
+
+[CASEDATA]
+hydrogymBoundaries = 2            # the control window (udfDirichlet, usrwrk slots 0..2)

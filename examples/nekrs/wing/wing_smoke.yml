@@ -1,0 +1,47 @@
+# Smoke test (naca_wing_smoke.par, N = 3): the wing layout on 1-2 GPUs.
+# Zero-shot deployment of channel policies on the NACA0012 wing (Re_c = 200k), generic NekRS interface.
+# Layout of the HydroGym Nek5000 case (naca0012_200k, drl_*.f; see ../notes/naca0012_wing_spec.md section 8),
+# expressed in wall units so that a policy trained in the channel (obs [u'/u_tau, v'/u_tau] at y+ = 15,
+# action 1 = wall-normal velocity u_tau, positive = blowing) sees the same nondimensional quantities.
+environment:
+  nproc: 1
+  steps_per_action: 40     # ndrl of the Nek5000 case (6e-4 c/U_inf, dt+ ~ 0.28 at u_tau 0.048)
+  # steps_per_action: {dt_plus: 0.6}   # the channel's control interval in wall units (~125 steps)
+  episode_actions: 0
+  target_cfl: 2.0
+
+wall_units:
+  nu: 5.0e-6
+  # X2Utau of drl_init.f: suction-side friction velocity of the uncontrolled flow (Tanarro), increasing powers of x
+  u_tau:
+    axis: x
+    polynomial: [0.04327887538008919, 0.5248714861235598, -4.871857463913461, 22.46151360065518,
+                 -61.58950584522501, 104.56101035004765, -108.79482929066342, 65.14084910886064,
+                 -18.9743110707296, 1.5255420287605719]
+
+actuators:
+  boundaries: [2]
+  # one agent per distinct wall GLL node of the control window, as many as there are distinct positions
+  positions: {source: boundary_nodes, boundary: 2, nodes: unique, sort: [x]}
+  footprint: {type: point}
+  direction: normal        # along the wall normal into the fluid (positive = blowing)
+  amplitude: {u_tau: 1.0}  # action 1 = u_tau(x) (znmf_avg of drl_action.f with UTAU)
+  znmf: {group_by: [x, y]} # zero net flux on every spanwise line of nodes (z average of drl_action.f)
+  resolution_check: "off"
+
+probes:
+  fields: [u, v]
+  positions: {source: actuator_offset, normal_distance: {plus: 15}}   # y+ = 15 along the normal (ypctrl)
+  frame: wall              # (u_t, u_n): downstream tangent and wall normal
+  subtract_group_mean: [x, y]   # fluctuation about the spanwise mean of each line (obs_zavg)
+  normalization: u_tau     # divide by u_tau(x) of the actuator
+
+reward:
+  type: wall_shear
+  boundary: 2
+  quantity: force          # streamwise viscous force on the window / (mu A)
+  baseline_dudy: 480.54    # dUdy of environment_config.yaml
+  average: mean
+
+monitors:                  # force histories in solver_steps.csv (viscous and pressure, x/y/z)
+  - {boundary: 1, quantity: force}

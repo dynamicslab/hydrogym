@@ -1,0 +1,37 @@
+c-----------------------------------------------------------------------
+      subroutine usrdat2
+      include 'SIZE'
+      include 'TOTAL'
+
+      integer fmid(6)
+
+c     boundary ids from the Nek5000 face types of naca_wing.re2 ('P  ' periodic in z stays 0):
+c     1 wing 'W  ', 2 suction-side control window (register_wall_pts of drl_init.f: wall faces whose
+c     "midpoint" GLL node has 0.25 < x < 0.86 and 0 < y < 0.6), 3 far field 'v  ', 4 outlet 'o  '
+      im = (1+lx1)/2
+      jm = (1+ly1)/2
+      km = (1+lz1)/2
+      fmid(4) =   1 + lx1*( jm-1) + lx1*ly1*( km-1)
+      fmid(2) = lx1 + lx1*( jm-1) + lx1*ly1*( km-1)
+      fmid(1) =  im + lx1*(  1-1) + lx1*ly1*( km-1)
+      fmid(3) =  im + lx1*(ly1-1) + lx1*ly1*( km-1)
+      fmid(5) =  im + lx1*( jm-1) + lx1*ly1*(  1-1)
+      fmid(6) =  im + lx1*( jm-1) + lx1*ly1*(lz1-1)
+
+      do iel=1,nelt
+      do ifc=1,2*ndim
+         if (cbc(ifc,iel,1) .eq. 'W  ') then
+            boundaryID(ifc,iel) = 1
+            xr = xm1(fmid(ifc),1,1,iel)
+            yr = ym1(fmid(ifc),1,1,iel)
+            if (xr.gt.0.25 .and. xr.lt.0.86 .and.
+     $          yr.gt.0.0  .and. yr.lt.0.6) boundaryID(ifc,iel) = 2
+         endif
+         if (cbc(ifc,iel,1) .eq. 'v  ') boundaryID(ifc,iel) = 3
+         if (cbc(ifc,iel,1) .eq. 'o  ') boundaryID(ifc,iel) = 4
+      enddo
+      enddo
+
+      return
+      end
+c-----------------------------------------------------------------------

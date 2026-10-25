@@ -1,0 +1,34 @@
+# NACA0012 wing, Re_c = 200k, AoA 0 (HydroGym NACA0012_3D_Re200000_AOA0) driven by the generic HydroGym control
+# interface (hydrogym/nekrs). Numerics of the Nek5000 case third_party/nek5000/cases/naca0012_200k (naca_wing.rea,
+# HydroGym environment_config.yaml): N = 7, lxd = 12, BDF3/EXT3, fixed dt 1.5e-5, nu = 1/200000, RT filter
+# (kut 2, weight 1, -2000) as hpfrt. Boundary conditions and the trip are in naca_wing.udf, the boundary ids in
+# naca_wing.usr. run.sh copies this file into the run directory, where start0.f00001 links to the start field
+# (rs8naca_wing0.f00008 of restart_files/init_1, t = 28.0, or the last chunk of a resumed run).
+userSections = CASEDATA
+
+[GENERAL]
+polynomialOrder = 7               # Nek5000 lx1 = 8
+cubaturePolynomialOrder = 11      # Nek5000 lxd = 12
+startFrom = "start0.f00001+U+P"   # velocity and pressure only (the file also holds the Nek5000 coordinates)
+stopAt = numSteps
+numSteps = 100000000              # the controller ends the run (TERMN)
+dt = 1.5e-5                       # fixed, as in Nek5000 (param 12 = -1.5e-5)
+timeStepper = tombo3              # Nek5000 bdf3 / ext3 (param 27 = 3)
+checkpointControl = steps
+checkpointInterval = 0            # chunks are written by the controller (WRFLD)
+
+[MESH]
+partitioner = rcb
+
+[FLUID PRESSURE]
+residualTol = 1e-06
+
+[FLUID VELOCITY]
+boundaryTypeMap = zeroDirichlet, udfDirichlet, udfDirichlet, zeroNeumann   # 1 wing, 2 control window, 3 far field, 4 outlet
+viscosity = 1/200000.0
+rho = 1.0
+residualTol = 1e-08
+regularization = hpfrt + nModes = 2 + scalingCoeff = 2000   # rt_filter.f: f = -2000 (I - F) u, Legendre basis
+
+[CASEDATA]
+hydrogymBoundaries = 2            # the control window (udfDirichlet, usrwrk slots 0..2)
