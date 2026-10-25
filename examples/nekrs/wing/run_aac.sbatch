@@ -30,8 +30,11 @@ EXTRA_ARGS="${EXTRA_ARGS:-}"      # further deploy.py arguments, e.g. "--chunk 1
 mkdir -p "$RUN"
 actions_done() { python3 -c "import json; print(json.load(open('$RUN/state.json'))['actions'])" 2>/dev/null || echo 0; }
 before=$(actions_done)
+# environment of the container via APPTAINERENV_* (kept by --cleanenv; --env would split the comma-separated
+# device list ROCR_VISIBLE_DEVICES=0,1,2,3 that Slurm sets for the exclusive node)
+export APPTAINERENV_PYTHONPATH="$REPO" APPTAINERENV_NEKRS_BACKEND=HIP APPTAINERENV_OMP_NUM_THREADS=1
+[[ -n "${ROCR_VISIBLE_DEVICES:-}" ]] && export APPTAINERENV_ROCR_VISIBLE_DEVICES="$ROCR_VISIBLE_DEVICES"
 apptainer exec --rocm --cleanenv --bind "$REPO" --bind "$HOME" \
-    --env PYTHONPATH="$REPO",NEKRS_BACKEND=HIP,OMP_NUM_THREADS=1${ROCR_VISIBLE_DEVICES:+,ROCR_VISIBLE_DEVICES=$ROCR_VISIBLE_DEVICES} \
     "$SIF" bash -c "cd $HERE && NP=$NP RUN=$RUN TRIP_MODES=$TRIP_MODES ./run.sh --policy $POLICY --actions $ACTIONS --max-hours $MAX_HOURS $EXTRA_ARGS" \
     > "$RUN/deploy-${SLURM_JOB_ID:-local}.log" 2>&1
 rc=$?
