@@ -58,16 +58,16 @@ You should now be able to connect from your local ParaView client — the local 
 
 ## Run environments
 
-HydroGym provides **89 environments** across 6 solver backends (counts are
-the environment configurations currently published on the
-[Hugging Face Hub](https://huggingface.co/dynamicslab/HydroGym-environments)):
+HydroGym provides **90 environments** across 6 solver backends (counts are
+the environment configurations published on the
+[Hugging Face Hub](https://huggingface.co/datasets/dynamicslab/HydroGym-environments) as of October 2026):
 
 | Solver backend | Count | Description | Dimensions |
 | --- | ---: | --- | --- |
 | **Firedrake** `FEM` | 20 | Canonical flow control benchmarks | 2D |
 | **MAIA** `LBM` | 55 | Lattice Boltzmann method environments | 2D, 3D |
 | **MAIA** `STRUCTURED FV` | 4 | High-Reynolds turbulent boundary layers | 3D |
-| **NEK5000** `SEM` | 4 | Spectral element turbulent channel/airfoil flow | 3D |
+| **NEK5000** `SEM` | 5 | Spectral element turbulent channel/airfoil flow | 3D |
 | **JAX** `SEM, FD` | 2 | Differentiable fluid dynamics | 2D, 3D |
 | **JAX-Fluids** `FVM` | 4 | Compressible jet engine control | 2D, 3D |
 

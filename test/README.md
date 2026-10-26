@@ -27,11 +27,6 @@ existing Firedrake environment:
 
 And is then set up to run the tests.
 
-> CI does not use a pre-built image: `.github/workflows/test.yml` builds the
-> repo's own `.devcontainer/firedrake-test.devcontainer.json` (petsc +
-> firedrake features) on every run, so that definition — not any Docker Hub
-> image — is the authoritative test environment.
-
 ## Running Tests
 
 ```bash
