@@ -1,0 +1,41 @@
+c
+c     Communication information
+c     NOTE: NID is stored in 'SIZE' for greater accessibility
+      integer        node,pid,np,nullpid,node0
+      common /cube1/ node,pid,np,nullpid,node0
+c
+c     Maximum number of elements (limited to 2**31/12, at least for now)
+
+      integer nelgt_max
+      parameter(nelgt_max = 178956970)
+
+      integer*8 nvtot
+      integer nelg(0:ldimt1)
+     $       ,lglel(lelt)
+     $       ,gllel(lelg)
+     $       ,gllnid(lelg)
+     $       ,nelgv,nelgt
+      common /hcglb/ nvtot,nelg,lglel,gllel,gllnid,nelgv,nelgt
+
+      logical         ifgprnt
+      common /diagl/  ifgprnt
+
+      integer        wdsize,isize,lsize,csize,wdsizi
+      common/precsn/ wdsize,isize,lsize,csize,wdsizi
+
+      logical        ifdblas
+      common/precsl/ ifdblas
+!
+!     crystal-router, gather-scatter, and xxt handles (xxt=csr grid solve)
+!
+      integer cr_h,gsh,gsh_fld(0:ldimt3),xxth(ldimt3)
+      common /comm_handles/ cr_h,gsh,gsh_fld,xxth
+
+!     These arrays need to be reconciled with cmt (pff, 11/03/15)
+
+      integer              dg_face(lx1*lz1*2*ldim*lelt)
+      common /xcdg_arrays/ dg_face
+      
+      integer            dg_hndlx,ndg_facex
+      common /xcdg_ints/ dg_hndlx,ndg_facex
+

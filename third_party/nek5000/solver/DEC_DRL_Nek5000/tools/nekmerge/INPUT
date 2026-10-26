@@ -1,0 +1,68 @@
+C
+C     Input parameters from preprocessors.
+C
+C     Note that in parallel implementations, we distinguish between
+C     distributed data (LELT) and uniformly distributed data.
+C
+C     Input common block structure:
+C
+C     INPUT1:  REAL            INPUT5: REAL      with LELT entries
+C     INPUT2:  INTEGER         INPUT6: INTEGER   with LELT entries
+C     INPUT3:  LOGICAL         INPUT7: LOGICAL   with LELT entries
+C     INPUT4:  CHARACTER       INPUT8: CHARACTER with LELT entries
+
+      COMMON /INPUT1/ PARAM(200)
+     $               ,RSTIM,VNEKTON
+     $               ,CPFLD(LDIMT1,3)
+     $               ,CPGRP(-5:10,LDIMT1,3)
+     $               ,QINTEG(LDIMT3,MAXOBJ)
+
+      COMMON /INPUT2/ MATYPE(-5:10,LDIMT1)
+     $               ,NKTONV,NHIS,LOCHIS(4,lhis)
+     $               ,IPSCAL,NPSCAL,IPSCO, ifldmhd
+     $               ,IRSTV,IRSTT,IRSTIM,NMEMBER(MAXOBJ),NOBJ
+     $               ,ncurve
+
+      COMMON /INPUT3/ IF3D
+     $               ,IFFLOW,IFHEAT,IFTRAN,IFAXIS,IFSTRS,IFSPLIT
+     $               ,IFMGRID,IFADVC(LDIMT1),IFTMSH(LDIMT1)
+     $               ,IFMVBD,IFNATC,IFCHAR,IFNONL(LDIMT1)
+     $               ,IFVARP(LDIMT1),IFPSCO(LDIMT1),IFVPS
+     $               ,IFMODEL,IFKEPS
+     $               ,IFINTQ
+     $               ,IFXYO,IFPO,IFVO,IFTO,IFTGO,IFPSO(LDIMT),IFFMTIN
+     $               ,IFBO
+     $               ,IFANLS,IFANL2,IFMHD,IFESSR,IFPERT
+     $               ,IFCVODE,IFLOMACH,IFEXPL
+      LOGICAL         IF3D
+     $               ,IFFLOW,IFHEAT,IFTRAN,IFAXIS,IFSTRS,IFSPLIT
+     $               ,IFMGRID,IFADVC,IFTMSH
+     $               ,IFMVBD,IFNATC,IFCHAR,IFNONL
+     $               ,IFVARP,IFPSCO,IFVPS
+     $               ,IFMODEL,IFKEPS
+     $               ,IFINTQ
+     $               ,IFXYO,IFPO,IFVO,IFTO,IFTGO,IFPSO,IFFMTIN
+     $               ,IFBO
+     $               ,IFANLS,IFANL2,IFMHD,IFESSR,IFPERT
+     $               ,IFCVODE,IFLOMACH,IFEXPL
+      LOGICAL         IFNAV
+      EQUIVALENCE    (IFNAV, IFADVC(1))
+C
+C     Proportional to LELT
+C
+      common /input5a/ x(8,lelt),y(8,lelt),z(8,lelt)
+      common /input5b/ bc(5,6,lelt,ldimt1) 
+      common /input5d/ curve(6,12,lelt)
+
+      common /input8a/ cbc(6,lelt,ldimt1)
+      common /input8b/ ccurve(12,lelt)
+      character*1     ccurve
+      character*3     cbc
+
+      common /cstring/ string
+      character*80 string
+      character*1  string1(80)
+      equivalence (string,string1)
+
+      common /bc8i/ ibc(6,lelt,ldimt1)
+      integer ibc

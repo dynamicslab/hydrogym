@@ -150,6 +150,7 @@ interactive = [
 
 [tool.ruff]
 line-length = 120
+extend-exclude = ["third_party"]
 
 [tool.ruff.format]
 quote-style = "double"
@@ -165,9 +166,10 @@ ignore = ["F401", "E731"]
 profile = "black"
 line_length = 120
 known_first_party = ["hydrogym"]
+skip_glob = ["third_party/*"]
 
 [tool.codespell]
-skip = "*.svg,*.ipynb,docs/package-lock.json,docs/node_modules,docs/build,docs/.docusaurus"
+skip = "*.svg,*.ipynb,docs/package-lock.json,docs/node_modules,docs/build,docs/.docusaurus,./third_party/*"
 
 [tool.uv]
 default-groups = ["dev"]

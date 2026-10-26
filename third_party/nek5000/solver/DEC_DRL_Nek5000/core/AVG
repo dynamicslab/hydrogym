@@ -1,0 +1,23 @@
+c
+c     Averaged fields
+c
+      real             atime,timel
+      common /avgcmnr/ atime,timel
+
+      real uavg(ax1,ay1,az1,lelt)
+     $   , vavg(ax1,ay1,az1,lelt)
+     $   , wavg(ax1,ay1,az1,lelt)
+     $   , tavg(ax1,ay1,az1,lelt,ldimt)
+     $   , pavg(ax2,ay2,az2,lelt)
+      common /chkavg/ uavg, vavg, wavg, tavg, pavg
+
+      real urms(ax1,ay1,az1,lelt)
+     $   , vrms(ax1,ay1,az1,lelt)
+     $   , wrms(ax1,ay1,az1,lelt)
+     $   , trms(ax1,ay1,az1,lelt,ldimt)
+     $   , prms(ax2,ay2,az2,lelt)
+     $   , vwms(ax1,ay1,az1,lelt)
+     $   , wums(ax1,ay1,az1,lelt)
+     $   , uvms(ax1,ay1,az1,lelt)
+      common /chkrms/ urms, vrms, wrms, trms, prms, vwms, wums, uvms
+
