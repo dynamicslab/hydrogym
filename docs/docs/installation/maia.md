@@ -20,8 +20,8 @@ docker pull clagemann/hydrogym-nvhpc-26.1_cuda-12.9_turing_ampere
 docker run -it --gpus all clagemann/hydrogym-nvhpc-26.1_cuda-12.9_turing_ampere
 
 # AMD GPU (ROCm 6.3)
-docker pull clagemann/hydrogym-rocm-6.3.3:latest
-docker run -it clagemann/hydrogym-rocm-6.3.3:latest
+docker pull clagemann/hydrogym-rocm-6.3.3:v0.1
+docker run -it clagemann/hydrogym-rocm-6.3.3:v0.1
 ```
 
 Inside the container HydroGym and m-AIA are already installed and on the PATH.
