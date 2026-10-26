@@ -62,6 +62,8 @@ maia = [
     "einops>=0.6.0",
     "mpi4py>=4.0.0",
     "omegaconf>=2.1.0",
+    "stable-baselines3>=2.7.1",
+    "tensorboard>=2.0.0",
     "toml>=0.10.0",
 ]
 nek = [
@@ -78,6 +80,7 @@ jax = [
     "chex",
     "flax",
     "gymnax",
+    "imageio",
     "jax",
     "jaxlib",
     "matplotlib>=3.7",
@@ -105,6 +108,7 @@ all = [
     "gmsh>=4.11.1",
     "gymnax",
     "h5py",
+    "imageio",
     "jax",
     "jaxlib",
     "matplotlib>=3.7",
