@@ -1,0 +1,67 @@
+#!/bin/bash
+
+function error_quit {
+    echo -e "$@"
+    echo
+    echo -e 'Usage:'
+    echo -e './compile_script --clean'
+    echo -e '   To clean build direcrtory. Makenek will ask for cleaning 3rd-party libraries.'
+    echo
+    echo -e './compile_script --all'
+    echo -e '   To compile the code.'
+    exit 1
+}
+
+# Add Framework paths
+
+export TOOLBOX_SRC="../../solver/KTH_DRL_Framework/Toolbox"
+source ${TOOLBOX_SRC}/toolbox_path.sh
+
+# Nek5000 parameters
+export CASE="tcf"
+export NEK_SOURCE_ROOT="../../solver/KTH_DRL_Framework/Nek5000"
+export FC="mpif77 "${TOOLBOX_INC}
+export CC="mpicc"
+# export PPLIST="MPIIO CTRL YWDEBUG"
+export PPLIST="MPIIO DRL BDFD TSRS"
+# export PPLIST="MPIIO DRL"
+# export PPLIST="MPIIO"
+export USR="frame.o mntrlog_block.o mntrlog.o mntrtmr_block.o mntrtmr.o rprm_block.o rprm.o io_tools_block.o io_tools.o"
+USR+=" chkpoint.o chkpt_mstp.o map2D.o stat.o stat_IO.o math_tools.o"
+USR+=" drl_main.o drl_state.o drl_reward.o drl_IO.o drl_action.o drl_init.o"
+USR+=" tsrs.o tsrs_IO.o pts_redistribute.o"
+USR+=" bdforce.o"
+export USR_LFLAGS=""
+
+# Change a possible relative path to an absolute one; e.g. parRSB doesn't like a relative path
+# This is just a hack
+cd ${NEK_SOURCE_ROOT}
+NEK_SOURCE_ROOT=`pwd`
+cd -
+
+# arguments
+args=("$@")
+argsnr=$#
+
+# check arguments
+# parameters number check
+if [ $[argsnr] -ne 1 ]; then
+    error_quit 'Wrong arguments number!'
+fi
+
+for il in "$@"
+do
+case $il in
+        --clean)
+                ${NEK_SOURCE_ROOT}/bin/makenek clean
+                shift
+                ;;
+        --all)
+                ${NEK_SOURCE_ROOT}/bin/makenek ${CASE}
+                shift
+                ;;
+        *) 
+                error_quit 'Wrong argument.'
+                ;;
+esac
+done

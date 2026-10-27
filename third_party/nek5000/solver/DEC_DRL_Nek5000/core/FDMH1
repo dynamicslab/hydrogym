@@ -1,0 +1,12 @@
+c
+c     'FDMH1'
+c
+      real dd(lx1,9), fds(lx1*lx1,9), fdst(lx1*lx1,9)
+     $   , elsize(3,lelt), bhalf(lx1,ly1,lz1,lelt)
+      common /fdmh1r/ dd,fds,fdst,elsize,bhalf
+c
+      integer         kfldfdm,ktype(lelt,3,0:4)
+      common /fdmh1i/ kfldfdm,ktype
+c
+      logical         ifbhalf
+      common /fdmh1l/ ifbhalf

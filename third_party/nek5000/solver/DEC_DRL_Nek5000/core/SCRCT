@@ -1,0 +1,49 @@
+C
+C     Scratch arrays used in CONNECT and associated subroutines.
+C
+C     Available scratch arrays and sizes determined from DRIVE
+C     14 Dec 1989 22:49:58 :
+C     COMMON /CTMP0/ DUMMY0(LX1,LY1,LZ1,LELT,2)
+C     COMMON /CTMP1/ DUMMY1(LX1,LY1,LZ1,LELT,4)
+C     COMMON /SCRNS/ DUMMY2(LX1,LY1,LZ1,LELT,7)
+C     COMMON /SCRUZ/ DUMMY3(LX1,LY1,LZ1,LELT,4)
+C     COMMON /SCREV/ DUMMY4(LX1,LY1,LZ1,LELT,2)
+C     COMMON /SCRVH/ DUMMY5(LX1,LY1,LZ1,LELT,2)
+C     COMMON /SCRMG/ DUMMY6(LX1,LY1,LZ1,LELT,4)
+C     COMMON /SCRCH/ DUMMY7(LX1,LY1,LZ1,LELT,2)
+C     COMMON /SCRSF/ DUMMY8(LX1,LY1,LZ1,LELT,3)
+C
+C
+C     ring pass arrays
+C
+      real rmxs(lelt),rmax(lelt)
+     $    ,xcg(lelt),ycg(lelt),zcg(lelt)
+     $    ,xgs(lelt),ygs(lelt),zgs(lelt)
+     $    ,xml(3,3,lzl,lelt),xms(3,3,lzl,lelt)
+     $    ,yml(3,3,lzl,lelt),yms(3,3,lzl,lelt)
+     $    ,zml(3,3,lzl,lelt),zms(3,3,lzl,lelt)
+      common /scrmg/ rmxs,rmax,xcg,ycg,zcg,xgs,ygs,zgs,xml,xms,yml,yms
+     $              ,zml,zms   
+
+      real           side(4,6,lelt),sides(4,6,lelt)
+      common /screv/ side          ,sides
+
+      real flag(3,3,lzl,lelt),tmp2(3,3,lzl,lelt)
+     $    ,lmult(3,3,lzl,lelt),bcs(5,6,lelt)
+     $    ,xyz(3,8,lelt)
+      common /ctmp1/ flag,tmp2,lmult,bcs,xyz
+
+c
+c     nested dissection arrays
+c
+      character*3    cbcs(6,lelt)
+      common /scrvh/ cbcs
+
+      integer ibrnch(lelt), nbrnch(lelt), list(lelt), list1(lelt)
+     $       ,list2(lelt)
+      logical ifcnst(6,lelt)
+      common /scrch/ ibrnch, nbrnch, list, list1, list2, ifcnst
+
+      real      xyzl(3,8,lelt),cg(3,lelt)
+      equivalence (xyzl,xms)
+      equivalence (cg,xgs)
