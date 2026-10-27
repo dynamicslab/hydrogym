@@ -86,8 +86,7 @@
           "label": "hydrogym.jax.utils",
           "type": "category"
         },
-        "api/jax/env_core",
-        "api/jax/flow"
+        "api/jax/env_core"
       ],
       "label": "hydrogym.jax",
       "type": "category"
@@ -131,7 +130,6 @@
           "type": "category"
         },
         "api/maia/env_core",
-        "api/maia/hf_data_manager",
         "api/maia/mpmd_interface",
         "api/maia/workspace"
       ],
