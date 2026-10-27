@@ -133,3 +133,6 @@ examples/firedrake/getting_started/output/
 
 # VSCode
 .vscode/
+
+# Devcontainer build/run outputs (see .devcontainer/README.md)
+/dev_runs/
