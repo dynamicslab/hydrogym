@@ -139,7 +139,7 @@ Open `config_reference.py` and copy the example that matches your use case.
 ## Observation Types
 
 ### 1. **Force-Based Observations**
-- `'lift_drag'` → Returns `(CL, CD)` for cylinder/rotary, `(CL1, CD1, CL2, CD2, CL3, CD3)` for pinball
+- `'lift_drag'` → Returns `(CL, CD)` for cylinder/rotary, `(CL1, CL2, CL3, CD1, CD2, CD3)` for pinball
 
 ### 2. **Sensor-Based Observations**
 - `'stress_sensor'` → Returns wall shear stress (scalar)
