@@ -1,3 +1,4 @@
+import matplotlib.pyplot as plt
 import numpy as np
 
 import hydrogym.firedrake as hgym
@@ -83,3 +84,33 @@ def test_env():
     for _ in range(10):
         y, reward, terminated, truncated, info = env.step(u)
         u = feedback_ctrl(y)
+
+
+def test_probe_observations():
+    probes = [(x, y) for x in np.linspace(2.0, 6.0, 3) for y in (-1.0, 1.0)]
+    env_config = {
+        "flow": hgym.Pinball,
+        "flow_config": {
+            "mesh": "medium",
+            "observation_type": "velocity_probes",
+            "probes": probes,
+        },
+        "solver": hgym.SemiImplicitBDF,
+        "solver_config": {
+            "dt": 1e-2,
+        },
+    }
+    env = hgym.FlowEnv(env_config)
+
+    y, info = env.reset()
+    assert env.observation_space.shape == (2 * len(probes),)
+    assert y.shape == env.observation_space.shape
+
+    y, reward, terminated, truncated, info = env.step(np.zeros(3))
+    assert y.shape == env.observation_space.shape
+
+
+def test_render():
+    flow = hgym.Pinball(mesh="medium")
+    flow.render()
+    plt.close("all")
