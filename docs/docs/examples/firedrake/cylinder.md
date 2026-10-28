@@ -20,7 +20,7 @@ All scripts live in [`examples/firedrake/advanced/cylinder/`](https://github.com
 
 Two independent actuation mechanisms are available:
 
-- **Jet blowing/suction** ([`Cylinder`](../../api/firedrake/envs/cylinder/flow)): two 10° tangential jets at ±90° from the stagnation point — used by `solve-steady.py`, `unsteady.py`, `step_input.py`, and `pressure-probes.py`.
+- **Jet blowing/suction** ([`Cylinder`](../../api/firedrake/envs/cylinder/flow)): two 10° jets at ±90° from the stagnation point with zero net mass flux — used by `solve-steady.py`, `unsteady.py`, `step_input.py`, and `pressure-probes.py`.
 - **Rotary control** ([`RotaryCylinder`](../../api/firedrake/envs/cylinder/flow)): a prescribed tangential surface velocity — used by `run-transient.py`, `pd-control.py`, `pd-phase-sweep.py`, and `lti_system.py`.
 
 Both mechanisms are capable of suppressing vortex shedding, but they operate through different physical mechanisms and are suited to different control design approaches.
