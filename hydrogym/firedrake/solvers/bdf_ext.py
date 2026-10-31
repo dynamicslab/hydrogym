@@ -189,11 +189,12 @@ class SemiImplicitBDF(NavierStokesTransientSolver):
         bc_scale = self.flow.advance_time(self.dt, control)
         self.flow.set_control(bc_scale)
 
-        # Solve the linear problem
-        if (self.k == 1) or (iter > self.k - 1):
+        # Solve the linear problem. Step `iter` has `iter + 1` solutions in its
+        # history, so ramp up from first order until the history is filled.
+        if iter >= self.k - 1:
             self.petsc_solver.solve()
         else:
-            self.startup_solvers[iter - 1].solve()
+            self.startup_solvers[iter].solve()
 
         # Store the historical solutions for BDF/EXT estimates
         for i in range(self.k - 1):
