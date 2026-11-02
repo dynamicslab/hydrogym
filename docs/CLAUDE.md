@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is the **documentation site** for HydroGym, a reinforcement learning platform for fluid dynamics. The docs are built with Docusaurus and live in the `/docs` subdirectory of the main HydroGym repository.
 
-HydroGym provides 88 RL environments across 6 CFD solver backends (Firedrake, MAIA LBM, MAIA FV, NEK5000, JAX, JAX-Fluids) for training agents on flow control problems.
+HydroGym integrates six CFD solver backends (Firedrake, MAIA LBM, MAIA FV, NEK5000, JAX, JAX-Fluids) and a Hugging Face dataset of named solver case data. Hub directory counts are data inventory only; do not present them as counts of runtime-validated environments or backend coverage.
 
 ## Common Commands
 
