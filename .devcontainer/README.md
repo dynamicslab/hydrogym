@@ -12,6 +12,9 @@ Available features so far:
 | `./features/maia-cpu`  | m-AIA with GCC + OpenMPI (`build_gnu_production`) + a HydroGym venv at `/opt/venvs/maia-cpu` |
 | `./features/maia-gpu`  | m-AIA with NVHPC stdpar for one GPU architecture (`build_nvhpc_production`) + a HydroGym venv at `/opt/venvs/maia-gpu` |
 | `./features/nek5000`   | Nek5000 binaries for the cases under `third_party/nek5000/cases` + a HydroGym venv at `/opt/venvs/nek5000` |
+| `./features/python-ml` | PyTorch (CUDA 12.8 wheels) + JAX (CUDA 12) + stable-baselines3 in `/opt/venvs/ml`, independent of the image's CUDA 13.2 |
+| `./features/hydrogym-gpu` | JAX-Fluids + `hydrogym[maia,jax,jaxfluids]` in the `python-ml` venv (requires `python-ml`) |
+| `./features/jax-fluids` | JAX-Fluids standalone in the `python-ml` venv (requires `python-ml`) |
 
 Configs:
 
@@ -19,6 +22,7 @@ Configs:
 |------------------------------------|-----------------------|---------------------------------------|
 | `devcontainer.json` (default)      | `maia-gpu`            | MAIA GPU development; needs an NVIDIA GPU |
 | `maia-gpu-test.devcontainer.json`  | `maia-gpu`            | MAIA GPU build smoke test             |
+| `full-gpu-stack.devcontainer.json` | `maia-gpu` + `hydrogym-gpu` | MAIA GPU + JAX/JAX-Fluids/PyTorch; GPU solver smoke tests |
 | `maia-cpu-test.devcontainer.json`  | `maia-cpu`            | MAIA CPU build smoke test             |
 | `nek5000-test.devcontainer.json`   | `nek5000`             | Nek5000 case build smoke test         |
 | `petsc-test.devcontainer.json`     | `petsc`               | PETSc build smoke test                |
