@@ -1,0 +1,93 @@
+c      
+c     Define all valid keys for .par file
+c     Note: Keys have to be in captial letters
+c
+      integer PARDICT_NKEYS
+      parameter(PARDICT_NKEYS = 84)
+
+      character*132 pardictkey(PARDICT_NKEYS)
+      data
+     &  pardictkey(1)  / 'GENERAL' /
+     &  pardictkey(2)  / 'GENERAL:STOPAT' /
+     &  pardictkey(3)  / 'GENERAL:ENDTIME' /
+     &  pardictkey(4)  / 'GENERAL:NUMSTEPS' /
+     &  pardictkey(5)  / 'GENERAL:DT' /
+     &  pardictkey(6)  / 'GENERAL:VARIABLEDT' /
+     &  pardictkey(7)  / 'GENERAL:WRITEINTERVAL' /
+     &  pardictkey(8)  / 'GENERAL:WRITECONTROL' /
+     &  pardictkey(9)  / 'GENERAL:PERTURBATIONMODES' /
+     &  pardictkey(10) / 'GENERAL:MAXCFL' /
+     &  pardictkey(11) / 'GENERAL:TORDER' /
+     &  pardictkey(12) / 'GENERAL:FILTERING' /
+     &  pardictkey(13) / 'GENERAL:FILTERWEIGHT' /
+     &  pardictkey(14) / 'GENERAL:ADDFILTERMODES' /
+     &  pardictkey(15) / 'GENERAL:WRITE8BYTE' /
+     &  pardictkey(16) / 'GENERAL:WRITENPARALLELFILES' /
+     &  pardictkey(17) / 'GENERAL:DEALIASING' /
+     &  pardictkey(18) / 'GENERAL:TIMESTEPPER' /
+     &  pardictkey(19) / 'PROBLEMTYPE:AXISYMMETRY' /
+     &  pardictkey(20) / 'PROBLEMTYPE:SWIRL' /
+     &  pardictkey(21) / 'PROBLEMTYPE:CYCLICBOUNDARIES' /
+     &  pardictkey(22) / 'PROBLEMTYPE:PERTURBATIONS' /
+     &  pardictkey(23) / 'PROBLEMTYPE:SOLVEBASEFLOW' /
+     &  pardictkey(24) / 'PROBLEMTYPE:LOWMACHNUMBER' /
+     &  pardictkey(25) / 'PROBLEMTYPE:VARIABLEPROPERTIES' /
+     &  pardictkey(26) / 'MESH' /
+     &  pardictkey(27) / 'MESH:MOTION' /
+     &  pardictkey(28) / 'MESH:MESHVELOCITY' /
+     &  pardictkey(29) / 'MESH:WRITETOFIELDFILE' /
+     &  pardictkey(30) / 'VELOCITY' /
+     &  pardictkey(31) / 'VELOCITY:RESIDUALTOL' /
+     &  pardictkey(32) / 'VELOCITY:RESIDUALPROJ' /
+     &  pardictkey(33) / 'VELOCITY:WRITETOFIELDFILE' /
+     &  pardictkey(34) / 'VELOCITY:ADVECTION' /
+     &  pardictkey(35) / 'VELOCITY:VISCOSITY' /
+     &  pardictkey(36) / 'VELOCITY:DENSITY' /
+     &  pardictkey(37) / 'PRESSURE' /
+     &  pardictkey(38) / 'PRESSURE:RESIDUALTOL' /
+     &  pardictkey(39) / 'PRESSURE:RESIDUALPROJ' /
+     &  pardictkey(40) / 'PRESSURE:WRITETOFIELDFILE' /
+     &  pardictkey(41) / 'PRESSURE:PRECONDITIONER' /
+     &  pardictkey(42) / 'TEMPERATURE' /
+     &  pardictkey(43) / 'TEMPERATURE:CONJUGATEHEATTRANSFER' /
+     &  pardictkey(44) / 'TEMPERATURE:WRITETOFIELDFILE' /
+     &  pardictkey(45) / 'TEMPERATURE:ADVECTION' /
+     &  pardictkey(46) / 'TEMPERATURE:CONDUCTIVITY' /
+     &  pardictkey(47) / 'TEMPERATURE:RHOCP' /
+     &  pardictkey(48) / 'GENERAL:STARTFROM' /
+     &  pardictkey(49) / 'PROBLEMTYPE' /
+     &  pardictkey(50) / 'PROBLEMTYPE:STRESSFORMULATION' /
+     &  pardictkey(51) / 'GENERAL:USERPARAM01' /
+     &  pardictkey(52) / 'GENERAL:USERPARAM02' /
+     &  pardictkey(53) / 'GENERAL:USERPARAM03' /
+     &  pardictkey(54) / 'GENERAL:USERPARAM04' /
+     &  pardictkey(55) / 'GENERAL:USERPARAM05' /
+     &  pardictkey(56) / 'GENERAL:USERPARAM06' /
+     &  pardictkey(57) / 'GENERAL:USERPARAM07' /
+     &  pardictkey(58) / 'GENERAL:USERPARAM08' /
+     &  pardictkey(59) / 'GENERAL:USERPARAM09' /
+     &  pardictkey(60) / 'GENERAL:USERPARAM10' /
+     &  pardictkey(61) / 'SCALAR%%' /
+     &  pardictkey(62) / 'SCALAR%%:SOLVER' /
+     &  pardictkey(63) / 'SCALAR%%:RESIDUALTOL' /
+     &  pardictkey(64) / 'SCALAR%%:RHO' /
+     &  pardictkey(65) / 'SCALAR%%:DIFFUSIVITY' /
+     &  pardictkey(66) / 'SCALAR%%:WRITETOFIELDFILE' /
+     &  pardictkey(67) / 'SCALAR%%:ABSOLUTETOL' /
+     &  pardictkey(68) / 'TEMPERATURE:SOLVER' /
+     &  pardictkey(69) / 'TEMPERATURE:RESIDUALTOL' /
+     &  pardictkey(70) / 'TEMPERATURE:ABSOLUTETOL' /
+     &  pardictkey(71) / 'PROBLEMTYPE:DP0DT' /
+     &  pardictkey(72) / 'CVODE' /
+     &  pardictkey(73) / 'CVODE:ABSOLUTETOL' /
+     &  pardictkey(74) / 'CVODE:RELATIVETOL' /
+     &  pardictkey(75) / 'CVODE:STIFF' /
+     &  pardictkey(76) / 'CVODE:MODE' /
+     &  pardictkey(77) / 'CVODE:PRECONDITIONER' /
+     &  pardictkey(78) / 'CVODE:DTMAX' /
+     &  pardictkey(79) / 'CVODE:DQJINCREMENTFACTOR' /
+     &  pardictkey(80) / 'CVODE:RATIOLNLTOL' /
+     &  pardictkey(81) / ':PARVERSION' /
+     &  pardictkey(82) / 'MESH:NUMBEROFBCFIELDS' /
+     &  pardictkey(83) / 'GENERAL:OPTLEVEL' /
+     &  pardictkey(84) / 'GENERAL:LOGLEVEL' /

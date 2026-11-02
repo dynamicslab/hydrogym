@@ -1,0 +1,7 @@
+!     missing definitions in RESTART
+      integer LELR, MAX_RST
+      integer NXR,NYR,NZR,NELR,NELGR,ISTPR,IFILER,NFILER
+     $		,NXO,NYO,NZO,NRG,NFILEO,NPROC_O,NFLDR,NELB,NELBR
+     $     ,iHeaderSize
+      
+      real TIMER

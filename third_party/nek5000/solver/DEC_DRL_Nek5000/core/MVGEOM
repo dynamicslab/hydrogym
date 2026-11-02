@@ -1,0 +1,24 @@
+C
+C     Moving mesh variables
+C
+      real wx(lx1m,ly1m,lz1m,lelt)
+     $   , wy(lx1m,ly1m,lz1m,lelt)
+     $   , wz(lx1m,ly1m,lz1m,lelt)
+      common /wsol/ wx,wy,wz
+
+      real wxlag(lx1m,ly1m,lz1m,lelt,lorder-1)
+     $   , wylag(lx1m,ly1m,lz1m,lelt,lorder-1)
+     $   , wzlag(lx1m,ly1m,lz1m,lelt,lorder-1)
+      common /wlag/ wxlag,wylag,wzlag
+
+      real w1mask(lx1m,ly1m,lz1m,lelt)
+     $   , w2mask(lx1m,ly1m,lz1m,lelt)
+     $   , w3mask(lx1m,ly1m,lz1m,lelt)
+     $   , wmult (lx1m,ly1m,lz1m,lelt)
+      common /wmsu/ w1mask,w2mask,w3mask,wmult
+
+
+      real ev1(lx1m,ly1m,lz1m,lelv)
+     $   , ev2(lx1m,ly1m,lz1m,lelv)
+     $   , ev3(lx1m,ly1m,lz1m,lelv)
+      common /eigvec/ ev1,ev2,ev3

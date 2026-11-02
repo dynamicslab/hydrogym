@@ -1,0 +1,25 @@
+mv SESSION.NAME  SESSION.NAME.1 2>/dev/null
+echo   2      >>   SESSION.NAME                        
+echo  $1      >>   SESSION.NAME                     
+echo `pwd`'/' >>   SESSION.NAME                         
+echo  $3      >>   SESSION.NAME                      
+echo  $2      >>   SESSION.NAME                      
+echo `pwd`'/' >>   SESSION.NAME                        
+echo  $4      >>   SESSION.NAME                       
+touch $1.rea
+rm ioinfo
+mv $1.log $1.log1 2>/dev/null
+mv $1.his $1.his1 2>/dev/null
+mv $1.sch $1.sch1 2>/dev/null
+mv $2.log $2.log1 2>/dev/null
+mv $2.his $2.his1 2>/dev/null
+mv $2.sch $2.sch1 2>/dev/null
+NP1=$3
+NP2=$4
+NP=$(($NP1+$NP2))
+mpiexec -np $NP ./nek5000 > $1.log 
+##nohup mpiexec -l -np $NP nek5000 > $1.log &
+sleep 1
+rm logfile
+ln $1.log logfile
+rm -f SESSION.NAME

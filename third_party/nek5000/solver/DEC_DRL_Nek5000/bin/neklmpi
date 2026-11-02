@@ -1,0 +1,9 @@
+echo $1        >  SESSION.NAME
+echo `pwd`'/' >>  SESSION.NAME
+touch $1.rea
+rm -f ioinfo logfile
+mv -f $1.log.$2 $1.log1.$2 2>/dev/null
+mv -f $1.sch $1.sch1 2>/dev/null
+mpiexec -np $2 ./nek5000 > $1.log.$2
+ln $1.log.$2 logfile
+rm -f SESSION.NAME

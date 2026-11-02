@@ -1,0 +1,1 @@
+grep err $1 | awk '{print $2, $3, $4, $5, $6, $7}' > jpp ; sed '1,10d' jpp > jp; xmgrace -nxy jp

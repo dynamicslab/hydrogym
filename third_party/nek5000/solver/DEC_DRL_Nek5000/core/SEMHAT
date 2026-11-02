@@ -1,0 +1,17 @@
+c
+c     Hat matrices
+c
+      integer lr2
+      parameter (lr2=2*lx1*lx1)
+
+      real ah (lr2), bh (lr2), ch (lr2), dh (lr2)
+     $   , dph(lr2), jph(lr2), zh (lr2), wh (lr2)     ! Pressure GLL
+     $   , bgl(lr2), zglhat(lr2), dgl(lr2), jgl(lr2)  ! Pressure GL 
+      common /ahat/ ah,bh,ch,dh,dph,jph,zh,wh,bgl,zglhat,dgl,jgl
+c
+      integer l3, l2
+      parameter (l3=lx1*(lx1+1)*(lx1+2)/3)
+      parameter (l2=lx1*(lx1+1)/2)
+
+      real          ddhat(l3),zp(l2),ww(l2)   ! Aggregate arrays
+      common /hata/ ddhat    ,zp    ,ww

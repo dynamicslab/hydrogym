@@ -1,0 +1,9 @@
+!     include file to store user parameters
+      integer UPRM_PRB, L2FREQ, FIXGEOM
+      real NEW_DT
+
+!     common blocks
+      common /UPARAMI/ UPRM_PRB, L2FREQ, FIXGEOM
+
+      common /UPARAMR/ NEW_DT
+

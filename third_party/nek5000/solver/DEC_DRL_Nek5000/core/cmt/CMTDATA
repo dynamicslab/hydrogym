@@ -1,0 +1,126 @@
+!
+! flags for CMT are as follows
+!
+      logical            iffltr,    outflsub
+     $                , ifcntfilt, ifrestart
+      common /input10/   iffltr,    outflsub
+     $                , ifcntfilt, ifrestart
+
+
+      real                 u(lx1,ly1,lz1,toteq,lelt) 
+      common /solnconsvar/ u 
+ 
+      real               phig(lx1,ly1,lz1,lelt)
+      common /otherpvar/ phig
+
+      real res1(lx1,ly1,lz1,lelt,toteq)
+     $   , res2(lx1,ly1,lz1,lelt,toteq)
+     $   , res3(lx1,ly1,lz1,toteq,lelt) 
+      common /cmtres/ res1, res2, res3
+      
+      real              gradu(lx1*ly1*lz1,toteq,3)
+      common /cmtgradu/ gradu     
+
+      real convh (lxd*lyd*lzd,3)
+     $   , diffh (lx1*ly1*lz1,3) ! dealias someday?
+     $   , totalh(lxd*lyd*lzd,3)
+      common /convectdata/ convh, diffh, totalh
+
+      real               usrf(lx1,ly1,lz1,5)
+      common /forcedata/ usrf 
+
+c We assume we will be working with one gas. Therefore Rgas need not be 
+c full filed. To begin with we assume calorically perfect gas.
+c In near future we relax the constraint to thermally perfect gas.
+c------------------------------------------------- -------------------
+c NOTE --- CVG need not be stored on full field... removed in future.
+c       THis because, Temp will be stored fullfield and we expect Cv to
+c       have explicit temp dependence. At the begining of the time step
+c       a scratch space will be use to iteratively compute Cv and T from 
+c       internal energy.
+c--------------------------------------------------------------------- 
+      real                csound(lx1,ly1,lz1,lelt)
+      common /cmtgasprop/ csound
+
+      real                cvgref,cpgref,gmaref,rgasref,molmass
+      common /cmtgasref/  cvgref,cpgref,gmaref,rgasref,molmass
+
+      real                  cip(2*ldim,lelt)
+      common /cmttransprop/ cip
+
+      real muref,coeflambda,suthcoef,reftemp,prlam,cip_adhoc
+      common /cmttransref/ muref, coeflambda, suthcoef, reftemp, prlam
+     $                   , cip_adhoc
+
+      integer              stage,nstage
+      common /tstepstage/ stage,nstage
+
+      real                  tcoef(3,3)     
+      common /timestepcoef/ tcoef
+      
+      integer            res_freq
+      common /cmtioflgs/ res_freq
+
+      logical           ifsip
+      common /cmtvisco/ ifsip
+
+! particle stuff for rk3 low storage tvd
+      common /PARTRESTART/ ifpartrestart, partrestartfile
+     >        ,partrestartdata, partrestartno
+      logical ifpartrestart
+      character*15 partrestartfile
+      character*13 partrestartdata
+      integer partrestartno
+
+      common /PARTRK3/ kv_stage_p, kx_stage_p
+      real kv_stage_p(lpart,4,ldim), kx_stage_p(lpart,4,ldim)
+
+      common /partrkstuff/ xlocp, vlocp
+      real xlocp(lpart,ldim), vlocp(lpart,ldim)
+
+      real              varsic(10),rho,phi,pres,cv,e_internal
+     $                 ,t0in,p0in,asnd,rgas,cp,mu,lambda,molarmass
+      common /nekuscmt/ varsic    ,rho,phi,pres,cv,e_internal
+     $                 ,t0in,p0in,asnd,rgas,cp,mu,lambda,molarmass
+! let kond=udiff
+
+! index for gas density in vtrans, Q+-
+      integer irho
+      parameter (irho=1) ! better always be 1
+! other VTRANS indices
+      integer icp, icv
+      parameter (icp =2) ! rho*cp
+      parameter (icv =3) ! rho*cv
+! indices in VDIFF
+      integer imu, iknd, ilam
+      parameter (imu =1) ! viscosity
+      parameter (iknd=2) ! thermal conductivity
+      parameter (ilam=3) ! lambda, 2nd viscosity
+! indices for fields in U
+      integer irg, irpu, irpv, irpw, iret
+      parameter (irg =1)     ! phi_g*rho_g
+      parameter (irpu=2)     ! phi_g*rho_g*u
+      parameter (irpv=3)     ! phi_g*rho_g*v
+      parameter (irpw=4)     ! phi_g*rho_g*w
+      parameter (iret=toteq) ! phi_g*rho_g*E
+! indices for fields in Q-+
+      integer iux, iuy, iuz, ipr, ithm, isnd, iph, icvf, icpf, imuf, 
+     $        ikndf, ilamf, iu1, iu2, iu3, iu4, iu5, nqq
+      parameter (iux =2)     ! u
+      parameter (iuy =3)     ! v
+      parameter (iuz =4)     ! w
+      parameter (ipr =5)     ! P
+      parameter (ithm=6)     ! T
+      parameter (isnd=7)     ! a
+      parameter (iph =8)     ! phi_g
+      parameter (icvf=9)     ! rho*cv
+      parameter (icpf=10)    ! rho*cp
+      parameter (imuf=11)    ! mu
+      parameter (ikndf=12)   ! K
+      parameter (ilamf=13)   ! lambda
+      parameter (iu1=14)   ! U1
+      parameter (iu2=15)   ! U2
+      parameter (iu3=16)   ! U3
+      parameter (iu4=17)   ! U4
+      parameter (iu5=18)   ! U5
+      parameter (nqq=18)

@@ -1,0 +1,9 @@
+!     missing definitions in GEOM
+      real XM1, XM2, YM1, YM2, ZM1, ZM2, RX
+      real RXM1, SXM1, TXM1, RXM2, SXM2, TXM2,
+     $     RYM1, SYM1, TYM1, RYM2, SYM2, TYM2,
+     $     RZM1, SZM1, TZM1, RZM2, SZM2, TZM2
+      real G1M1, G2M1, G3M1, G4M1, G5M1, G6M1
+      real UNX, UNY, UNZ, T1X, T1Y, T1Z, T2X, T2Y, T2Z, AREA, DLAM
+      real VNX, VNY, VNZ, V1X, V1Y, V1Z, V2X, V2Y, V2Z
+      real UNR, UNS, UNT, ETALPH
