@@ -49,6 +49,27 @@ def test_integrate(k):
     hgym.integrate(flow, t_span=(0, 10 * dt), dt=dt, order=k)
 
 
+@pytest.mark.parametrize("k", [1, 2, 3])
+def test_bdf_startup_order(k):
+    flow = hgym.Cylinder(mesh="medium")
+    solver = hgym.SemiImplicitBDF(flow, dt=1e-2, order=k)
+
+    # Record the order of the scheme used for each step
+    orders = []
+    for order, petsc_solver in enumerate([*solver.startup_solvers, solver.petsc_solver], start=1):
+
+        def solve(order=order, solve=petsc_solver.solve):
+            orders.append(order)
+            return solve()
+
+        petsc_solver.solve = solve
+
+    for iter in range(k + 1):
+        solver.step(iter)
+
+    assert orders == [*range(1, k + 1), k]
+
+
 # Simple opposition control on lift
 def feedback_ctrl(y, K=0.1):
     CL, CD = y
