@@ -105,10 +105,6 @@ class Pinball(FlowConfig):
         self.bcu_inflow.set_value(fd.Constant((0, 0)))
         self.bcu_freestream.set_value(fd.Constant(0.0))
 
-    def get_observations(self):
-        CL, CD = self.compute_forces()
-        return [*CL, *CD]
-
     def evaluate_objective(self, q=None):
         CL, CD = self.compute_forces(q=q)
         return sum(CD)
@@ -118,7 +114,7 @@ class Pinball(FlowConfig):
             clim = (-2, 2)
         if levels is None:
             levels = np.linspace(*clim, 10)
-        vort = fd.project(fd.curl(self.flow.u), self.flow.pressure_space)
+        vort = fd.project(fd.curl(self.u), self.pressure_space)
         im = tricontourf(
             vort,
             cmap=cmap,
@@ -129,6 +125,6 @@ class Pinball(FlowConfig):
             **kwargs,
         )
 
-        for x0, y0 in zip(self.flow.x0, self.flow.y0):
-            cyl = plt.Circle((x0, y0), self.flow.rad, edgecolor="k", facecolor="gray")
+        for x0, y0 in zip(self.x0, self.y0):
+            cyl = plt.Circle((x0, y0), float(self.rad), edgecolor="k", facecolor="gray")
             im.axes.add_artist(cyl)
