@@ -91,10 +91,10 @@ from hydrogym import FlowEnv
 import hydrogym.firedrake as hgym
 
 env_config = {
-    'flow': hgym.Cylinder,
-    'flow_config': {'mesh': 'medium', 'Re': 100},
-    'solver': hgym.SemiImplicitBDF,
-    'solver_config': {'dt': 1e-2},
+    "flow": hgym.Cylinder,
+    "flow_config": {"mesh": "medium", "Re": 100},
+    "solver": hgym.SemiImplicitBDF,
+    "solver_config": {"dt": 1e-2},
 }
 
 env = FlowEnv(env_config)

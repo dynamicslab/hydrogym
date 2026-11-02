@@ -168,16 +168,18 @@ import hydrogym.firedrake as hgym
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 
+
 # Create environment
 def make_env():
     env_config = {
-        'flow': hgym.Cylinder,
-        'flow_config': {'mesh': 'medium', 'Re': 100},
-        'solver': hgym.SemiImplicitBDF,
-        'solver_config': {'dt': 1e-2},
-        'actuation_config': {'num_substeps': 2},
+        "flow": hgym.Cylinder,
+        "flow_config": {"mesh": "medium", "Re": 100},
+        "solver": hgym.SemiImplicitBDF,
+        "solver_config": {"dt": 1e-2},
+        "actuation_config": {"num_substeps": 2},
     }
     return FlowEnv(env_config)
+
 
 # Vectorize and normalize
 env = DummyVecEnv([make_env])

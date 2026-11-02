@@ -65,9 +65,9 @@ for x in np.linspace(1.0, 8.0, 8):
     probe_locations.extend([x, 0.0])
 
 env = maia.from_hf(
-    'Cylinder_2D_Re200',
+    "Cylinder_2D_Re200",
     probe_locations=probe_locations,
-    obs_normalization_strategy='U_inf',
+    obs_normalization_strategy="U_inf",
 )
 
 obs, info = env.reset()
@@ -87,16 +87,21 @@ MAIA environments are configured via keyword arguments to `maia.from_hf()`:
 
 ```python
 env = maia.from_hf(
-    'Cylinder_2D_Re200',                      # Environment name (required)
-    hf_repo_id='dynamicslab/HydroGym-environments',  # HF Hub repository (optional)
-    probe_locations=[x0, y0, x1, y1, ...],    # Flattened probe coordinates (required) - for 3D: [x0, y0, z0, x1, y1, z1, ...]
-    obs_normalization_strategy='U_inf',       # Normalization: 'U_inf', 'probewise_mean_std', 'none', 'customized'
-    obs_loc=[...],                            # Custom normalization location (if strategy='customized')
-    obs_scale=[...],                          # Custom normalization scale (if strategy='customized')
-    use_clean_cache=False,                    # Whether to use clean cache directory
-
+    "Cylinder_2D_Re200",  # Environment name (required)
+    hf_repo_id="dynamicslab/HydroGym-environments",  # HF Hub repository (optional)
+    probe_locations=[
+        x0,
+        y0,
+        x1,
+        y1,
+        ...,
+    ],  # Flattened probe coordinates (required) - for 3D: [x0, y0, z0, x1, y1, z1, ...]
+    obs_normalization_strategy="U_inf",  # Normalization: 'U_inf', 'probewise_mean_std', 'none', 'customized'
+    obs_loc=[...],  # Custom normalization location (if strategy='customized')
+    obs_scale=[...],  # Custom normalization scale (if strategy='customized')
+    use_clean_cache=False,  # Whether to use clean cache directory
     # For offline/HPC use (no internet on compute nodes):
-    local_fallback_dir='/path/to/local/environments',  # Use pre-downloaded files
+    local_fallback_dir="/path/to/local/environments",  # Use pre-downloaded files
 )
 ```
 

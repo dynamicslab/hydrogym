@@ -162,10 +162,10 @@ from hydrogym import FlowEnv
 import hydrogym.firedrake as hgym
 
 env_config = {
-    'flow': hgym.Cylinder,
-    'flow_config': {'mesh': 'medium', 'Re': 100},
-    'solver': hgym.SemiImplicitBDF,
-    'solver_config': {'dt': 1e-2},
+    "flow": hgym.Cylinder,
+    "flow_config": {"mesh": "medium", "Re": 100},
+    "solver": hgym.SemiImplicitBDF,
+    "solver_config": {"dt": 1e-2},
 }
 
 env = FlowEnv(env_config)
@@ -182,13 +182,13 @@ Running multiple solver steps per `env.step()` call increases the physical time 
 
 ```python
 env_config = {
-    'flow': hgym.Cylinder,
-    'flow_config': {'mesh': 'medium', 'Re': 100},
-    'solver': hgym.SemiImplicitBDF,
-    'solver_config': {'dt': 1e-2},
-    'actuation_config': {
-        'num_substeps': 5,
-        'reward_aggregation': 'mean',
+    "flow": hgym.Cylinder,
+    "flow_config": {"mesh": "medium", "Re": 100},
+    "solver": hgym.SemiImplicitBDF,
+    "solver_config": {"dt": 1e-2},
+    "actuation_config": {
+        "num_substeps": 5,
+        "reward_aggregation": "mean",
     },
 }
 
@@ -205,15 +205,17 @@ from stable_baselines3 import PPO
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 
+
 def make_env():
     env_config = {
-        'flow': hgym.Cylinder,
-        'flow_config': {'mesh': 'medium', 'Re': 100},
-        'solver': hgym.SemiImplicitBDF,
-        'solver_config': {'dt': 1e-2},
-        'actuation_config': {'num_substeps': 2},
+        "flow": hgym.Cylinder,
+        "flow_config": {"mesh": "medium", "Re": 100},
+        "solver": hgym.SemiImplicitBDF,
+        "solver_config": {"dt": 1e-2},
+        "actuation_config": {"num_substeps": 2},
     }
     return Monitor(FlowEnv(env_config))
+
 
 env = VecNormalize(DummyVecEnv([make_env]), norm_obs=True, norm_reward=True, clip_obs=10.0)
 
@@ -232,14 +234,14 @@ When no `restart` key is provided, HydroGym constructs an environment name from 
 
 ```python
 env_config = {
-    'flow': hgym.Cylinder,
-    'flow_config': {
-        'mesh': 'medium',
-        'Re': 100,
+    "flow": hgym.Cylinder,
+    "flow_config": {
+        "mesh": "medium",
+        "Re": 100,
         # No 'restart' key — loads 'Cylinder_2D_Re100_medium_FD' from HF Hub
     },
-    'solver': hgym.SemiImplicitBDF,
-    'solver_config': {'dt': 1e-2},
+    "solver": hgym.SemiImplicitBDF,
+    "solver_config": {"dt": 1e-2},
 }
 
 env = FlowEnv(env_config)
@@ -252,15 +254,15 @@ For offline environments or HPC clusters without internet access, point `local_d
 
 ```python
 env_config = {
-    'flow': hgym.Cylinder,
-    'flow_config': {
-        'mesh': 'medium',
-        'Re': 100,
-        'local_dir': '/workspace/my_checkpoints',
+    "flow": hgym.Cylinder,
+    "flow_config": {
+        "mesh": "medium",
+        "Re": 100,
+        "local_dir": "/workspace/my_checkpoints",
         # Loads: /workspace/my_checkpoints/Cylinder_2D_Re100_medium_FD/*.ckpt
     },
-    'solver': hgym.SemiImplicitBDF,
-    'solver_config': {'dt': 1e-2},
+    "solver": hgym.SemiImplicitBDF,
+    "solver_config": {"dt": 1e-2},
 }
 
 env = FlowEnv(env_config)
@@ -272,18 +274,18 @@ Passing a list of checkpoint paths causes each `env.reset()` to randomly select 
 
 ```python
 env_config = {
-    'flow': hgym.Pinball,
-    'flow_config': {
-        'mesh': 'fine',
-        'Re': 30,
-        'restart': [
-            'checkpoint_early.h5',
-            'checkpoint_mid.h5',
-            'checkpoint_late.h5',
+    "flow": hgym.Pinball,
+    "flow_config": {
+        "mesh": "fine",
+        "Re": 30,
+        "restart": [
+            "checkpoint_early.h5",
+            "checkpoint_mid.h5",
+            "checkpoint_late.h5",
         ],
     },
-    'solver': hgym.SemiImplicitBDF,
-    'solver_config': {'dt': 1e-2},
+    "solver": hgym.SemiImplicitBDF,
+    "solver_config": {"dt": 1e-2},
 }
 
 env = FlowEnv(env_config)
@@ -299,15 +301,15 @@ import numpy as np
 wake_probes = [(x, 0.0) for x in np.linspace(1.0, 10.0, 20)]
 
 env_config = {
-    'flow': hgym.Cylinder,
-    'flow_config': {
-        'mesh': 'medium',
-        'Re': 100,
-        'observation_type': 'velocity_probes',
-        'probes': wake_probes,
+    "flow": hgym.Cylinder,
+    "flow_config": {
+        "mesh": "medium",
+        "Re": 100,
+        "observation_type": "velocity_probes",
+        "probes": wake_probes,
     },
-    'solver': hgym.SemiImplicitBDF,
-    'solver_config': {'dt': 1e-2},
+    "solver": hgym.SemiImplicitBDF,
+    "solver_config": {"dt": 1e-2},
 }
 
 env = FlowEnv(env_config)
@@ -323,17 +325,17 @@ print(f"Observation shape: {obs.shape}")  # (40,) — 20 probes × 2 velocity co
 from hydrogym.firedrake.utils.io import CheckpointCallback, LogCallback
 
 env_config = {
-    'flow': hgym.Cavity,
-    'flow_config': {'mesh': 'fine', 'Re': 7500},
-    'solver': hgym.SemiImplicitBDF,
-    'solver_config': {'dt': 1e-4},
-    'callbacks': [
-        CheckpointCallback(interval=1000, filename='cavity_checkpoint.h5'),
+    "flow": hgym.Cavity,
+    "flow_config": {"mesh": "fine", "Re": 7500},
+    "solver": hgym.SemiImplicitBDF,
+    "solver_config": {"dt": 1e-4},
+    "callbacks": [
+        CheckpointCallback(interval=1000, filename="cavity_checkpoint.h5"),
         LogCallback(
             postprocess=lambda flow: flow.get_observations(),
             nvals=1,
             interval=10,
-            filename='cavity_log.txt',
+            filename="cavity_log.txt",
         ),
     ],
 }

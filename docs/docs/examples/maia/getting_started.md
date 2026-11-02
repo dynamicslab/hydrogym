@@ -126,9 +126,9 @@ for x in np.linspace(1.0, 8.0, 8):
     probe_locations.extend([x, 0.0])
 
 env = maia.from_hf(
-    'Cylinder_2D_Re200',
+    "Cylinder_2D_Re200",
     probe_locations=probe_locations,
-    obs_normalization_strategy='U_inf',
+    obs_normalization_strategy="U_inf",
 )
 
 obs, info = env.reset()
@@ -164,14 +164,16 @@ for x in np.linspace(1.0, 8.0, 8):
     for y in np.linspace(-1.0, 1.0, 5):
         probe_locations.extend([x, y])
 
+
 def make_env():
     env = maia.from_hf(
-        'Cylinder_2D_Re200',
+        "Cylinder_2D_Re200",
         use_clean_cache=False,
         probe_locations=probe_locations,
-        obs_normalization_strategy='U_inf',
+        obs_normalization_strategy="U_inf",
     )
     return Monitor(env)
+
 
 env = DummyVecEnv([make_env])
 env = VecNormalize(env, norm_obs=True, norm_reward=True, clip_obs=10.0)
@@ -202,9 +204,9 @@ for x in np.linspace(1.0, 8.0, 10):
         wake_probes.extend([x, y])  # 50 probes total
 
 env = maia.from_hf(
-    'Cylinder_2D_Re200',
+    "Cylinder_2D_Re200",
     probe_locations=wake_probes,
-    obs_normalization_strategy='U_inf',
+    obs_normalization_strategy="U_inf",
 )
 
 obs, _ = env.reset()
@@ -224,13 +226,13 @@ for x in np.linspace(1.0, 8.0, 8):
 
 # Define custom normalization (location and scale for each probe component)
 # For N probes with nDim=2 velocity, you need nDim*N location and scale values
-custom_loc = [0.0] * 80    # Here 40 probes × 2 components
+custom_loc = [0.0] * 80  # Here 40 probes × 2 components
 custom_scale = [1.0] * 80
 
 env = maia.from_hf(
-    'Cylinder_2D_Re200',
+    "Cylinder_2D_Re200",
     probe_locations=[...],  # Your probe locations
-    obs_normalization_strategy='customized',
+    obs_normalization_strategy="customized",
     obs_loc=custom_loc,
     obs_scale=custom_scale,
 )
@@ -243,9 +245,9 @@ import hydrogym.maia as maia
 
 # Use pre-downloaded environment files (no internet required)
 env = maia.from_hf(
-    'Cylinder_2D_Re200',
+    "Cylinder_2D_Re200",
     probe_locations=[...],
-    local_fallback_dir='/scratch/my_project/hf_environments/models--dynamicslab--HydroGym-environments/snapshots/main',
+    local_fallback_dir="/scratch/my_project/hf_environments/models--dynamicslab--HydroGym-environments/snapshots/main",
     use_clean_cache=False,  # Don't try to download from HF Hub
 )
 ```
@@ -283,11 +285,11 @@ cp -r ~/.cache/huggingface/hub/models--dynamicslab--HydroGym-environments \
 from hydrogym.maia.workspace import prepare_maia_workspace
 
 work_dir, props_file = prepare_maia_workspace(
-    environment_name='Cylinder_2D_Re200',
-    work_dir='./my_run',
-    local_fallback_dir='/scratch/my_project/hf_environments/models--dynamicslab--HydroGym-environments/snapshots/main',
+    environment_name="Cylinder_2D_Re200",
+    work_dir="./my_run",
+    local_fallback_dir="/scratch/my_project/hf_environments/models--dynamicslab--HydroGym-environments/snapshots/main",
     use_clean_cache=False,  # Use existing cache
-    force_download=False,   # Don't try to download
+    force_download=False,  # Don't try to download
 )
 
 print(f"Workspace: {work_dir}")
@@ -300,9 +302,9 @@ print(f"Properties: {props_file}")
 import hydrogym.maia as maia
 
 env = maia.from_hf(
-    'Cylinder_2D_Re200',
+    "Cylinder_2D_Re200",
     probe_locations=[...],
-    local_fallback_dir='/scratch/my_project/hf_environments/models--dynamicslab--HydroGym-environments/snapshots/main',
+    local_fallback_dir="/scratch/my_project/hf_environments/models--dynamicslab--HydroGym-environments/snapshots/main",
     use_clean_cache=False,
 )
 ```

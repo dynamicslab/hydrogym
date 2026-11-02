@@ -6,10 +6,10 @@ Standard Gym interface for single-agent NEK5000 environments with direct instant
 
 ```python
 env_config = {
-    'environment_name': 'TCFmini_3D_Re180',
-    'nproc': 10,
-    'use_clean_cache': False,
-    'configuration_file': None,  # Auto-detects config.yaml
+    "environment_name": "TCFmini_3D_Re180",
+    "nproc": 10,
+    "use_clean_cache": False,
+    "configuration_file": None,  # Auto-detects config.yaml
 }
 env = NekEnv(env_config=env_config)
 

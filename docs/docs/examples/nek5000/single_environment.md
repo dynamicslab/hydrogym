@@ -14,10 +14,10 @@ All scripts live in [`examples/nek/getting_started/1_nekenv_single/`](https://gi
 from hydrogym.nek import NekEnv
 
 env_config = {
-    'environment_name': 'TCFmini_3D_Re180',
-    'nproc': 10,
-    'use_clean_cache': False,  # reuse an existing prepared workspace
-    'configuration_file': None,  # auto-detects environment_config.yaml or config.yaml
+    "environment_name": "TCFmini_3D_Re180",
+    "nproc": 10,
+    "use_clean_cache": False,  # reuse an existing prepared workspace
+    "configuration_file": None,  # auto-detects environment_config.yaml or config.yaml
 }
 
 env = NekEnv(env_config=env_config)
@@ -61,8 +61,8 @@ from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 
 env_config = {
-    'environment_name': 'TCFmini_3D_Re180',
-    'nproc': 10,
+    "environment_name": "TCFmini_3D_Re180",
+    "nproc": 10,
 }
 
 env = NekEnv(env_config=env_config)
