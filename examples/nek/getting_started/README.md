@@ -19,8 +19,8 @@ Each subdirectory demonstrates a specific interface pattern with complete exampl
 from hydrogym.nek import NekEnv
 
 env_config = {
-    'environment_name': 'TCFmini_3D_Re180',
-    'nproc': 10,
+    "environment_name": "TCFmini_3D_Re180",
+    "nproc": 10,
 }
 env = NekEnv(env_config=env_config)
 
@@ -30,6 +30,7 @@ obs, reward, terminated, truncated, info = env.step(action)
 
 # Works directly with Stable-Baselines3
 from stable_baselines3 import PPO
+
 model = PPO("MlpPolicy", env)
 model.learn(total_timesteps=100000)
 ```
@@ -50,7 +51,7 @@ model.learn(total_timesteps=100000)
 from hydrogym.nek import parallel_env
 
 env = parallel_env(
-    environment_name='TCFmini_3D_Re180',
+    environment_name="TCFmini_3D_Re180",
     nproc=10,
     num_agents=3,  # Multiple agents
 )
@@ -78,7 +79,7 @@ obs, rewards, terminations, truncations, infos = env.step(actions)
 from hydrogym.nek import parallel_env
 from pettingzoo.utils import parallel_to_aec
 
-parallel = parallel_env(environment_name='TCFmini_3D_Re180', nproc=10)
+parallel = parallel_env(environment_name="TCFmini_3D_Re180", nproc=10)
 env = parallel_to_aec(parallel)
 
 # Turn-based API

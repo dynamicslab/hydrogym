@@ -9,10 +9,10 @@ from hydrogym.nek import NekEnv
 
 # Minimal configuration - just environment name and nproc
 env = NekEnv.from_hf(
-    'TCFmini_3D_Re180',
+    "TCFmini_3D_Re180",
     nproc=10,
     use_clean_cache=False,
-    local_fallback_dir=None  # Optional: local environment directory
+    local_fallback_dir=None,  # Optional: local environment directory
 )
 
 # That's it! Auto-detects config files, handles setup automatically

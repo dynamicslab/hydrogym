@@ -14,10 +14,10 @@ All scripts live in [`examples/nek/getting_started/4_from_hf/`](https://github.c
 from hydrogym.nek import NekEnv
 
 env = NekEnv.from_hf(
-    'TCFmini_3D_Re180',
+    "TCFmini_3D_Re180",
     nproc=10,
-    use_clean_cache=False,         # reuse an existing prepared workspace
-    local_fallback_dir=None,       # optional: path to a local environment package
+    use_clean_cache=False,  # reuse an existing prepared workspace
+    local_fallback_dir=None,  # optional: path to a local environment package
 )
 
 obs, info = env.reset()
@@ -59,9 +59,9 @@ On clusters without internet access, download the environment package locally an
 
 ```python
 env = NekEnv.from_hf(
-    'TCFmini_3D_Re180',
+    "TCFmini_3D_Re180",
     nproc=10,
-    local_fallback_dir='/scratch/my_user/nek_envs',
+    local_fallback_dir="/scratch/my_user/nek_envs",
 )
 ```
 

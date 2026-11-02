@@ -8,16 +8,19 @@ Use `integrate()` for time-stepping simulation with classical or RL controllers.
 from hydrogym.nek import NekEnv, integrate
 
 # Create environment
-env = NekEnv.from_hf('TCFmini_3D_Re80', nproc=10)
+env = NekEnv.from_hf("TCFmini_3D_Re80", nproc=10)
+
 
 # Classical controller
 def opposition_control(t, obs, env):
-    return -obs[:env.action_space.shape[0]]
+    return -obs[: env.action_space.shape[0]]
+
 
 integrate(env, controller=opposition_control, num_steps=1000)
 
 # Or use trained SB3 model
 from stable_baselines3 import PPO
+
 model = PPO.load("model.zip")
 integrate(env, controller=model, num_steps=1000)
 ```
@@ -59,7 +62,8 @@ Custom functions with signature: `action = controller(t, obs, env)`
 
 ```python
 def opposition_control(t, obs, env):
-    return -obs[:env.action_space.shape[0]] * 0.5
+    return -obs[: env.action_space.shape[0]] * 0.5
+
 
 def zero_control(t, obs, env):
     return np.zeros(env.action_space.shape, dtype=np.float32)
@@ -70,6 +74,7 @@ Any SB3 model with `.predict()` method:
 
 ```python
 from stable_baselines3 import PPO
+
 model = PPO.load("trained_model.zip", env=env)
 integrate(env, controller=model, num_steps=1000)
 ```

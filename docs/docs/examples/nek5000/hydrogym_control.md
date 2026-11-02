@@ -13,16 +13,19 @@ All scripts live in [`examples/nek/getting_started/5_hydrogym_control/`](https:/
 ```python
 from hydrogym.nek import NekEnv, integrate
 
-env = NekEnv.from_hf('TCFmini_3D_Re80', nproc=10)
+env = NekEnv.from_hf("TCFmini_3D_Re80", nproc=10)
+
 
 # Classical controller: opposition control
 def opposition_control(t, obs, env):
-    return -obs[:env.action_space.shape[0]]
+    return -obs[: env.action_space.shape[0]]
+
 
 integrate(env, controller=opposition_control, num_steps=1000)
 
 # Or pass a trained SB3 model directly
 from stable_baselines3 import PPO
+
 model = PPO.load("model.zip")
 integrate(env, controller=model, num_steps=1000)
 ```
@@ -63,11 +66,14 @@ Any Python callable with the signature `action = controller(t, obs, env)`:
 ```python
 import numpy as np
 
+
 def opposition_control(t, obs, env):
-    return -obs[:env.action_space.shape[0]] * 0.5
+    return -obs[: env.action_space.shape[0]] * 0.5
+
 
 def sinusoidal(t, obs, env):
     return np.array([np.sin(2 * np.pi * t)], dtype=np.float32)
+
 
 def zero_control(t, obs, env):
     return np.zeros(env.action_space.shape, dtype=np.float32)
@@ -79,6 +85,7 @@ Any SB3 model with a `.predict()` method:
 
 ```python
 from stable_baselines3 import PPO
+
 model = PPO.load("trained_model.zip", env=env)
 integrate(env, controller=model, num_steps=1000)
 ```
