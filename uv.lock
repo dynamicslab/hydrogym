@@ -1134,7 +1134,7 @@ wheels = [
 
 [[package]]
 name = "gymnasium"
-version = "1.3.0"
+version = "1.4.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cloudpickle" },
@@ -1143,14 +1143,14 @@ dependencies = [
     { name = "numpy", version = "2.5.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/4d/ff/14b6880d703dfaca204490979d3254ccd280c99550798993319902873658/gymnasium-1.3.0.tar.gz", hash = "sha256:6939e86e835d6b71b6ba6bfd360487420876deafc79bfb7bacba83a7c446bcf3", size = 830646, upload-time = "2026-04-22T13:47:14.155Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/fb/3a/6713c8a92c259fd7619dc93ff19e6e435463f20d3d7b180b14ce99074c10/gymnasium-1.4.0.tar.gz", hash = "sha256:9754f630a32abfdbb76386abe1bc1e706c982db2d62dfa119c9952eb2de7697d", size = 350436, upload-time = "2026-10-05T11:02:16.217Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e9/73/fda6a25f3beeb5e49d74330b44092b9e5a547395ccd478d1103ddcbff1fc/gymnasium-1.3.0-py3-none-any.whl", hash = "sha256:6b8c159a8540dcbcb221722d7efda24d78ebbcbc3bd2ea1c2611aa2a34471fc2", size = 953904, upload-time = "2026-04-22T13:47:12.13Z" },
+    { url = "https://files.pythonhosted.org/packages/38/4e/6a51be94ae8e9dc8eaddd6ea74a6dde754448c4c746b51a232681f81e41c/gymnasium-1.4.0-py3-none-any.whl", hash = "sha256:1cb947c59e7c72d8eabb2c2274c00cd20948e69f8452a9ef4092223be24fdf0e", size = 476306, upload-time = "2026-10-05T11:02:14.783Z" },
 ]
 
 [[package]]
 name = "gymnax"
-version = "1.0.1"
+version = "0.0.9"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "flax", version = "0.12.8", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
@@ -1161,9 +1161,9 @@ dependencies = [
     { name = "matplotlib" },
     { name = "seaborn" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e4/a1/a9648bc16a86306d22de219ac1fd2104edfd1dc6737c148f50c9a0e78de8/gymnax-1.0.1.tar.gz", hash = "sha256:f56d50e4be2f8827db6e548387bc8806d69785b637ca005c19ea95685eaacdbb", size = 80720, upload-time = "2026-10-18T10:15:02.801Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/9c/2c/91105387a5f6f11fe4c6e773fecd6aeac5a04656f1ea03c28e5228a8a11c/gymnax-0.0.9.tar.gz", hash = "sha256:407ececbefb527b8e18d2bc4df15dd5251fd3507f3f527ad69fbfc7b2d8ae410", size = 57128, upload-time = "2025-05-23T08:53:19.987Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/76/5a/03a25cf0d879ed8fce040c49f38572d0e467c116da612ef5daf60e7a8b98/gymnax-1.0.1-py3-none-any.whl", hash = "sha256:b7adcda33f41f6b8b27ac589be378a154a9209e736147977f6c0aebe5f35e796", size = 101241, upload-time = "2026-10-18T10:15:01.4Z" },
+    { url = "https://files.pythonhosted.org/packages/fd/04/1042695a9aee9d619d4802272ffeb7ab88f4c241d16c2701f666ec7e529b/gymnax-0.0.9-py3-none-any.whl", hash = "sha256:a73359cfbc2664f4963ccac06afe2b46ff7825cf48dd97200b0f4025f6f995bc", size = 86567, upload-time = "2025-05-23T08:53:18.316Z" },
 ]
 
 [[package]]
@@ -1320,7 +1320,7 @@ wheels = [
 
 [[package]]
 name = "huggingface-hub"
-version = "2.3.0"
+version = "2.4.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
@@ -1333,9 +1333,9 @@ dependencies = [
     { name = "tqdm" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/46/dd/585639d95f6a987c0bdfb9045f050f4ad67240775644ba7a4fdc5aca3a3b/huggingface_hub-2.3.0.tar.gz", hash = "sha256:0b783b37f200f1d25bef2344a997c7d410f4437fbe9d8fd965f958e75cec7aef", size = 1063410, upload-time = "2026-10-23T08:52:06.594Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b5/3b/2fcef1eabe52aec90fc8cd253cc154da1d02a446d7bbcdec59b4a51d4be7/huggingface_hub-2.4.0.tar.gz", hash = "sha256:13a6158b9e3393d9d3f248ce99074d50c2a0a1449fb9d8e2f710751e2084c188", size = 1066194, upload-time = "2026-10-29T15:30:12.321Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c7/89/5f6ef1162d0323f167b6baab04d1b4bd6a946161a8af6d86f622d9d79aa1/huggingface_hub-2.3.0-py3-none-any.whl", hash = "sha256:5da369600233568a126eb5578754935b2add9446b42d9e2fc0927d56840ac1a5", size = 855161, upload-time = "2026-10-23T08:52:04.78Z" },
+    { url = "https://files.pythonhosted.org/packages/d4/55/ff47f1b082ecf5f43f4bc1e3b932d68eead171dabbbd1a92666c686301d7/huggingface_hub-2.4.0-py3-none-any.whl", hash = "sha256:42ecfd93ede47bdd333daebbf66a32d7bfe2e18752754fe4d2d4f98a0179d801", size = 857021, upload-time = "2026-10-29T15:30:10.421Z" },
 ]
 
 [[package]]
@@ -4223,7 +4223,7 @@ wheels = [
 
 [[package]]
 name = "stable-baselines3"
-version = "2.9.0"
+version = "2.9.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cloudpickle" },
@@ -4232,9 +4232,9 @@ dependencies = [
     { name = "numpy", version = "2.5.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "torch" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/89/f8/9c1901a42e55b21b9e9559a720cb33dffdeb4c4215b1dfd10d63224b19c0/stable_baselines3-2.9.0.tar.gz", hash = "sha256:92b46c6099a0e8f99163ff09e26729e4d0a68b33dc8598626ca13ade3c0b3a61", size = 221345, upload-time = "2026-06-15T17:00:30.713Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ab/86/fb86bf20bc2321d14a5a40221119043186efaebe2490e1038d17e4a4783e/stable_baselines3-2.9.2.tar.gz", hash = "sha256:8af267e9513343f481b3f0680b7740ad79a746873db24f18a9fb2edcbd9a2df7", size = 223761, upload-time = "2026-10-26T09:35:30.876Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a6/70/d18c8278223d4928378c4af822b66d3c87e19e73bcb011e05e2f0b43f4e5/stable_baselines3-2.9.0-py3-none-any.whl", hash = "sha256:95f39a473dce081d1abe31acaf7cee446dcf223dcd74093d6ea460bc37e2e748", size = 187606, upload-time = "2026-06-15T17:00:29.331Z" },
+    { url = "https://files.pythonhosted.org/packages/b0/c0/d4f648cbfb1efce94ad0dd0db3487e3e8f2bd572f035cfc0fc1b8a070cfe/stable_baselines3-2.9.2-py3-none-any.whl", hash = "sha256:0b7db1789bea31d43b3e9be4f88abf639549b587f2bf2a2461ee9d3d77c68e96", size = 188412, upload-time = "2026-10-26T09:35:28.923Z" },
 ]
 
 [[package]]
