@@ -120,6 +120,11 @@ class NACA0012Gust(NACA0012Base):
     superposed m-AIA slug (the streamwise surge of the released inflow-BC gust, fitted to it). Older cases without
     the property keep the released workflow (gust contained in the restart).
 
+    Named gusts shipped with the case as ``gust_<name>.bin`` (2026-11-07): 'slug' (the default, = the shipped
+    gust file) and 'fig2c' (a one-piece finite transverse gust whose lift gain matches the uncontrolled gust of
+    Nature Fig. 2c: C_L peak ~4.3 about 3.6 c/U into the episode, tuned in m-AIA 2D). Select with
+    ``env_config['gust']`` or use the names in ``gust_files`` / ``reset(options={'gust_file': name})``.
+
     Attributes:
         unperturbed_avg_drag: Baseline drag coefficient without gust.
         unperturbed_avg_lift: Baseline lift coefficient without gust.
@@ -138,6 +143,8 @@ class NACA0012Gust(NACA0012Base):
                   copied over the case's gust file (cyclic, or random with ``gust_sampling='random'``).
                 - gust_sampling (str): 'cycle' (default) or 'random'.
                 - gust_seed (int): seed of the random choice.
+                - gust (str): a named gust of the case ('slug' = default, 'fig2c'), i.e. gust_files=[name].
+                Entries of gust_files (and options['gust_file']) may be names: <case>/gust_<name>.bin.
         """
         super().__init__(env_config)
         self.unperturbed_avg_drag = self.cfg.maia.unperturbed_avg_drag
@@ -146,7 +153,10 @@ class NACA0012Gust(NACA0012Base):
         gf = self.runtime_property_file_data.get("lbGustFieldFile")
         self.gust_field_file: Optional[str] = os.path.join(self.env_data_path, gf) if gf else None
         files = env_config.get("gust_files")
+        if files is None and env_config.get("gust") is not None:
+            files = [env_config["gust"]]
         self.gust_files: List[str] = [files] if isinstance(files, str) else list(files or [])
+        self.gust_files = [self._gust_path(f) for f in self.gust_files]
         if self.gust_files and self.gust_field_file is None:
             raise ValueError(
                 "gust_files given, but the case's properties_run.toml has no lbGustFieldFile "
@@ -170,12 +180,23 @@ class NACA0012Gust(NACA0012Base):
 
         self.setup_normalization()
 
+    def _gust_path(self, f: str) -> str:
+        """A gust file path, or a named gust of the case (<case>/gust_<name>.bin, e.g. 'slug', 'fig2c')."""
+        if os.path.isfile(f):
+            return f
+        named = os.path.join(self.env_data_path, f"gust_{f}.bin")
+        if os.sep not in f and os.path.isfile(named):
+            return named
+        return f
+
     def reset(self, seed: Optional[int] = None, options: Optional[Dict] = None) -> Tuple[np.ndarray, Dict]:
         """
         Reset the environment; with ``gust_files`` the episode's gust file is put in place first (m-AIA reads it
         when it reloads the restart). ``options={'gust_file': path}`` sets the gust of this episode explicitly.
         """
         path = (options or {}).get("gust_file")
+        if path is not None:
+            path = self._gust_path(path)
         if path is None and self.gust_files:
             if self.gust_sampling == "random":
                 path = self.gust_files[int(self._gust_rng.integers(len(self.gust_files)))]
