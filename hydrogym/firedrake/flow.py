@@ -85,7 +85,7 @@ class FlowConfig(PDEBase):
 
         # Process restart parameter - resolve environment names to checkpoint paths
         # or auto-infer from flow configuration
-        mesh = config.get("mesh", self.MESH_DIR)
+        mesh = config.get("mesh", self.DEFAULT_MESH)
         cache_dir = config.pop("cache_dir", None)  # Custom cache directory (optional)
         local_dir = config.pop("local_dir", None)  # Local fallback directory (optional)
         use_HF_data_manager = config.pop("use_HF_data_manager", True)  # Control HF data manager usage (default: True)
@@ -537,10 +537,10 @@ class FlowConfig(PDEBase):
         if len(probes_array) == 0:
             return  # No probes to validate
 
-        # Get mesh coordinates for bounding box check
+        # Get global mesh bounding box (each rank only holds its local partition)
         coords = mesh.coordinates.dat.data_ro
-        x_min, y_min = coords.min(axis=0)
-        x_max, y_max = coords.max(axis=0)
+        x_min, y_min = (mesh.comm.allreduce(float(v), op=MPI.MIN) for v in coords.min(axis=0))
+        x_max, y_max = (mesh.comm.allreduce(float(v), op=MPI.MAX) for v in coords.max(axis=0))
 
         # Check if any probes are outside bounding box
         outside_probes = []
