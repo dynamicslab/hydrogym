@@ -24,6 +24,18 @@ def test_steady(tol=1e-3):
     assert abs(CD - 1.2840) < tol  # Re = 100
 
 
+def test_jet_zero_net_mass_flux(tol=1e-8):
+    flow = hgym.Cylinder(mesh="medium")
+
+    # Volume flux from the cylinder wall into the fluid for unit actuation
+    flux = fd.dot(flow.cyl_velocity_field, -flow.n)
+    upper_flux = fd.assemble(fd.conditional(flow.y > 0, flux, 0.0) * fd.ds(flow.CYLINDER))
+    lower_flux = fd.assemble(fd.conditional(flow.y < 0, flux, 0.0) * fd.ds(flow.CYLINDER))
+
+    assert upper_flux > 0  # Blowing through the upper jet
+    assert abs(upper_flux + lower_flux) < tol * abs(upper_flux)
+
+
 def test_steady_rotation(tol=1e-3):
     Tf = 4.0
     dt = 0.1

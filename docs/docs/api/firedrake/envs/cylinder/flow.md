@@ -87,3 +87,6 @@ Velocity vector for boundary condition
 Blowing/suction actuation on the cylinder wall, following Rabault, et al (2018)
 https://arxiv.org/abs/1808.07664
 
+The two jets act as a zero-net-mass-flux pair: a positive control blows
+through the upper jet and sucks through the lower jet with equal flow rate.
+
