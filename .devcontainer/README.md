@@ -3,7 +3,9 @@
 Modular devcontainer setup: a shared base image (NVHPC 26.5 + CUDA 13.2,
 apt OpenMPI, the parallel HDF5/netCDF/FFTW stacks) plus per-solver
 "features" that each pinned `*.devcontainer.json` config composes.
-Available features so far:
+`devcontainer-template.json` lists every feature with its options and
+example combinations; copy it to build your own config. Available
+features:
 
 | Feature                | What it builds                                                   |
 |------------------------|------------------------------------------------------------------|
@@ -23,6 +25,7 @@ Configs:
 | `devcontainer.json` (default)      | `maia-gpu`            | MAIA GPU development; needs an NVIDIA GPU |
 | `maia-gpu-test.devcontainer.json`  | `maia-gpu`            | MAIA GPU build smoke test             |
 | `full-gpu-stack.devcontainer.json` | `maia-gpu` + `hydrogym-gpu` | MAIA GPU + JAX/JAX-Fluids/PyTorch; GPU solver smoke tests |
+| `full-cpu-stack.devcontainer.json` | `maia-cpu` + `nek5000` + `petsc` + `firedrake` | Every CPU solver; CPU solver smoke tests |
 | `maia-cpu-test.devcontainer.json`  | `maia-cpu`            | MAIA CPU build smoke test             |
 | `nek5000-test.devcontainer.json`   | `nek5000`             | Nek5000 case build smoke test         |
 | `petsc-test.devcontainer.json`     | `petsc`               | PETSc build smoke test                |
@@ -38,6 +41,15 @@ devcontainer up --workspace-folder . \
 `devcontainer.json` is what VS Code / Codespaces open by default: it is
 the MAIA GPU config, so it requires `--gpus=all` to work on the host and
 the GPU architecture to be set as described next.
+
+## Scripts
+
+| Script | Purpose |
+|---|---|
+| `scripts/build_all_containers.sh` | Build every config above sequentially from a clean state (`NO_CACHE=0` to reuse Docker layers, `CONFIGS="..."` for a subset); leaves each container running, labelled `devcontainer.config_variant=<name>`. Logs go to `.devcontainer/build-logs/` (gitignored). |
+| `scripts/test_cpu_solvers.sh` / `scripts/test_gpu_solvers.sh` | End-to-end solver smoke tests (MAIA, Firedrake, Nek5000; MAIA GPU, JAX, JAX-Fluids) inside the containers `build_all_containers.sh` left running. Logs go to `.devcontainer/test-logs/` (gitignored). |
+| `scripts/verify_install.sh` | Checks binaries, venvs and build artefacts inside a running container. |
+| `scripts/set-gpu-arch.sh` | Sets `pstlPreset` across the GPU configs (see below). |
 
 ## You must set your GPU architecture before building
 
@@ -154,7 +166,9 @@ and symlink `compile_commands.json` into the submodule for IntelliSense.
   (`min(nproc, available_RAM_GB / 5)`) instead of a number hand-picked for
   one machine — some translation units peak at ~4.2GB RSS each, so a flat
   `-j16` either under-uses a big box or OOM-kills the compiler on a
-  smaller one.
+  smaller one. `build_all_containers.sh` still runs configs sequentially,
+  not in parallel, since two builds at once would blow past what even this
+  per-build calculation accounts for.
 - **MAIA host-config auto-detection is hostname-based, not env-var based**:
   `configure.py`'s host detection (`cmake/GetHost.cmake`) pattern-matches
   the container's OS hostname against a hardcoded cluster list — it does
