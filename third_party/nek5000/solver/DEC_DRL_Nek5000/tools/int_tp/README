@@ -1,0 +1,62 @@
+	Interpolation tool
+
+To run:
+You will need the following files to successfully run the interpolation tool:
+  - file.list : a list of the fld files containing the data to be 
+                interpolated.  (.fld00 or .f00000 format)
+  - The files listed in file.list
+  - A .box file matching the data in file.list, to describe the mesh
+  - If using SEM interpolation, a .box file describing the new geometry
+    to map the old data to.
+  - If using non-uniform interpolation, file, new.geom containing the points
+    to map the data too.  These should be formatted as:
+          total_pts_in_x
+          x0
+          x1
+          ...xN
+          total_pts_in_y
+          y0
+          y1
+          ...yN
+          total_pts_in_z(if 3D)
+          z0
+          z1
+          ...zN
+
+1) First Select a uniform interpolation (common for FFT), SEM interpolation
+or a non-uniform interpolation(to be specified in a seperate user-supplied
+file)
+
+
+2) Specify the file format when prompted.  This must match what is found
+in the files containing the initial data.
+
+   NOTE: There must be a file, file.list, containing the names of the 
+   files where the data will be found.  Currently, there are 3 possible 
+   formats the tool will understand.  Standard .fld in ASCII, .fld in
+   binary, and 0.f0000? in binary.  Enter the appropriate format when
+   prompted
+
+3) Enter the full name of the .box file describing the original geometry 
+of the data found in the files to be opened in file.list.  
+
+4) If Uniform Interpolation: enter the TOTAL number of points in each 1D
+   direction.  If periodic, there will be a h/2 shift to the left for 
+   each point.  If not periodic, the end result will be N+1 points.
+
+   If SEM Interpolation: enter the .box file describing the new geometry
+   to map to.  Also, enter the polynomial order to be used for the new
+   mapping.
+  
+   If Non-Uniform Interpolation: The code will look for new.geom, as 
+   described above, for the new geometry.
+
+5) Formatted Output(y/n)?  Yes will result in an ASCII file, whereas No 
+will result in binary files.  For uniformed interpolation, no header is 
+outputted.  SEM interpolation outputs a full header and file compatible 
+for use within NEK5000.
+
+This tool can interpolate multiple files at once, assuming the geometry 
+is the same.
+
+Also, it is currently only reading in with 4-byte precision.

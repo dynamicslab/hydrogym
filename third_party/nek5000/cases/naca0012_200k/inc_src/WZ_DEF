@@ -1,0 +1,5 @@
+!     missing definitions in WZ
+      real ZGM1, ZGM2, ZGM3, ZAM1, ZAM2, ZAM3
+      real WXM1, WYM1, WZM1, W3M1, WXM2, WYM2, WZM2, W3M2, WXM3, WYM3,
+     $     WZM3, W3M3, WAM1, WAM2, WAM3, W2AM1, W2CM1, W2AM2, W2CM2,
+     $     W2AM3, W2CM3

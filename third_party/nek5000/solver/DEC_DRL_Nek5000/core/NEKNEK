@@ -1,0 +1,41 @@
+c
+c     Multimesh variables
+c
+      include 'GLOBALCOM' 	
+
+      integer intflag(6,lelt)
+      common /intflag/ intflag
+
+      integer imask(lx1,ly1,lz1,lelt)
+      common /intmask/ imask 
+
+      real             valint(lx1,ly1,lz1,lelt,nfldmax)
+      common /valmask/ valint
+
+      integer npsend, nprecv, infosend(nmaxcom,2), inforecv(nmaxcom,2)
+      common /proclist/ npsend, nprecv, infosend, inforecv
+
+      integer iden(ldim+1,nmaxl)
+      common /pointiden/ iden
+
+      integer igeom
+      common /cgeom/ igeom
+
+      real ubc(lx1,ly1,lz1,lelt,nfldmax)
+      common /mybc/ ubc
+
+      integer nfld_neknek
+      common /inbc/ nfld_neknek
+ 
+      real bdrylg(lx1*ly1*lz1*lelt,nfldmax,0:2)
+      common /mybd/ bdrylg
+
+      real    rst(nmaxcom*ldim)
+      common /multipts_r/ rst
+
+      integer rcode(nmaxcom),elid(nmaxcom),proc(nmaxcom)
+     $      , ilist(ldim+1,nmaxcom),npoints
+      common /multipts_i/ rcode,elid,proc,ilist,npoints
+
+      integer inth_multi
+      save    inth_multi

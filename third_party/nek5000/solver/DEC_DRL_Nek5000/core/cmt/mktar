@@ -1,0 +1,4 @@
+pwd  >> README
+date >> README
+rm tarfile.gz
+tar -zcvf tarfile.gz *.f CMTBCDATA CMTDATA CMTTIMERS DG PERFECTGAS

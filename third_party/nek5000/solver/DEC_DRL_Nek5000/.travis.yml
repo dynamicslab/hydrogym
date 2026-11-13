@@ -1,0 +1,85 @@
+language: fortran
+
+sudo: required
+
+env:
+  matrix:
+    - TEST_CASE=Eddy_EddyUv::test_PnPn_Serial  IFMPI=false F77=gfortran CC=gcc
+    - TEST_CASE=Eddy_EddyUv::test_PnPn2_Serial IFMPI=false F77=gfortran CC=gcc
+
+    # - TEST_CASE=Axi::test_PnPn_Serial  IFMPI=true F77=mpif77 CC=mpicc
+    - TEST_CASE=Axi::test_PnPn_Parallel  IFMPI=true F77=mpif77 CC=mpicc
+    # - TEST_CASE=Axi::test_PnPn2_Serial IFMPI=true F77=mpif77 CC=mpicc
+    - TEST_CASE=Axi::test_PnPn2_Parallel IFMPI=true F77=mpif77 CC=mpicc
+
+    # - TEST_CASE=Benard_Ray9::test_PnPn_Serial   IFMPI=true F77=mpif77 CC=mpicc
+    # - TEST_CASE=Benard_Ray9::test_PnPn2_Serial  IFMPI=true F77=mpif77 CC=mpicc
+    - TEST_CASE=Benard_Ray9::test_PnPn_Parallel   IFMPI=true F77=mpif77 CC=mpicc
+    - TEST_CASE=Benard_Ray9::test_PnPn2_Parallel  IFMPI=true F77=mpif77 CC=mpicc
+    # - TEST_CASE=Benard_RayDD::test_PnPn_Serial  IFMPI=true F77=mpif77 CC=mpicc # Exceeds time limit for Travis jobs
+    # - TEST_CASE=Benard_RayDD::test_PnPn2_Serial IFMPI=true F77=mpif77 CC=mpicc # Stdout exceeds Travis' max log length
+    # - TEST_CASE=Benard_RayDN::test_PnPn_Serial  IFMPI=true F77=mpif77 CC=mpicc # Exceeds time limit for Travis jobs
+    # - TEST_CASE=Benard_RayDN::test_PnPn2_Serial IFMPI=true F77=mpif77 CC=mpicc
+    # - TEST_CASE=Benard_RayNN::test_PnPn_Serial  IFMPI=true F77=mpif77 CC=mpicc # Exceeds time limit for Travis jobs
+    # - TEST_CASE=Benard_RayNN::test_PnPn2_Serial IFMPI=true F77=mpif77 CC=mpicc # Exceeds time limit for Travis jobs
+
+    # - TEST_CASE=Eddy_EddyUv::test_PnPn_Serial  IFMPI=true F77=mpif77 CC=mpicc
+    - TEST_CASE=Eddy_EddyUv::test_PnPn_Parallel  IFMPI=true F77=mpif77 CC=mpicc
+    # - TEST_CASE=Eddy_EddyUv::test_PnPn2_Serial IFMPI=true F77=mpif77 CC=mpicc
+    - TEST_CASE=Eddy_EddyUv::test_PnPn2_Parallel IFMPI=true F77=mpif77 CC=mpicc
+
+    # - TEST_CASE=KovStState::test_PnPn2_Serial IFMPI=true F77=mpif77 CC=mpicc
+    - TEST_CASE=KovStState::test_PnPn2_Parallel IFMPI=true F77=mpif77 CC=mpicc
+
+    # - TEST_CASE=LowMachTest::test_PnPn_Serial  IFMPI=true F77=mpif77 CC=mpicc
+    - TEST_CASE=LowMachTest::test_PnPn_Parallel  IFMPI=true F77=mpif77 CC=mpicc
+    # - TEST_CASE=LowMachTest::test_PnPn2_Serial IFMPI=true F77=mpif77 CC=mpicc
+    - TEST_CASE=LowMachTest::test_PnPn2_Parallel IFMPI=true F77=mpif77 CC=mpicc
+
+    # - TEST_CASE=VarVis::test_PnPn_Serial    IFMPI=true F77=mpif77 CC=mpicc # Stdout exceeds Travis' max log length
+    # - TEST_CASE=VarVis::test_PnPn_Parallel  IFMPI=true F77=mpif77 CC=mpicc # Stdout exceeds Travis' max log length
+    # - TEST_CASE=VarVis::test_PnPn2_Serial   IFMPI=true F77=mpif77 CC=mpicc # Stdout exceeds Travis' max log length
+    # - TEST_CASE=VarVis::test_PnPn2_Parallel IFMPI=true F77=mpif77 CC=mpicc # Stdout exceeds Travis' max log length
+
+    # - TEST_CASE=CmtInviscidVortex::test_PnPn_Serial   IFMPI=true F77=mpif77 CC=mpicc PPLIST="$PPLIST CMTNEK"
+    # - TEST_CASE=CmtInviscidVortex::test_PnPn_Parallel IFMPI=true F77=mpif77 CC=mpicc PPLIST="$PPLIST CMTNEK"
+
+    - TEST_CASE=MvCylCvode::test_PnPn_Parallel_Steps1e3   IFMPI=true F77=mpif77 CC=mpicc PPLIST="$PPLIST CVODE"
+    # - TEST_CASE=MvCylCvode::test_PnPn_Parallel_Steps1e4 IFMPI=true F77=mpif77 CC=mpicc PPLIST="$PPLIST CVODE" # Exceeds time limit for Travis jobs
+
+before_install: 
+  - export ROOT_DIR=`pwd`
+
+  - export SOURCE_ROOT=$ROOT_DIR
+  - export EXAMPLES_ROOT=$ROOT_DIR/short_tests
+  - export VERBOSE_TESTS=true
+  - export PARALLEL_PROCS=2
+
+  # Install MPICH
+  - sudo apt-get update -qq
+  - sudo apt-get install -y libmpich-dev mpich
+
+  # Set up Python virtualenv
+  - virtualenv -p python2.7 $ROOT_DIR/python2-env
+  - source $ROOT_DIR/python2-env/bin/activate
+  - export PYTHONPATH="$ROOT_DIR/short_tests:$PYTHONPATH"
+
+  # Install cvode
+  - export CVODE_INSTALL_DIR=$ROOT_DIR/cvode-2.9.0-install
+  - export USR_LFLAGS="$USR_LFLAGS -L$CVODE_INSTALL_DIR/lib -lsundials_fcvode -lsundials_cvode -lsundials_fnvecparallel -lsundials_nvecparallel"
+  - mkdir -p $CVODE_INSTALL_DIR
+  - wget http://computation.llnl.gov/projects/sundials/download/cvode-2.9.0.tar.gz
+  - tar -zxf cvode-2.9.0.tar.gz
+  - mkdir -p cvode-2.9.0/build
+  - cd cvode-2.9.0/build
+  - cmake -DCMAKE_INSTALL_PREFIX=$CVODE_INSTALL_DIR -DEXAMPLES_INSTALL=OFF -DMPI_ENABLE=ON -DFCMIX_ENABLE=ON -DBUILD_SHARED_LIBS=OFF ../
+  - make
+  - make install
+  - ls -R $CVODE_INSTALL_DIR
+ 
+install:
+  - pip install --upgrade pip
+  - pip install pytest
+
+script: 
+  - py.test -s -v $ROOT_DIR/short_tests/NekTests.py::$TEST_CASE
