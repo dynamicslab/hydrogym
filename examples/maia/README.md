@@ -131,7 +131,8 @@ env = maia.from_hf(
 **Available Environments in 2D and 3D:**
 - `Cylinder_2D_Re200` - 2D cylinder flow at Re=200
 - `RotaryCylinder_2D_Re1000` - 2D rotating cylinder
-- `Cavity_2D_Re4140` - 2D open cavity
+- `Cavity_2D_Re4200`, `Cavity_2D_Re7500` - 2D open cavity, one leading-edge jet (weakly unstable / limit cycle)
+- `Cavity3Jet_2D_Re4200`, `Cavity3Jet_2D_Re7500` - 2D open cavity, three jets
 - `Pinball_2D_Re130` - 2D pinball configuration
 - And many more... (see `maia.list_available_environments()`)
 

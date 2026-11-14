@@ -362,7 +362,7 @@ Factory function to create any MaiaGym environment from Hugging Face Hub.
 
   &gt;&gt;&gt; env = maiaGym.from_hf(&#x27;Cylinder_2D_Re200&#x27;)
   &gt;&gt;&gt; env = maiaGym.from_hf(&#x27;RotaryCylinder_2D_Re1000&#x27;, obs_loc=custom_loc)
-  &gt;&gt;&gt; env = maiaGym.from_hf(&#x27;Cavity_2D_Re4140&#x27;)
+  &gt;&gt;&gt; env = maiaGym.from_hf(&#x27;Cavity_2D_Re4200&#x27;)
 
 #### list\_available\_environments
 

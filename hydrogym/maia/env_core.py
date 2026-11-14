@@ -824,7 +824,7 @@ def from_hf(environment_name: str, hf_repo_id: str = "dynamicslab/HydroGym-envir
     Examples:
         >>> env = maiaGym.from_hf('Cylinder_2D_Re200')
         >>> env = maiaGym.from_hf('RotaryCylinder_2D_Re1000', obs_loc=custom_loc)
-        >>> env = maiaGym.from_hf('Cavity_2D_Re4140')
+        >>> env = maiaGym.from_hf('Cavity_2D_Re4200')
     """
     # Parse environment type from name
     if "_" not in environment_name:

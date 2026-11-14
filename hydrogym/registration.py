@@ -73,7 +73,7 @@ _MAIA_ENVS = {
         "obs_normalization_strategy": "U_inf",
     },
     "RotaryCylinder_2D_Re1000": {},
-    "Cavity_2D_Re4140": {},
+    "Cavity_2D_Re4200": {},
 }  # ns: hydrogym-maia
 
 # Representative NEK environment (the documented smoke-test case; nproc must

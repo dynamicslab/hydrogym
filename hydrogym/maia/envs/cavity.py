@@ -4,6 +4,27 @@ Cavity Flow Environment
 
 This module provides cavity flow CFD environments for reinforcement learning,
 designed for flow control applications in cavity configurations.
+
+Hugging Face cases ``Cavity_2D_Re{4200,7500}`` (one jet) and ``Cavity3Jet_2D_Re{4200,7500}`` (three jets), on the
+literature configuration of the open cavity (Barbagallo et al. 2009 / Sipp & Lebedev 2007), validated against an
+independent LBM solver and the finite-volume reference:
+
+* domain x in [-1, 4.7] x [-1, 0.5] in case coordinates (= paper coordinates + 1.2; cavity [1.2, 2.2] x [-1, 0]),
+  1 D sponge layers outside the paper domain, slip top, slip floor upstream of x = 0.8 and downstream of x = 2.95,
+  velocity inlet, non-reflecting (plane-wave characteristic) outlet;
+* D2Q9 cumulant collision, Ma 0.0125 (U_inf = 0.0072169 lattice units), uniform grid D/240;
+* ``Re4200`` runs at the solver Reynolds number 4070: the critical point of this grid lies 130 below the reference
+  Re_c = 4140, so 4070 is the reference's weakly unstable Re 4200 (``environment_config.yaml`` and the property
+  file say 4070); ``Re7500`` is the limit-cycle case;
+* jets (equilibrium jet boundary condition, parabolic profile over 0.02): leading edge x = 1.175 on y = 0
+  (wall-normal), and for ``Cavity3Jet`` also the trailing cavity wall (x = 2.2, y = -0.25) and the leading cavity
+  wall (x = 1.2, y = -0.5); actions in [-1, 1] times ``max_control`` = centre velocity 0.35 U (one jet) /
+  0.69 U (three jets); one action = 633 LB steps = 0.019 D/U;
+* restart = a developed uncontrolled state; ``baseline_state.feather`` = the uncontrolled time mean (40 D/U) at
+  every cell centre.
+
+Timing of the MPMD loop: ``step(a_k)`` returns the probe state before ``a_k`` acts (the solver first advances with
+the previous action, then receives ``a_k``), i.e. the observation lags the action by one control interval.
 """
 
 import glob

@@ -26,7 +26,7 @@ EXPECTED_IDS = {
     "hydrogym/Step-v0",
     "hydrogym-maia/Cylinder_2D_Re200-v0",
     "hydrogym-maia/RotaryCylinder_2D_Re1000-v0",
-    "hydrogym-maia/Cavity_2D_Re4140-v0",
+    "hydrogym-maia/Cavity_2D_Re4200-v0",
     "hydrogym-nek/TCFmini_3D_Re180-v0",
     "hydrogym-jaxfluids/Nozzle2D-v0",
     "hydrogym-jaxfluids/Nozzle3D-v0",
@@ -233,7 +233,7 @@ def test_maia_factory_forwards_kwargs(fake_maia):
 
 
 def test_maia_factory_env_without_default_probes_requires_them(fake_maia):
-    # RotaryCylinder_2D_Re1000 / Cavity_2D_Re4140 have no verified default
+    # RotaryCylinder_2D_Re1000 / Cavity_2D_Re4200 have no verified default
     # probe grid -- the caller must supply one (same shape of requirement as
     # Nek's nproc). No defaults means an empty kwargs dict reaches from_hf,
     # which is where the real (unmocked) MaiaFlowEnv raises ConfigError.
