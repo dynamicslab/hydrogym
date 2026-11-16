@@ -525,8 +525,14 @@ class MaiaFlowEnv(HFEnvConfigMixin, gym.Env):
         """
         action = [a * self.MAX_CONTROL for a in action]
 
-        self.maiaInterface.runTimeSteps(self.num_substeps_per_iteration)
+        # m-AIA answers control / probe requests only at the start of a substep segment (LbSolver::callMPMDRoutines).
+        # The action is set while m-AIA waits there, the segment then runs N substeps with it, and the probes are read
+        # at the start of the next segment: the observation is the state at the END of the interval the action acted
+        # on (gym convention).  The previous order (run, set, probe, continue) returned the state BEFORE the action
+        # acted, i.e. every policy saw its observation one action interval late.
         self.maiaInterface.setControlProperties(self.convert_action(action=action))
+        self.maiaInterface.continueRun()
+        self.maiaInterface.runTimeSteps(self.num_substeps_per_iteration)
 
         self.probeData = self.maiaInterface.getProbeData(self.probe_locations)
         self.probeData = rearrange(self.probeData, "(n p) -> n p", n=self.noProbes)
@@ -570,8 +576,6 @@ class MaiaFlowEnv(HFEnvConfigMixin, gym.Env):
         done = self.check_complete()
         info = {}
 
-        self.maiaInterface.continueRun()
-
         return self.obs, reward, False, bool(done), info
 
     def reset(self, seed: Optional[int] = None, options: Optional[Dict] = None) -> Tuple[np.ndarray, Dict]:
@@ -587,7 +591,11 @@ class MaiaFlowEnv(HFEnvConfigMixin, gym.Env):
         """
         print("Resetting environment", flush=True)
 
-        self.maiaInterface.runTimeSteps(1)
+        # Between calls m-AIA waits in its request loop at the start of the next segment (see step()).  Leave it first
+        # (after a step), open an N-substep segment, reinitialise, and stay in the request loop (no continueRun).
+        if getattr(self, "_in_request_loop", False):
+            self.maiaInterface.continueRun()
+        self.maiaInterface.runTimeSteps(self.num_substeps_per_iteration)
         self.maiaInterface.reinit()
 
         self.maiaInterface.setControlProperties(self.convert_action(action=np.zeros(shape=self.num_inputs)))
@@ -623,11 +631,10 @@ class MaiaFlowEnv(HFEnvConfigMixin, gym.Env):
 
         self.obs = np.concatenate(self.obs)
         self.obs = (self.obs - self.obs_loc) / self.obs_scale
+        self._in_request_loop = True
 
         self.iter = 0
         info = {}
-
-        self.maiaInterface.continueRun()
 
         return self.obs, info
 
@@ -698,6 +705,9 @@ class MaiaFlowEnv(HFEnvConfigMixin, gym.Env):
         """
         print("ENV: Closing environment and signaling maia to finish...", flush=True)
         try:
+            if getattr(self, "_in_request_loop", False):  # leave the request loop before the finish signal
+                self.maiaInterface.continueRun()
+                self._in_request_loop = False
             self.maiaInterface.finishRun()
             print("ENV: Finish signal sent to maia", flush=True)
         except Exception as e:
