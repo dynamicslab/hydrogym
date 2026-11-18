@@ -468,15 +468,14 @@ class FlowEnv(gym.Env):
             self.iter += 1
             reward = self.get_reward()
         else:
-            # Multi-substep mode
-            def constant_controller(t, y):
-                return action
-
-            _, rewards = self.solver.solve(
-                num_steps=self.num_substeps,
-                controller=constant_controller,
-                collect_rewards=True,
-            )
+            # Multi-substep mode: hold the action over all substeps and keep
+            # the iteration count running so multistep solvers (e.g. BDF)
+            # only take their start-up steps at the beginning of an episode
+            rewards = []
+            for _ in range(self.num_substeps):
+                self.solver.step(self.iter, control=action)
+                self.iter += 1
+                rewards.append(self.flow.evaluate_objective())
 
             # Aggregate rewards
             if self.reward_aggregation == "mean":
@@ -486,7 +485,6 @@ class FlowEnv(gym.Env):
             else:  # median
                 aggregated_objective = np.median(rewards, axis=0)
 
-            self.iter += self.num_substeps
             reward = -self.solver.dt * aggregated_objective
 
         # Execute callbacks
