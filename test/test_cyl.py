@@ -14,6 +14,28 @@ def test_import_fine():
     hgym.Cylinder(mesh="fine")
 
 
+def test_default_mesh_checkpoint_name(monkeypatch):
+    # The auto-inferred checkpoint name must use the default mesh resolution
+    requested = []
+    monkeypatch.setattr(
+        hgym.Cylinder, "_resolve_single_checkpoint", lambda self, ckpt, *args, **kwargs: requested.append(ckpt)
+    )
+    hgym.Cylinder(Re=100)
+    assert requested == ["Cylinder_2D_Re100_medium_FD"]
+
+
+@pytest.mark.parallel(nprocs=2)
+def test_probe_validation_parallel():
+    # Probe bounds must be checked against the global mesh, not each rank's partition
+    probes = [(1.0, -2.0), (10.0, 2.0)]
+    hgym.Cylinder(mesh="medium", observation_type="velocity_probes", probes=probes, use_HF_data_manager=False)
+
+    with pytest.raises(ValueError):
+        hgym.Cylinder(
+            mesh="medium", observation_type="velocity_probes", probes=[(100.0, 0.0)], use_HF_data_manager=False
+        )
+
+
 def test_steady(tol=1e-3):
     flow = hgym.Cylinder(Re=100, mesh="medium")
     solver = hgym.NewtonSolver(flow)
