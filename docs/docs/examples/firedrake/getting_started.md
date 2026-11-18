@@ -139,7 +139,7 @@ python train_sb3_firedrake.py --env cylinder --algo PPO --total-timesteps 100000
 ## Observation types
 
 **Force-based**
-- `'lift_drag'` — returns `(CL, CD)` for single-cylinder cases; `(CL1, CD1, CL2, CD2, CL3, CD3)` for Pinball.
+- `'lift_drag'` — returns `(CL, CD)` for single-cylinder cases; `(CL1, CL2, CL3, CD1, CD2, CD3)` for Pinball.
 
 **Sensor-based**
 - `'stress_sensor'` — returns wall shear stress as a scalar.
