@@ -2,10 +2,12 @@
 
 ## Quick-Start
 
-To run HydroGym's tests one best pulls the `HydroGym-Env` [docker container](https://hub.docker.com/repository/docker/lpaehler/hydrogym-env/general):
+To run HydroGym's tests one best pulls a `HydroGym` [docker container](https://hub.docker.com/repository/docker/clagemann/hydrogym-nvhpc-26.1_cuda-12.9_turing_ampere/general)
+(the maintained, regularly-pushed image; the older `lpaehler/hydrogym-env` images
+were last updated in March 2024 and no longer match the current dependencies):
 
 ```bash
-docker pull lpaehler/hydrogym-env:stable
+docker pull clagemann/hydrogym-nvhpc-26.1_cuda-12.9_turing_ampere:latest
 ```
 
 and then launches the VSCode Devcontainer into it. At that point one has Firedrake, and
