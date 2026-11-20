@@ -5,15 +5,20 @@ apt OpenMPI, the parallel HDF5/netCDF/FFTW stacks) plus per-solver
 "features" that each pinned `*.devcontainer.json` config composes.
 Available features so far:
 
-| Feature              | What it builds                                                   |
-|----------------------|------------------------------------------------------------------|
+| Feature                | What it builds                                                   |
+|------------------------|------------------------------------------------------------------|
 | `./features/petsc`     | PETSc 3.25 + OpenBLAS with the GCC/OpenMPI toolchain             |
 | `./features/firedrake` | Firedrake (pinned commit) + a HydroGym venv at `/opt/venvs/firedrake` (requires `petsc`) |
+| `./features/maia-cpu`  | m-AIA with GCC + OpenMPI (`build_gnu_production`) + a HydroGym venv at `/opt/venvs/maia-cpu` |
+| `./features/maia-gpu`  | m-AIA with NVHPC stdpar for one GPU architecture (`build_nvhpc_production`) + a HydroGym venv at `/opt/venvs/maia-gpu` |
 
 Configs:
 
 | Config                             | Features              | Use                                   |
 |------------------------------------|-----------------------|---------------------------------------|
+| `devcontainer.json` (default)      | `maia-gpu`            | MAIA GPU development; needs an NVIDIA GPU |
+| `maia-gpu-test.devcontainer.json`  | `maia-gpu`            | MAIA GPU build smoke test             |
+| `maia-cpu-test.devcontainer.json`  | `maia-cpu`            | MAIA CPU build smoke test             |
 | `petsc-test.devcontainer.json`     | `petsc`               | PETSc build smoke test                |
 | `firedrake-test.devcontainer.json` | `petsc` + `firedrake` | Firedrake test suite (`test/`)        |
 
@@ -24,41 +29,134 @@ devcontainer up --workspace-folder . \
   --override-config .devcontainer/firedrake-test.devcontainer.json
 ```
 
-`devcontainer.json` (what VS Code / Codespaces open by default) still
-points at the prebuilt `lpaehler/hydrogym-devpod:stable` image and is not
-affected by these configs.
+`devcontainer.json` is what VS Code / Codespaces open by default: it is
+the MAIA GPU config, so it requires `--gpus=all` to work on the host and
+the GPU architecture to be set as described next.
+
+## You must set your GPU architecture before building
+
+The `maia-gpu` feature compiles MAIA with NVHPC's stdpar for a **specific**
+GPU architecture (`-gpu=ccXX`) — it is not a portable binary. Every config
+in this directory ships with `pstlPreset` hardcoded to `"ada"` (an RTX
+40-series / Ada Lovelace card), because that's the architecture of the
+machine this setup was developed on. **If your GPU isn't Ada Lovelace, you
+must change this before building**, or MAIA will compile for the wrong
+architecture and fail to run (or run without GPU acceleration) on your
+hardware.
+
+The one place that matters is the `pstlPreset` option under
+`features["./features/maia-gpu"]` in whichever `*.devcontainer.json` you're
+using, e.g.:
+
+```jsonc
+"features": {
+  "./features/maia-gpu": {
+    "pstlPreset": "ampere",   // <- change this to match your GPU
+    "buildType": "production"
+  }
+}
+```
+
+`scripts/set-gpu-arch.sh` patches that value across every GPU config in
+one go (auto-detecting from `nvidia-smi` when run without an argument).
+
+`build.args.PSTL_PRESET` (in the same files, under `"build"`) is **not**
+load-bearing — `Dockerfile.base` declares no matching `ARG`, so it's
+silently ignored by Docker. Don't rely on editing it; only the feature
+option above actually reaches `configure.py --enable-pstl`.
+
+Valid `pstlPreset` values and the GPUs they correspond to:
+
+| Preset               | Compute capability | Example GPUs                  |
+|-----------------------|--------------------|--------------------------------|
+| `volta`               | cc70               | V100, Titan V                  |
+| `turing`               | cc75               | RTX 20-series, GTX 16-series, T4 |
+| `ampere`               | cc80 / cc86        | A100, RTX 30-series             |
+| `ada`                  | cc89               | RTX 40-series, L4, L40          |
+| `hopper`               | cc90               | H100, H200                      |
+| `blackwell`            | cc100              | B100, B200 (datacenter)         |
+| `blackwell_consumer`   | cc120              | RTX 50-series                   |
+| `multicore`            | —                  | CPU-only stdpar fallback, no GPU |
+| `HOST`                 | —                  | let `nvc++` auto-detect the build machine's GPU at compile time |
+
+Not sure which one you have? Run `nvidia-smi --query-gpu=name,compute_cap
+--format=csv` on the host before building.
+
+## `third_party/m-AIA` submodule
+
+`third_party/m-AIA` is a submodule of the `wipmaiaml` dev tree
+(`git.rwth-aachen.de/aia/MAIA/Solver.git`, branch `wipmaiaml`), for full
+RL-feature support — the LB jet-actuation boundary conditions (BC
+`2007`/`2008`) and the MPMD-based external flow-control channel that
+HydroGym's flow control cases depend on. **This branch is now public** —
+a plain `git clone --recurse-submodules` (or `git submodule update --init
+--recursive` after a plain clone) needs no credentials to reach it, and a
+fresh clone + full submodule init has been verified to complete without
+any auth prompt.
+
+One nested submodule of `wipmaiaml` itself, `include/PyJacReactionMechanisms`,
+remains a private RWTH GitLab repo and is **not** needed unless
+`ENABLE_PYJAC` is on — `maia-gpu`/`maia-cpu`'s `postCreateCommand.sh`
+deliberately excludes it from MAIA's own submodule init (see
+`include/Eigen include/cantera include/doctest include/hypre include/mfem
+include/sundials` in that script), so a blanket
+`git submodule update --init --recursive` from the top of this repo will
+fail at that one path — expected, not a sign anything else is broken; use
+the scoped commands `postCreateCommand.sh` itself uses instead if you're
+initializing submodules by hand.
+
+The submodule also doesn't ship `auxiliary/hosts/DEVCONTAINER.cmake` (the
+NVHPC/CUDA/library-path host config this container needs), since a host
+config is inherently environment-specific and was never meant to live
+upstream in the first place. `maia-gpu/postCreateCommand.sh` materializes
+it at container-start from `.devcontainer/base/DEVCONTAINER.cmake` if the
+submodule doesn't already have one, and syncs its `PSTL` value to whatever
+`pstlPreset` you set — this becomes a no-op automatically if wipmaiaml
+starts shipping the file itself.
 
 ## Base image
 
 `base/Dockerfile.base` builds parallel-netcdf 1.14.0, parallel HDF5 1.14.5
 and FFTW 3.3.10 from source with the GNU/apt-OpenMPI toolchain into
 `/opt/maia_deps_gnu`. A second copy built with NVHPC's own toolchain into
-`/opt/maia_deps` is only needed by a GPU MAIA build and is gated behind
-the `BUILD_GPU_LIBS` build arg (default `false`): the two library stacks
-are not ABI-compatible, and building both roughly doubles the image build
-time. The `PSTL_PRESET`/`BUILD_TYPE` build args that the configs pass are
-not read by `Dockerfile.base`; they are kept for the GPU MAIA feature's
-configs and are no-ops here.
+`/opt/maia_deps` is only needed by `maia-gpu` and is gated behind the
+`BUILD_GPU_LIBS` build arg (default `false`; the configs that use
+`maia-gpu` set it to `"true"`): the two library stacks are not
+ABI-compatible, and building both roughly doubles the image build time.
+The `PSTL_PRESET`/`BUILD_TYPE` build args are not read by
+`Dockerfile.base` (see above).
 
 ## Workspace layout
 
 `workspaceMount` binds the repo itself (`${localWorkspaceFolder}`) to
 `/workspace` in the container, so there are no host-specific paths to
-edit. Every feature's `postCreateCommand.sh` runs against that mount once
-the container is up (the `install.sh` scripts run at image-build time,
-before the mount exists, and only persist feature options under
-`/opt/maia-feature-config/`).
+edit. Every solver's source lives inside this one clone (`third_party/m-AIA`,
+see caveat above; `third_party/firedrake`). Every feature's
+`postCreateCommand.sh` runs against that mount once the container is up
+(the `install.sh` scripts run at image-build time, before the mount
+exists, and only persist feature options under `/opt/maia-feature-config/`).
+The MAIA features write their build trees into the submodule
+(`third_party/m-AIA/build_*`), create `/workspace/dev_runs/` (gitignored)
+and symlink `compile_commands.json` into the submodule for IntelliSense.
 
 ## Gotchas
 
 - **Build parallelism is RAM-aware, not a flat `-j16`**: the base image
-  build and the feature builds get their `-j` value from
-  `.devcontainer/base/compute_parallelism.sh`
+  build and MAIA's own build (`maia-gpu`/`maia-cpu` postCreateCommand) get
+  their `-j` value from `.devcontainer/base/compute_parallelism.sh`
   (`min(nproc, available_RAM_GB / 5)`) instead of a number hand-picked for
-  one machine; some translation units peak at ~4.2GB RSS each, so a flat
+  one machine — some translation units peak at ~4.2GB RSS each, so a flat
   `-j16` either under-uses a big box or OOM-kills the compiler on a
   smaller one.
+- **MAIA host-config auto-detection is hostname-based, not env-var based**:
+  `configure.py`'s host detection (`cmake/GetHost.cmake`) pattern-matches
+  the container's OS hostname against a hardcoded cluster list — it does
+  NOT read `MAIA_HOST`/`HOST` env vars, and this container's hostname
+  (`--hostname=LocalGPU` in `runArgs`) doesn't match anything in that list.
+  `MAIA_HOST_FILE` (see `maia-gpu`/`maia-cpu` `postCreateCommand.sh`) is the
+  real override — it points straight at a host config file and skips
+  hostname detection entirely, so none of this matters in practice.
 - **Dev builds report no `__version__`**: both this HydroGym checkout and
   the Firedrake dev build lack a `__version__` attribute, so version
-  checks in the feature scripts use `importlib.metadata.version(...)`
-  instead of a bare attribute access.
+  checks here use `importlib.metadata.version(...)` instead of a bare
+  attribute access (see `ensure_hydrogym.sh`).
