@@ -136,3 +136,6 @@ examples/firedrake/getting_started/output/
 
 # Devcontainer build/run outputs (see .devcontainer/README.md)
 /dev_runs/
+.devcontainer/build-logs/
+.devcontainer/test-logs/
+examples/**/ci_test_run*/

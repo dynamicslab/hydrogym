@@ -1,0 +1,32 @@
+{
+  "name": "FULL: CPU stack (maia-cpu + firedrake + nek5000 + jax-cpu)",
+  "build": {
+    "dockerfile": "base/Dockerfile.base",
+    // NOTE: PSTL_PRESET is unused here - this config doesn't use the
+    // maia-gpu feature (Dockerfile.base has no matching ARG anyway), so
+    // GPU architecture selection doesn't apply to this CPU-only stack.
+    "args": {
+      "PSTL_PRESET": "ada",
+      "BUILD_TYPE": "production"
+    }
+  },
+  "features": {
+    "./features/maia-cpu": {
+      "buildType": "production"
+    },
+    "./features/nek5000": {},
+    "./features/petsc": {},
+    "./features/firedrake": {
+      "hydrogymExtras": "maia,firedrake,nek,jax"
+    }
+  },
+  "runArgs": [
+    "--net=host",
+    "--ipc=host",
+    "--hostname=LocalGPU",
+    "--cap-add=SYS_ADMIN"
+  ],
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind",
+  "workspaceFolder": "/workspace",
+  "remoteUser": "root"
+}
