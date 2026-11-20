@@ -1,0 +1,61 @@
+! ======================================
+! The object for DRL 
+! ======================================
+! Define the control regin Basically indicating the wall
+        real ctrlxs,ctrlxe,ctrlys,ctrlye,nuctrl,dyi
+        integer NUMCTRL,NFLDC             ! Number of fields to be interplotaed
+        integer inth_hpts1, inth_hpts2
+        integer nfeat                   
+        logical obs_xavg,obs_zavg,rwd_zavg,rwd_xavg,act_xavg,act_zavg
+
+! MPI USAGE  
+        integer DRL_COMM ! internal commnuication for DRL
+        logical drl_rwrt
+! Define the control region
+        parameter(ctrlxs=0,ctrlxe=1)  
+        parameter(ctrlys=0.0,ctrlye=0.1)
+! YW: Nov 24 2023 Basic variable used during running
+
+! YW: Coordinates of control and sesning plane, as well as the u_taw for distance between them 
+        real pos_obs(LDIM,totctrl)  ! Interpolated coord points of ctrl points
+        real pos_agt(LDIM,totctrl) ! Interpolated coord points of wall points
+
+! YW:   For interplotation of sensing plane call "findpts" and "findpts_eval"
+        integer iwk(totctrl,3) ! Working array For Sensing plane
+        real    rwk(totctrl,3) ! Working array For Sensing plane
+
+        integer proc(totctrl)
+        integer iptctl(totctrl) ! The array for the processor
+
+! YW:   The instantaneous velocity array 
+        parameter(NFLDC=2)        ! Vx, Vy, Vz Dimension, set as 1 
+        real val_obs(NFLDC,totctrl)   ! STATE/Observation 
+        real rwd_agt(totctrl)        ! Rewards
+
+! YW:   Prior information of NODE/ELEMENT of Agent
+        parameter (nfeat=5)               ! "Library" of prior infomation
+        integer info_agt(nfeat,totctrl)    ! the Number of Rank [1] and the local order [2] of the wall point in the mesh 
+        ! YW:   A optimization of the code, 
+!       I use a another field array to store all the velocity fluctuation, 
+!       follow the indicies
+        ! YW Modified at Nov 4th, we do not need the extra axis for the face!
+        real actions(LX1,LY1,LZ1,LELT)  !Actions to be imposed
+        real msk_act(LX1,LY1,LZ1,LELT) ! Mask for giving the actions
+        
+        ! YW:   For building the owner mask for the wall
+        real agent_own(LX1,LY1,LZ1,LELV) ! Mask for giving the actions
+        real w_u(LX1,LY1,LZ1,LELT) ! Weight for giving the actions
+        real mult_local(LX1,LY1,LZ1,LELT) ! Weight for giving the actions
+        ! This must be moved by adjusting in par file instead!s
+        ! Spatial averaging 
+        parameter(obs_xavg=.TRUE.,obs_zavg=.TRUE.) ! STATE
+        parameter(rwd_xavg=.TRUE.,rwd_zavg=.TRUE.)  ! REWARD
+        parameter(act_xavg=.TRUE.,act_zavg=.TRUE.)  ! REWARD
+
+        common /YW_drl / NUMCTRL,inth_hpts1,
+     $                   iwk,rwk, val_obs,        
+     $                   pos_obs,pos_agt,rwd_agt !Real for ctrl 
+        common /drl_act/ actions, msk_act
+        common /drl_IO/  agent_own,iptctl,proc,w_u,mult_local
+        common /drl_buff/ info_agt
+        common /drl_yw_mpi/ DRL_COMM, drl_rwrt

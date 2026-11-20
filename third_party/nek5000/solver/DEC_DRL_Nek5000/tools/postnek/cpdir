@@ -1,0 +1,1 @@
+cp make* *.f *.c *.inc cpdir icon  mktar ../jsm3

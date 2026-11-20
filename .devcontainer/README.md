@@ -11,6 +11,7 @@ Available features so far:
 | `./features/firedrake` | Firedrake (pinned commit) + a HydroGym venv at `/opt/venvs/firedrake` (requires `petsc`) |
 | `./features/maia-cpu`  | m-AIA with GCC + OpenMPI (`build_gnu_production`) + a HydroGym venv at `/opt/venvs/maia-cpu` |
 | `./features/maia-gpu`  | m-AIA with NVHPC stdpar for one GPU architecture (`build_nvhpc_production`) + a HydroGym venv at `/opt/venvs/maia-gpu` |
+| `./features/nek5000`   | Nek5000 binaries for the cases under `third_party/nek5000/cases` + a HydroGym venv at `/opt/venvs/nek5000` |
 
 Configs:
 
@@ -19,6 +20,7 @@ Configs:
 | `devcontainer.json` (default)      | `maia-gpu`            | MAIA GPU development; needs an NVIDIA GPU |
 | `maia-gpu-test.devcontainer.json`  | `maia-gpu`            | MAIA GPU build smoke test             |
 | `maia-cpu-test.devcontainer.json`  | `maia-cpu`            | MAIA CPU build smoke test             |
+| `nek5000-test.devcontainer.json`   | `nek5000`             | Nek5000 case build smoke test         |
 | `petsc-test.devcontainer.json`     | `petsc`               | PETSc build smoke test                |
 | `firedrake-test.devcontainer.json` | `petsc` + `firedrake` | Firedrake test suite (`test/`)        |
 
@@ -131,7 +133,8 @@ The `PSTL_PRESET`/`BUILD_TYPE` build args are not read by
 `workspaceMount` binds the repo itself (`${localWorkspaceFolder}`) to
 `/workspace` in the container, so there are no host-specific paths to
 edit. Every solver's source lives inside this one clone (`third_party/m-AIA`,
-see caveat above; `third_party/firedrake`). Every feature's
+see caveat above; `third_party/nek5000`, Nek5000 core + KTH Toolbox +
+case sources, see its README; `third_party/firedrake`). Every feature's
 `postCreateCommand.sh` runs against that mount once the container is up
 (the `install.sh` scripts run at image-build time, before the mount
 exists, and only persist feature options under `/opt/maia-feature-config/`).

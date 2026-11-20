@@ -1,0 +1,18 @@
+      integer ktotv
+c     parameter (ktotv = lbx1*lby1*lbz1*lbelt)
+c     parameter (ktotv = 1)
+
+      parameter (ktotv = lx1*ly1*lz1*lelt)
+
+      integer         mprev,nprev(ldim)
+      common /vrthoi/ mprev,nprev
+
+      real vbar(ktotv,ldim),vnew(ktotv,ldim)
+     $   , sln (ktotv*mxprev,ldim)
+      common /vrthov/ vbar, vnew, sln
+
+      real            alpha(mxprev)
+      common /vrthos/ alpha
+
+      logical         ifproj
+      common /vrthol/ ifproj
