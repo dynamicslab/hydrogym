@@ -1,0 +1,21 @@
+{
+  "name": "HydroGym GPU (JAX/PyTorch)",
+  "description": "Installs HydroGym GPU venv with JAX-Fluids and HydroGym[maia,jax] extras. Requires python-ml feature.",
+  "version": "1.0.0",
+  "options": {
+    "hydrogymExtras": {
+      "type": "string",
+      "default": "maia,jax,jaxfluids",
+      "description": "HydroGym extras to install. Includes jaxfluids by default since this feature also installs JAX-Fluids itself (jaxfluidsRepo below) - dropping it from here still leaves JAX-Fluids installed but hydrogym.jaxfluids unimportable (missing pyvista/gitpython/h5py/optax, which live in pyproject.toml's jaxfluids extras group, not jax)."
+    },
+    "jaxfluidsRepo": {
+      "type": "string",
+      "default": "https://github.com/tumaer/JAXFLUIDS.git",
+      "description": "JAX-Fluids repository URL"
+    }
+  },
+  "dependsOn": {
+    "./features/python-ml": {}
+  },
+  "postCreateCommand": "bash /workspace/.devcontainer/features/hydrogym-gpu/postCreateCommand.sh"
+}
