@@ -1,6 +1,5 @@
 """
 The classical approaches for wing control
-Matching the structure from drl_repo_TEST/src/lib/AFC.py
 """
 
 import numpy as np

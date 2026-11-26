@@ -71,12 +71,33 @@ class CubeBase(MaiaFlowEnv):
 
         return (rewards[0] if len(self.bcId) == 1 else rewards), obj_dict
 
+    def drag_coefficient_from_objective(self, obj_dict):
+        """Total drag coefficient over the boundary segments (normalised like the reward's force coefficients)."""
+        return float(
+            sum(
+                self.compute_nondim_coefficients(
+                    forces=np.asarray(f),
+                    density=1.0,
+                    referenceVelocity=self.Ma / np.sqrt(3),
+                    projectionLength=self.power_projection(),
+                )[0]
+                for f in obj_dict["forces"]
+            )
+        )
+
 
 class Cube(CubeBase):
     """
     3D cube environment with flow control.
 
     This environment simulates flow around a 3D cube geometry.
+
+    Actuation power (``hydrogym.maia.wall_jets``, one actuator per jet): the slot jets of BC 2007 object class 2
+    (parabolic profile across ``lbJetSlotAxis`` within ``lbJetLimits``, direction ``lbJetNormals``) are the fluid
+    cells next to the cube faces (faces on cell faces: exactly the solver's jet cells; along the slot every k-th cell
+    with k-fold weight, at most 64), ``C_P = 2 P / (U^3 D zLength)`` like ``C_D``. The jets are independent (not
+    zero-net-mass-flux); ``p_ref`` is the mean wall pressure over the jets. The jet geometry is checked against the
+    BC-2007 rule in the unit tests.
 
     Attributes:
         numJetsInSimulation: Number of jet actuators in the CFD simulation.
@@ -97,6 +118,7 @@ class Cube(CubeBase):
         self.set_observation_action_spaces()
 
         self.setup_normalization()
+        self.setup_actuation_power("wall_jets", geometry="flat")
 
     def convert_action(self, action: np.ndarray) -> np.ndarray:
         """

@@ -1,6 +1,5 @@
 """
-Real-time Reward Logger for NEK5000 DRL Environment
-@yuningw
+Real-time reward logger of the Nek5000 DRL environment (author: Yuning Wang).
 """
 
 import csv

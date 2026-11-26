@@ -2,7 +2,7 @@
 HydroGym Maia: Reinforcement Learning Environments for CFD Simulations
 =======================================================================
 
-HydroGym Maia provides OpenAI Gym compatible environments for computational fluid dynamics
+HydroGym Maia provides Gymnasium-compatible environments for computational fluid dynamics
 simulations using the m-AIA solver, with integrated support for Hugging Face Hub data management.
 
 Basic Usage (HPC/MPMD Mode):

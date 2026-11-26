@@ -1,7 +1,7 @@
 [project]
 name = "hydrogym"
-version = "1.0.0"
-description = "A Reinforcement Learning Benchmarking Environment for Fluid Dynamics (with Firedrake, JAX-Fluids, MAIA, and NEK5000 solver support)"
+version = "1.0.2"
+description = "A Reinforcement Learning Benchmarking Environment for Fluid Dynamics (with Firedrake, JAX, JAX-Fluids, m-AIA, Nek5000 and NekRS solver support)"
 readme = "README.md"
 requires-python = ">=3.11,<3.15"
 license = "MIT"
@@ -50,6 +50,7 @@ dependencies = [
 Documentation = "https://dynamicslab.github.io/hydrogym"
 Repository = "https://github.com/dynamicslab/hydrogym"
 Issues = "https://github.com/dynamicslab/hydrogym/issues"
+Changelog = "https://github.com/dynamicslab/hydrogym/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 firedrake = [
@@ -62,6 +63,9 @@ maia = [
     "einops>=0.6.0",
     "mpi4py>=4.0.0",
     "omegaconf>=2.1.0",
+    "pyarrow>=14.0",
+    "stable-baselines3>=2.7.1",
+    "tensorboard>=2.0.0",
     "toml>=0.10.0",
 ]
 nek = [
@@ -74,14 +78,26 @@ nek = [
     "supersuit==3.11.0",
     "tensorboard>=2.0.0",
 ]
+nekrs = [
+    "matplotlib>=3.7",
+    "mpi4py>=4.0.0",
+    "omegaconf>=2.1.0",
+    "pettingzoo>=1.24.0",
+    "pymech>=1.4.0",
+    "pyyaml>=6.0",
+    "stable-baselines3>=2.7.1",
+    "supersuit==3.11.0",
+    "tensorboard>=2.0.0",
+]
 jax = [
     "chex",
     "flax",
-    "gymnax",
+    "gymnax>=0.0.9,<1",
+    "imageio",
     "jax",
     "jaxlib",
     "matplotlib>=3.7",
-    "navix",
+    "navix>=4.0.0; python_full_version >= '3.12'",
     "omegaconf>=2.1.0",
     "toml>=0.10.0",
     "tree-math",
@@ -103,19 +119,22 @@ all = [
     "flax",
     "gitpython",
     "gmsh>=4.11.1",
-    "gymnax",
+    "gymnax>=0.0.9,<1",
     "h5py",
+    "imageio",
     "jax",
     "jaxlib",
     "matplotlib>=3.7",
     "mpi4py>=4.0.0",
-    "navix",
+    "navix>=4.0.0; python_full_version >= '3.12'",
     "omegaconf>=2.1.0",
     "optax",
     "pettingzoo>=1.24.0",
     "psutil>=7.2.2",
+    "pyarrow>=14.0",
     "pymech>=1.4.0",
     "pyvista",
+    "pyyaml>=6.0",
     "stable-baselines3>=2.7.1",
     "supersuit==3.11.0",
     "tensorboard>=2.0.0",
@@ -150,6 +169,7 @@ interactive = [
 
 [tool.ruff]
 line-length = 120
+extend-exclude = ["third_party"]
 
 [tool.ruff.format]
 quote-style = "double"
@@ -161,16 +181,39 @@ skip-magic-trailing-comma = false
 select = ["E", "F"]
 ignore = ["F401", "E731"]
 
+[tool.ruff.lint.per-file-ignores]
+# NekRS post-processing and report scripts: long table/format lines and the
+# conventional `l` loop name; imports after argparse / matplotlib.use("Agg").
+"examples/nekrs/wing/bl_report.py" = ["E501", "E741"]
+"examples/nekrs/wing/bl_stats.py" = ["E501", "E741"]
+"examples/nekrs/perf_report.py" = ["E741"]
+"examples/nekrs/wing/obs_shift.py" = ["E402", "E741"]
+"examples/nekrs/wing/postprocess.py" = ["E402"]
+"examples/nekrs/wing/fit_utau.py" = ["E402"]
+"examples/nekrs/channel/client.py" = ["E402"]
+
 [tool.isort]
 profile = "black"
 line_length = 120
 known_first_party = ["hydrogym"]
+skip_glob = ["third_party/*"]
 
 [tool.codespell]
-skip = "*.svg,*.ipynb,docs/package-lock.json,docs/node_modules,docs/build,docs/.docusaurus"
+skip = "*.svg,*.ipynb,docs/package-lock.json,docs/node_modules,docs/build,docs/.docusaurus,./third_party/*"
+# Variable names and notation (radY: radius in y, Ue: edge velocity, te: terminated, nd: normal distance,
+# wth: quadrature weights in theta, oint: contour integral, astroid: a package name).
+ignore-words-list = "rady,ue,te,nd,wth,oint,astroid"
 
 [tool.uv]
 default-groups = ["dev"]
+# navix (jax extras) requires tyro, whose docstring-parser range excludes the one of pydoc-markdown (docs group).
+conflicts = [
+    [{ group = "docs" }, { extra = "jax" }],
+    [{ group = "docs" }, { extra = "all" }],
+]
+# soupsieve releases for Python < 3.11.5 have known vulnerabilities: resolve without soupsieve there
+# (beautifulsoup4 4.6.3, as before) and with soupsieve >= 4.0 elsewhere.
+constraint-dependencies = ["soupsieve>=4.0; python_full_version >= '3.11.5'", "soupsieve<0; python_full_version < '3.11.5'"]
 
 [tool.uv.build-backend]
 module-name = "hydrogym"

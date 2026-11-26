@@ -21,9 +21,11 @@ class PinballBase(MaiaFlowEnv):
     triangular pattern. Forces from all cylinders are summed for the reward.
 
     The reward is computed as:
-        reward = -|sum(C_D)| - omega * |sum(C_L)|
+        reward = -|sum(C_D)| - omega * |sum(C_L)| [- power_weight * C_P]
 
-    where C_D and C_L are summed across all cylinders.
+    where C_D and C_L are summed across all cylinders and C_P is the actuation power coefficient
+    (hydrogym.maia.power; rotation: shaft power from an angular-momentum balance on probe rings; jets: Bewley power
+    of the slot jets), charged only if ``power_weight > 0`` in the environment configuration.
     """
 
     def __init__(self, env_config: Dict):
@@ -65,6 +67,10 @@ class PinballBase(MaiaFlowEnv):
 
         return reward, obj_dict
 
+    def drag_coefficient_from_objective(self, obj_dict):
+        """Total drag coefficient of the cylinders (sum of the non-dimensional x forces)."""
+        return float(np.asarray(obj_dict["forces"])[:, 0].sum())
+
 
 class Pinball(PinballBase):
     """
@@ -72,6 +78,10 @@ class Pinball(PinballBase):
 
     This environment controls flow using cylinder rotation.
     Each cylinder can rotate independently.
+
+    ``Pinball_3D_Re150`` runs at Ma 0.1 with ``max_control`` 0.35 (a cylinder surface speed of 3.03 U per unit
+    action), 352 lattice steps per action (0.508 D/U) and ``U_inf`` 0.05774, from a developed uncontrolled Ma 0.1
+    state. ``Pinball_3D_Re150_Ma02`` is the same case at Ma 0.2 (``max_control`` 0.5, 2.165 U per unit action).
     """
 
     def __init__(self, env_config: Dict):
@@ -88,6 +98,7 @@ class Pinball(PinballBase):
         self.set_observation_action_spaces()
 
         self.setup_normalization()
+        self.setup_actuation_power("rotation")
 
     def convert_action(self, action: np.ndarray) -> np.ndarray:
         """
@@ -128,6 +139,7 @@ class JetPinball(PinballBase):
         self.set_observation_action_spaces()
 
         self.setup_normalization()
+        self.setup_actuation_power("slot_jets")
 
     def convert_action(self, action: np.ndarray) -> List[float]:
         """

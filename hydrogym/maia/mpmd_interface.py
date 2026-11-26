@@ -11,6 +11,8 @@ from typing import List, Optional, Union
 import numpy as np
 from mpi4py import MPI
 
+from hydrogym.core_external import split_comm_by_appnum
+
 # MPI tag mapping for different command types
 COMMAND_TAGS = {
     "timeStep": 0,
@@ -20,6 +22,7 @@ COMMAND_TAGS = {
     "lbProbePoint": 4,
     "lbReinit": 5,
     "lbForce": 6,
+    "actuationPower": 7,
 }
 
 
@@ -33,6 +36,10 @@ class MaiaInterface:
 
     Example launch command:
         mpirun -np <n_controller_ranks> <controller> : -np <n_maia_ranks> <maia>
+
+    With launchers that give all ranks the same application number (e.g. ``srun --multi-prog``), set the
+    environment variable ``MAIA_MPMD_APPNUM`` to 0 for the controller ranks and 1 for the m-AIA ranks; it takes
+    precedence over ``MPI_APPNUM`` (see ``hydrogym.core_external.mpmd_appnum``).
 
     Attributes:
         nDim: Number of spatial dimensions (2 or 3).
@@ -60,35 +67,48 @@ class MaiaInterface:
         self.remoteRoot = None
         self.nDim = nDim
 
-    def init_comm(self, comm_world: MPI.Comm) -> None:
+    def init_comm(self, comm_world: MPI.Comm, nproc: Optional[int] = None) -> None:
         """
         Initialize MPI communication with m-AIA.
 
         Sets up the communicators and determines the root ranks for both
-        the Python controller and the m-AIA solver.
+        the Python controller and the m-AIA solver. The split math itself
+        lives in `hydrogym.core_external.split_comm_by_appnum` (shared
+        module for MPMD world-split strategies); only the
+        attribute assignment stays here.
 
         Args:
             comm_world: MPI communicator, typically MPI.COMM_WORLD.
+            nproc: Expected number of m-AIA solver ranks. When given,
+                validated against the actual remote-app rank count
+                (``comm_world.Get_size() - appNoRanks``, i.e. every world
+                rank not part of this app) and a clear ``RuntimeError`` is
+                raised on mismatch, as ``hydrogym.core_external.mpi_split``
+                does for Nek. ``None`` (default) skips the check.
+
+        Raises:
+            RuntimeError: If ``nproc`` is given and does not match the
+                actual number of m-AIA solver ranks in the MPMD job.
         """
-        self.appnum = comm_world.Get_attr(MPI.APPNUM)
-        rank_world = comm_world.Get_rank()
         self.worldComm = comm_world
-        self.appComm = comm_world.Split(self.appnum, rank_world)
-        self.appRank = self.appComm.Get_rank()
-        self.appNoRanks = self.appComm.Get_size()
-        self.appGroup = self.appComm.Get_group()
+        (
+            self.appnum,
+            self.appComm,
+            self.appRank,
+            self.appNoRanks,
+            self.appGroup,
+            self.appRootInWorld,
+            self.remoteRoot,
+        ) = split_comm_by_appnum(comm_world)
 
-        # Get root of other application
-        group_world = comm_world.Get_group()
-        self.appRootInWorld = group_world.Translate_ranks([self.appRoot], self.appGroup)[0]
-
-        no_app = 2
-        buff_send = np.zeros(no_app, dtype="i")
-        app_roots_in_world = np.empty_like(buff_send)
-        buff_send.fill(-1)
-        buff_send[self.appnum] = self.appRootInWorld
-        self.worldComm.Allreduce(buff_send, app_roots_in_world, op=MPI.MAX)
-        self.remoteRoot = app_roots_in_world[1 - self.appnum]
+        if nproc is not None:
+            remote_size = comm_world.Get_size() - self.appNoRanks
+            if remote_size != nproc:
+                raise RuntimeError(
+                    f"MAIA MPMD rank count mismatch: expected {nproc} m-AIA solver "
+                    f"ranks (env_config['nproc']), got {remote_size}. "
+                    f"Launch with: mpirun -n {self.appNoRanks} python ... : -n {nproc} maia ..."
+                )
 
     def _comm_send(self, name: str, data: Union[List, np.ndarray], send_tag: bool = True) -> None:
         """
@@ -223,6 +243,22 @@ class MaiaInterface:
         self._comm_send_int("lbForce", [bc_segment_id])
         force = self._comm_recv("lbForce")
         return force
+
+    def getActuationPower(self) -> np.ndarray:
+        """
+        Get the actuation power of the jets of the structured finite-volume solver (boundary condition 1008).
+
+        m-AIA forms the power per wall face of the jet footprints: the flux of pressure work and kinetic energy
+        ``v_n (p - p_ref + rho |u|^2 / 2)`` through the wall, with ``p_ref`` the mean wall pressure over the jets,
+        normalised like the force coefficients of the solver.
+
+        Returns:
+            ``[P, P_pos, P_abs, P_0, ..., P_{N-1}, Q_0, ..., Q_{N-1}]``: the signed, positive-part and absolute power
+            coefficient of all jets, the signed power coefficient of each jet and its volume flux into the fluid
+            (normalised by the free-stream speed).
+        """
+        self._comm_send_int("actuationPower", [0])
+        return self._comm_recv("actuationPower")
 
     def reinit(self) -> None:
         """

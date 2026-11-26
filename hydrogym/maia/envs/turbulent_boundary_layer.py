@@ -1,6 +1,5 @@
 """
 Turbulent Boundary Layer Environments
-======================================
 
 This module provides zero-pressure-gradient turbulent boundary layer (ZPG TBL)
 CFD environments for reinforcement learning.
@@ -27,6 +26,7 @@ dimensionless coefficients.  Observation sizing and normalization for this
 extended force vector are handled in ``ZPGTBLBase``.
 """
 
+import logging
 from typing import Dict, List, Optional, Tuple
 
 import gymnasium as gym
@@ -34,6 +34,8 @@ import numpy as np
 from einops import rearrange
 
 from hydrogym.maia.env_core import ConfigError, MaiaFlowEnv, register_environment
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Base class
@@ -61,11 +63,9 @@ class ZPGTBLBase(MaiaFlowEnv):
       in the ``'U_inf'`` normalization strategy.
     * ``get_reward()`` – unified reward for both actuation variants:
 
-      .. math::
+      ``R = -C_D - omega * C_P``
 
-          R = -C_D - \\omega \\cdot C_P
-
-      where ``C_D = F_x / area`` and ``C_P = forces[3] / area``.
+      where ``C_D = F_x`` and ``C_P = forces[3]`` (not divided by ``area``).
       For the jet case ``C_P = 0``, so the reward reduces to ``-C_D``.
     """
 
@@ -211,14 +211,20 @@ class ZPGTBLBase(MaiaFlowEnv):
 
     def get_reward(self) -> Tuple[float, Dict]:
         """
-        Compute the unified reward: :math:`R = -C_D - \\omega \\cdot C_P`.
+        Compute the unified reward: ``R = -C_D - omega * C_P``.
 
         The solver returns ``[F_x, F_y, F_z, C_P, area]``.  Forces and
         power are pre-normalised by ``q_∞`` and ``q_∞ · U_∞`` respectively;
-        dividing by ``area`` yields the final dimensionless coefficients::
+        dividing by ``area`` would yield the fully dimensionless coefficients:
 
-            C_D  = forces[0] / area
-            C_P  = forces[3] / area
+        ```
+        C_D  = forces[0] / area
+        C_P  = forces[3] / area
+        ```
+
+        The reward and the returned ``C_D`` / ``C_P`` use ``forces[0]`` and
+        ``forces[3]`` without this division, which keeps the rewards from
+        becoming vanishingly small.
 
         For the jet environment ``C_P = 0`` and the reward reduces to
         ``-C_D``.
@@ -228,18 +234,16 @@ class ZPGTBLBase(MaiaFlowEnv):
             ``'forces'``, ``'C_D'``, and ``'C_P'``.
         """
         forces = self.maiaInterface.getForce(self.bcId[0])  # [F_x, F_y, F_z, C_P, area]
-        print("Forces:", forces)
-        area = float(forces[4])
-        # avoid scaling by here due to vanishing rewards
+        # Not divided by the area (forces[4]), see above.
         C_D = float(forces[0])
         C_P = float(forces[3])
-        # fully non-dimensionalized as follows
-        # C_D = float(forces[0]) / area
-        # C_P = float(forces[3]) / area
-        print("-CD", -C_D, "-CP", -C_P, "area", area)
 
         reward = -C_D - self.omega * C_P
         return reward, {"forces": forces, "C_D": C_D, "C_P": C_P}
+
+    def drag_coefficient_from_objective(self, obj_dict):
+        """Drag coefficient in the scaling of the reward (not divided by the area, like C_P)."""
+        return float(obj_dict["C_D"])
 
 
 # ---------------------------------------------------------------------------
@@ -251,14 +255,18 @@ class ZPGTBLJet(ZPGTBLBase):
     """
     ZPG turbulent boundary layer with jet-based flow control.
 
-    Uses the same actuation setup as the :class:`~hydrogym.maia.envs.Cube`
+    Uses the same actuation setup as the ``Cube``
     environment: actions lie in ``[−MAX_CONTROL, +MAX_CONTROL]`` (scaled by
     the base-class ``step()``) and are passed directly to the CFD solver.
     The number of jet actuators is read from ``lbNoJets`` in the property file.
 
-    The solver returns ``[F_x, F_y, F_z, C_P, area]`` with ``C_P = 0.0``,
-    so the reward reduces to ``-C_D``.  Observation sizing, normalization,
-    and reward computation are all provided by :class:`ZPGTBLBase`.
+    The solver returns ``[F_x, F_y, F_z, C_P, area]`` with ``C_P = 0.0``
+    (the moving-wall power), so the reward reduces to ``-C_D``.  The
+    actuation power of the jets is reported in ``info`` (``power_model``
+    ``"solver_jets"``): m-AIA forms it per wall face of the jet footprints
+    as the flux of pressure work and kinetic energy, in the scaling of
+    ``C_D``; ``power_weight > 0`` charges it in the reward.  Observation sizing, normalization,
+    and reward computation are all provided by ``ZPGTBLBase``.
 
     Attributes:
         numJetsInSimulation (int): Number of jet boundary conditions.
@@ -273,6 +281,9 @@ class ZPGTBLJet(ZPGTBLBase):
         self.configure_probe_dimensions()
         self.set_observation_action_spaces()
         self.setup_normalization()
+        # Actuation power of the jets from the solver (bc1008, formed per wall face, MaiaInterface.getActuationPower).
+        # The C_P of the force vector (moving-wall power) stays 0 for the jets, so the reward is unchanged.
+        self.setup_actuation_power("solver_jets")
 
     def convert_action(self, action: np.ndarray) -> np.ndarray:
         """
@@ -299,36 +310,34 @@ class ZPGTBLSurfaceWave(ZPGTBLBase):
     The surface is driven by a traveling wave with three strictly positive
     control parameters:
 
-    ============= =============================================
-    Parameter     Description
-    ============= =============================================
-    amplitude     Wave amplitude
-    speed         Wave propagation speed
-    wavelength    Spatial period of the wave
-    ============= =============================================
+    | Parameter | Description |
+    |---|---|
+    | amplitude | Wave amplitude |
+    | speed | Wave propagation speed |
+    | wavelength | Spatial period of the wave |
 
-    **Differences from** :class:`ZPGTBLJet`:
+    **Differences from** ``ZPGTBLJet``:
 
     * **Action space** – Per-action ``[lower_bound, upper_bound]`` read from
       ``maia.action_lower_bounds`` / ``maia.action_upper_bounds`` in the
       config.  The ``MAX_CONTROL`` scaling in ``step()`` is *not* applied.
     * **Reset** – Uses ``[amplitude_init, speed_init, wavelength_init]`` from
       config (zeros would crash the CFD solver).
-    * **Reward** – :math:`R = -C_D - \\omega \\cdot C_P` (shared with
-      :class:`ZPGTBLJet` via :class:`ZPGTBLBase`; here ``C_P > 0``
+    * **Reward** – ``R = -C_D - omega * C_P`` (shared with
+      ``ZPGTBLJet`` via ``ZPGTBLBase``; here ``C_P > 0``
       because the surface wave performs work on the fluid).
 
     Required additional entries in the ``maia`` section of the YAML config:
 
-    .. code-block:: yaml
-
-        maia:
-          amplitude_init:      0.05
-          speed_init:          1.0
-          wavelength_init:     2.0
-          action_lower_bounds: [0.01, 0.1, 0.5]
-          action_upper_bounds: [0.2,  3.0, 10.0]
-          omega:               0.1
+    ```yaml
+    maia:
+      amplitude_init:      0.05
+      speed_init:          1.0
+      wavelength_init:     2.0
+      action_lower_bounds: [0.01, 0.1, 0.5]
+      action_upper_bounds: [0.2,  3.0, 10.0]
+      omega:               0.1
+    ```
     """
 
     def __init__(self, env_config: Dict):
@@ -351,8 +360,8 @@ class ZPGTBLSurfaceWave(ZPGTBLBase):
         self.action_lower_bounds = np.array(self.cfg.maia.action_lower_bounds, dtype=float)
         self.action_upper_bounds = np.array(self.cfg.maia.action_upper_bounds, dtype=float)
 
-        print("action lower boundary", self.action_lower_bounds)
-        print("action upper boundary", self.action_upper_bounds)
+        logger.debug("action lower bounds: %s", self.action_lower_bounds)
+        logger.debug("action upper bounds: %s", self.action_upper_bounds)
 
         if len(self.action_lower_bounds) != self.num_inputs:
             raise ConfigError(
@@ -378,6 +387,7 @@ class ZPGTBLSurfaceWave(ZPGTBLBase):
         self.configure_probe_dimensions()
         self.set_observation_action_spaces()
         self.setup_normalization()
+        self.setup_actuation_power("solver")  # surface-wave power C_P from the solver
 
     # ------------------------------------------------------------------
     # Overrides
@@ -388,7 +398,7 @@ class ZPGTBLSurfaceWave(ZPGTBLBase):
         Override to use a normalized ``[0, 1]`` action space per parameter.
 
         The RL agent always operates in ``[0, 1]``; physical values are
-        recovered inside :meth:`convert_action` via the per-parameter affine
+        recovered inside ``convert_action`` via the per-parameter affine
         mapping ``lower + action * (upper - lower)``.
         """
         self.observation_space = gym.spaces.Box(
@@ -408,9 +418,11 @@ class ZPGTBLSurfaceWave(ZPGTBLBase):
         """
         Scale a normalized ``[0, 1]`` action to physical wave parameters.
 
-        Applies the per-parameter affine map::
+        Applies the per-parameter affine map:
 
-            physical[i] = lower[i] + action[i] * (upper[i] - lower[i])
+        ```
+        physical[i] = lower[i] + action[i] * (upper[i] - lower[i])
+        ```
 
         Args:
             action: Normalized action array with values in ``[0, 1]``,
@@ -422,7 +434,6 @@ class ZPGTBLSurfaceWave(ZPGTBLBase):
         physical = self.action_lower_bounds + np.asarray(action, dtype=float) * (
             self.action_upper_bounds - self.action_lower_bounds
         )
-        print("converted actions:", physical)
         return list(physical)
 
     def step(self, action: Optional[np.ndarray] = None) -> Tuple[np.ndarray, float, bool, bool, Dict]:
@@ -431,7 +442,7 @@ class ZPGTBLSurfaceWave(ZPGTBLBase):
 
         Overrides the base class to skip ``MAX_CONTROL`` scaling.  The
         incoming ``action`` is in ``[0, 1]`` and is converted to physical
-        units by :meth:`convert_action`.
+        units by ``convert_action``.
 
         Args:
             action: Normalized action in ``[0, 1]`` for
@@ -481,7 +492,7 @@ class ZPGTBLSurfaceWave(ZPGTBLBase):
         # Pass physical init values directly — init_action is in physical
         # units, not the [0, 1] normalized space used by the agent.
         self.maiaInterface.setControlProperties(list(self.init_action))
-        print("reset init action", self.init_action)
+        logger.debug("reset init action: %s", self.init_action)
 
         self.probeData = self.maiaInterface.getProbeData(self.probe_locations)
         self.probeData = rearrange(self.probeData, "(n p) -> n p", n=self.noProbes)
@@ -498,7 +509,7 @@ class ZPGTBLSurfaceWave(ZPGTBLBase):
         """
         Collect and concatenate all raw observation components.
 
-        Used by the overridden :meth:`step` and :meth:`reset` to share
+        Used by the overridden ``step`` and ``reset`` to share
         observation-gathering logic.  Appends the full ``nDim + 2`` force
         vector ``[F_x, F_y, F_z, C_P, area]`` per boundary.
 

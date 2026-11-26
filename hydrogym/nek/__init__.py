@@ -2,8 +2,8 @@
 HydroGym Nek5000 backend.
 
 Initialization Patterns:
-1. MAIA pattern (recommended):
-   env = NekEnv.from_hf('MiniChannel_Re180', nproc=10)
+1. Hugging Face pattern (recommended):
+   env = NekEnv.from_hf('TCFmini_3D_Re180', nproc=10)
 
 2. Legacy pattern (deprecated):
    conf = OmegaConf.load('config.yaml')
@@ -19,7 +19,7 @@ Most users should use NekEnv directly.
 
 from .AFC import AFC, BLCtrl, OppoCtrl, SinWave, ZeroCtrl, make_afc_controller
 from .configs import Config
-from .env import ConfigError, NekEnv, mpi_split
+from .env import ConfigError, NekDivergenceError, NekEnv, mpi_split
 from .parallel_env import NekParallelEnv
 from .utils import io
 from .utils.utils import is_rank_zero, print

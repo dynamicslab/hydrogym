@@ -9,6 +9,7 @@ import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import numpy as np
 from jax import Array
+from jaxfluids.callbacks.base_callback import Callback
 from jaxfluids.data_types import JaxFluidsBuffers
 from jaxfluids.data_types.ml_buffers import (
     CallablesSetup,
@@ -24,6 +25,7 @@ from jaxfluids.domain.helper_functions import (
 )
 from jaxfluids_rl.jxf_env import RenderMode
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+from omegaconf import OmegaConf
 
 from hydrogym.jaxfluids.env_core import JAXFluidsFlowEnv
 from hydrogym.jaxfluids.utils.nozzle import (
@@ -36,16 +38,58 @@ from hydrogym.jaxfluids.utils.nozzle import (
     build_tvc_runtime_setup,
     compute_thrust,
     initialize_injector_flux_fn,
+    initialize_injector_power_fn,
     plot_flowfield_3d,
+    primary_reference_power,
 )
+from hydrogym.power import PowerConfig, power_forms, power_info
+
+
+class _InjectorPowerCallback(Callback):
+    """Samples the injection power after every JAX-Fluids integration step (``power_sampling = "mean"``)."""
+
+    def __init__(self) -> None:
+        self.env = None
+
+    def after_step_end(self, jxf_buffers, callback_dict, **kwargs):
+        env = self.env
+        if env is not None and env.power_sampling == "mean":
+            env._power_samples.append(env._evaluate_power(jxf_buffers))
+        return jxf_buffers, callback_dict
 
 
 class NozzleBase(JAXFluidsFlowEnv):
+    """Thrust-vector control of a supersonic nozzle by secondary injection (shock vector control).
+
+    Actuation power (one actuator per injector): the injected gas comes from a reservoir at total
+    temperature ``T_inf`` and the injector total pressure ``p_t`` set by the action; its power is the exergy
+    flow relative to the ambient state, ``P_i = sum_cells mdot R T_inf ln(p_t / p_inf)`` (minimum, isothermal,
+    supply work; in the low-Mach limit the incompressible transpiration power ``Q (p_t - p_inf)``), with the
+    injected mass flux ``mdot`` of the interface-flux function (forms per interface cell). The thrust-angle
+    objective has no force coefficient, so ``C_P = P / P_ref`` with ``P_ref`` the exergy flow rate of the ideal
+    choked primary jet, ``mdot* R T0 ln(NPR)`` (2D: per unit span, ``A* = 2 R_throat``; 3D: ``pi R_throat^2``),
+    see ``primary_reference_power``. No ``drag_coefficient``.
+    Sampling: ``"mean"`` (default, after every JAX-Fluids step, via a callback) or ``"end"``.
+    Power options (``power_weight``, ``power_cost``, ``power_sampling``) are read from the ``jaxfluids``
+    section of the environment config and can be overridden in ``env_config``.
+    """
+
     SPEC: ClassVar[TVCSpec]
     TARGET_FNS: ClassVar[dict[str, TargetThrustAngleFn]] = {}
 
     def __init__(self, env_config: dict) -> None:
         self._init_from_hf(env_config)
+        # Settings of the ``jaxfluids`` section given in env_config take precedence over the configuration file,
+        # e.g. ``num_actuators`` of the 3D nozzle, which the published configuration does not set.
+        overrides = env_config.get("jaxfluids")
+        if overrides:
+            self.conf.jaxfluids = OmegaConf.merge(self.conf.jaxfluids, OmegaConf.create(dict(overrides)))
+
+        self.power_config = PowerConfig.from_config(dict(self.conf.jaxfluids), env_config)
+        self.power_sampling = self.power_config.resolve_sampling("mean")
+        self._power_samples = []
+        self._last_power_forms = None
+        power_callback = _InjectorPowerCallback()
 
         env_options = build_tvc_env_options(
             env_config=self.conf.jaxfluids,
@@ -85,6 +129,7 @@ class NozzleBase(JAXFluidsFlowEnv):
             self.conf.jaxfluids,
             runtime_setup.case_setup_dict,
             runtime_setup.numerical_setup_dict,
+            callbacks=[power_callback],
         )
 
         self.default_action_reset = np.zeros(self.num_actuators)
@@ -97,6 +142,18 @@ class NozzleBase(JAXFluidsFlowEnv):
             self.num_probes = 0
 
         self.action_callable_setup = self._build_action_callable_setup()
+        self._injector_power_fn = initialize_injector_power_fn(
+            injector_geometry=self.injector_geometry,
+            pressure_ratios=self.pressure_ratios,
+            p_infty=self.SPEC.ambient_pressure,
+            T_infty=self.SPEC.ambient_temperature,
+            specific_heat_ratio=self.SPEC.specific_heat_ratio,
+            specific_gas_constant=self.SPEC.specific_gas_constant,
+            sim_manager=self.sim_manager,
+        )
+        self.power_reference = primary_reference_power(self.SPEC)
+        self._power_jit = None
+        power_callback.env = self
 
         self._set_spaces(
             action_space=self._build_action_space(),
@@ -191,10 +248,81 @@ class NozzleBase(JAXFluidsFlowEnv):
 
         return np.asarray(obs)
 
+    # ------------------------------------------------------------------
+    # Actuation power
+    # ------------------------------------------------------------------
+    def _power_terms(self, jxf_buffers: JaxFluidsBuffers, actuator: Array):
+        """Per-injector power, cost forms (per interface cell) and injected mass flow; ``C_P`` units."""
+        domain_information = self.sim_manager.domain_information
+        nhx, nhy, nhz = domain_information.domain_slices_conservatives
+        nhx_, nhy_, nhz_ = domain_information.domain_slices_geometry
+        simulation_buffers = jxf_buffers.simulation_buffers
+        primitives = simulation_buffers.material_fields.primitives[..., nhx, nhy, nhz]
+        apertures = simulation_buffers.levelset_fields.apertures
+        geometry = self.sim_manager.levelset_handler.fluid_solid_handler.geometry_calculator
+        normal = geometry.compute_normal_apertures_based(apertures)[..., nhx_, nhy_, nhz_]
+        interface_length = geometry.compute_interface_length(apertures)[..., nhx_, nhy_, nhz_]
+        mesh_grid = jnp.array(domain_information.compute_device_mesh_grid())
+        n_cells = primitives[0].size
+        mdot, power = self._injector_power_fn(
+            primitives.reshape(primitives.shape[0], n_cells),
+            interface_length.reshape(n_cells),
+            normal.reshape(normal.shape[0], n_cells),
+            mesh_grid.reshape(mesh_grid.shape[0], n_cells),
+            actuator,
+        )
+        power = power / self.power_reference
+        forms = power_forms(power, xp=jnp)
+        out = (jnp.sum(power, axis=1), forms, jnp.sum(mdot))
+        if domain_information.is_parallel:
+            out = jax.lax.psum(out, axis_name="i")
+        return out
+
+    def _evaluate_power(self, jxf_buffers: JaxFluidsBuffers):
+        """``(per_injector, forms, mdot)`` as numpy values for the current buffers and action."""
+        if self._power_jit is None:
+            if self.sim_manager.domain_information.is_parallel:
+                self._power_jit = jax.pmap(
+                    self._power_terms,
+                    axis_name="i",
+                    in_axes=(JaxFluidsBuffers(0, None, None, None), None),
+                    out_axes=None,
+                )
+            else:
+                self._power_jit = jax.jit(self._power_terms)
+        actuator = jnp.asarray(self.action_params_setup.levelset.fluid_solid.actuator)
+        per, forms, mdot = self._power_jit(jxf_buffers, actuator)
+        return np.asarray(per), {k: float(v) for k, v in forms.items()}, float(mdot)
+
+    def _power_info(self) -> dict[str, Any]:
+        """Power ``info`` entries ("mean" over the samples of the last action, else instantaneous)."""
+        samples = self._power_samples
+        if self.power_sampling != "mean" or not samples:
+            jxf_buffers, _ = self._require_state()
+            samples = [self._evaluate_power(jxf_buffers)]
+        self._power_samples = []
+        per = np.mean([sm[0] for sm in samples], axis=0)
+        forms = {k: float(np.mean([sm[1][k] for sm in samples])) for k in ("signed", "positive", "abs")}
+        mdot = float(np.mean([sm[2] for sm in samples]))
+        self._last_power_forms = forms
+        objective = {
+            "thrust_angle": np.array(self.thrust_angle),
+            "target_angle": np.array(self.target_angle),
+            "injector_mass_flow": mdot,
+        }
+        return power_info(per, sampling=self.power_sampling, objective=objective, forms=forms)
+
+    def step(self, action: np.ndarray):
+        self._power_samples = []
+        observation, reward, terminated, truncated, info = super().step(action)
+        reward = self.power_config.apply(reward, self._last_power_forms)
+        return observation, reward, terminated, truncated, info
+
     def _get_info(self) -> dict[str, Any]:
         return {
             "thrust_angle": np.array(self.thrust_angle),
             "target_angle": np.array(self.target_angle),
+            **self._power_info(),
         }
 
     def _after_step(
@@ -648,11 +776,6 @@ class Nozzle3D(NozzleBase):
 
             ax[0].set_ylim(-10.0, 10.0)
             ax[1].set_ylim(-10.0, 10.0)
-
-            # for actuator_i in range(self.num_actuators):
-            #     ax[1].plot(t * 1e3, action[:,actuator_i], label=f"Inj. {actuator_i:02d}")
-
-        # ax[1].set_ylim(-0.05, 1.05)
 
         if self.is_pressure_probes and len(t) > 0:
             pressure_probes = np.array(self.history["pressure_probes"])

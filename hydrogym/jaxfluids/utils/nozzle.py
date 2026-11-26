@@ -153,7 +153,10 @@ def build_tvc_env_options(
         num_actuators = spec.fixed_num_actuators
     else:
         if num_actuators is None:
-            raise ValueError("num_actuators must be provided.")
+            raise ValueError(
+                f"{cls_name}: num_actuators must be provided (configuration file, or "
+                'env_config={"jaxfluids": {"num_actuators": N}}).'
+            )
 
         min_num_actuators = spec.min_num_actuators
         max_num_actuators = spec.max_num_actuators
@@ -212,7 +215,6 @@ def build_tvc_runtime_setup(
     ngpus: int,
 ) -> TVCRuntimeSetup:
     env_name = f"Nozzle{dim}D_{resolution}"
-    # env_dir = base_path / env_name
     env_dir = base_path
 
     case_setup_path = env_dir / "jxf_case_setup.json"
@@ -313,9 +315,9 @@ def _compute_injector_plane_params(
 ) -> InjectorPlaneParameters:
     """Computes position, normal and tangent of the injector.
 
-    :param injector_geometry: _description_
+    :param injector_geometry: Geometry of the injector (position X, width IW, number of points N).
     :type injector_geometry: InjectorGeometry
-    :return: _description_
+    :return: Positions, unit tangents and unit normals of the injector plane.
     :rtype: InjectorPlaneParameters
     """
 
@@ -442,6 +444,133 @@ def _compute_unchoked_state(
     return rho_unchoked, u_unchoked, E_unchoked
 
 
+def _compute_injector_exit_state(
+    p_local: Array,
+    actuator_i: Array,
+    P0: float,
+    T_infty: float,
+    specific_heat_ratio: float,
+    specific_gas_constant: float,
+) -> tuple[Array, Array, Array, Array, Array]:
+    """Injector exit state for action ``actuator_i`` in [0, 1] (clipped by the caller).
+
+    The action sets the injector total pressure between the local nozzle pressure and the reservoir
+    pressure ``P0`` (total temperature ``T_infty``); the gas expands isentropically either to M = 1 (choked)
+    or to the local pressure.
+
+    Returns:
+        ``(p_total, rho, p, u, E)`` of the injected gas.
+    """
+    # actuator [0.0, 1.0] adjusts total pressure
+    p_total_injector = p_local + actuator_i * (P0 - p_local)
+    rho_total_injector = density_from_pressure_temperature(
+        p=p_total_injector,
+        T=T_infty,
+        R=specific_gas_constant,
+    )
+
+    # we assume isentropic expansion to either M=1 (choked)
+    # or to local pressure to compute injector state
+
+    # choked injector state
+    p_choked, rho_choked, u_choked, E_choked = _compute_choked_state(
+        p_total_injector=p_total_injector,
+        rho_total_injector=rho_total_injector,
+        specific_heat_ratio=specific_heat_ratio,
+    )
+
+    # unchoked injector state
+    p_ratio = p_local / p_total_injector
+    rho_unchoked, u_unchoked, E_unchoked = _compute_unchoked_state(
+        p_local=p_local,
+        rho_total_injector=rho_total_injector,
+        p_ratio=p_ratio,
+        specific_heat_ratio=specific_heat_ratio,
+    )
+
+    # checking if injector is choked
+    p_ratio_choked = pressure_ratio_isentropic(1.0, specific_heat_ratio)
+    mask_choked = p_ratio < p_ratio_choked
+
+    # masking choked vs. unchoked
+    rho_injector = jnp.where(mask_choked, rho_choked, rho_unchoked)
+    p_injector = jnp.where(mask_choked, p_choked, p_local)
+    u_injector = jnp.where(mask_choked, u_choked, u_unchoked)
+    E_injector = jnp.where(mask_choked, E_choked, E_unchoked)
+    return p_total_injector, rho_injector, p_injector, u_injector, E_injector
+
+
+def primary_reference_power(spec: "TVCSpec") -> float:
+    """Power normalisation of the nozzle: exergy flow rate of the ideal choked primary jet.
+
+    ``P_ref = mdot* R T0 ln(NPR)`` with
+    ``mdot* = A* p0 sqrt(gamma / (R T0)) (2 / (gamma + 1))^((gamma + 1) / (2 (gamma - 1)))``, ``p0 = NPR p_inf``,
+    ``T0 = T_inf`` (the inflow total temperature of the released cases), ``A* = 2 R_throat`` per unit span in 2D
+    and ``pi R_throat^2`` in 3D.
+    """
+    g, R, T0 = spec.specific_heat_ratio, spec.specific_gas_constant, spec.ambient_temperature
+    r_t = spec.nozzle_geometry.R
+    area = 2 * r_t if spec.dim == 2 else np.pi * r_t**2
+    mdot = area * spec.p0 * np.sqrt(g / (R * T0)) * (2 / (g + 1)) ** ((g + 1) / (2 * (g - 1)))
+    return float(mdot * R * T0 * np.log(spec.nozzle_pressure_ratio))
+
+
+def initialize_injector_power_fn(
+    injector_geometry: InjectorGeometry,
+    pressure_ratios: PressureRatios,
+    p_infty: float,
+    T_infty: float,
+    specific_heat_ratio: float,
+    specific_gas_constant: float,
+    sim_manager: SimulationManager,
+) -> Callable[[Array, Array, Array, Array, Array], tuple[Array, Array]]:
+    """Per-cell injection power, consistent with ``initialize_injector_flux_fn``.
+
+    For every interface cell of injector ``i`` the injected mass flux is the one of the flux function,
+    ``mdot = rho_inj u_n A_if``, and its power is the exergy flow of gas supplied from a reservoir at
+    ``T_infty`` and the injector total pressure ``p_t``, relative to the ambient state
+    ``(p_infty, T_infty)``: ``P = mdot R T_infty ln(p_t / p_infty)`` (the minimum, isothermal, compression
+    work; low-Mach limit ``Q (p_t - p_infty)``, the incompressible transpiration power).
+
+    Returns:
+        ``fn(primitives, interface_length, normal, mesh_grid, actuator) -> (mdot, power)``, both of shape
+        ``(num_injectors, N)`` for flattened cell arrays of length ``N``.
+    """
+    domain_information = sim_manager.domain_information
+    dim = domain_information.dim
+    dx = domain_information.smallest_cell_size
+    IW = injector_geometry.IW
+    P0 = p_infty * pressure_ratios.NPR * pressure_ratios.SPR
+    injector_params = _compute_injector_plane_params(injector_geometry)
+
+    def compute_injector_power(primitives, interface_length, normal, mesh_grid, actuator):
+        p_local = primitives[-1]
+        actuator = jnp.clip(actuator, 0.0, 1.0)
+        mdots, powers = [], []
+        for i in range(injector_geometry.N):
+            p_total, rho_injector, _, u_injector, _ = _compute_injector_exit_state(
+                p_local, actuator[i], P0, T_infty, specific_heat_ratio, specific_gas_constant
+            )
+            mask_injector = _compute_injector_mask(
+                mesh_grid,
+                IW,
+                InjectorPlaneParameters(
+                    injector_params.positions[i],
+                    injector_params.tangents[i],
+                    injector_params.normals[i],
+                ),
+                dim,
+                dx,
+            )
+            u_injector_n = jnp.sum(u_injector * injector_params.normals[i][:, None] * normal, axis=0)
+            mdot = rho_injector * u_injector_n * interface_length * mask_injector
+            mdots.append(mdot)
+            powers.append(mdot * specific_gas_constant * T_infty * jnp.log(p_total / p_infty))
+        return jnp.stack(mdots), jnp.stack(powers)
+
+    return compute_injector_power
+
+
 def initialize_injector_flux_fn(
     injector_geometry: InjectorGeometry,
     pressure_ratios: PressureRatios,
@@ -488,44 +617,9 @@ def initialize_injector_flux_fn(
         energy_flux = 0.0
 
         for i in range(num_injectors):
-            actuator_i = actuator[i]
-
-            # actuator [0.0, 1.0] adjusts total pressure
-            p_total_injector = p_local + actuator_i * (P0 - p_local)
-            rho_total_injector = density_from_pressure_temperature(
-                p=p_total_injector,
-                T=T_infty,
-                R=specific_gas_constant,
+            _, rho_injector, p_injector, u_injector, E_injector = _compute_injector_exit_state(
+                p_local, actuator[i], P0, T_infty, specific_heat_ratio, specific_gas_constant
             )
-
-            # we assume isentropic expansion to either M=1 (choked)
-            # or to local pressure to compute injector state
-
-            # choked injector state
-            p_choked, rho_choked, u_choked, E_choked = _compute_choked_state(
-                p_total_injector=p_total_injector,
-                rho_total_injector=rho_total_injector,
-                specific_heat_ratio=specific_heat_ratio,
-            )
-
-            # unchoked injector state
-            p_ratio = p_local / p_total_injector
-            rho_unchoked, u_unchoked, E_unchoked = _compute_unchoked_state(
-                p_local=p_local,
-                rho_total_injector=rho_total_injector,
-                p_ratio=p_ratio,
-                specific_heat_ratio=specific_heat_ratio,
-            )
-
-            # checking if injector is choked
-            p_ratio_choked = pressure_ratio_isentropic(1.0, specific_heat_ratio)
-            mask_choked = p_ratio < p_ratio_choked
-
-            # masking choked vs. unchoked
-            rho_injector = jnp.where(mask_choked, rho_choked, rho_unchoked)
-            p_injector = jnp.where(mask_choked, p_choked, p_local)
-            u_injector = jnp.where(mask_choked, u_choked, u_unchoked)
-            E_injector = jnp.where(mask_choked, E_choked, E_unchoked)
 
             mask_injector = _compute_injector_mask(
                 mesh_grid,
@@ -654,7 +748,6 @@ def clip_grids(grid, grid_levelset):
 def plot_slice(grid_levelset, grid) -> pv.Plotter:
     plotter = pv.Plotter(off_screen=True, window_size=(3000, 2200))
 
-    # CMAP = "Spectral_r"
     CMAP = "coolwarm"
 
     # nozzle
@@ -735,8 +828,6 @@ def plot_slice(grid_levelset, grid) -> pv.Plotter:
         show_scalar_bar=False,
         lighting=True,
         ambient=0.1,
-        # diffuse=1.0,
-        # specular=0.1,
     )
 
     slice_xz = grid.slice(normal=(0, 1, 0), origin=(0.0, 0.0, 0.0))
@@ -751,10 +842,6 @@ def plot_slice(grid_levelset, grid) -> pv.Plotter:
         cmap=CMAP,
         clim=[0.0, 3.0],
         show_scalar_bar=False,
-        # lighting=True,
-        # ambient=0.05,
-        # diffuse=0.5,
-        # specular=0.1,
     )
 
     # schlieren
@@ -770,22 +857,16 @@ def plot_slice(grid_levelset, grid) -> pv.Plotter:
         opacity=0.3,
         smooth_shading=True,
         lighting=True,
-        # ambient=0.2,
         diffuse=1.0,
         specular=1.0,
         specular_power=100,
     )
 
     plotter.add_light(pv.Light(light_type="headlight", intensity=0.3))
-    # plotter.add_axes()
-    # plotter.show_bounds()
-    # plotter.show_grid()
     plotter.camera_position = (
         (0.25, 0.1, 0.15),
         (0.12, 0.0, 0.0),
         (0, 1, 0),
     )
-    # plotter.enable_eye_dome_lighting()
-    # plotter.set_background("black")
 
     return plotter

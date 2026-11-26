@@ -6,9 +6,7 @@ This module provides the base environment class for CFD reinforcement learning
 with Hugging Face Hub integration for configuration management.
 """
 
-import glob
 import os
-from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Union
 
 import gymnasium as gym
@@ -19,16 +17,12 @@ from einops import rearrange
 from mpi4py import MPI
 
 from hydrogym.data_manager import HFDataManager
+from hydrogym.hf_env_mixin import ConfigError, HFEnvConfigMixin
 from hydrogym.maia.mpmd_interface import MaiaInterface
+from hydrogym.power import PowerConfig, power_info
 
 
-class ConfigError(Exception):
-    """Exception raised for configuration-related errors."""
-
-    pass
-
-
-class MaiaFlowEnv(gym.Env):
+class MaiaFlowEnv(HFEnvConfigMixin, gym.Env):
     """
     Base MaiaFlowEnv with Hugging Face Hub integration for configuration management.
 
@@ -50,6 +44,46 @@ class MaiaFlowEnv(gym.Env):
     """
 
     SOLVER_TYPE: str = "MAIA_LB"
+    # Actuation power (set per instance in __init__ / setup_actuation_power; class defaults keep instances built
+    # without __init__, e.g. in tests, valid: no power model, no power cost).
+    power_cfg: PowerConfig = PowerConfig()
+    _power_model = None
+    _power_kind: Optional[str] = None
+    _power_prev_commands = None
+    _power_invalid_warned = False
+
+    # Per-backend cache directory under ~/.cache
+    HF_CACHE_NAMESPACE = "maiagym"
+
+    @staticmethod
+    def _resolve_num_substeps(cfg_section) -> int:
+        """
+        Resolve the per-actuation substep count from the environment's YAML
+        config section (e.g. cfg.maia).
+
+        ``num_substeps`` is the primary key (matching Firedrake's
+        non-deprecated name and core.py's actuation_config); the old
+        ``num_sim_substeps_per_actuation`` key keeps working with a
+        DeprecationWarning.
+
+        Raises:
+            ConfigError: If the section defines neither key.
+        """
+        import warnings
+
+        if "num_substeps" in cfg_section:
+            return cfg_section["num_substeps"]
+        if "num_sim_substeps_per_actuation" in cfg_section:
+            warnings.warn(
+                "num_sim_substeps_per_actuation in the environment config is deprecated, rename it to num_substeps",
+                DeprecationWarning,
+                stacklevel=3,
+            )
+            return cfg_section["num_sim_substeps_per_actuation"]
+        raise ConfigError(
+            "Environment config section defines neither 'num_substeps' nor (deprecated) "
+            "'num_sim_substeps_per_actuation'"
+        )
 
     def __init__(self, env_config: Dict):
         """
@@ -68,21 +102,33 @@ class MaiaFlowEnv(gym.Env):
                     'none', 'customized'.
                 - obs_loc (list): Required if strategy is 'customized'.
                 - obs_scale (list): Required if strategy is 'customized'.
+                - nproc (int): Optional. Expected number of m-AIA solver
+                    ranks in the MPMD launch. When given, validated against
+                    the actual MPI world at construction time; a mismatch
+                    raises a clear ``RuntimeError`` naming the fix, instead
+                    of failing confusingly downstream. Omit to skip this
+                    check (default).
 
         Raises:
             ConfigError: If required configuration is missing or invalid.
+            RuntimeError: If ``nproc`` is given and does not match the
+                actual number of m-AIA solver ranks in the MPMD job.
         """
 
         # Initialize HF data manager
         self.hf_repo_id = env_config.get("hf_repo_id", "dynamicslab/HydroGym-environments")
         self.local_fallback_dir = env_config.get("local_fallback_dir", None)
         self.use_clean_cache = env_config.get("use_clean_cache", True)
+        self.hf_token = env_config.get("hf_token", None)
+        self.hf_revision = env_config.get("hf_revision", None)
 
         self.data_manager = HFDataManager(
             repo_id=self.hf_repo_id,
             local_fallback_dir=self.local_fallback_dir,
             use_clean_cache=self.use_clean_cache,
             fallback_profile=self.SOLVER_TYPE,
+            token=self.hf_token,
+            revision=self.hf_revision,
         )
 
         # Environment identification
@@ -108,6 +154,15 @@ class MaiaFlowEnv(gym.Env):
         # Standard initialization
         self.is_testing = env_config.get("is_testing", False)
         self.probe_locations = env_config.get("probe_locations")
+        if self.probe_locations is None:
+            raise ConfigError(
+                "'probe_locations' must be specified in env_config -- there is no "
+                "universal default (the sensible probe grid is a per-flow-geometry "
+                "choice). Example for a 2D flow: probe_locations=[x0, y0, x1, y1, ...] "
+                "(flattened coordinate pairs); see MaiaFlowEnv's docstring / "
+                "examples/maia/getting_started/test_maia_env.py's create_probe_locations "
+                "for a worked example."
+            )
         self.obs_normalization_strategy = env_config.get("obs_normalization_strategy", "none")
 
         valid_strategies = ["U_inf", "probewise_mean_std", "none", "customized"]
@@ -134,7 +189,7 @@ class MaiaFlowEnv(gym.Env):
 
         self.runtime_property_file = os.path.join(self.env_data_path, "properties_run.toml")
 
-        self.num_substeps_per_iteration = self.cfg.maia.num_sim_substeps_per_actuation
+        self.num_substeps_per_iteration = self._resolve_num_substeps(self.cfg.maia)
         self.observation_type = self.cfg.maia.observation_type
         self.max_episode_steps = self.cfg.env.max_episode_steps
         self.num_inputs = self.cfg.maia.num_action_inputs * self.cfg.env.n_agents
@@ -146,6 +201,19 @@ class MaiaFlowEnv(gym.Env):
             self.omega = self.cfg.maia.omega
         except omegaconf.errors.ConfigAttributeError:
             self.omega = 0.0
+
+        # Actuation power (hydrogym.power): reported in info; charged in the reward only if power_weight > 0.
+        self.power_cfg = PowerConfig.from_config(
+            omegaconf.OmegaConf.to_container(self.cfg.maia, resolve=True),
+            {k: env_config[k] for k in ("power_weight", "power_cost", "power_sampling") if k in env_config},
+        )
+        if self.power_cfg.resolve_sampling("end") != "end":
+            raise ConfigError(
+                "m-AIA environments sample the actuation power at the end of each action interval only "
+                "(power_sampling: end)"
+            )
+        self._power_model = None
+        self._power_kind = None
 
         # Read property file and extract parameters
         self.runtime_property_file_data = self._read_property_file(self.runtime_property_file)
@@ -159,11 +227,15 @@ class MaiaFlowEnv(gym.Env):
         self.bcId = self._get_property(self.runtime_property_file_data, "lbBndCndIdx")
         self.Re = self._get_property(self.runtime_property_file_data, "Re")
         self.zLength = self._get_property(self.runtime_property_file_data, "zLength") if self.nDim == 3 else self.dX
+        self._check_cell_size_against_grid()
 
         # Initialize MPI communication
         self.comm_world = MPI.COMM_WORLD
         self.maiaInterface = MaiaInterface(self.nDim)
-        self.maiaInterface.init_comm(self.comm_world)
+        # Optional launch-config validation: when the caller states how many MAIA solver ranks it expects,
+        # catch a wrong `-np` in the MPMD launch command here instead of
+        # failing confusingly (or silently misbehaving) downstream.
+        self.maiaInterface.init_comm(self.comm_world, nproc=env_config.get("nproc"))
         print("Python communicator initialized", flush=True)
 
         if self.Re != self.cfg.maia.Re:
@@ -171,129 +243,6 @@ class MaiaFlowEnv(gym.Env):
                 f"Re numbers of configuration file (Re={self.cfg.maia.Re}) and "
                 f"property file (Re={self.Re}) do not match! Adjustment required!"
             )
-
-    def _setup_environment_data(self) -> str:
-        """
-        Download and setup environment data from HF Hub.
-
-        First checks ~/.cache/maiagym/ for local data, otherwise falls back to data_manager.
-
-        Returns:
-            Path to the local environment data directory.
-
-        Raises:
-            ConfigError: If environment data cannot be retrieved.
-        """
-        # Check cache directory first
-        cache_dir = Path.home() / ".cache" / "maiagym" / self.environment_name
-        if cache_dir.exists() and cache_dir.is_dir():
-            print(f"Using cached environment data from: {cache_dir}")
-            return str(cache_dir)
-
-        # Fall back to data_manager if cache doesn't exist
-        try:
-            env_path = self.data_manager.get_environment_path(self.environment_name)
-            print(f"Using environment data from: {env_path}")
-            return env_path
-        except Exception as e:
-            raise ConfigError(f"Failed to setup environment data for {self.environment_name}: {e}")
-
-    def _resolve_configuration_file(self, config_file_input: Optional[str]) -> Optional[str]:
-        """
-        Resolve configuration file path from various input formats.
-
-        Args:
-            config_file_input: Can be:
-                - None: Auto-detect in HF environment
-                - Absolute path: Use directly
-                - Relative path starting with . or /: Use as-is
-                - Just filename: Look in HF environment directory
-
-        Returns:
-            Absolute path to configuration file, or None if not found.
-
-        Raises:
-            ConfigError: If specified configuration file is not found.
-        """
-        # Case 1: No config file specified - try to find one
-        if config_file_input is None:
-            print("No config file specified, searching in environment directory...")
-            return self._find_configuration_file()
-
-        # Case 2: Absolute path provided
-        if os.path.isabs(config_file_input):
-            if os.path.exists(config_file_input):
-                print(f"Using absolute path config file: {config_file_input}")
-                return config_file_input
-            else:
-                raise ConfigError(f"Configuration file not found: {config_file_input}")
-
-        # Case 3: Relative path from current directory (starts with ./ or ../)
-        if config_file_input.startswith("./") or config_file_input.startswith("../"):
-            abs_path = os.path.abspath(config_file_input)
-            if os.path.exists(abs_path):
-                print(f"Using config file from current directory: {abs_path}")
-                return abs_path
-            else:
-                raise ConfigError(f"Configuration file not found: {abs_path}")
-
-        # Case 4: Just a filename - look in multiple places
-        # First check current directory
-        if os.path.exists(config_file_input):
-            abs_path = os.path.abspath(config_file_input)
-            print(f"Using config file from current directory: {abs_path}")
-            return abs_path
-
-        # Then check HF environment directory
-        env_config_path = os.path.join(self.env_data_path, config_file_input)
-        if os.path.exists(env_config_path):
-            print(f"Using config file from environment: {env_config_path}")
-            return env_config_path
-
-        raise ConfigError(
-            f"Configuration file '{config_file_input}' not found in:\n"
-            f"  - Current directory: {os.getcwd()}\n"
-            f"  - Environment directory: {self.env_data_path}"
-        )
-
-    def _find_configuration_file(self) -> Optional[str]:
-        """
-        Auto-detect configuration file in the environment data directory.
-
-        Returns:
-            Path to configuration file, or None if not found.
-        """
-        # Look for specific configuration file names (most specific first)
-        config_names = [
-            "config.yaml",
-            "environment_config.yaml",
-            "env_config.yaml",
-            "environment.yaml",
-            f"{self.environment_name}.yaml",
-        ]
-
-        # Check exact names first
-        for name in config_names:
-            file_path = os.path.join(self.env_data_path, name)
-            if os.path.exists(file_path):
-                print(f"Auto-detected configuration file: {name}")
-                return file_path
-
-        # Then try patterns (but be specific - avoid catching property files)
-        config_patterns = ["config_*.yaml", "config_*.yml"]
-
-        for pattern in config_patterns:
-            matches = glob.glob(os.path.join(self.env_data_path, pattern))
-            if matches:
-                print(f"Auto-detected configuration file: {os.path.basename(matches[0])}")
-                return matches[0]
-
-        # Not found
-        print(f"WARNING: No configuration file auto-detected in {self.env_data_path}")
-        if os.path.exists(self.env_data_path):
-            print(f"Available files: {os.listdir(self.env_data_path)}")
-
-        return None
 
     def _update_configuration_paths(self) -> None:
         """
@@ -490,7 +439,8 @@ class MaiaFlowEnv(gym.Env):
                     )
                 )
 
-            probes[i, :] = self.maiaInterface.getProbeData(self.probe_locations)
+            probes[i, :] = self._read_probes()
+            self._power_probe_data = None
             self.maiaInterface.continueRun()
 
         loc = np.mean(probes, axis=0)
@@ -533,7 +483,7 @@ class MaiaFlowEnv(gym.Env):
     def create_from_hf_env(
         cls,
         environment_name: str,
-        hf_repo_id: str = "your-username/maiagym-envs",
+        hf_repo_id: str = "dynamicslab/HydroGym-environments",
         local_fallback_dir: Optional[str] = None,
         **kwargs,
     ):
@@ -591,13 +541,22 @@ class MaiaFlowEnv(gym.Env):
 
         Returns:
             Tuple of (observation, reward, terminated, truncated, info).
+            terminated is always False (no in-band physics-failure signal);
+            truncated becomes True once the step budget
+            (max_episode_steps) is reached.
         """
         action = [a * self.MAX_CONTROL for a in action]
 
+        # m-AIA answers control / probe requests only at the start of a substep segment (LbSolver::callMPMDRoutines).
+        # The action is set while m-AIA waits there, the segment then runs N substeps with it, and the probes are read
+        # at the start of the next segment: the observation is the state at the END of the interval the action acted
+        # on (gym convention).
+        commands = self.convert_action(action=action)
+        self.maiaInterface.setControlProperties(commands)
+        self.maiaInterface.continueRun()
         self.maiaInterface.runTimeSteps(self.num_substeps_per_iteration)
-        self.maiaInterface.setControlProperties(self.convert_action(action=action))
 
-        self.probeData = self.maiaInterface.getProbeData(self.probe_locations)
+        self.probeData = self._read_probes()
         self.probeData = rearrange(self.probeData, "(n p) -> n p", n=self.noProbes)
 
         self.obs = []
@@ -629,15 +588,18 @@ class MaiaFlowEnv(gym.Env):
 
         self.obs = np.concatenate(self.obs)
         reward, obj_dict = self.get_reward()
+        info = self._power_info(commands, obj_dict)
+        reward = self._charge_power(reward, info)
         self.obs = (self.obs - self.obs_loc) / self.obs_scale
 
         self.iter += 1
+        # Reaching the step budget is a TRUNCATION, not a
+        # termination -- terminated is reserved for physics failure. (The
+        # MAIA solver exposes no in-band divergence signal today; a solver-
+        # side crash surfaces as an MPI communication error, not a flag.)
         done = self.check_complete()
-        info = {}
 
-        self.maiaInterface.continueRun()
-
-        return self.obs, reward, bool(done), bool(done), info
+        return self.obs, reward, False, bool(done), info
 
     def reset(self, seed: Optional[int] = None, options: Optional[Dict] = None) -> Tuple[np.ndarray, Dict]:
         """
@@ -652,11 +614,16 @@ class MaiaFlowEnv(gym.Env):
         """
         print("Resetting environment", flush=True)
 
-        self.maiaInterface.runTimeSteps(1)
+        # Between calls m-AIA waits in its request loop at the start of the next segment (see step()).  Leave it first
+        # (after a step), open an N-substep segment, reinitialise, and stay in the request loop (no continueRun).
+        if getattr(self, "_in_request_loop", False):
+            self.maiaInterface.continueRun()
+        self.maiaInterface.runTimeSteps(self.num_substeps_per_iteration)
         self.maiaInterface.reinit()
 
         self.maiaInterface.setControlProperties(self.convert_action(action=np.zeros(shape=self.num_inputs)))
-        self.probeData = self.maiaInterface.getProbeData(self.probe_locations)
+        self.probeData = self._read_probes()
+        self._power_probe_data = None  # the power is sampled in step() only
         self.probeData = rearrange(self.probeData, "(n p) -> n p", n=self.noProbes)
 
         self.obs = []
@@ -688,13 +655,269 @@ class MaiaFlowEnv(gym.Env):
 
         self.obs = np.concatenate(self.obs)
         self.obs = (self.obs - self.obs_loc) / self.obs_scale
+        self._in_request_loop = True
 
         self.iter = 0
-        info = {}
-
-        self.maiaInterface.continueRun()
+        info = self._power_info(None, None)
 
         return self.obs, info
+
+    # ------------------------------------------------------------------ actuation power
+    def setup_actuation_power(
+        self, kind: Optional[str], geometry: Optional[str] = None, model_options: Optional[Dict] = None
+    ) -> None:
+        """Build the actuation-power model of this environment (call at the end of the subclass constructor).
+
+        Args:
+            kind: ``"rotation"`` (rotating circular bodies, BC 2008), ``"slot_jets"`` (slot jets on circular bodies,
+                BC 2007), ``"wall_jets"`` (BC 2007 jets on other walls, ``hydrogym.maia.wall_jets``), ``"solver"``
+                (power coefficient ``C_P`` returned by the solver in the objective dict, e.g. the structured
+                finite-volume surface-wave cases), ``"solver_jets"`` (jets of the structured finite-volume solver,
+                BC 1008: power per jet and cost forms formed per wall face by the solver,
+                ``MaiaInterface.getActuationPower``) or ``None`` (no power model; the info keys are NaN).
+            geometry: for ``"wall_jets"``: ``"flat"`` (jets on flat walls along the lattice axes), ``"curve"`` (2D
+                wall from the case's BC-2007 geometry file, extruded in 3D) or ``"sphere"`` (object class 3).
+            model_options: keyword arguments of ``hydrogym.maia.wall_jets.WallJetPower`` (e.g.
+                ``wall_distances``).
+        """
+        from hydrogym.maia import power as mpower
+
+        props = self.runtime_property_file_data
+        common = dict(
+            n_dim=self.nDim,
+            dX=self.dX,
+            Ma=self.Ma,
+            Re=self.Re,
+            reference_length=self.referenceLength,
+            z_length=(self.zLength if self.nDim == 3 else self.dX),
+        )
+        self._power_kind = kind
+        self._power_model = None
+        if kind == "rotation":
+            geo = mpower.rotating_bodies(props, self.num_inputs)
+            if geo is not None:
+                centers, radii, zc, signs = geo
+                self._power_model = mpower.RingTorquePower(
+                    centers,
+                    radii,
+                    lattice_origin=self._lattice_origin(),
+                    axis_signs=signs,
+                    z_center=float(np.mean(zc)),
+                    **common,
+                )
+        elif kind == "slot_jets":
+            n_jets = int(self._get_property(props, "lbNoJets"))
+            geo = mpower.jets_on_bodies(props, n_jets)
+            if geo is not None:
+                centers, radii, angles, widths = geo
+                zc = (
+                    float(np.asarray(props["lbJetCenter"], dtype=float).reshape(n_jets, self.nDim)[:, -1].mean())
+                    if self.nDim == 3
+                    else 0.0
+                )
+                self._power_model = mpower.SlotJetPower(
+                    centers, radii, angles, widths, lattice_origin=self._lattice_origin(), z_center=zc, **common
+                )
+        elif kind == "wall_jets":
+            self._power_model = self._wall_jet_model(geometry, **(model_options or {}))
+        elif kind == "solver":
+            self._power_model = "solver"
+        elif kind == "solver_jets":
+            self._power_model = "solver_jets"
+        elif kind is not None:
+            raise ValueError(f"unknown actuation power model {kind!r}")
+        if self._power_model is None and self.power_cfg.weight > 0:
+            raise ConfigError(
+                f"power_weight > 0 but {type(self).__name__} has no actuation-power model for this configuration"
+            )
+
+    def _check_cell_size_against_grid(self) -> None:
+        """Stop with a clear error if the property file's dX does not match the grid file (if the grid is present)."""
+        from hydrogym.maia.power import check_cell_size
+
+        grid = os.path.join(self.env_data_path, "grid.Netcdf")
+        if not os.path.exists(grid):
+            return  # grids generated at run time (out_lb/) are written by m-AIA from these same properties
+        try:
+            check_cell_size(grid, self.dX, source=self.runtime_property_file)
+        except ValueError as err:
+            raise ConfigError(str(err)) from None
+
+    def _grid_file(self) -> str:
+        """Path of the m-AIA grid file of the case (environment data, or ``out_lb`` of the run directory)."""
+        for cand in (
+            os.path.join(self.env_data_path, "grid.Netcdf"),
+            os.path.join(self.env_data_path, "out_lb", "grid.Netcdf"),
+            os.path.join(os.getcwd(), "out_lb", "grid.Netcdf"),
+        ):
+            if os.path.exists(cand):
+                return cand
+        raise ConfigError("actuation power: grid.Netcdf of the environment not found (needed for the cell lattice)")
+
+    def _lattice_origin(self) -> np.ndarray:
+        """Origin of the finest-level cell-centre lattice, from the grid file of the environment."""
+        from hydrogym.maia.power import lattice_origin_from_grid
+
+        return lattice_origin_from_grid(self._grid_file(), self.dX, self.nDim)
+
+    def power_projection(self) -> float:
+        """Projection length (2D, cells) or area (3D, cells^2) of the drag coefficient, used for ``C_P``.
+
+        Default: ``referenceLength / dX * zLength / dX`` (``zLength = dX`` in 2D), as in the force coefficients.
+        """
+        return self.referenceLength / self.dX * self.zLength / self.dX
+
+    def _wall_jet_model(self, geometry: Optional[str], **options):
+        """``hydrogym.maia.wall_jets.WallJetPower`` of the BC-2007 jets of this case."""
+        from hydrogym.maia import wall_jets as wj
+        from hydrogym.maia.power import read_cdf_global_attributes
+
+        props = self.runtime_property_file_data
+        jets = wj.Bc2007Jets.from_properties(props)
+        # finest cell size and lattice origin from the grid itself (the power model uses the solver's lattice, defined
+        # by the grid file)
+        att = read_cdf_global_attributes(self._grid_file())
+        dX = float(att["lengthLevel0"]) / 2 ** int(att["maxLevel"])
+        origin = np.asarray(att["centerOfGravity"], dtype=float).reshape(-1)[: self.nDim] - 0.5 * float(
+            att["lengthLevel0"]
+        )
+        l_proj = self.power_projection() * (self.dX / dX) ** (self.nDim - 1)
+        if abs(dX / self.dX - 1.0) > 1e-6:
+            import warnings
+
+            warnings.warn(
+                f"{type(self).__name__}: the grid's finest cell size {dX:.6g} differs from the property file's "
+                f"{self.dX:.6g} (domainLength / 2^maxRfnmntLvl); the actuation power uses the grid's",
+                stacklevel=2,
+            )
+        n_dist = int(props.get("noDistributions", 9 if self.nDim == 2 else 27))
+        span = z_planes = None
+        span_weight = 1.0
+        if self.nDim == 3:
+            zc = float(np.asarray(read_cdf_global_attributes(self._grid_file())["centerOfGravity"])[2])
+            span = (zc - 0.5 * self.zLength, zc + 0.5 * self.zLength)
+            n_planes = int(options.pop("n_planes", 16))
+            k = np.arange(n_planes)
+            raw = span[0] + (k + 0.5) / n_planes * self.zLength
+            z_planes = origin[2] + (np.floor((raw - origin[2]) / dX) + 0.5) * dX
+            span_weight = self.zLength / dX / n_planes
+        else:
+            options.pop("n_planes", None)
+        if geometry == "flat":
+            el = wj.flat_wall_jets(jets, dX, origin, span=span)
+        elif geometry == "curve":
+            files = wj.geometry_files(os.path.join(self.env_data_path, "geometry.toml"))
+            if not files:
+                raise ConfigError("actuation power: no BC-2007 geometry file in geometry.toml")
+            if self.nDim == 2:
+                segs = np.concatenate([wj.read_polyline_stl(f) for f in files])
+            else:
+                # section at the cell-centre plane nearest mid-span (not a vertex plane of the surface mesh)
+                zs = origin[2] + (np.floor((0.5 * (span[0] + span[1]) - origin[2]) / dX) + 0.5) * dX
+                segs = np.concatenate([wj.read_stl_section(f, zs) for f in files])
+            el = wj.curve_link_jets(jets, segs, dX, origin, n_dist=n_dist, z_planes=z_planes, span_weight=span_weight)
+        elif geometry == "sphere":
+            el = wj.sphere_link_jets(jets, dX, origin, n_dist=n_dist)
+            options.setdefault("wall_distances", (2.0, 3.0, 4.0, 5.0))
+        else:
+            raise ValueError(f"unknown wall-jet geometry {geometry!r}")
+        return wj.WallJetPower(el, jets.n_jets, origin, dX, self.Ma, l_proj, **options)
+
+    def drag_coefficient_from_objective(self, obj_dict: Optional[Dict]) -> Optional[float]:
+        """Total drag coefficient of the controlled bodies from the objective dict of ``get_reward``.
+
+        Subclasses override this; the default returns None (no drag reported).
+        """
+        return None
+
+    def _power_info(self, commands, obj_dict: Optional[Dict]) -> Dict:
+        """Actuation-power entries of ``info`` (hydrogym.power); ``commands`` None means no actuation (reset)."""
+        if commands is not None:
+            n = len(commands)
+        elif self._power_kind == "slot_jets" and self._power_model is not None:
+            n = len(self._power_model.body_centers)
+        elif self._power_kind == "wall_jets" and self._power_model is not None:
+            n = self._power_model.n_jets
+        else:
+            n = self.num_inputs
+        if self._power_model is None:
+            per = np.full(n, np.nan)
+            forms = {"signed": np.nan, "positive": np.nan, "abs": np.nan}
+        elif commands is None:
+            per = np.zeros(1 if self._power_kind == "solver" else n)
+            forms = None
+        elif self._power_kind == "solver":
+            per = np.array([float(obj_dict["C_P"])])
+            forms = None
+        elif self._power_kind == "solver_jets":
+            # [P, P_pos, P_abs, P_0..P_{N-1}, Q_0..Q_{N-1}] (m-AIA StructuredBndryCnd3D::computeJetPower1008)
+            data = np.asarray(self.maiaInterface.getActuationPower(), dtype=float)
+            n_jets = (len(data) - 3) // 2
+            if n_jets != n or len(data) != 3 + 2 * n_jets:
+                raise RuntimeError(
+                    f"actuation power: m-AIA returned {len(data)} values for {n} jets (expected {3 + 2 * n}); "
+                    "the m-AIA build predates the jet power of boundary condition 1008 or fvNoJets does not match "
+                    "the number of actions"
+                )
+            per = data[3 : 3 + n_jets]
+            forms = {"signed": data[0], "positive": data[1], "abs": data[2]}
+        else:
+            data = getattr(self, "_power_probe_data", None)
+            if data is None:  # not sampled with the observation probes (e.g. a subclass with its own step)
+                data = self.maiaInterface.getProbeData(list(self._power_model.probe_coordinates))
+            self._power_probe_data = None  # one sample per step
+            ev = self._power_model.evaluate(data, commands)
+            per, forms = ev["per_actuator"], ev["forms"]
+        info = power_info(
+            per,
+            sampling="end",
+            forms=forms,
+            drag_coefficient=self.drag_coefficient_from_objective(obj_dict) if obj_dict is not None else None,
+            objective=obj_dict,
+        )
+        info["power_model"] = self._power_kind
+        # self-check of the probe-based models: spread over the circles (rotation) or between linear and quadratic
+        # wall extrapolation (jets), relative to the value; NaN where not applicable
+        spread = np.nan
+        if commands is not None and self._power_kind == "rotation" and self._power_model is not None:
+            spread = float(np.max(self._power_model.last_spread))
+        elif commands is not None and self._power_kind in ("slot_jets", "wall_jets") and self._power_model is not None:
+            spread = float(self._power_model.last_extrapolation_spread)
+        info["actuation_power_model_spread"] = spread
+        # validity: the ring torque needs a (nearly) steady annulus -> flag actions whose rotation command changed by
+        # more than ROTATION_STEADY_TOL of the bound (the jet and solver models have no such restriction)
+        valid = self._power_model is not None
+        if commands is None:
+            self._power_prev_commands = None
+        elif self._power_kind == "rotation" and self._power_model is not None:
+            from hydrogym.maia.power import ROTATION_STEADY_TOL, rotation_change
+
+            change = rotation_change(self._power_prev_commands, commands, self.MAX_CONTROL)
+            info["actuation_power_command_change"] = change
+            valid = change <= ROTATION_STEADY_TOL
+            self._power_prev_commands = list(commands)
+        info["actuation_power_valid"] = bool(valid)
+        return info
+
+    def _charge_power(self, reward, info: Dict):
+        """Reward minus power_weight * C_P (form power_cost); unchanged for power_weight 0."""
+        if self.power_cfg.weight == 0.0:
+            return reward
+        if not np.isscalar(reward):
+            raise ConfigError("power_weight > 0 needs a scalar reward (one boundary segment or a summed reward)")
+        key = {"signed": "actuation_power", "positive": "actuation_power_positive", "abs": "actuation_power_abs"}
+        if not info.get("actuation_power_valid", True) and not self._power_invalid_warned:
+            import warnings
+
+            warnings.warn(
+                "actuation power charged in the reward although the sample is flagged as not valid (the rotation "
+                "changed by more than 10 % of the bound within the action; the ring torque assumes a steady "
+                "annulus). Use smoother actuation (smaller action changes) or treat the power cost with care.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+            self._power_invalid_warned = True
+        return reward - self.power_cfg.weight * info[key[self.power_cfg.cost]]
 
     def compute_nondim_coefficients(
         self,
@@ -763,6 +986,9 @@ class MaiaFlowEnv(gym.Env):
         """
         print("ENV: Closing environment and signaling maia to finish...", flush=True)
         try:
+            if getattr(self, "_in_request_loop", False):  # leave the request loop before the finish signal
+                self.maiaInterface.continueRun()
+                self._in_request_loop = False
             self.maiaInterface.finishRun()
             print("ENV: Finish signal sent to maia", flush=True)
         except Exception as e:
@@ -798,6 +1024,33 @@ class MaiaFlowEnv(gym.Env):
             self.noProbeVars = 5  # u, v, w, rho, p
 
         self.noProbes = len(self.probe_locations) // self.nDim
+
+    def _probe_power_points(self) -> Optional[np.ndarray]:
+        """Flat coordinates of the probe-based power model (rotation / slot jets / wall jets), else None."""
+        if self._power_kind in ("rotation", "slot_jets", "wall_jets") and self._power_model is not None:
+            return np.asarray(self._power_model.probe_coordinates, dtype=float).ravel()
+        return None
+
+    def _read_probes(self):
+        """Request the observation probes and, if present, the power-model points in ONE list; return the
+        observation-probe values and keep the power-model values for ``_power_info``.
+
+        One fixed list (same points, same order every request) lets m-AIA reuse its cached probe cell ids; requesting
+        the two lists separately would replace the cache at every request. Each point is sampled independently, so the
+        values are the same as for separate requests.
+        """
+        self._power_probe_data = None
+        power_points = self._probe_power_points()
+        if power_points is None:
+            return self.maiaInterface.getProbeData(self.probe_locations)
+        coords = list(self.probe_locations) + power_points.tolist()
+        data = self.maiaInterface.getProbeData(coords)
+        if data is None:  # non-root controller rank: m-AIA answers the root only
+            return data
+        data = np.asarray(data)
+        n_obs = len(data) * len(self.probe_locations) // len(coords)  # values per point x observation points
+        self._power_probe_data = data[n_obs:]
+        return data[:n_obs]
 
     def _read_property_file(self, property_file_path: str) -> Dict:
         """
@@ -889,7 +1142,7 @@ def from_hf(environment_name: str, hf_repo_id: str = "dynamicslab/HydroGym-envir
     Examples:
         >>> env = maiaGym.from_hf('Cylinder_2D_Re200')
         >>> env = maiaGym.from_hf('RotaryCylinder_2D_Re1000', obs_loc=custom_loc)
-        >>> env = maiaGym.from_hf('Cavity_2D_Re4140')
+        >>> env = maiaGym.from_hf('Cavity_2D_Re4200')
     """
     # Parse environment type from name
     if "_" not in environment_name:
@@ -923,17 +1176,23 @@ def from_hf(environment_name: str, hf_repo_id: str = "dynamicslab/HydroGym-envir
         raise ConfigError(f"Failed to create environment '{environment_name}' of type '{env_type}': {e}") from e
 
 
-def list_available_environments(hf_repo_id: str = "dynamicslab/HydroGym-environments") -> List[str]:
+def list_available_environments(
+    hf_repo_id: str = "dynamicslab/HydroGym-environments",
+    hf_token: Optional[str] = None,
+    hf_revision: Optional[str] = None,
+) -> List[str]:
     """
     List all available environments from HF Hub.
 
     Args:
         hf_repo_id: Hugging Face repository ID.
+        hf_token: Hugging Face access token (private/gated repos; ``None`` = ambient auth).
+        hf_revision: Git revision to pin the file listing to.
 
     Returns:
         List of environment names.
     """
-    data_manager = HFDataManager(repo_id=hf_repo_id)
+    data_manager = HFDataManager(repo_id=hf_repo_id, token=hf_token, revision=hf_revision)
     return data_manager.get_available_environments()
 
 

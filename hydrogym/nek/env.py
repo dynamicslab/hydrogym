@@ -3,7 +3,7 @@ Core Nek5000 environment with Gymnasium interface.
 Single-agent with array-based observations/actions.
 
 Supports two initialization patterns:
-1. MAIA pattern (recommended): env = NekEnv.from_hf('EnvName', nproc=10)
+1. Hugging Face pattern (recommended): env = NekEnv.from_hf('EnvName', nproc=10)
 2. Legacy pattern: env = NekEnv(conf=config_obj)
 """
 
@@ -19,73 +19,27 @@ import pandas as pd
 from mpi4py import MPI
 from omegaconf import OmegaConf
 
+from hydrogym.core_external import ExternalProcessEnvMixin, mpi_split  # noqa: F401  (mpi_split re-exported)
 from hydrogym.data_manager import HFDataManager
+from hydrogym.hf_env_mixin import ConfigError, HFEnvConfigMixin
+from hydrogym.power import POWER_COSTS, PowerConfig, power_info
 
 from .configs import Config
 from .nek_lib.lglnodes import lglnodes
-from .nek_lib.nek_utils import remove_sch
+from .nek_lib.nek_utils import POWER_MODES, rea_mismatches, remove_sch
 from .nek_lib.reward_logger import RewardLogger
 
 
-class ConfigError(Exception):
-    """Exception raised for configuration-related errors."""
+class NekDivergenceError(RuntimeError):
+    """Raised when the Nek simulation's CFL number blows up during evolve.
 
-    pass
-
-
-def mpi_split(comm_world: MPI.Comm, nproc: Optional[int] = None) -> MPI.Comm:
+    The failure is catchable by RL loops and gym wrappers. By the time this is raised the solver side has
+    already been shut down cleanly (TERMN sent, intercomm freed, MPI
+    finalized) -- the environment is not usable afterwards.
     """
-    Split MPI world into master/worker inter-communicator.
-
-    Args:
-      comm_world: MPI communicator
-      nproc: Expected number of Nek workers (for validation)
-
-    Returns:
-      Inter-communicator between controller and workers
-    """
-    mpi_rank = comm_world.Get_rank()
-    mpi_size = comm_world.Get_size()
-
-    if mpi_size < 2:
-        raise RuntimeError(
-            "MPI world size must be >= 2 to create the Nek inter-communicator. "
-            "Launch with MPMD, e.g. `mpirun -n 1 python ... : -n N ./nek5000`, "
-            "so rank 0 can connect to the Nek worker ranks."
-        )
-
-    # Validate MPI size matches nproc
-    if nproc is not None:
-        expected_size = 1 + nproc  # 1 controller + N workers
-        if mpi_size != expected_size:
-            raise RuntimeError(
-                f"MPI world size mismatch: expected {expected_size} "
-                f"(1 controller + {nproc} workers), got {mpi_size}. "
-                f"Launch with: mpirun -n 1 python ... : -n {nproc} ./nek5000"
-            )
-
-    if mpi_rank == 0:
-        color = 0
-    else:
-        color = 1
-
-    local_comm = comm_world.Split(color, mpi_rank)
-    print(
-        f"[MPI_SPLIT] World rank {mpi_rank}, color {color}, "
-        f"local_comm size: {local_comm.Get_size()}, "
-        f"local rank: {local_comm.Get_rank()}",
-        flush=True,
-    )
-
-    sub_comm = local_comm.Create_intercomm(local_leader=0, peer_comm=MPI.COMM_WORLD, remote_leader=1, tag=99)
-    print(
-        f"[MPI_SPLIT] Inter-comm created: local_size={sub_comm.Get_size()}, remote_size={sub_comm.Get_remote_size()}",
-        flush=True,
-    )
-    return sub_comm
 
 
-class NekEnv(gym.Env):
+class NekEnv(HFEnvConfigMixin, ExternalProcessEnvMixin, gym.Env):
     """
     Core Nek5000 environment with Gymnasium interface.
 
@@ -95,9 +49,9 @@ class NekEnv(gym.Env):
 
     Supports two initialization patterns:
 
-    1. MAIA pattern (recommended):
+    1. Hugging Face pattern (recommended):
         env = NekEnv.from_hf(
-            'MiniChannel_Re180',
+            'TCFmini_3D_Re180',
             nproc=10,
             hostfile='',
         )
@@ -106,28 +60,41 @@ class NekEnv(gym.Env):
         conf = OmegaConf.load('config.yaml')
         env = NekEnv(conf=conf)
 
-    Args (MAIA pattern via env_config):
+    Args (Hugging Face pattern via env_config):
       environment_name: Name of environment on HuggingFace
       nproc: Number of MPI workers for Nek (required)
       hostfile: MPI hostfile path (default: '')
+      mpi_bind_to: MPI bind policy passed to mpirun via MPI.Info
+          (default: 'none' = unbound; e.g. 'core' binds ranks to cores)
       hf_repo_id: HuggingFace repository (default: 'dynamicslab/HydroGym-environments')
       use_clean_cache: Use fresh workspace (default: True)
       local_fallback_dir: Local directory for offline usage
       configuration_file: Override config file path
-      run_root: Root directory for outputs (default: 'runs')
+      run_root: Root directory for outputs (default: '.')
       run_name: Name for this run (default: '' = no subdirectory, use run_root directly)
-      reward_agg: Reward aggregation method ("mean" or "sum")
+      reward_agg: Reward aggregation method ("mean", "sum", or "median") - legacy
+          name, kept working
+      reward_aggregation: Same as reward_agg, primary name (matches core.py /
+          Firedrake); takes precedence when both are given
       ... (runtime overrides for config parameters)
 
     Args (Legacy pattern):
       conf: Configuration object (OmegaConf)
-      run_root: Root directory for run outputs
-      run_name: Name for this run (defaults to MPI rank)
-      reward_agg: How to aggregate per-actuator rewards ("mean" or "sum")
+      run_root: Root directory for run outputs (default: '.')
+      run_name: Name for this run (default: no subdirectory, use run_root directly)
+      reward_agg: How to aggregate per-actuator rewards ("mean", "sum", or "median")
     """
 
     metadata = {"render_modes": ["human"]}
     SOLVER_TYPE = "NEK5000"
+
+    # Per-backend cache directory under ~/.cache, and log prefix for the
+    # HFEnvConfigMixin resolution messages (Nek tags all its prints).
+    HF_CACHE_NAMESPACE = "nekgym"
+    LOG_PREFIX = "[NEK] "
+    # MPI rank-binding policy passed to mpirun via MPI.Info ("bind_to").
+    # Overridable via the `mpi_bind_to` env_config key (Hugging Face pattern).
+    DEFAULT_MPI_BIND_TO = "none"
 
     def __init__(
         self,
@@ -136,6 +103,7 @@ class NekEnv(gym.Env):
         run_root: str = ".",
         run_name: Optional[str] = None,
         reward_agg: str = "mean",
+        reward_aggregation: Optional[str] = None,
         **kwargs,
     ):
         """
@@ -143,20 +111,51 @@ class NekEnv(gym.Env):
 
         Args:
           conf: Legacy OmegaConf object (deprecated)
-          env_config: MAIA-style configuration dict (recommended)
-          run_root: Output directory root
-          run_name: Run name (auto-generate if None)
-          reward_agg: Reward aggregation method
+          env_config: Configuration dict of the Hugging Face pattern (recommended)
+          run_root: Output directory root (default: '.')
+          run_name: Run name; None or '' = no subdirectory, use run_root directly
+          reward_agg: Reward aggregation method ('mean', 'sum' or 'median'; legacy name)
+          reward_aggregation: Same as reward_agg (takes precedence when both are given)
           **kwargs: Additional parameters (for backward compatibility)
+
+        Raises:
+          ValueError: If both 'conf' and 'env_config' are given, or an invalid
+            reward aggregation is requested.
+          UserWarning: If **kwargs is non-empty -- these are accepted for
+            backward compatibility but have NO effect; runtime overrides
+            belong in env_config (see NekEnv.from_hf).
         """
         # Determine which API is being used
         if conf is not None and env_config is not None:
             raise ValueError("Cannot provide both 'conf' and 'env_config'. Use one or the other.")
 
+        if kwargs:
+            warnings.warn(
+                f"NekEnv.__init__ got unsupported keyword argument(s) {sorted(kwargs)}; "
+                "they have no effect. Runtime configuration overrides belong in "
+                "env_config (see NekEnv.from_hf).",
+                stacklevel=2,
+            )
+
+        # ``reward_aggregation`` is the primary name (matching core.py's
+        # actuation_config / Firedrake); ``reward_agg`` is the legacy Nek
+        # name and keeps working unchanged.
+        if reward_aggregation is not None:
+            if reward_agg != "mean" and reward_agg != reward_aggregation:
+                warnings.warn(
+                    "Both reward_agg and reward_aggregation were provided with different values; "
+                    "using reward_aggregation",
+                    stacklevel=2,
+                )
+            reward_agg = reward_aggregation
+        if reward_agg not in ("mean", "sum", "median"):
+            raise ValueError(f"reward aggregation must be 'mean', 'sum', or 'median', got {reward_agg!r}")
+        self.reward_agg = reward_agg
+
         if conf is not None:
             # Legacy API
             warnings.warn(
-                "Passing 'conf' is deprecated. Use the MAIA pattern: env = NekEnv.from_hf('EnvName', nproc=10)",
+                "Passing 'conf' is deprecated. Use the Hugging Face pattern: env = NekEnv.from_hf('EnvName', nproc=10)",
                 DeprecationWarning,
                 stacklevel=2,
             )
@@ -168,17 +167,17 @@ class NekEnv(gym.Env):
 
         else:
             raise ValueError(
-                "Must provide either 'conf' (legacy) or 'env_config' (MAIA pattern). "
+                "Must provide either 'conf' (legacy) or 'env_config' (Hugging Face pattern). "
                 "Recommended: use NekEnv.from_hf('EnvName', nproc=10)"
             )
 
     @classmethod
     def from_hf(cls, environment_name: str, nproc: int, hostfile: str = "", **kwargs):
         """
-        Create environment from HuggingFace Hub (MAIA pattern).
+        Create environment from HuggingFace Hub (Hugging Face pattern).
 
         Args:
-          environment_name: Name of the environment (e.g., 'MiniChannel_Re180')
+          environment_name: Name of the environment (e.g., 'TCFmini_3D_Re180')
           nproc: Number of MPI workers for Nek (required)
           hostfile: MPI hostfile path (default: '')
           **kwargs: Additional env_config parameters:
@@ -186,23 +185,27 @@ class NekEnv(gym.Env):
             - use_clean_cache: Fresh workspace (default: True)
             - local_fallback_dir: Local directory
             - configuration_file: Override config path
-            - run_root: Output directory (default: 'runs')
-            - run_name: Run name (auto-generate if None)
-            - reward_agg: 'mean' or 'sum' (default: 'mean')
-            - normalize_input: Override normalization strategy
-            - nb_interactions: Override episode length
-            - random_init: Override IC randomization
-            - rescale_actions: Override action rescaling
-            - rew_mode: Override reward mode
+            - run_root: Output directory (default: '.')
+            - run_name: Run name (default: no subdirectory, use run_root directly)
+            - reward_agg: 'mean', 'sum', or 'median' (default: 'mean'); legacy name
+            - reward_aggregation: same as reward_agg, primary name (takes precedence)
+            - normalize_input: Override normalization strategy (shorthand)
+            - nb_interactions: Override episode length (shorthand)
+            - random_init: Override IC randomization (shorthand)
+            - rescale_actions: Override action rescaling (shorthand)
+            - rew_mode: Override reward mode (shorthand)
+            - '<section>.<param>': Override ANY existing config-tree entry by
+              dotted path (e.g. 'simulation.walltime'); unknown paths raise
+              ConfigError
 
         Returns:
           NekEnv instance
 
         Example:
-          env = NekEnv.from_hf('MiniChannel_Re180', nproc=10)
+          env = NekEnv.from_hf('TCFmini_3D_Re180', nproc=10)
 
           env = NekEnv.from_hf(
-              'MiniChannel_Re180',
+              'TCFmini_3D_Re180',
               nproc=10,
               hostfile='hosts.txt',
               use_clean_cache=True,
@@ -239,13 +242,13 @@ class NekEnv(gym.Env):
 
         # MPI communicator required by Nek
         comm_world = MPI.COMM_WORLD
-        self.sub_comm = mpi_split(comm_world, nproc=self.nproc)
+        self.sub_comm = self._split_mpmd_comm(comm_world, nproc=self.nproc)
 
         # Initialize the environment (this sets n_actuators, obs_per_actuator, etc.)
         self._initialize()
 
     def _init_from_hf(self, env_config: Dict, run_root: str, run_name: Optional[str], reward_agg: str):
-        """Initialize using MAIA pattern from HuggingFace."""
+        """Initialize using Hugging Face pattern from HuggingFace."""
         # Validate required parameters
         if "environment_name" not in env_config:
             raise ConfigError("'environment_name' must be specified in env_config")
@@ -256,18 +259,41 @@ class NekEnv(gym.Env):
         self.environment_name = env_config["environment_name"]
         self.nproc = env_config["nproc"]
         self.hostfile = env_config.get("hostfile", "")
-        self.reward_agg = reward_agg
+
+        # reward_agg/reward_aggregation may also arrive via env_config (e.g.
+        # through from_hf(**kwargs)). The `reward_agg` argument here is the value already resolved in
+        # __init__ from the reward_agg/reward_aggregation kwargs, so it wins
+        # whenever it is not at its "mean" default; env_config overrides
+        # (from_hf kwargs) win over the bare default:
+        #   resolved kwarg (incl. reward_aggregation) > env_config
+        #   ["reward_aggregation"] > env_config["reward_agg"] > "mean".
+        if "reward_aggregation" in env_config:
+            cfg_reward = env_config["reward_aggregation"]
+        elif reward_agg != "mean":
+            cfg_reward = reward_agg
+        elif "reward_agg" in env_config:
+            cfg_reward = env_config["reward_agg"]
+        else:
+            cfg_reward = reward_agg
+        if cfg_reward not in ("mean", "sum", "median"):
+            raise ValueError(f"reward aggregation must be 'mean', 'sum', or 'median', got {cfg_reward!r}")
+        self.reward_agg = cfg_reward
 
         # Initialize HF data manager
         self.hf_repo_id = env_config.get("hf_repo_id", "dynamicslab/HydroGym-environments")
         self.local_fallback_dir = env_config.get("local_fallback_dir", None)
         self.use_clean_cache = env_config.get("use_clean_cache", True)
+        self.hf_token = env_config.get("hf_token", None)
+        self.hf_revision = env_config.get("hf_revision", None)
+        self.mpi_bind_to = env_config.get("mpi_bind_to", self.DEFAULT_MPI_BIND_TO)
 
         self.data_manager = HFDataManager(
             repo_id=self.hf_repo_id,
             local_fallback_dir=self.local_fallback_dir,
             use_clean_cache=self.use_clean_cache,
             fallback_profile=self.SOLVER_TYPE,
+            token=self.hf_token,
+            revision=self.hf_revision,
         )
 
         # Download/get environment data
@@ -310,7 +336,7 @@ class NekEnv(gym.Env):
 
         # MPI communicator required by Nek
         comm_world = MPI.COMM_WORLD
-        self.sub_comm = mpi_split(comm_world, nproc=self.nproc)
+        self.sub_comm = self._split_mpmd_comm(comm_world, nproc=self.nproc)
 
         # Initialize the environment
         self._initialize()
@@ -346,40 +372,19 @@ class NekEnv(gym.Env):
         print(f"  Case: {casename}")
         print(f"  Work directory: {run_folder_abs}")
 
-    def _setup_environment_data(self):
-        """
-        Download and setup environment data from HF Hub.
-
-        First checks ~/.cache/nekgym/ for local data, otherwise falls back to data_manager.
-
-        Returns:
-            Path to the local environment data directory.
-        """
-        from pathlib import Path
-
-        # Check cache directory first (like MAIA does)
-        cache_dir = Path.home() / ".cache" / "nekgym" / self.environment_name
-        if cache_dir.exists() and cache_dir.is_dir():
-            print(f"[NEK] Using cached environment data from: {cache_dir}")
-            return str(cache_dir)
-
-        # Fall back to data_manager if cache doesn't exist
-        try:
-            env_path = self.data_manager.get_environment_path(self.environment_name)
-            print(f"[NEK] Using environment data from: {env_path}")
-            return env_path
-        except Exception as e:
-            raise ConfigError(f"Failed to setup environment data for {self.environment_name}: {e}")
-
     def _resolve_configuration_file(self, config_file_input: Optional[str]) -> Optional[str]:
-        """
-        Resolve configuration file path.
+        """Resolve configuration file path.
 
-        Args:
-          config_file_input: Can be None (auto-detect), absolute path, or filename
-
-        Returns:
-          Absolute path to config file, or None if not found
+        NekEnv uses its own, simpler resolution instead of the
+        HFEnvConfigMixin one. Differences from the mixin default:
+          - None auto-detects only environment_config.yaml then config.yaml
+            (the mixin's _find_configuration_file also tries env_config.yaml,
+            environment.yaml, <env>.yaml and config_*.y*ml globs).
+          - A missing absolute path or unknown filename returns None (the
+            caller's "no configuration file" ConfigError then fires) where
+            the mixin raises a more specific ConfigError immediately.
+          - A relative path is used when it exists from the working directory,
+            else it is looked up in the environment directory.
         """
         # If None, look for config files in environment directory (try multiple names)
         if config_file_input is None:
@@ -397,6 +402,12 @@ class NekEnv(gym.Env):
                 print(f"[NEK] Using config file: {config_file_input}")
                 return config_file_input
             return None
+
+        # A relative path that exists from the working directory (e.g. --config-file ../../../configs/x.yml)
+        if os.path.exists(config_file_input):
+            config_path = os.path.abspath(config_file_input)
+            print(f"[NEK] Using config file: {config_path}")
+            return config_path
 
         # Otherwise, look in environment directory
         config_path = os.path.join(self.env_data_path, config_file_input)
@@ -429,25 +440,89 @@ class NekEnv(gym.Env):
                     # Fallback: use configured path even if it doesn't exist yet
                     self.conf.simulation.restart_folder = os.path.join(self.env_data_path, restart_folder)
 
-    def _apply_runtime_overrides(self, env_config: Dict):
-        """Apply runtime overrides from env_config to loaded config."""
-        # Allow runtime override of certain parameters
-        override_map = {
-            "normalize_input": ("normalization", "normalize_input"),
-            "nb_interactions": ("episode", "max_interactions"),
-            "random_init": ("initial_conditions", "random_init"),
-            "rescale_actions": ("rl_interface", "rescale_actions"),
-            "rew_mode": ("episode", "reward_mode"),
+    # env_config keys that are consumed structurally by __init__/_init_from_hf
+    # (environment selection, HF/cache options, run layout, reward aggregation)
+    # and must never be interpreted as config-tree overrides.
+    RESERVED_ENV_CONFIG_KEYS = frozenset(
+        {
+            "environment_name",
+            "nproc",
+            "hostfile",
+            "hf_repo_id",
+            "use_clean_cache",
+            "local_fallback_dir",
+            "configuration_file",
+            "run_root",
+            "run_name",
+            "reward_agg",
+            "reward_aggregation",
+            "hf_token",
+            "hf_revision",
+            "mpi_bind_to",
         }
+    )
 
-        for key, (section, param) in override_map.items():
-            if key in env_config:
-                # Check if section exists in config
-                if hasattr(self.conf, section):
-                    cfg_section = getattr(self.conf, section)
-                    if hasattr(cfg_section, param):
-                        setattr(cfg_section, param, env_config[key])
-                        print(f"[NEK] Override: {section}.{param} = {env_config[key]}")
+    # Legacy shorthand keys, mapped to the config-tree path they set. Kept
+    # working unchanged; the dotted path is the general form. The second path
+    # is the same entry in the older configuration layout (section "runner"),
+    # read by the environment as a fallback; a shorthand sets whichever of the
+    # two the loaded configuration has.
+    SHORTHAND_OVERRIDES = {
+        "normalize_input": (("normalization", "normalize_input"), ("runner", "normalize_input")),
+        "nb_interactions": (("episode", "max_interactions"), ("runner", "nb_interactions")),
+        "random_init": (("initial_conditions", "random_init"), ("runner", "random_init")),
+        "rescale_actions": (("rl_interface", "rescale_actions"), ("runner", "rescale_actions")),
+        "rew_mode": (("episode", "reward_mode"), ("runner", "rew_mode")),
+    }
+
+    def _config_has(self, path: str) -> bool:
+        """Whether the dotted path ``section.param`` exists in the loaded configuration."""
+        section_path, _, param = path.rpartition(".")
+        parent = OmegaConf.select(self.conf, section_path) if section_path else self.conf
+        return parent is not None and param in parent
+
+    def _apply_runtime_overrides(self, env_config: Dict):
+        """Apply runtime overrides from env_config to the loaded config.
+
+        Two key forms are supported (anything else is a ConfigError, not a
+        silent drop):
+
+        - Dotted config-tree paths, e.g. ``{"episode.max_interactions": 5}``
+          or ``{"simulation.walltime": 100}``. The path must already exist
+          in the loaded configuration.
+        - The five legacy shorthand keys in SHORTHAND_OVERRIDES, which map
+          to the same tree paths (in a configuration of the older layout, to
+          the same entry under ``runner``) and keep working unchanged.
+
+        Reserved structural keys (RESERVED_ENV_CONFIG_KEYS) are ignored here;
+        they configure the environment machinery itself, not the solver
+        config.
+        """
+        for key, value in env_config.items():
+            if key in self.RESERVED_ENV_CONFIG_KEYS:
+                continue
+            if key in self.SHORTHAND_OVERRIDES:
+                candidates = [f"{section}.{param}" for section, param in self.SHORTHAND_OVERRIDES[key]]
+                path = next((c for c in candidates if self._config_has(c)), candidates[0])
+            elif "." in key:
+                path = key
+            else:
+                raise ConfigError(
+                    f"Unknown env_config override key {key!r}. Use a dotted "
+                    "config path (e.g. 'episode.max_interactions') or one of "
+                    f"the shorthand keys {sorted(self.SHORTHAND_OVERRIDES)}."
+                )
+
+            section_path, _, param = path.rpartition(".")
+            parent = OmegaConf.select(self.conf, section_path) if section_path else self.conf
+            if parent is None or param not in parent:
+                raise ConfigError(
+                    f"Runtime override path {path!r} does not exist in the "
+                    f"configuration for '{self.environment_name}'. Check the "
+                    "environment's config file for the correct section.param."
+                )
+            parent[param] = value
+            print(f"[NEK] Override: {path} = {value}")
 
     def _get_config_value(self, *paths, default=None):
         """
@@ -504,7 +579,7 @@ class NekEnv(gym.Env):
         # MPI info for Nek
         mpi_info = MPI.Info.Create()
         mpi_info.Set("wdir", f"{os.getcwd()}/{self.run_folder}")
-        mpi_info.Set("bind_to", "none")
+        mpi_info.Set("bind_to", getattr(self, "mpi_bind_to", self.DEFAULT_MPI_BIND_TO))
         if self.hostfile and self.hostfile != "":
             mpi_info.Set("hostfile", self.hostfile)
             print("[NEK] LOAD HOSTFILE!")
@@ -618,7 +693,171 @@ class NekEnv(gym.Env):
         )
         self.rank = self._get_config_value(("runner", "rank"), default=0)
 
+        self._setup_power()
+        self._check_rea()
+
         print("------------ FINISH INITIALIZATION -------------", flush=True)
+
+    # Solver codes of the power modes (PARAM(96) of the v17 wing case, see drl/drl_power.f)
+    POWER_MODES = POWER_MODES
+
+    def _setup_power(self):
+        """
+        Actuation power (hydrogym.power interface) from the optional ``power`` section of the configuration:
+
+          power:
+            enabled: true            # default: true if the section exists, false without it
+            power_sampling: mean     # mean (every solver step of an action, dt-weighted) | end
+            power_cost: abs          # form charged in the reward (signed | positive | abs)
+            power_weight: 0.0        # 0: reward unchanged
+            reference: {velocity: 1.0, length: 1.0, span: 0.1}   # C_P = P / (0.5 rho U^3 A); default A = power area
+            reply_timeout: 600       # s to wait for the first POWER reply (an executable without it never answers)
+
+        The solver computes the power of the imposed wall velocity at every node of the actuated wall
+        (drl/drl_power.f) and returns it on the request POWER. ``simulation.power_mode`` is set from this section
+        (0 off, 1 mean, 2 end); the case's parameter writer maps it to p096 of the .rea file.
+        """
+        spec = self.conf.get("power", None) if hasattr(self.conf, "get") else None
+        spec = {} if spec is None else dict(OmegaConf.to_container(spec, resolve=True))
+        enabled = bool(spec.get("enabled", bool(spec)))
+        self.power_config = PowerConfig.from_config(spec)
+        self.power_sampling = self.power_config.resolve_sampling("mean")
+        self.power_enabled = enabled
+        self._power_reference = dict(spec.get("reference") or {})
+        self._power_timeout = float(spec.get("reply_timeout", 600.0))
+        self._power_checked = False
+        self._power_warned = False
+        if not enabled:
+            if self.power_config.weight != 0.0:
+                raise ConfigError("power_weight > 0 needs the actuation power (power.enabled)")
+            mode = 0
+        else:
+            mode = self.POWER_MODES[self.power_sampling]
+        sim = self.conf.get("simulation", None) if hasattr(self.conf, "get") else None
+        if sim is not None:
+            sim["power_mode"] = mode
+        if enabled:
+            print(
+                f"[NEK] actuation power: sampling {self.power_sampling}, weight {self.power_config.weight} "
+                f"({self.power_config.cost})",
+                flush=True,
+            )
+
+    def _check_rea(self):
+        """
+        v17 cases: Nek5000 reads the .rea file at start-up, before this environment exists, so a configuration value
+        that the .rea of the run folder does not have does not reach the solver. Warn about every such entry;
+        prepare_workspace.py writes the configuration into the .rea before the launch.
+        """
+        sim = self.conf.get("simulation", None) if hasattr(self.conf, "get") else None
+        if sim is None or not self._is_v17_config(sim):
+            return
+        path = os.path.join(self.run_folder, f"{sim.CASENAME}.rea")
+        if not os.path.exists(path):
+            return
+        bad = rea_mismatches(sim, path)
+        if bad:
+            warnings.warn(
+                f"{path} differs from the configuration in "
+                + ", ".join(f"{pk} ({attr}: file {f:g}, configuration {c:g})" for pk, attr, f, c in bad)
+                + "; Nek5000 has read the file at start-up, so these configuration values do not apply. Write the "
+                "configuration into the .rea before launching (examples/nek/getting_started/prepare_workspace.py "
+                "--config).",
+                stacklevel=2,
+            )
+
+    @staticmethod
+    def _is_v17_config(sim) -> bool:
+        return "v17" in str(sim.get("solver_version", "v19")).lower()
+
+    def _reference_power(self, area: float) -> float:
+        """0.5 rho U^3 A from power.reference ({velocity, length, span} or {velocity, area}); default A = area."""
+        ref = self._power_reference
+        rho = float(self._get_config_value(("simulation", "density"), default=1.0))
+        u = float(ref.get("velocity", 1.0))
+        if ref.get("area") not in (None, "auto"):
+            a = float(ref["area"])
+        elif "length" in ref or "span" in ref:
+            a = float(ref.get("length", 1.0)) * float(ref.get("span", 1.0))
+        else:
+            a = float(area)
+        if not np.isfinite(a) or a <= 0:
+            raise ValueError(f"power reference area must be positive, got {a!r}")
+        return 0.5 * rho * u**3 * a
+
+    def _recv_power(self) -> Dict:
+        """Request POWER: C_P forms at the end of the action and, with sampling mean, their mean over its steps."""
+        request = b"POWER"
+        self.sub_comm.Send(
+            [request, tag_dict["COMMAND"]["mpi_dtype"]],
+            dest=0,
+            tag=tag_dict["COMMAND"]["tag"],
+        )
+        hdr = np.empty(16, dtype=np.float64)
+        req = self.sub_comm.Irecv([hdr, MPI.DOUBLE], 0, tag=tag_dict["POWER"]["tag"])
+        if self._power_checked:
+            req.Wait()
+        else:
+            # An executable built from a case without drl/drl_power.f ignores the request and would block here.
+            t0 = time.monotonic()
+            while not req.Test():
+                if time.monotonic() - t0 > self._power_timeout:
+                    req.Cancel()
+                    req.Wait()
+                    raise RuntimeError(
+                        f"the Nek5000 solver did not answer the request POWER within {self._power_timeout:g} s: "
+                        "its executable was probably built from a case without actuation power (drl/drl_power.f). "
+                        "Rebuild the case executable, or remove the power section of the configuration."
+                    )
+                time.sleep(0.01)
+            self._power_checked = True
+        end = np.empty((self.nNID, self.TOTCTRL), dtype=np.float64)
+        mean = np.empty((self.nNID, self.TOTCTRL), dtype=np.float64)
+        requests = []
+        for il, nid in enumerate(self.uniqID):
+            requests.append(self.sub_comm.Irecv([end[il], MPI.DOUBLE], nid, tag=nid + tag_dict["POWER_END"]["tag"]))
+            requests.append(self.sub_comm.Irecv([mean[il], MPI.DOUBLE], nid, tag=nid + tag_dict["POWER_MEAN"]["tag"]))
+        MPI.Request.Waitall(requests)
+
+        def per_actuator(buf):
+            out = np.zeros(self.n_actuators, dtype=np.float64)
+            icount = 0
+            for il, nid in enumerate(self.uniqID):
+                n = len(np.where(self.actuator_info["NID"] == nid)[0])
+                out[icount : icount + n] = buf[il, :n]
+                icount += n
+            return out
+
+        ref = self._reference_power(hdr[4])
+        names = ("signed", "positive", "abs", "signed_full_pressure")
+        out = {"end": {k: float(hdr[i]) / ref for i, k in enumerate(names)}}
+        out["end"]["per_actuator"] = per_actuator(end) / ref
+        if hdr[10] > 0:
+            out["mean"] = {k: float(hdr[5 + i]) / ref for i, k in enumerate(names)}
+            out["mean"]["per_actuator"] = per_actuator(mean) / ref
+        out["end"]["wall_flux"] = float(hdr[14])
+        if hdr[10] > 0:
+            out["mean"]["wall_flux"] = float(hdr[15])
+        out["area"] = float(hdr[4])
+        out["samples"] = int(hdr[11])
+        out["time"] = float(hdr[13])
+        return out
+
+    def _power_info(self, pw: Dict, sampling: str) -> Dict:
+        """info entries of hydrogym.power for the sampling (end, or mean with fallback to end)."""
+        if sampling == "mean" and "mean" not in pw:
+            if not self._power_warned:
+                warnings.warn(
+                    "power_sampling mean, but the solver returned no per-step samples (p096 of the .rea file is "
+                    "not 1); using the end of the action",
+                    stacklevel=2,
+                )
+                self._power_warned = True
+            sampling = "end"
+        v = pw[sampling]
+        info = power_info(v["per_actuator"], sampling=sampling, forms={k: v[k] for k in POWER_COSTS})
+        info["actuation_power_full_pressure"] = float(v["signed_full_pressure"])
+        return info
 
     def _init_actuators(self):
         """Initialize actuators by communicating with Nek to get control point info."""
@@ -633,7 +872,7 @@ class NekEnv(gym.Env):
                 self.actuator_info[k] = []
 
         # Handshake from Nek: get node list
-        node_list = np.zeros((self.nproc,), dtype=np.int32)  # Initialize to zero to avoid garbage values
+        node_list = np.zeros((self.nproc,), dtype=np.int32)
         print(f"[NEK] REQUEST NODE LIST (expecting {self.nproc} ranks)", flush=True)
         self.sub_comm.Recv([node_list, MPI.INTEGER], 0, tag=tag_dict["NID"]["tag"])
         print(f"[NEK] RAW NODE LIST RECEIVED: {node_list}", flush=True)
@@ -642,8 +881,7 @@ class NekEnv(gym.Env):
         nid_list = np.arange(self.nproc, dtype=tag_dict["NID"]["py_dtype"])
         print(f"[NEK] Before filter: {nid_list}", flush=True)
 
-        # Filter: keep ranks where node_list has sensible positive values
-        # (avoid garbage memory values that might be huge)
+        # Keep the ranks that report between 1 and TOTCTRL actuators
         valid_mask = (node_list > 0) & (node_list <= self.TOTCTRL)
         nid_list = nid_list[valid_mask]
 
@@ -743,7 +981,10 @@ class NekEnv(gym.Env):
         # Get initial observation
         time, observation = self._get_state()
 
-        return observation, {}
+        info = {}
+        if self.power_enabled:  # instantaneous power of the wall velocity now imposed
+            info.update(self._power_info(self._recv_power(), "end"))
+        return observation, info
 
     def step(self, action: np.ndarray) -> Tuple[np.ndarray, float, bool, bool, dict]:
         """
@@ -755,8 +996,10 @@ class NekEnv(gym.Env):
         Returns:
           observation: Flat array of observations, shape (n_actuators * obs_per_actuator,)
           reward: Scalar reward
-          terminated: Whether episode is done
-          truncated: Whether episode was truncated (always False for Nek)
+          terminated: Always False for Nek (physics failure raises
+              NekDivergenceError from _evolve instead)
+          truncated: Whether the episode budget was reached (simulation
+              end time tmax or nb_interactions RL steps)
           info: Additional information
         """
         # Validate action shape
@@ -780,27 +1023,43 @@ class NekEnv(gym.Env):
         # Aggregate reward
         if self.reward_agg == "sum":
             reward = float(np.sum(rewards_per_actuator))
+        elif self.reward_agg == "median":
+            reward = float(np.median(rewards_per_actuator))
         else:  # mean
             reward = float(np.mean(rewards_per_actuator))
+
+        pinfo = {}
+        if self.power_enabled:
+            pinfo = self._power_info(self._recv_power(), self.power_sampling)
+            forms = {
+                "signed": pinfo["actuation_power"],
+                "positive": pinfo["actuation_power_positive"],
+                "abs": pinfo["actuation_power_abs"],
+            }
+            reward = self.power_config.apply(reward, forms)
 
         # Get new observation
         flow_time, observation = self._get_state()
 
-        # Check if done
-        terminated = False
+        # Check if done: reaching the episode's simulation end time or step
+        # budget is a TRUNCATION, not a termination -- terminated is reserved
+        # for physics failure, which surfaces as a raised NekDivergenceError
+        # from _evolve, not a returned flag.
+        truncated = False
         if flow_time > self.tmax:
-            terminated = True
+            truncated = True
 
         self.act_index += 1
         if self.act_index >= self.nb_interactions:
-            print(f"[STEP] ACT_INDEX={self.act_index}; TERMINATED == TRUE", flush=True)
-            terminated = True
+            print(f"[STEP] ACT_INDEX={self.act_index}; TRUNCATED == TRUE", flush=True)
+            truncated = True
 
-        truncated = False  # Nek doesn't use truncation
+        terminated = False
 
         info = {
             "time": flow_time,
             "reward_per_actuator": rewards_per_actuator,
+            **pinfo,
         }
 
         return observation, reward, terminated, truncated, info
@@ -823,19 +1082,28 @@ class NekEnv(gym.Env):
         self.sub_comm.Recv([current_time, MPI.DOUBLE], 0, tag=1998)
         current_time = current_time[0]
 
-        # Receive state from each node
+        # Receive state from each node. Batched: post every per-node,
+        # per-field Irecv up front and wait once. The solver sends one
+        # point-to-point message per (node, field); MPI matching (by
+        # source+tag, with non-overtaking order within a source+tag for
+        # nid=0's shared tag) preserves the per-field ordering.
         state_buffer = np.ndarray(shape=(self.nNID, NFLDC, TOTCTRL), dtype=np.float64)
+        requests = []
         for ni, nid in enumerate(self.uniqID):
-            node_buffer = np.ndarray(shape=(NFLDC, TOTCTRL), dtype=np.float64)
             for t in range(NFLDC):
-                buffer = np.ndarray(shape=(TOTCTRL), dtype=np.float64)
-                self.sub_comm.Recv(
-                    [buffer, tag_dict["STATE"]["mpi_dtype"]],
-                    nid,
-                    tag=nid * (t + 1) + tag_dict["STATE"]["tag"],
+                requests.append(
+                    self.sub_comm.Irecv(
+                        [state_buffer[ni, t, :], tag_dict["STATE"]["mpi_dtype"]],
+                        nid,
+                        tag=nid * (t + 1) + tag_dict["STATE"]["tag"],
+                    )
                 )
-                node_buffer[t, :] = buffer[:]
-            state_buffer[ni, :, :] = self._normalize_state(node_buffer)
+        MPI.Request.Waitall(requests)
+
+        # Normalize each node's block exactly as before (per node, over the
+        # whole (NFLDC, TOTCTRL) block).
+        for ni in range(self.nNID):
+            state_buffer[ni, :, :] = self._normalize_state(state_buffer[ni, :, :])
 
         print("[NEK] STATE RECV", flush=True)
 
@@ -869,7 +1137,11 @@ class NekEnv(gym.Env):
         # Apply ZNMF condition
         action = self._apply_znmf(action)
 
-        # Send actions to each node
+        # Send actions to each node. Batched: build every per-node buffer
+        # first, then post one Isend per node and wait once (one
+        # point-to-point message per node).
+        action_buffers = []
+        requests = []
         icount = 0
         for il, nid in enumerate(self.uniqID):
             _index = np.where((self.actuator_info["NID"] == nid))[0]
@@ -880,12 +1152,16 @@ class NekEnv(gym.Env):
                 act_buffer[jl] = action[icount]
                 icount += 1
 
-            # Send buffer
-            self.sub_comm.Send(
-                [act_buffer, tag_dict["ACTION"]["mpi_dtype"]],
-                nid,
-                tag=nid + tag_dict["ACTION"]["tag"],
+            # Post the send; the buffer is kept alive until Waitall below
+            action_buffers.append(act_buffer)
+            requests.append(
+                self.sub_comm.Isend(
+                    [act_buffer, tag_dict["ACTION"]["mpi_dtype"]],
+                    nid,
+                    tag=nid + tag_dict["ACTION"]["tag"],
+                )
             )
+        MPI.Request.Waitall(requests)
 
         assert icount == self.n_actuators, ValueError("[NEK] Actuator count mismatch!")
         print(f"[NEK] ACTION for {icount} Actuators", flush=True)
@@ -917,8 +1193,16 @@ class NekEnv(gym.Env):
                     f"[WARNING] {i_evolv}/{self.ndrl} Current CFL {current_cfl} >= {self.target_cfl}!",
                     flush=True,
                 )
+                # Tell the solver side to shut down cleanly (TERMN + comm free
+                # + MPI finalize) BEFORE raising, so the MPMD job cannot hang
+                # if the caller chooses not to catch. Raising lets gym wrappers /
+                # RL loops observe the failure; the env is not usable afterwards.
                 self._end_simulation(farewell=True)
-                exit()
+                raise NekDivergenceError(
+                    f"CFL blew up at evolve step {i_evolv}/{self.ndrl}: "
+                    f"current_cfl={current_cfl} >= target_cfl={self.target_cfl}. "
+                    "The Nek simulation has been terminated (TERMN sent)."
+                )
 
             # Receive reward buffer at last step
             if i_evolv == self.ndrl:
@@ -1004,6 +1288,11 @@ class NekEnv(gym.Env):
 
     def _normalize_reward(self, reward: float) -> float:
         """Normalize reward."""
+        if self.baseline_dudy is None:
+            raise ValueError(
+                "the reward needs the uncontrolled mean wall gradient: set normalization.dUdy (or runner.dUdy) in the "
+                "environment configuration, or env.baseline_dudy"
+            )
         return 1 - (reward / self.baseline_dudy)
 
     def _start_simulation(self):
@@ -1040,7 +1329,11 @@ class NekEnv(gym.Env):
             rs_list = [f for f in rs_list if "rs" in f]
             for rsfile in rs_list:
                 rsfile = os.path.join(target_folder, rsfile)
-                shutil.copy(rsfile, dst=self.mpi_info["wdir"] + "/")
+                # copy the contents only (the cached restarts are read-only) and replace an earlier copy
+                dst = os.path.join(self.mpi_info["wdir"], os.path.basename(rsfile))
+                if os.path.lexists(dst):
+                    os.remove(dst)
+                shutil.copyfile(rsfile, dst)
                 print(f"[RSTART] RESET: {rsfile}", flush=True)
 
         elif self.random_init == -1:
@@ -1050,7 +1343,11 @@ class NekEnv(gym.Env):
             rs_list = [f for f in rs_list if "rs" in f]
             for rsfile in rs_list:
                 rsfile = os.path.join(target_folder, rsfile)
-                shutil.copy(rsfile, dst=self.mpi_info["wdir"] + "/")
+                # copy the contents only (the cached restarts are read-only) and replace an earlier copy
+                dst = os.path.join(self.mpi_info["wdir"], os.path.basename(rsfile))
+                if os.path.lexists(dst):
+                    os.remove(dst)
+                shutil.copyfile(rsfile, dst)
                 print(f"[RSTART] RESET: {rsfile}", flush=True)
 
         elif (self.random_init < -1) and (self.restart_index == 1):
@@ -1091,6 +1388,13 @@ class RingBuffer:
     """N-dimensional ring buffer using numpy arrays."""
 
     def __init__(self, length, dim=1):
+        """Allocate the backing array.
+
+        Args:
+            length: Number of entries the buffer holds before wrapping.
+            dim: Shape of each entry (an int, or a tuple of axis sizes);
+                defaults to scalar entries.
+        """
         if type(dim) is int:
             dim = (dim,)
         self.data = np.zeros((length,) + dim, dtype="f")
@@ -1206,4 +1510,8 @@ tag_dict = {
         "cate": "send",
     },
     "COMMAND": {"tag": 22, "mpi_dtype": MPI.CHARACTER, "py_dtype": str, "cate": "send"},
+    # actuation power (request POWER, drl/drl_power.f of the wing case)
+    "POWER": {"tag": 1995, "mpi_dtype": MPI.DOUBLE, "py_dtype": np.float64, "cate": "request"},
+    "POWER_END": {"tag": 110000, "mpi_dtype": MPI.DOUBLE, "py_dtype": np.float64, "cate": "request"},
+    "POWER_MEAN": {"tag": 120000, "mpi_dtype": MPI.DOUBLE, "py_dtype": np.float64, "cate": "request"},
 }

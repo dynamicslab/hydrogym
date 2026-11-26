@@ -7,19 +7,22 @@ import shutil
 import subprocess
 from pathlib import Path
 
+import numpy as np
+
+from ...lfs import check_not_lfs_pointer
 from ..configs import Runner as drl
 from ..configs import Simulation as nek
 from .writer_int_pos import write_channel
 
 """
-A checklist of dependencies: 
+A checklist of dependencies:
 
         - CASE.re2
         - CASE.ma2
         - CASE.par
         - SESSION.NAME
         - int_pos (if needed)
-        - nek5000 
+        - nek5000
 
 """
 
@@ -41,7 +44,96 @@ V17_PARAM_MAPPING = {
     "IOSTEP": "p088",
     "ndrl": "p089",
     "znmf_avg": "p090",
+    "frame": "p092",
+    "power_mode": "p096",
 }
+
+# Observation frame of the v17 wing case (p092, drl/drl_state.f normal_V_project), names as in the NekRS
+# backend (probes.frame): wall = wall-tangent frame (default), hg_fortran = the projection of the original deployment.
+FRAME_CODES = {"hg_fortran": 0, "wall": 1}
+
+
+def _rea_value(nek, attr):
+    """Value of a mapped configuration entry for the .rea file, or None if the configuration does not set it."""
+    try:
+        val = nek.get(attr) if hasattr(nek, "get") else getattr(nek, attr, None)
+    except Exception:
+        val = getattr(nek, attr, None)
+    if val is None:
+        return None
+    if attr == "frame":
+        if val not in FRAME_CODES:
+            raise ValueError(f"simulation.frame must be one of {sorted(FRAME_CODES)}, got {val!r}")
+        return float(FRAME_CODES[val])
+    return val
+
+
+# Power modes of the v17 wing cases (p096, drl/drl_power.f): every solver step of an action (mean) or its end
+POWER_MODES = {"off": 0, "mean": 1, "end": 2}
+
+
+def power_mode(conf):
+    """p096 from the ``power`` section of a configuration: 0 without it (or enabled: false), else the sampling."""
+    from omegaconf import OmegaConf
+
+    from hydrogym.power import PowerConfig
+
+    spec = conf.get("power", None) if hasattr(conf, "get") else None
+    if spec is None:
+        return POWER_MODES["off"]
+    spec = dict(OmegaConf.to_container(spec, resolve=True)) if not isinstance(spec, dict) else dict(spec)
+    if not spec.get("enabled", bool(spec)):
+        return POWER_MODES["off"]
+    return POWER_MODES[PowerConfig.from_config(spec).resolve_sampling("mean")]
+
+
+def read_rea_params(path):
+    """{pkey: value} of the mapped entries (V17_PARAM_MAPPING) of a .rea file."""
+    keys = set(V17_PARAM_MAPPING.values())
+    out = {}
+    with open(path) as f:
+        for line in f:
+            parts = line.split()
+            if len(parts) > 1 and parts[1] in keys:
+                try:
+                    out[parts[1]] = float(parts[0])
+                except ValueError:
+                    pass
+    return out
+
+
+def rea_mismatches(nek, path):
+    """Mapped entries whose value in the .rea file differs from the configuration: [(pkey, attr, file, config)]."""
+    have = read_rea_params(path)
+    out = []
+    for attr, pkey in V17_PARAM_MAPPING.items():
+        val = _rea_value(nek, attr)
+        if val is None or pkey not in have:
+            continue
+        if not np.isclose(float(val), have[pkey], rtol=1e-6, atol=1e-12):
+            out.append((pkey, attr, have[pkey], float(val)))
+    return out
+
+
+def _own_copy(path):
+    """Replace a symbolic link (e.g. to the read-only cache of the environment) by a copy before writing to it."""
+    if os.path.islink(path):
+        src = os.path.realpath(path)
+        os.remove(path)
+        shutil.copyfile(src, path)
+
+
+def write_rea_from_config(conf, folder):
+    """
+    Write the configuration into the .rea file of a v17 workspace before Nek5000 is launched (Nek5000 reads the file
+    once at start-up). A symbolic link (to the read-only cache) is replaced by a copy first. Sets
+    simulation.power_mode from the power section. Returns the path of the .rea file.
+    """
+    sim = conf.simulation
+    sim["power_mode"] = power_mode(conf)
+    path = os.path.join(folder, f"{sim.CASENAME}.rea")
+    NEK_INIT(nek=sim, drl=conf.get("runner", None), rank_folder=folder).rewrite_REA_v17()
+    return path
 
 
 class NEK_INIT:
@@ -100,8 +192,6 @@ class NEK_INIT:
                 ],
                 "option": [
                     "SIZE",
-                    # Rotation
-                    #'int_pos',
                 ],
             }
         for fname in checklist["must"]:
@@ -115,7 +205,8 @@ class NEK_INIT:
                     os.remove(to_file)
                     print(f"[IO] REMOVE EXIST: {to_file}")
 
-                shutil.copy(from_file, to_file)
+                check_not_lfs_pointer(from_file)
+                shutil.copy(from_file, to_file)  # keeps the mode (nek5000 is an executable)
                 print(f"[IO] {to_file} COPIED", flush=True)
 
         for fname in checklist["option"]:
@@ -153,6 +244,7 @@ class NEK_INIT:
         For the controllable params, please see config.
         """
         output_path = os.path.join(self.rank_folder, f"{self.nek.CASENAME}.rea")
+        _own_copy(output_path)  # never write through a link into the cached environment
 
         with open(output_path, "r") as f:
             lines = f.readlines()
@@ -163,8 +255,10 @@ class NEK_INIT:
                     if len(parts) > 1 and parts[1] in V17_PARAM_MAPPING.values():
                         for attr, pkey in V17_PARAM_MAPPING.items():
                             if parts[1] == pkey:
-                                parts[0] = f"{getattr(self.nek, attr):.6E}"
-                                line = "\t".join(parts) + "\n"
+                                val = _rea_value(self.nek, attr)
+                                if val is not None:  # entries the configuration does not set keep the file value
+                                    parts[0] = f"{val:.6E}"
+                                    line = "\t".join(parts) + "\n"
                                 break
                 updated_lines.append(line)
 
@@ -178,6 +272,8 @@ class NEK_INIT:
         Write parameter files for NEK version >= 19
         """
         fname = os.path.join(self.rank_folder, f"{self.nek.CASENAME}.par")
+        if os.path.islink(fname):
+            os.remove(fname)  # a new file, never written through a link into the cached environment
         print(f"[IO] Writing .par file:\n{fname}", flush=True)
         with open(fname, "w") as fpar:
             fpar.write("# nek parameter file\n")
@@ -217,7 +313,6 @@ class NEK_INIT:
             fpar.write("userParam%02d = %s \n" % (userp, self.nek.amp_bdf))  # Amplitude for Body-Force
             userp += 1
             fpar.write("userParam%02d = %s \n" % (userp, self.nek.ret_bdf))  # Scale for Body-Force
-            # userp+ = 1
             fpar.write("#---------------------\n")
             fpar.write("\n")
 
@@ -289,9 +384,11 @@ class NEK_INIT:
             print("[INIT] IMPORTING RESTART FILES!", flush=True)
             for rsfile in rs_list:
                 rsfile = os.path.join(restart_folder, rsfile)
-                shutil.copy(rsfile, dst=self.rank_folder)
+                dst = os.path.join(self.rank_folder, os.path.basename(rsfile))
+                if os.path.lexists(dst):
+                    os.remove(dst)
+                shutil.copyfile(rsfile, dst)  # contents only: the cached restarts are read-only
                 print(f"[STB3] RS6 file RESET: {rsfile}", flush=True)
-                # print('[STB3] RS6 file RESET',flush=True)
         else:
             file_example = rs_exist[0]
             loc = file_example.find("rs")
@@ -304,7 +401,10 @@ class NEK_INIT:
                 )
                 for rsfile in rs_list:
                     rsfile = os.path.join(restart_folder, rsfile)
-                    shutil.copy(rsfile, dst=self.rank_folder)
+                    dst = os.path.join(self.rank_folder, os.path.basename(rsfile))
+                    if os.path.lexists(dst):
+                        os.remove(dst)
+                    shutil.copyfile(rsfile, dst)  # contents only: the cached restarts are read-only
                     print(f"[STB3] RS6 file RESET: {rsfile}", flush=True)
             else:
                 print("[INIT] File Exists no need to copy!", flush=True)

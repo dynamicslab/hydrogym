@@ -10,12 +10,21 @@ from .utils import is_rank_zero, print
 
 
 class ParaviewCallback(CallbackBase):
+    """Write fields to a ParaView (``.pvd``) time series."""
+
     def __init__(
         self,
         interval: Optional[int] = 1,
         filename: Optional[str] = "output/solution.pvd",
         postprocess: Optional[Callable] = None,
     ):
+        """
+        Args:
+            interval: Write every ``interval`` iterations.
+            filename: Output ``.pvd`` file.
+            postprocess: ``postprocess(flow)`` returns the functions to write (default: velocity and pressure),
+                e.g. to add the vorticity.
+        """
         super().__init__(interval=interval)
         # Handle both old and new Firedrake API
         try:
@@ -36,6 +45,8 @@ class ParaviewCallback(CallbackBase):
 
 
 class CheckpointCallback(CallbackBase):
+    """Save the flow state with ``flow.save_checkpoint``."""
+
     def __init__(
         self,
         interval: Optional[int] = 1,
@@ -43,6 +54,14 @@ class CheckpointCallback(CallbackBase):
         write_mesh=True,
         write_timeseries=False,
     ):
+        """
+        Args:
+            interval: Save every ``interval`` iterations.
+            filename: Checkpoint file (HDF5).
+            write_mesh: Also store the mesh in the file.
+            write_timeseries: Keep every saved state (indexed by the iteration); otherwise each save overwrites the
+                previous one.
+        """
         super().__init__(interval=interval)
         self.filename = filename
         self.write_mesh = write_mesh
@@ -55,6 +74,8 @@ class CheckpointCallback(CallbackBase):
 
 
 class LogCallback(CallbackBase):
+    """Record scalar quantities of the flow as a time series (and optionally print and save them)."""
+
     def __init__(
         self,
         postprocess: Callable,
@@ -63,17 +84,27 @@ class LogCallback(CallbackBase):
         filename: Optional[str] = None,
         print_fmt: Optional[str] = None,
     ):
+        """
+        Args:
+            postprocess: ``postprocess(flow)`` returns the ``nvals`` values to log, e.g. the force coefficients.
+            nvals: Number of values ``postprocess`` returns.
+            interval: Log every ``interval`` iterations.
+            filename: Text file the time series (time and values) is written to on rank 0; ``None``: not saved.
+            print_fmt: Format string for printing ``(t, *values)``; ``None``: not printed.
+        """
         super().__init__(interval=interval)
         self.postprocess = postprocess
         self.filename = filename
         self.print_fmt = print_fmt
-        self.data = np.zeros((1, nvals + 1))
+        self.data = np.zeros((0, nvals + 1))
 
     def __call__(self, iter: int, t: float, flow: Tuple[fd.Function]):
         if super().__call__(iter, t, flow):
             new_data = np.array([t, *self.postprocess(flow)], ndmin=2)
             if iter == 0:
-                self.data[0, :] = new_data
+                # a new time series (integrate() logs the initial state; the
+                # environment calls its callbacks from the first step on)
+                self.data = new_data
             else:
                 self.data = np.append(self.data, new_data, axis=0)
 
@@ -84,11 +115,13 @@ class LogCallback(CallbackBase):
 
 
 class SnapshotCallback(CallbackBase):
+    """Save the state at every ``interval`` iterations into one checkpoint file, e.g. for modal analysis."""
+
     def __init__(self, interval: Optional[int] = 1, filename: Optional[str] = "snapshots"):
         """
-        Save snapshots as checkpoints for modal analysis
+        Save snapshots as checkpoints for modal analysis.
 
-        Note that this slows down the simulation
+        Note that this slows down the simulation.
         """
         super().__init__(interval=interval)
         self.h5 = fd.CheckpointFile(filename, "w")
@@ -109,6 +142,8 @@ class SnapshotCallback(CallbackBase):
 
 
 class GenericCallback(CallbackBase):
+    """Call a user function ``callback(iter, t, flow)`` every ``interval`` iterations."""
+
     def __init__(self, callback: Callable, interval: Optional[int] = 1):
         super().__init__(interval=interval)
         self.cb = callback

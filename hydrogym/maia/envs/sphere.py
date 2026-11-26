@@ -72,12 +72,36 @@ class SphereBase(MaiaFlowEnv):
 
         return (rewards[0] if len(self.bcId) == 1 else rewards), obj_dict
 
+    def power_projection(self) -> float:
+        """Projected area of the sphere in cells^2 (pi D^2 / 4), the normalisation of its force coefficients."""
+        return math.pi * (self.referenceLength / self.dX) ** 2 / 4
+
+    def drag_coefficient_from_objective(self, obj_dict):
+        """Total drag coefficient over the boundary segments (normalised like the reward's force coefficients)."""
+        return float(
+            sum(
+                self.compute_nondim_coefficients(
+                    forces=np.asarray(f),
+                    density=1.0,
+                    referenceVelocity=self.Ma / np.sqrt(3),
+                    projectionLength=self.power_projection(),
+                )[0]
+                for f in obj_dict["forces"]
+            )
+        )
+
 
 class Sphere(SphereBase):
     """
     3D sphere environment with flow control.
 
     This environment simulates flow around a 3D sphere geometry.
+
+    Actuation power (``hydrogym.maia.wall_jets``, one actuator per jet): the ring jets of BC 2007 object class 3
+    (parabolic profile in arc length along ``lbJetSlotAxis``, azimuthal range ``lbJetRanges``, radial direction)
+    at the level of the lattice links on the analytic sphere; ``C_P = 2 P / (U^3 pi D^2 / 4)`` like ``C_D``; wall
+    pressure from 2-5 cells out (the 3D stencils of 1.5 cells reach into the sphere). The jets are independent;
+    ``p_ref`` is the mean wall pressure over the jets.
 
     Attributes:
         numJetsInSimulation: Number of jet actuators in the CFD simulation.
@@ -98,6 +122,7 @@ class Sphere(SphereBase):
         self.set_observation_action_spaces()
 
         self.setup_normalization()
+        self.setup_actuation_power("wall_jets", geometry="sphere")
 
     def convert_action(self, action: np.ndarray) -> np.ndarray:
         """

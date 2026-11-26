@@ -68,7 +68,7 @@ def stability_analysis(
         sigma:
             The shift for the shift-invert Arnoldi method. The algorithm will converge
             most quickly if the shift is close to the eigenvalues of interest.
-        m: The dimension of the Krylov subspace (number of Arnoldi vectors).
+        krylov_dim: The dimension of the Krylov subspace (number of Arnoldi vectors).
         tol: Tolerance to use for determining converged eigenvalues.
         adjoint: If True, compute the adjoint modes along with the direct modes.
         schur_restart:

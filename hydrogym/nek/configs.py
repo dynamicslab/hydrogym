@@ -1,6 +1,5 @@
 """
-Configuration of runner and NEK
-@yuningw
+Configuration of the runner and of the Nek5000 case (author: Yuning Wang).
 """
 
 import argparse
@@ -16,7 +15,7 @@ class Runner:
     RL_algorithm: str = "DDPG"  # Policy to use
 
     # Essential Parameter
-    # Number of "interactions" which is just better for understanding stepping
+    # Number of interactions (control actions) per episode
     nb_interactions: int = 3000
     nb_episodes: int = 100  # The total amount of Episodes is n_episode =  nb_interactions * nb_episodes
     nb_warmup_episodes: int = 1  # Only for transfer learning, the number of episodes to warm up the critic
@@ -28,7 +27,7 @@ class Runner:
     policy_file: str = "conf/default_custom_policy.yml"
     learning_rate: float = 1e-3
     batch_size: int = 64
-    n_epochs: int = 25  # Setup of Pol
+    n_epochs: int = 25  # PPO: optimisation epochs per policy update
     buffer_size: int = 10_000_000
 
     # if using PPO, it must be TRUE
@@ -62,12 +61,13 @@ class Runner:
     buffer_mode: str = "rotate"
 
     # Agent loading/resuming options
-    random_init: int = 2  # -1==No Shuffle, use the No.init = RANK; -2==NOT Cover the current rs8
+    # random_init: n > 0: initial field drawn from init_1..init_n; -1: always init_<rank>; < -1: keep the files in place
+    random_init: int = 2
     agent_run_name: int = 0
     load_agent: bool = False
     rewrite_input_files: bool = False
     evaluation: bool = False
-    rank: int = 0  # NAME of test case
+    rank: int = 0  # number of the initial-condition folder init_<rank> (random_init < 0)
     policy: str = ""
     learnt_policy: bool = False
     vars_record: bool = True
@@ -112,6 +112,9 @@ class Simulation:
     # Scale for Body-Force, it depends on the uncontrolled channel,
     # but the drl sensing plane depends on the body-force channel
     ret_bdf: float = 207.0
+    # ---- v17 wing case: observation frame (p092) and actuation power (p096) ----
+    frame: str = "wall"  # wall (wall-tangent frame) | hg_fortran (projection of the original coupling)
+    power_mode: int = 0  # 0 off, 1 every solver step, 2 end of action; set by NekEnv from the power section
     # --------------------------------
 
     # slurm specific
@@ -164,16 +167,16 @@ class Simulation:
     LOGLEVEL: int = 1  # Logging threshold for toolboxes
     WALLTIME: str = "23:45"  # Simulation wall time
 
-    # [_CHKPOINT]             # Runtime paramere section for checkpoint module
-    READCHKPT: str = "yes"  # Restat from checkpoint
+    # [_CHKPOINT]             # Runtime parameter section for checkpoint module
+    READCHKPT: str = "yes"  # Restart from checkpoint
     CHKPFNUMBER: int = 1  # Restart file number
-    CHKPINTERVAL: int = 5000  # Checkpiont saving frequency (number of time steps)
+    CHKPINTERVAL: int = 5000  # Checkpoint saving frequency (number of time steps)
 
-    # [_STAT]             # Runtime paramere section for statistics module
+    # [_STAT]             # Runtime parameter section for statistics module
     AVSTEP: int = 10
     IOSTEP: int = 10000
 
-    # [_TSRS]             # Runtime paramere section for time series module
+    # [_TSRS]             # Runtime parameter section for time series module
     SMPSTEP: int = 23
 
 

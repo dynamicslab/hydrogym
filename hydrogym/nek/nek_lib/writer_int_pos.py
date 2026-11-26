@@ -47,8 +47,6 @@ def write_int_pos(fname, wdsize, emode, data):
     outfile.write(header.encode("utf-8"))
 
     # write tag (to specify endianness)
-    # etagb = struct.pack(emode+'f', 6.54321)
-    # outfile.write(etagb)
     outfile.write(struct.pack(emode + "f", 6.54321))
 
     # write point positions
@@ -69,10 +67,6 @@ def write_channel(path, Ret, yplus, Lx, Lz, Nx, Nz, lx1):
     """
 
     fname = f"{path}/int_pos"
-
-    # if os.path.exists(fname):
-    #    print(f"File Exists!:{fname}", flush=True)
-    #    return True
 
     wdsize = 8
     # little endian
@@ -124,8 +118,6 @@ if __name__ == "__main__":
     wdsize = 8
     # little endian
     emode = "<"
-    # big endian
-    # emode = '<'
     # set of points
     ldim = 3
 

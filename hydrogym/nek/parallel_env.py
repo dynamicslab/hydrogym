@@ -107,8 +107,17 @@ class NekParallelEnv:
         terminated_dict = {agent: terminated for agent in self.agents}
         truncated_dict = {agent: truncated for agent in self.agents}
 
-        # Info per agent
+        # Info per agent (with the actuation power, if the base environment reports it: the totals of
+        # hydrogym.power and the agent's own signed value)
         infos_dict = {agent: {"time": info.get("time", 0.0)} for agent in self.agents}
+        if "actuation_power" in info:
+            common = {k: v for k, v in info.items() if k.startswith("actuation_power") and np.ndim(v) == 0}
+            common["power_sampling"] = info.get("power_sampling")
+            per = info.get("actuation_power_per_actuator")
+            for i, agent in enumerate(self.agents):
+                infos_dict[agent].update(common)
+                if per is not None:
+                    infos_dict[agent]["actuation_power_agent"] = float(per[i])
 
         return obs_dict, rewards_dict, terminated_dict, truncated_dict, infos_dict
 

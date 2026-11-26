@@ -21,7 +21,7 @@ class CylinderBase(MaiaFlowEnv):
     environments, including reward computation based on drag and lift forces.
 
     The reward is computed as:
-        reward = -|C_D| - omega * |C_L|
+        reward = -|C_D| - omega * |C_L| [- power_weight * C_P]
 
     where C_D is the drag coefficient, C_L is the lift coefficient,
     and omega is a weighting factor.
@@ -68,6 +68,20 @@ class CylinderBase(MaiaFlowEnv):
 
         return (rewards[0] if len(self.bcId) == 1 else rewards), obj_dict
 
+    def drag_coefficient_from_objective(self, obj_dict):
+        """Total drag coefficient over the boundary segments of the cylinder."""
+        cd = 0.0
+        for forces in obj_dict["forces"]:
+            cd += float(
+                self.compute_nondim_coefficients(
+                    forces=np.asarray(forces),
+                    density=1.0,
+                    referenceVelocity=self.Ma / np.sqrt(3),
+                    projectionLength=self.referenceLength / self.dX * self.zLength / self.dX,
+                )[0]
+            )
+        return cd
+
 
 class Cylinder(CylinderBase):
     """
@@ -98,6 +112,7 @@ class Cylinder(CylinderBase):
 
         # Handle normalization factors
         self.setup_normalization()
+        self.setup_actuation_power("slot_jets")
 
     def convert_action(self, action: np.ndarray) -> List[float]:
         """
@@ -144,6 +159,7 @@ class RotaryCylinder(CylinderBase):
 
         # Handle normalization factors
         self.setup_normalization()
+        self.setup_actuation_power("rotation")
 
     def convert_action(self, action: np.ndarray) -> np.ndarray:
         """

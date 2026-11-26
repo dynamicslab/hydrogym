@@ -45,7 +45,7 @@ def cheb_D_matrices(N: int, Lz: float):
     D1 = scale1 * D
     D2 = (scale1**2) * (D @ D)
 
-    # Physical z points: map [-1,1] -> [-Lz/2, Lz/2] (or you can shift to [0,Lz] if desired)
+    # Physical z points: map [-1,1] -> [-Lz/2, Lz/2]
     z = (Lz / 2.0) * x
     return z, D1, D2
 
@@ -57,8 +57,11 @@ def compute_velocity_fft(omega_hat, kx, ky):
 
     Args:
         omega_hat: the Fourier transform of the vorticity
-        grid: the jnp grid
+        kx: wavenumbers x
+        ky: wavenumbers y
 
+    Returns:
+        Tuple ``(u_hat, v_hat)``.
     """
     double_derivative = (2 * jnp.pi * 1j) ** 2 * (abs(kx) ** 2 + abs(ky) ** 2)
     double_derivative = double_derivative.at[0, 0].set(1)  # avoiding division by 0.0 in the next step
@@ -69,21 +72,28 @@ def compute_velocity_fft(omega_hat, kx, ky):
     return vxhat, vyhat
 
 
-def dealiasing(advection_term):
+def dealiasing(advection_term, m=None):
     """
-    Adds the 2/3 aliasing technique to the velocity field, which
-    sets the last 1/3 high frequency Fourier modes to 0.
-    Reference: https://notes.yeshiwei.com/pseudo_spectral_method/algorithm.html
+    2/3 dealiasing rule for a 2D field in ``rfftn`` layout: the Fourier modes with
+    ``|k_x| > n // 3`` or ``k_y > m // 3`` are set to 0 (the same cut-off as
+    ``dealias_mask_2_3``).
+    Reference: S. A. Orszag, J. Atmos. Sci. 28, 1074 (1971) (the 2/3 rule).
 
     Args:
-        vel_hat: velocity field in Fourier space
-    """
-    n, m = advection_term.shape[0], advection_term.shape[1]
-    kn, km = int(n // 2 * 2 // 3), int(m * 2 // 3)
-    advection_term.at[kn : 2 * kn, :].set(0.0)
-    advection_term.at[:, km:].set(0.0)
+        advection_term: field in Fourier space, shape ``(n, m // 2 + 1)``.
+        m: length of the real-space axis that was transformed with ``rfft``
+            (default ``2 * (advection_term.shape[1] - 1)``, i.e. an even grid).
 
-    return advection_term
+    Returns:
+        The truncated field (same shape and dtype).
+    """
+    n, mh = advection_term.shape[0], advection_term.shape[1]
+    m = 2 * (mh - 1) if m is None else int(m)
+    i = jnp.arange(n)
+    kx = jnp.abs(jnp.where(i < (n + 1) // 2, i, i - n))  # integer |k_x| in fftfreq order
+    ky = jnp.arange(mh)
+    keep = (kx <= n // 3)[:, None] & (ky <= m // 3)[None, :]
+    return jnp.where(keep, advection_term, jnp.zeros_like(advection_term))
 
 
 def compute_energy_mode(uhat, vhat, kx, ky, n, m):
@@ -91,14 +101,13 @@ def compute_energy_mode(uhat, vhat, kx, ky, n, m):
     Compute the energy of a specific mode and wavenumber.
 
     Args:
-        omega_hat: fft vorticity
+        uhat, vhat: fft velocity components
         kx: wavenumber x
         ky: wavenumber y
         n, m: grid size
     """
 
     # Compute indices of wavenumber
-    # uhat, vhat = compute_velocity_fft(omega_hat, kx, ky)
     kx_idx = kx % n
     ky_idx = ky % m
     energy = 0.5 * (jnp.abs(uhat[kx_idx, ky_idx]) ** 2 + jnp.abs(vhat[kx_idx, ky_idx]) ** 2) / ((n * m) ** 2)
@@ -117,7 +126,6 @@ def compute_velocity_mode(uhat, vhat, kx, ky, n, m):
     """
 
     # Compute indices of wavenumber
-    # uhat, vhat = compute_velocity_fft(omega_hat, kx, ky)
     kx_idx = kx % n
     ky_idx = ky % m
     velocity_mag = jnp.sqrt(
@@ -132,9 +140,8 @@ def compute_real_velocity_point(uhat, vhat, x_idx, y_idx):
 
     Args:
         uhat, vhat: fft velocity components
-        kx: wavenumber x
-        ky: wavenumber y
-        n, m: grid size
+        x_idx: grid index of the point in x
+        y_idx: grid index of the point in y
     """
     ureal = jnp.fft.irfftn(uhat)
     vreal = jnp.fft.irfftn(vhat)
@@ -156,7 +163,7 @@ def compute_energy_dissipation(omega_hat, kx, ky, nu, n):
         kx: wavenumber x
         ky: wavenumber y
         nu: kinematic viscosity
-        n: grid length
+        n: grid length (not used)
     """
 
     uhat, vhat = compute_velocity_fft(omega_hat, kx, ky)

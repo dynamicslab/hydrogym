@@ -102,7 +102,7 @@ class ArnoldiIterator:
             # Normalize the orthogonal residual for use as a new Krylov vector
             V[j].assign(f / beta)
 
-            # DEBUG: Print the eigenvalues
+            # Optionally print the Ritz values and residuals of this iteration
             if self.print_evals:
                 ritz_vals, ritz_vecs = sorted_eig(H[:j, :j], self.which, inverse=self.inverse)
                 res = abs(beta * ritz_vecs[-1])
@@ -138,10 +138,8 @@ def _eig(
     if v0 is None:
         v0 = arnoldi.random_vec(rng_seed)
 
-    # TODO: Handle sort functions better - use a lookup of pre-defined
-    # functions for "lr", "sm", etc.
     if sort is None:
-        # Decreasing magnitude
+        # Default: keep Ritz values with magnitude above 1 - delta
         def sort(x):
             return abs(x) > 1.0 - delta
 
@@ -203,8 +201,6 @@ def _eig(
         b = Q.T @ b
         S[p, :p] = b[:p]
         Vp[p].assign(V[-1])  # Restart from the last Krylov basis vector
-
-        # p += 1  #??
 
         # Restart with the wanted part of the Krylov basis
         restart = (Vp, S, p)

@@ -11,6 +11,8 @@ from numpy.typing import ArrayLike
 from ufl import curl, div, dot, inner, nabla_grad, sqrt, sym
 
 from ..core import ActuatorBase, PDEBase
+from ..lfs import check_not_lfs_pointer
+from ..power import power_forms
 from .actuator import DampedActuator
 from .utils.linalg import DirectOperator, InverseOperator
 
@@ -19,7 +21,34 @@ interpolate = fd.interpolate
 
 
 class ScaledDirichletBC(fd.DirichletBC):
+    """Dirichlet boundary condition whose value can be rescaled in place.
+
+    Wraps a Firedrake ``DirichletBC`` and multiplies the prescribed value
+    ``g`` by an internal ``fd.Constant`` scale factor, so that the amplitude
+    of a boundary condition (e.g. actuation blowing/suction) can be changed
+    during a simulation without rebuilding the boundary condition. Call
+    ``set_scale`` to change the factor.
+
+    Attributes:
+        unscaled_function_arg: The original (unscaled) value ``g`` passed in.
+    """
+
     def __init__(self, V, g, sub_domain, method=None):
+        """Construct the scaled boundary condition.
+
+        Args:
+            V (fd.FunctionSpace): Function space the condition applies to.
+            g: Value to prescribe; may be a UFL expression. The stored
+                condition is ``self._scale * g``.
+            sub_domain: Mesh marker(s) of the boundary facets.
+            method: Boundary condition method, for compatibility with older
+                Firedrake versions whose ``DirichletBC`` still accepts it.
+                Newer versions ignore it.
+
+        Note:
+            Firedrake's constructor signature changed across versions, so
+            several calling conventions are tried in turn.
+        """
         self.unscaled_function_arg = g
         self._scale = fd.Constant(1.0)
 
@@ -38,18 +67,59 @@ class ScaledDirichletBC(fd.DirichletBC):
                 super().__init__(V, self._scale * g, sub_domain, method)
 
     def set_scale(self, c):
+        """Set the multiplicative factor applied to the prescribed value.
+
+        Args:
+            c: New scale factor; assigned to the internal ``fd.Constant``
+                so it can be updated without rebuilding the condition.
+        """
         self._scale.assign(c)
 
 
 class ObservationFunction(NamedTuple):
+    """Observation function paired with the number of values it produces.
+
+    Attributes:
+        func (Callable): Function mapping a flow state to a numpy array.
+        num_outputs (int): Size of the array returned by ``func``.
+    """
+
     func: Callable
     num_outputs: int
 
     def __call__(self, q: fd.Function) -> np.ndarray:
+        """Evaluate the wrapped observation function on a flow state.
+
+        Args:
+            q (fd.Function): Flow state to observe.
+
+        Returns:
+            np.ndarray: Observation values computed by ``func``.
+        """
         return self.func(q)
 
 
 class FlowConfig(PDEBase):
+    """Base class for incompressible Navier-Stokes flow configurations.
+
+    A ``FlowConfig`` owns the mesh, the mixed velocity/pressure function
+    space, the current state ``q``, the boundary conditions, and the
+    observation function used for RL feedback. Concrete environments
+    (cavity, cylinder, pinball, step) subclass this and provide at minimum
+    ``init_bcs``/``collect_bcu``/``collect_bcp``, ``linearize_bcs``, and
+    ``configure_observations``.
+
+    Checkpoints can be resolved automatically: if no ``restart`` is given,
+    an environment name is inferred from the class name, Reynolds number,
+    and mesh, and a matching checkpoint is fetched from the Hugging Face
+    Hub via the data manager (falling back to a zero initial condition if
+    none is found). If the resolved environment has more than one
+    candidate checkpoint file, the pick is deterministic (sorted by
+    filename, last wins) but not guaranteed physically appropriate for
+    every use case -- pass an explicit checkpoint file path in ``restart``
+    if a specific one is required.
+    """
+
     DEFAULT_REYNOLDS = 1
     DEFAULT_VELOCITY_ORDER = 2  # Taylor-Hood elements
     DEFAULT_STABILIZATION = "none"
@@ -58,7 +128,39 @@ class FlowConfig(PDEBase):
     FUNCTIONS = ("q",)  # tuple of functions necessary for the flow
 
     def __init__(self, velocity_order=None, **config):
-        self.Re = fd.Constant(ufl.real(config.get("Re", self.DEFAULT_REYNOLDS)))
+        """Initialize the flow configuration.
+
+        Args:
+            velocity_order (int, optional): Polynomial order of the
+                Taylor-Hood velocity elements. Defaults to
+                ``DEFAULT_VELOCITY_ORDER``.
+            **config: Remaining configuration, consumed as keyword
+                arguments:
+                - Re (float): Reynolds number. Defaults to
+                  ``DEFAULT_REYNOLDS``.
+                - probes (list): (x, y) probe locations used by the probe
+                  observation types; validated against the mesh on
+                  initialization unless ``validate_probes`` is False.
+                - validate_probes (bool): Whether to check that ``probes``
+                  lie inside the mesh. Default True.
+                - observation_type (str): Key selecting the observation
+                  function, forwarded to ``configure_observations``.
+                - restart: Checkpoint to load: an explicit path, a
+                  Hugging Face Hub environment name, or a list of either.
+                  If None, a checkpoint is auto-inferred from the class
+                  name, Re, and mesh (and may be None if none is found).
+                - mesh (str): Mesh name (e.g. "medium"). Defaults to
+                  ``DEFAULT_MESH``.
+                - cache_dir, local_dir (str, optional): Custom cache and
+                  local fallback directories for checkpoint downloads.
+                - use_HF_data_manager (bool): Whether to resolve
+                  checkpoints via the Hugging Face Hub. Default True.
+                - hf_token (str, optional): Access token for private/gated
+                  Hub repos.
+                - hf_revision (str, optional): Hub revision to pin
+                  downloads to.
+        """
+        self.Re = fd.Constant(ufl.real(config.pop("Re", self.DEFAULT_REYNOLDS)))
 
         if velocity_order is None:
             velocity_order = self.DEFAULT_VELOCITY_ORDER
@@ -85,21 +187,27 @@ class FlowConfig(PDEBase):
 
         # Process restart parameter - resolve environment names to checkpoint paths
         # or auto-infer from flow configuration
-        mesh = config.get("mesh", self.MESH_DIR)
+        # The mesh name (not MESH_DIR) enters the auto-inferred checkpoint name; read it without popping,
+        # PDEBase loads the mesh from config["mesh"].
+        mesh = config.get("mesh", self.DEFAULT_MESH)
         cache_dir = config.pop("cache_dir", None)  # Custom cache directory (optional)
         local_dir = config.pop("local_dir", None)  # Local fallback directory (optional)
         use_HF_data_manager = config.pop("use_HF_data_manager", True)  # Control HF data manager usage (default: True)
+        hf_token = config.pop("hf_token", None)  # HF access token, private/gated repos (optional)
+        hf_revision = config.pop("hf_revision", None)  # HF revision to pin downloads to (optional)
 
         # Extract numeric Reynolds number from Firedrake Constant
         Re_value = int(float(self.Re))
 
         resolved_restart = self._resolve_checkpoint(
-            restart=config.get("restart"),
+            restart=config.pop("restart", None),
             Re=Re_value,
             mesh=mesh,
             cache_dir=cache_dir,
             local_dir=local_dir,
             use_HF_data_manager=use_HF_data_manager,
+            hf_token=hf_token,
+            hf_revision=hf_revision,
         )
 
         # Store resolved checkpoint path for verification/debugging
@@ -109,7 +217,17 @@ class FlowConfig(PDEBase):
 
         super().__init__(**config)
 
-    def _resolve_checkpoint(self, restart, Re, mesh, cache_dir=None, local_dir=None, use_HF_data_manager=True):
+    def _resolve_checkpoint(
+        self,
+        restart,
+        Re,
+        mesh,
+        cache_dir=None,
+        local_dir=None,
+        use_HF_data_manager=True,
+        hf_token=None,
+        hf_revision=None,
+    ):
         """Resolve checkpoint parameter to actual file path(s).
 
             Handles four cases:
@@ -125,6 +243,8 @@ class FlowConfig(PDEBase):
             cache_dir: Custom cache directory (optional)
             local_dir: Local fallback directory (optional)
             use_HF_data_manager: Whether to use HF data manager for checkpoint resolution (default: True)
+            hf_token: HF access token, for private/gated repos (optional)
+            hf_revision: HF revision to pin downloads to (optional)
 
         Returns:
             None, str (resolved path), or list of str (resolved paths)
@@ -137,7 +257,13 @@ class FlowConfig(PDEBase):
             logging.log(logging.INFO, f"No checkpoint specified, attempting to auto-load: {env_name}")
 
             resolved = self._resolve_single_checkpoint(
-                env_name, cache_dir, local_dir, use_HF_data_manager=use_HF_data_manager, silent=True
+                env_name,
+                cache_dir,
+                local_dir,
+                use_HF_data_manager=use_HF_data_manager,
+                hf_token=hf_token,
+                hf_revision=hf_revision,
+                silent=True,
             )
             if resolved is None:
                 logging.log(logging.INFO, f"No checkpoint found for {env_name}, starting from zeros")
@@ -145,7 +271,12 @@ class FlowConfig(PDEBase):
 
         if isinstance(restart, str):
             return self._resolve_single_checkpoint(
-                restart, cache_dir, local_dir, use_HF_data_manager=use_HF_data_manager
+                restart,
+                cache_dir,
+                local_dir,
+                use_HF_data_manager=use_HF_data_manager,
+                hf_token=hf_token,
+                hf_revision=hf_revision,
             )
 
         elif isinstance(restart, (list, tuple)):
@@ -153,18 +284,30 @@ class FlowConfig(PDEBase):
             resolved = []
             for ckpt in restart:
                 resolved_ckpt = self._resolve_single_checkpoint(
-                    ckpt, cache_dir, local_dir, use_HF_data_manager=use_HF_data_manager
+                    ckpt,
+                    cache_dir,
+                    local_dir,
+                    use_HF_data_manager=use_HF_data_manager,
+                    hf_token=hf_token,
+                    hf_revision=hf_revision,
                 )
                 if resolved_ckpt is not None:
                     resolved.append(resolved_ckpt)
             return resolved if resolved else None
 
         else:
-            logging.log(logging.WARN, f"Invalid restart type: {type(restart)}, ignoring")
+            logging.log(logging.WARNING, f"Invalid restart type: {type(restart)}, ignoring")
             return None
 
     def _resolve_single_checkpoint(
-        self, checkpoint, cache_dir=None, local_dir=None, use_HF_data_manager=True, silent=False
+        self,
+        checkpoint,
+        cache_dir=None,
+        local_dir=None,
+        use_HF_data_manager=True,
+        hf_token=None,
+        hf_revision=None,
+        silent=False,
     ):
         """Resolve a single checkpoint path or environment name.
 
@@ -181,11 +324,14 @@ class FlowConfig(PDEBase):
         import os
         from pathlib import Path
 
-        # Check if it's an explicit path
+        # Check if it's an explicit path: absolute or relative (also "output/x.h5" or a bare "x.h5"), or an
+        # existing file. Environment names have neither a directory separator nor a checkpoint suffix.
         if (
             checkpoint.startswith("/")
             or checkpoint.startswith("./")
             or checkpoint.startswith("../")
+            or os.sep in checkpoint
+            or checkpoint.endswith((".h5", ".ckpt"))
             or os.path.exists(checkpoint)
         ):
             # Explicit path provided - use directly
@@ -194,7 +340,7 @@ class FlowConfig(PDEBase):
                 return checkpoint
             else:
                 if not silent:
-                    logging.log(logging.WARN, f"Checkpoint path does not exist: {checkpoint}")
+                    logging.log(logging.WARNING, f"Checkpoint path does not exist: {checkpoint}")
                 return None
 
         # If HF data manager is disabled, don't try to resolve from HF Hub
@@ -215,41 +361,83 @@ class FlowConfig(PDEBase):
                 local_fallback_dir=local_dir,  # Use local directory for offline/testing
                 use_clean_cache="copy",  # Use 'copy' for readable ckpts
                 fallback_profile="FIREDRAKE",
+                token=hf_token,  # Optional HF access token (private/gated repos)
+                revision=hf_revision,  # Optional revision to pin downloads to
             )
 
             # Get environment path (downloads if needed)
             env_path = dm.get_environment_path(checkpoint)
 
-            # Find checkpoint file(s) in the environment directory
-            checkpoint_files = list(Path(env_path).glob("checkpoint*.h5"))
+            # Find checkpoint file(s) in the environment directory. Sorted
+            # for a deterministic pick -- Path.glob() makes no ordering
+            # guarantee, so an unsorted list picks whichever file happened
+            # to land first in a given filesystem/download, which varies
+            # across downloads.
+            checkpoint_files = sorted(Path(env_path).glob("checkpoint*.h5"))
             if not checkpoint_files:
-                checkpoint_files = list(Path(env_path).glob("*.ckpt"))
+                checkpoint_files = sorted(Path(env_path).glob("*.ckpt"))
 
             if checkpoint_files:
-                resolved_path = str(checkpoint_files[0].resolve())
+                if len(checkpoint_files) > 1:
+                    # Several candidate files without metadata: take the last by sorted filename
+                    # (deterministic); pass restart= for a specific file.
+                    logging.log(
+                        logging.INFO if silent else logging.WARNING,
+                        f"{len(checkpoint_files)} candidate checkpoint files found for "
+                        f"'{checkpoint}'; using the last by sorted filename "
+                        f"({checkpoint_files[-1].name}). This pick is deterministic "
+                        "but may not be the physically appropriate one for every use case "
+                        "(e.g. an unconverged snapshot as a steady-solve initial guess) -- "
+                        "pass an explicit checkpoint file path in `restart=` if a specific "
+                        "one is required.",
+                    )
+                resolved_path = str(checkpoint_files[-1].resolve())
                 logging.log(logging.INFO, f"✓ Checkpoint resolved: {resolved_path}")
                 return resolved_path
             else:
                 if not silent:
-                    logging.log(logging.WARN, f"No checkpoint file found in environment: {checkpoint}")
+                    logging.log(logging.WARNING, f"No checkpoint file found in environment: {checkpoint}")
                 return None
 
         except ImportError:
             if not silent:
                 logging.log(
-                    logging.WARN,
+                    logging.WARNING,
                     "HuggingFace Hub not available (pip install huggingface_hub). Checkpoint resolution disabled.",
                 )
             return None
         except Exception as e:
             if not silent:
-                logging.log(logging.WARN, f"Could not resolve checkpoint '{checkpoint}': {e}")
+                logging.log(logging.WARNING, f"Could not resolve checkpoint '{checkpoint}': {e}")
             return None
 
     def load_mesh(self, name: str) -> ufl.Mesh:
-        return fd.Mesh(f"{self.MESH_DIR}/{name}.msh", name="mesh")
+        """Load a Gmsh mesh by name from ``MESH_DIR``.
+
+        Args:
+            name (str): Mesh name, e.g. "medium"; reads
+                ``{MESH_DIR}/{name}.msh``.
+
+        Returns:
+            ufl.Mesh: The loaded Firedrake mesh.
+        """
+        path = f"{self.MESH_DIR}/{name}.msh"
+        check_not_lfs_pointer(path)
+        return fd.Mesh(path, name="mesh")
 
     def save_checkpoint(self, filename: str, write_mesh=True, idx=None):
+        """Save the current state and actuator states to a Firedrake checkpoint.
+
+        Every function named in ``FUNCTIONS`` is written, along with the
+        state of each actuator as a file-level attribute "act_state".
+
+        Args:
+            filename (str): Path of the checkpoint file to write.
+            write_mesh (bool, optional): Whether to also save the mesh.
+                Default True.
+            idx (int, optional): Time index to attach to the saved
+                functions, if any.
+        """
         with fd.CheckpointFile(filename, "w") as chk:
             if write_mesh:
                 chk.save_mesh(self.mesh)  # optional
@@ -259,10 +447,58 @@ class FlowConfig(PDEBase):
             act_state = np.array([act.state for act in self.actuators])
             chk.set_attr("/", "act_state", act_state)
 
+    @staticmethod
+    def _same_mesh(a, b, tol=1e-8) -> bool:
+        """True if two meshes have the same global cell count and coordinate bounding box."""
+        # collective on every rank (owned cells summed over the communicator)
+        if a.comm.allreduce(a.cell_set.size) != b.comm.allreduce(b.cell_set.size):
+            return False
+
+        def bounds(m):
+            """Global coordinate bounding box (lo, hi) of mesh ``m``."""
+            c = np.asarray(m.coordinates.dat.data_ro, dtype=float)
+            d = c.shape[1]
+            lo = np.ascontiguousarray(c.min(axis=0) if len(c) else np.full(d, np.inf))
+            hi = np.ascontiguousarray(c.max(axis=0) if len(c) else np.full(d, -np.inf))
+            glo, ghi = np.empty(d), np.empty(d)
+            m.comm.Allreduce(lo, glo, op=MPI.MIN)  # buffer reductions: element-wise on every rank
+            m.comm.Allreduce(hi, ghi, op=MPI.MAX)
+            return glo, ghi
+
+        lo_a, hi_a = bounds(a)
+        lo_b, hi_b = bounds(b)
+        return bool(np.allclose(lo_a, lo_b, atol=tol) and np.allclose(hi_a, hi_b, atol=tol))
+
     def load_checkpoint(self, filename: str, idx=None, read_mesh=True):
+        """Load the flow state (and actuator states) from a checkpoint.
+
+        Each function named in ``FUNCTIONS`` is read back onto the current
+        function space; if the checkpoint was written on a different
+        element, the field is projected onto the current space instead of
+        being assigned directly. Missing functions default to zero with a
+        warning. If a stored "act_state" attribute is present, it is used
+        to restore each actuator's state.
+
+        Args:
+            filename (str): Path of the checkpoint file to read.
+            idx (int, optional): Time index of the saved functions to load.
+            read_mesh (bool, optional): Whether to load the mesh from the
+                file and reinitialize state. Default True; if False, the
+                current mesh must already be initialized.
+        """
         with fd.CheckpointFile(filename, "r") as chk:
             if read_mesh:
-                self.mesh = chk.load_mesh("mesh")
+                requested = getattr(self, "mesh", None)
+                loaded = chk.load_mesh("mesh")
+                # A checkpoint carries its own mesh and replaces the requested one. Refuse a checkpoint whose mesh
+                # differs from the requested mesh (different cell count or bounding box).
+                if requested is not None and not self._same_mesh(requested, loaded):
+                    raise ValueError(
+                        f"Checkpoint {filename} was written on a different mesh "
+                        f"({loaded.num_cells()} cells) than the requested one ({requested.num_cells()} cells). "
+                        "Use a checkpoint of the requested mesh or pass restart=None."
+                    )
+                self.mesh = loaded
                 self.initialize_state()
             else:
                 assert hasattr(self, "mesh")
@@ -282,7 +518,7 @@ class FlowConfig(PDEBase):
                     f_self.assign(f_load)
                 except RuntimeError:
                     logging.log(
-                        logging.WARN,
+                        logging.WARNING,
                         f"Function {f_name} not found in checkpoint, defaulting to zero.",
                     )
 
@@ -294,17 +530,57 @@ class FlowConfig(PDEBase):
         self.split_solution()  # Reset functions so self.u, self.p point to the new solution
 
     def configure_observations(self, obs_type=None, probe_obs_types={}) -> ObservationFunction:
+        """Select the observation function for this flow.
+
+        Subclasses should build a mapping of available observation types
+        (including the probe-based ones passed in ``probe_obs_types``) and
+        return the one named by ``obs_type``, raising ``ValueError`` for an
+        unknown type.
+
+        Args:
+            obs_type (str, optional): Name of the desired observation type.
+                Defaults to a subclass-specific choice.
+            probe_obs_types (dict, optional): Mapping of probe-based
+                observation type names to ``ObservationFunction`` objects,
+                as constructed by ``FlowConfig.__init__``.
+
+        Returns:
+            ObservationFunction: The selected observation function.
+
+        Raises:
+            NotImplementedError: In the base class; subclasses must
+                override this.
+        """
         raise NotImplementedError
 
     def get_observations(self) -> np.ndarray:
+        """Compute the current observation vector.
+
+        Returns:
+            np.ndarray: Output of the configured observation function
+            evaluated on the current state.
+        """
         return self.obs_fun(self.q)
 
     @property
     def num_outputs(self) -> int:
-        # This may be lift/drag, a stress "sensor", or a set of probe locations
+        """Number of values in the observation vector.
+
+        This may be lift/drag, a stress "sensor", or a set of probe
+        locations, depending on the configured observation type.
+        """
         return self.obs_fun.num_outputs
 
     def initialize_state(self):
+        """Create the function spaces and state functions on the current mesh.
+
+        Sets up the Taylor-Hood mixed space (continuous vector-valued
+        velocity of order ``velocity_order`` and continuous piecewise-linear
+        pressure), allocates one ``fd.Function`` per name in ``FUNCTIONS``,
+        breaks out the velocity and pressure subfunctions, allocates the
+        internal vorticity field, and validates any configured probe
+        locations.
+        """
         # Set up UFL objects referring to the mesh
         self.n = fd.FacetNormal(self.mesh)
         self.x, self.y = fd.SpatialCoordinate(self.mesh)
@@ -356,18 +632,24 @@ class FlowConfig(PDEBase):
 
         Note that this is broken out from `reset` because
         the two are not necessarily called together (e.g.
-        for linearization or deriving the control vector)
-
-        TODO: Allow for different kinds of actuators
+        for linearization or deriving the control vector).
+        Every input gets the actuator returned by ``create_actuator``.
         """
         self.actuators = [self.create_actuator() for _ in range(self.num_inputs)]
         self.init_bcs(function_spaces=function_spaces)
 
     @property
     def nu(self):
+        """Kinematic viscosity ``1 / Re`` as a Firedrake Constant."""
         return fd.Constant(1 / ufl.real(self.Re))
 
     def split_solution(self):
+        """Break the mixed state out into velocity and pressure fields.
+
+        Assigns ``self.u`` and ``self.p`` to the subfunctions of ``self.q``
+        and renames them to "u" and "p", so that fields saved under those
+        names stay consistent after loading or reinitializing state.
+        """
         self.u, self.p = self.q.subfunctions
         self.u.rename("u")
         self.p.rename("p")
@@ -464,11 +746,130 @@ class FlowConfig(PDEBase):
 
     @property
     def body_force(self):
+        """Volumetric body force term (zero by default).
+
+        Returns:
+            fd.Function: A vector function on the velocity space, assigned
+            to zero. Subclasses may override this to return a nontrivial
+            forcing field.
+        """
         return fd.Function(self.velocity_space).assign(fd.Constant((0.0, 0.0)))
 
     def linearize_bcs(self):
         """Sets the boundary conditions appropriately for linearized flow"""
         raise NotImplementedError
+
+    # ------------------------------------------------------------------
+    # Actuation power (see hydrogym.power and docs/concepts/actuation_power)
+    # ------------------------------------------------------------------
+    # Reference scales of the environment's drag/objective coefficient. The
+    # flows are non-dimensional with density 1; ``C_P = P / (RHO_REF U_REF^3
+    # L_REF / 2)`` (2D: per unit span), i.e. the factor that turns a force
+    # into the environment's force coefficient.
+    RHO_REF = 1.0
+    U_REF = 1.0
+    L_REF = 1.0
+
+    @property
+    def power_scale(self) -> float:
+        """Dimensional power (per unit span) that corresponds to ``C_P = 1``."""
+        return 0.5 * self.RHO_REF * self.U_REF**3 * self.L_REF
+
+    def actuator_amplitudes(self) -> np.ndarray:
+        """Current scale factor of each actuation boundary condition (the clipped actuator states)."""
+        return np.array([float(bc._scale.values()[0]) for bc in self.bcu_actuation])
+
+    @pyadjoint.no_annotations
+    def shaft_moment(self, boundary, center, q: fd.Function = None) -> float:
+        """Moment (about ``center``, positive counter-clockwise) that the body on ``boundary`` exerts on the fluid.
+
+        For a body rotating at a prescribed rate this is the torque the motor has to supply, ``M = -M_fluid``,
+        computed from the traction ``sigma . n`` (``n`` = outward normal of the fluid domain) on the wall.
+        """
+        if q is None:
+            q = self.q
+        (u, p) = fd.split(q)
+        t = dot(self.sigma(u, p), self.n)  # traction exerted on the fluid by the wall
+        x0, y0 = center
+        return float(fd.assemble(((self.x - x0) * t[1] - (self.y - y0) * t[0]) * fd.ds(boundary)))
+
+    @pyadjoint.no_annotations
+    def jet_power(self, boundary, regions=None, support=None, q: fd.Function = None):
+        """Power coefficients of blowing/suction through ``boundary`` (one zero-net-mass-flux group of jets).
+
+        At every surface quadrature point ``pi_p = v_n (p - p_ref)`` and ``pi_k = v_n |u|^2 / 2`` with
+        ``v_n = -u . n`` the velocity into the fluid and ``p_ref`` the mean wall pressure over the group (the
+        part of ``boundary`` where ``support`` holds). The cost forms are those of
+        ``hydrogym.power.transpiration_forms``, evaluated by quadrature (the pressure and kinetic terms
+        are clipped separately, point by point), which makes all three independent of the pressure gauge.
+
+        Args:
+            boundary: Mesh marker(s) of the actuated wall.
+            regions: List of UFL conditions, one per jet (``None``: the whole boundary is one jet).
+            support: UFL condition marking the jet surfaces of the group (default: whole ``boundary``).
+
+        Returns:
+            ``(per_jet, forms)``: signed ``C_P`` per jet and the dict of the three forms, normalised by
+            ``power_scale``.
+        """
+        if q is None:
+            q = self.q
+        (u, p) = fd.split(q)
+        ds = fd.ds(boundary, domain=self.mesh)
+        chi = ufl.conditional(support, 1.0, 0.0) if support is not None else fd.Constant(1.0)
+        area = fd.assemble(chi * ds)
+        # p_ref enters the forms as a Constant, not as a number: a new number in every call would change the
+        # forms and so compile new kernels at every step
+        p_ref = fd.Constant(fd.assemble(p * chi * ds) / area if area > 0 else 0.0)
+        vn = -dot(u, self.n)
+        pi_p = vn * (p - p_ref)
+        pi_k = vn * 0.5 * dot(u, u)
+        if regions is None:
+            regions = [None]
+        per_jet = []
+        for region in regions:
+            integrand = pi_p + pi_k
+            if region is not None:
+                integrand = ufl.conditional(region, integrand, 0.0)
+            per_jet.append(float(fd.assemble(integrand * ds)))
+        forms = {
+            "signed": float(fd.assemble((pi_p + pi_k) * ds)),
+            "positive": float(fd.assemble((fd.max_value(pi_p, 0.0) + fd.max_value(pi_k, 0.0)) * ds)),
+            "abs": float(fd.assemble((abs(pi_p) + abs(pi_k)) * ds)),
+        }
+        scale = self.power_scale
+        return np.array(per_jet) / scale, {k: v / scale for k, v in forms.items()}
+
+    @pyadjoint.no_annotations
+    def transpiration_flux(self, boundary, region=None, q: fd.Function = None) -> float:
+        """Volume flux ``int v_n dA`` into the fluid through ``boundary`` (optionally restricted to ``region``)."""
+        if q is None:
+            q = self.q
+        (u, p) = fd.split(q)
+        integrand = -dot(u, self.n)
+        if region is not None:
+            integrand = ufl.conditional(region, integrand, 0.0)
+        return float(fd.assemble(integrand * fd.ds(boundary)))
+
+    def actuation_power(self, q: fd.Function = None) -> np.ndarray:
+        """Signed actuation power coefficient ``C_P`` of each actuator (positive = put into the fluid).
+
+        Subclasses implement this; ``FlowEnv`` reports it in ``info`` and can charge it in the reward.
+        """
+        raise NotImplementedError
+
+    def actuation_power_forms(self, q: fd.Function = None):
+        """``(per_actuator, forms)``: signed ``C_P`` per actuator and the three cost forms.
+
+        Default: forms per actuator (rigid bodies: one motor per body); jet flows override this to form them per
+        surface point (see ``jet_power``).
+        """
+        per_actuator = np.asarray(self.actuation_power(q=q), dtype=float).ravel()
+        return per_actuator, power_forms(per_actuator)
+
+    def drag_coefficient(self, q: fd.Function = None):
+        """Drag coefficient of the controlled body/bodies, or ``None`` if the flow has no drag objective."""
+        return None
 
     def set_control(self, act: ArrayLike = None):
         """
@@ -537,10 +938,20 @@ class FlowConfig(PDEBase):
         if len(probes_array) == 0:
             return  # No probes to validate
 
-        # Get mesh coordinates for bounding box check
-        coords = mesh.coordinates.dat.data_ro
-        x_min, y_min = coords.min(axis=0)
-        x_max, y_max = coords.max(axis=0)
+        # Bounding box of the whole mesh: each rank holds only its own partition of the coordinates, so reduce the
+        # local extrema over the mesh communicator (a rank with an empty partition contributes +-inf)
+        from mpi4py import MPI
+
+        coords = np.asarray(mesh.coordinates.dat.data_ro, dtype=float)
+        if len(coords):
+            local_min, local_max = coords.min(axis=0)[:2], coords.max(axis=0)[:2]
+        else:
+            local_min, local_max = np.full(2, np.inf), np.full(2, -np.inf)
+        global_min, global_max = np.empty(2), np.empty(2)
+        mesh.comm.Allreduce(np.ascontiguousarray(local_min), global_min, op=MPI.MIN)
+        mesh.comm.Allreduce(np.ascontiguousarray(local_max), global_max, op=MPI.MAX)
+        x_min, y_min = global_min
+        x_max, y_max = global_max
 
         # Check if any probes are outside bounding box
         outside_probes = []
@@ -568,6 +979,29 @@ class FlowConfig(PDEBase):
             msg += "This may indicate probes are outside the mesh or in excluded regions."
             raise ValueError(msg) from e
 
+    def _probe_values(self, f, probes, vector: bool = False) -> np.ndarray:
+        """Point values of ``f`` at ``probes``, in probe order and identical on every rank.
+
+        A VertexOnlyMesh holds on each rank only the probes inside that rank's partition, in the order of the parent
+        mesh cells (also in serial), not in the order of ``probes``. The values are therefore moved to the input
+        ordering of the probes (all of them on rank 0, as the VertexOnlyMesh is redundant) and broadcast from there.
+
+        Returns:
+            np.ndarray: shape (N,) for a scalar field, (N, d) for a vector field with d components.
+        """
+        probes_array = np.asarray(probes)
+        vom = fd.VertexOnlyMesh(self.mesh, probes_array)
+        space = fd.VectorFunctionSpace if vector else fd.FunctionSpace
+        f_vom = fd.Function(space(vom, "DG", 0)).interpolate(f)
+        f_input = fd.Function(space(vom.input_ordering, "DG", 0)).interpolate(f_vom)
+        shape = (len(probes_array),) + tuple(f.ufl_shape)
+        values = np.empty(shape)
+        comm = self.mesh.comm
+        if comm.rank == 0:
+            values[:] = f_input.dat.data_ro.reshape(shape)
+        comm.Bcast(values, root=0)
+        return values
+
     def velocity_probe(self, probes, q: fd.Function = None) -> list[float]:
         """Probe velocity in the wake.
 
@@ -577,32 +1011,14 @@ class FlowConfig(PDEBase):
         if q is None:
             q = self.q
         u = q.subfunctions[0]
-        probes_array = np.asarray(probes)
-        # Get mesh from the main mixed space (self.q has mesh info)
-        mesh = self.mesh
-        # Create VertexOnlyMesh at probe locations and interpolate
-        vom = fd.VertexOnlyMesh(mesh, probes_array)
-        V_vom = fd.VectorFunctionSpace(vom, "DG", 0)
-        u_vom = fd.Function(V_vom)
-        u_vom.interpolate(u)
-        # Extract values and return in expected format
-        return u_vom.dat.data_ro.flatten("F")
+        return self._probe_values(u, probes, vector=True).flatten("F")
 
     def pressure_probe(self, probes, q: fd.Function = None) -> list[float]:
         """Probe pressure around the cylinder"""
         if q is None:
             q = self.q
         p = q.subfunctions[1]
-        probes_array = np.asarray(probes)
-        # Get mesh from the main mixed space
-        mesh = self.mesh
-        # Create VertexOnlyMesh at probe locations and interpolate
-        vom = fd.VertexOnlyMesh(mesh, probes_array)
-        P_vom = fd.FunctionSpace(vom, "DG", 0)
-        p_vom = fd.Function(P_vom)
-        p_vom.interpolate(p)
-        # Extract values and return
-        return p_vom.dat.data_ro
+        return self._probe_values(p, probes)
 
     def vorticity_probe(self, probes, q: fd.Function = None) -> list[float]:
         """Probe vorticity in the wake."""
@@ -611,18 +1027,38 @@ class FlowConfig(PDEBase):
         else:
             u = q.subfunctions[0]
         vort = self.vorticity(u=u)
-        probes_array = np.asarray(probes)
-        # Get mesh from the main mixed space
-        mesh = self.mesh
-        # Create VertexOnlyMesh at probe locations and interpolate
-        vom = fd.VertexOnlyMesh(mesh, probes_array)
-        V_vom = fd.FunctionSpace(vom, "DG", 0)
-        vort_vom = fd.Function(V_vom)
-        vort_vom.interpolate(vort)
-        # Extract values and return
-        return vort_vom.dat.data_ro
+        return self._probe_values(vort, probes)
 
     def linearize(self, qB=None, adjoint=False, sigma=0.0, inverse=False, solver_parameters=None):
+        """Return a linear operator for the Navier-Stokes equations about a base flow.
+
+        By default returns the Jacobian operator ``dF/dq`` evaluated at the
+        base state ``qB``. With ``inverse=True``, returns an operator that
+        solves the mass-matrix pencil ``(J - sigma * M) @ v1 = M @ v0``,
+        shifted by the (possibly complex) ``sigma``; complex shifts are
+        handled as a real block system with twice the degrees of freedom.
+
+        Args:
+            qB (fd.Function, optional): Base state to linearize about.
+                Defaults to the current state.
+            adjoint (bool, optional): Whether to return the transpose
+                (adjoint) of the operator. Default False.
+            sigma (complex, optional): Spectral shift. Default 0.0; must be
+                zero unless ``inverse=True``.
+            inverse (bool, optional): Whether to return a shift-inverse
+                (solve) operator instead of the Jacobian itself. Default
+                False.
+            solver_parameters (dict, optional): PETSc solver parameters for
+                the inverse operators.
+
+        Returns:
+            DirectOperator or InverseOperator: The requested linear
+            operator (transposed if ``adjoint=True``).
+
+        Raises:
+            ValueError: If a nonzero ``sigma`` is given with
+                ``inverse=False``.
+        """
         if sigma != 0.0 and not inverse:
             raise ValueError("Must use `inverse=True` with spectral shift.")
 
@@ -637,9 +1073,8 @@ class FlowConfig(PDEBase):
 
         return self._complex_shift_inv_operator(qB, sigma, adjoint=adjoint, solver_parameters=solver_parameters)
 
-    # TODO: Test this. This is just here as an extension of the work done with
-    # shift-inverse-type operators, but hasn't been directly tested yet. Really
-    # it should be used for linearized time-stepping.
+    # Forward (non-inverted) Jacobian operator, built analogously to the
+    # shift-inverse operators below.
     def _jacobian_operator(self, qB, adjoint=False):
         """Construct the Jacobian operator for the Navier-Stokes equations.
 
@@ -768,6 +1203,8 @@ class FlowConfig(PDEBase):
         F_im = self.residual((uB_im, pB_im), q_test=(v_im, s_im))
 
         def _inner(u, v):
+            """L2 inner product ``∫ u · v dx`` used to build the shift blocks
+            of the complex-valued eigenproblem's linear form."""
             return ufl.inner(u, v) * ufl.dx
 
         # Shift each block of the linear form appropriately

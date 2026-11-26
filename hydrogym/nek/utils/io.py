@@ -48,8 +48,7 @@ class CheckpointCallback(CallbackBase):
 
     def __call__(self, iter: int, t: float, env):
         if super().__call__(iter, t, env):
-            # For nek, checkpointing is typically handled by the environment itself
-            # This is a placeholder that can be extended if needed
+            # Nek5000 writes its own checkpoints; environments with save_checkpoint() are saved here as well
             if hasattr(env, "save_checkpoint"):
                 env.save_checkpoint(self.filename)
 

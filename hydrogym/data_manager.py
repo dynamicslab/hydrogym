@@ -1,6 +1,5 @@
 """
 HydroGym Data Manager
-=====================
 
 General Hugging Face data manager for all HydroGym solvers.
 
@@ -15,39 +14,45 @@ directly without copying/linking to the cache (cache layer is only used for HF d
 
 Solver profiles
 ---------------
-Each entry in :data:`SOLVER_PROFILES` describes one solver backend:
+Each entry in ``SOLVER_PROFILES`` describes one solver backend:
 
 - ``sentinel``:        Hidden file stored alongside environment data on HF that identifies the
                        solver (e.g. ``.MAIA_LB``). Used for automatic profile detection.
 - ``required_files``:  Files that must exist for validation to pass.
 - ``required_dirs``:   Directories that must exist and be non-empty.
 - ``optional_files``:  Files that are logged but not required.
+- ``download_ignore``: Hub path patterns inside the environment folder that are not downloaded.
 - ``workspace_files``: ``{source_filename: target_rel_path}`` mapping used by
-                       :meth:`HFDataManager.prepare_working_directory` to create
+                       ``HFDataManager.prepare_working_directory`` to create
                        solver-specific symlinks in a run directory.
 - ``workspace_dirs``:  Same idea for directories.
+- ``workspace_optional_globs``: file patterns linked into the run directory under
+                       their own names when present (no warning when absent).
 
 To add a new solver, add an entry here. No other file needs to change for
 basic support (download + validation + workspace prep).
 
-Usage::
+Usage:
 
-    # Symlinks (recommended)
-    dm = HFDataManager(use_clean_cache=True)
+```python
+# Symlinks (recommended)
+dm = HFDataManager(use_clean_cache=True)
 
-    # Copy files (if you need to modify them)
-    dm = HFDataManager(use_clean_cache='copy')
+# Copy files (if you need to modify them)
+dm = HFDataManager(use_clean_cache="copy")
 
-    # Use HF cache directly
-    dm = HFDataManager(use_clean_cache=False)
+# Use HF cache directly
+dm = HFDataManager(use_clean_cache=False)
 
-    # Get environment path (downloads if needed)
-    env_path = dm.get_environment_path('Cylinder_2D_Re200')
+# Get environment path (downloads if needed)
+env_path = dm.get_environment_path("Cylinder_2D_Re200")
 
-    # Prepare a solver-specific working directory
-    paths = dm.prepare_working_directory(env_path, './run_dir')
+# Prepare a solver-specific working directory
+paths = dm.prepare_working_directory(env_path, "./run_dir")
+```
 """
 
+import fnmatch
 import logging
 import os
 import shutil
@@ -61,6 +66,11 @@ try:
 except ImportError:
     HF_AVAILABLE = False
     print("Warning: huggingface_hub not installed. Install with: pip install huggingface_hub")
+
+
+class MissingEnvironmentFilesError(FileNotFoundError):
+    """An environment folder on the Hub lacks files its solver profile requires (raised before any download)."""
+
 
 # ---------------------------------------------------------------------------
 # Solver profiles
@@ -89,6 +99,9 @@ SOLVER_PROFILES: Dict[str, dict] = {
         "workspace_dirs": {
             "stl": "stl",
         },
+        # gust field files of the gust cases (properties_run.toml: lbGustFieldFile, read by m-AIA
+        # relative to its working directory)
+        "workspace_optional_globs": ["gust*.bin"],
     },
     "MAIA_STRCTRD": {
         "sentinel": ".MAIA_STRCTRD",
@@ -113,7 +126,9 @@ SOLVER_PROFILES: Dict[str, dict] = {
             "environment_config.yaml",
             "properties_run.toml",
         ],
-        "required_dirs": ["initial_field"],
+        # initial_field/ only for the channel (it loads U/V/W.npy itself and fails clearly without them);
+        # Kolmogorov_2D generates its initial state and ships no initial_field/.
+        "required_dirs": [],
         "optional_files": [],
         "workspace_files": {
             "environment_config.yaml": "environment_config.yaml",
@@ -133,9 +148,12 @@ SOLVER_PROFILES: Dict[str, dict] = {
     },
     "NEK5000_v19": {
         "sentinel": ".NEK5000",
+        # Other restart sets next to restart_files/ (e.g. restart_files_<name>/) are not read by the case and are
+        # not downloaded; each set of the NACA0012 wing is about 170 GB.
+        "download_ignore": ["restart_files_*/**"],
         # Runtime-only files (assumes nek5000 executable is pre-compiled)
         "required_files": [
-            "environment_config.yaml",  # Environment configuration (REQUIRED for MAIA pattern)
+            "environment_config.yaml",  # Environment configuration (REQUIRED for the Hugging Face pattern)
             "int_pos",  # Time series probe positions (required for TSRS module)
         ],
         # Flexible required files: allow case-by-case names
@@ -167,22 +185,23 @@ SOLVER_PROFILES: Dict[str, dict] = {
     },
     "NEK5000_v17": {
         "sentinel": ".NEK5000_v17",
+        # Other restart sets next to restart_files/ (e.g. restart_files_<name>/) are not read by the case and are
+        # not downloaded; each set of the NACA0012 wing is about 170 GB.
+        "download_ignore": ["restart_files_*/**"],
         # Runtime-only files (assumes nek5000 executable is pre-compiled)
         "required_files": [
-            "environment_config.yaml",  # Environment configuration (REQUIRED for MAIA pattern)
+            "environment_config.yaml",  # Environment configuration (REQUIRED for the Hugging Face pattern)
             "stat_pts.in",  # Time series probe positions (required for TSRS module)
             "forparam.i",  # Tripping parameter file
         ],
         # Flexible required files: allow case-by-case names
         "required_any_files": [
             ["*.re2"],  # Mesh file
-            ["*.ma2"],  # Material properties
             ["*.rea"],  # Parameter file (old versions use .rea)
             ["*.map"],  # Map file
             ["*.wall"],  # Wall file
             ["*.restart"],  # Restart file
             ["mask_*"],  # Mask file
-            ["*.sch"],  # Stop file
         ],
         "required_dirs": [
             "restart_files",  # Initial condition files (read at startup)
@@ -200,14 +219,15 @@ SOLVER_PROFILES: Dict[str, dict] = {
         # Link one set per pattern group (prefer .par over .rea when both exist)
         "workspace_glob_groups": [
             ["*.re2"],
-            ["*.ma2"],
             ["*.rea"],
             ["*.map"],
             ["*.wall"],
             ["*.restart"],
             ["mask_*"],
-            ["*.sch"],
         ],
+        # Not required by Nek5000 v17: the mesh connectivity is the .map file. Linked when an environment ships it.
+        # CASE.sch is never linked: Nek5000 writes it at run time and does not start if it already exists.
+        "workspace_optional_globs": ["*.ma2"],
         "workspace_dirs": {
             "restart_files": "restart_files",  # Link restart files directly
         },
@@ -253,6 +273,8 @@ class HFDataManager:
         local_fallback_dir: Optional[str] = None,
         use_clean_cache: Union[bool, str] = True,
         fallback_profile: str = "MAIA_LB",
+        token: Optional[str] = None,
+        revision: Optional[str] = None,
     ):
         """
         Initialize the HF Data Manager.
@@ -261,6 +283,9 @@ class HFDataManager:
             repo_id: Hugging Face repository ID.
             cache_dir: Clean local cache directory (default: ``~/.cache/hydrogym``).
                 Only used for HF downloads; local_fallback_dir is used directly.
+                When explicitly set, it is also passed to ``snapshot_download`` so
+                the raw HF download cache lands under it instead of the
+                huggingface_hub default (~/.cache/huggingface).
             local_fallback_dir: Local directory with environment files used when HF
                 is unreachable. When available, used directly without cache layer.
             use_clean_cache:
@@ -272,9 +297,22 @@ class HFDataManager:
                 Defaults to ``'MAIA_LB'``.  Pass the environment class's
                 ``SOLVER_TYPE`` attribute to get the right fallback in offline /
                 legacy scenarios.
+            token: Hugging Face access token, for private/gated repos. ``None``
+                (default) preserves ambient authentication (``HF_TOKEN`` env var
+                or ``huggingface-cli login``).
+            revision: Git revision (branch name, tag, or commit hash) to pin
+                downloads and file listings to. ``None`` (default) uses the
+                repo's default branch.
         """
         self.repo_id = repo_id
+        self.token = token
+        self.revision = revision
         self.cache_dir = cache_dir or os.path.expanduser("~/.cache/hydrogym")
+        # cache_dir as the user actually passed it (None when defaulted). Only
+        # an explicitly-set cache_dir is forwarded to snapshot_download(); see
+        # the download helpers. ``cache_dir`` itself is never None so the clean
+        # cache layer keeps working unchanged.
+        self._hf_download_cache_dir = cache_dir
         self.local_fallback_dir = local_fallback_dir
         self.use_clean_cache = use_clean_cache
         self.fallback_profile = fallback_profile
@@ -308,7 +346,7 @@ class HFDataManager:
             env_name: Environment folder name (e.g. ``'Cylinder_2D_Re200'``).
 
         Returns:
-            One of the keys in :data:`SOLVER_PROFILES`.
+            One of the keys in ``SOLVER_PROFILES``.
         """
         # 1. Check local clean cache (fast, no network)
         local_env_dir = os.path.join(self.cache_dir, env_name)
@@ -332,8 +370,8 @@ class HFDataManager:
         # 3. Query HF file listing (no download, requires network)
         if HF_AVAILABLE:
             try:
-                api = HfApi()
-                repo_files = api.list_repo_files(self.repo_id, repo_type="dataset")
+                api = HfApi(token=self.token)
+                repo_files = api.list_repo_files(self.repo_id, repo_type="dataset", revision=self.revision)
                 for file_path in repo_files:
                     parts = file_path.split("/")
                     if len(parts) == 2 and parts[0] == env_name and parts[1] in _SENTINEL_TO_PROFILE:
@@ -360,8 +398,8 @@ class HFDataManager:
         """
         if HF_AVAILABLE:
             try:
-                api = HfApi()
-                repo_files = api.list_repo_files(self.repo_id, repo_type="dataset")
+                api = HfApi(token=self.token)
+                repo_files = api.list_repo_files(self.repo_id, repo_type="dataset", revision=self.revision)
 
                 env_names = set()
                 for file_path in repo_files:
@@ -410,14 +448,14 @@ class HFDataManager:
 
         The mapping of source files/directories to their target locations inside
         *work_dir* is defined by the ``workspace_files`` and ``workspace_dirs``
-        entries in :data:`SOLVER_PROFILES`.
+        entries in ``SOLVER_PROFILES``.
 
         If *profile* is ``None`` the profile is auto-detected from sentinel files
         already present in *env_path*, then falls back to ``self.fallback_profile``.
 
         Args:
             env_path: Path to the cached environment data (as returned by
-                :meth:`get_environment_path`).
+                ``get_environment_path``).
             work_dir: Target working directory (created if it does not exist).
             profile: Solver profile key (e.g. ``'MAIA_LB'``).  Auto-detected when
                 ``None``.
@@ -487,6 +525,10 @@ class HFDataManager:
             else:
                 self.logger.warning(f"Workspace source dir not found, skipping: {source_path}")
 
+        for pattern in solver.get("workspace_optional_globs", []):
+            for source_path in sorted(p for p in Path(env_path).glob(pattern) if p.is_file()):
+                self._link_path(source_path, work_path / source_path.name)
+
         self.logger.info(f"Working directory ready at: {work_path.resolve()}")
         return paths
 
@@ -494,8 +536,51 @@ class HFDataManager:
     # Cache strategies (internal)
     # ------------------------------------------------------------------
 
+    @staticmethod
+    def _download_ignore(env_name: str, profile: Optional[str]) -> Optional[List[str]]:
+        """Hub path patterns of ``env_name`` that the solver profile does not need (``download_ignore``)."""
+        globs = SOLVER_PROFILES.get(profile or "", {}).get("download_ignore", [])
+        return [f"{env_name}/{g}" for g in globs] or None
+
+    @staticmethod
+    def _atomic_symlink(target: str, link: str) -> None:
+        """Point ``link`` at ``target``. The link is made under a temporary name and renamed into place, so several
+        processes that prepare the same environment at once (same cache directory) do not fail on each other."""
+        tmp = f"{link}.tmp-{os.getpid()}"
+        if os.path.lexists(tmp):
+            os.unlink(tmp)
+        os.symlink(target, tmp)
+        try:
+            os.replace(tmp, link)
+        except OSError:
+            os.unlink(tmp)
+            # another process put a directory there meanwhile: use it if it is the same environment
+            if not (os.path.exists(link) and os.path.realpath(link) == os.path.realpath(target)):
+                raise
+
+    @staticmethod
+    def _remove_link(link: str) -> None:
+        """Remove a cache symlink; another process may have removed or replaced it already."""
+        try:
+            os.unlink(link)
+        except FileNotFoundError:
+            pass
+
+    def _log_hf_failure(self, env_name: str, error: Exception) -> None:
+        """Log a failed Hub lookup: a warning when the local fallback holds the environment (it is used next, e.g.
+        offline with a partly filled HF cache), otherwise an error with the traceback."""
+        if self.local_fallback_dir and os.path.exists(os.path.join(self.local_fallback_dir, env_name)):
+            self.logger.warning(
+                f"Hugging Face Hub lookup of {env_name} failed ({type(error).__name__}); using the local fallback"
+            )
+            return
+        import traceback
+
+        self.logger.error(f"Failed to get from HF Hub: {error}")
+        self.logger.error(traceback.format_exc())
+
     def _get_environment_path_with_symlink(self, env_name: str, force_download: bool, profile: str) -> str:
-        """Get environment path using symlinks (best option!)."""
+        """Get environment path using symlinks into the HF cache (the default)."""
         # Check local fallback first - if available, use it directly (skip cache layer)
         if self.local_fallback_dir and not force_download:
             local_fallback_path = os.path.join(self.local_fallback_dir, env_name)
@@ -512,7 +597,7 @@ class HFDataManager:
                 return local_env_link
             else:
                 print("Symlink target invalid, re-downloading...")
-                os.unlink(local_env_link)
+                self._remove_link(local_env_link)
         elif os.path.exists(local_env_link):
             print("Replacing old cache with symlink...")
             if os.path.isdir(local_env_link):
@@ -522,31 +607,34 @@ class HFDataManager:
 
         if HF_AVAILABLE:
             try:
+                self._check_remote_before_download(env_name, profile)
                 print(f"Downloading {env_name} from Hugging Face Hub...")
                 hf_cache_path = snapshot_download(
                     repo_id=self.repo_id,
                     repo_type="dataset",
                     allow_patterns=f"{env_name}/**",
+                    ignore_patterns=self._download_ignore(env_name, profile),
                     force_download=force_download,
+                    cache_dir=self._hf_download_cache_dir,
+                    token=self.token,
+                    revision=self.revision,
                 )
                 hf_env_path = os.path.join(hf_cache_path, env_name)
                 if os.path.exists(hf_env_path) and os.path.isdir(hf_env_path):
                     real_path = os.path.realpath(hf_env_path)
                     print(f"Creating symlink: {local_env_link} -> {real_path}")
-                    os.symlink(real_path, local_env_link)
+                    self._atomic_symlink(real_path, local_env_link)
                     if self._validate_environment_files(local_env_link, profile):
                         print(f"Environment ready at: {local_env_link}")
                         return local_env_link
                     else:
-                        os.unlink(local_env_link)
+                        self._remove_link(local_env_link)
                         raise FileNotFoundError("Validation failed after creating symlink")
                 else:
                     raise FileNotFoundError(f"Environment path not found in HF cache: {hf_env_path}")
             except Exception as e:
-                self.logger.error(f"Failed to get from HF Hub: {e}")
-                import traceback
-
-                self.logger.error(traceback.format_exc())
+                self._reraise_unless_fallback(env_name, e)
+                self._log_hf_failure(env_name, e)
 
         # Final fallback: local_fallback_dir (if HF download failed)
         if self.local_fallback_dir:
@@ -585,12 +673,17 @@ class HFDataManager:
 
         if HF_AVAILABLE:
             try:
+                self._check_remote_before_download(env_name, profile)
                 print(f"Downloading {env_name} from Hugging Face Hub...")
                 hf_cache_path = snapshot_download(
                     repo_id=self.repo_id,
                     repo_type="dataset",
                     allow_patterns=f"{env_name}/**",
+                    ignore_patterns=self._download_ignore(env_name, profile),
                     force_download=force_download,
+                    cache_dir=self._hf_download_cache_dir,
+                    token=self.token,
+                    revision=self.revision,
                 )
                 hf_env_path = os.path.join(hf_cache_path, env_name)
                 if os.path.exists(hf_env_path) and os.path.isdir(hf_env_path):
@@ -606,10 +699,8 @@ class HFDataManager:
                 else:
                     raise FileNotFoundError(f"Environment path not found in HF cache: {hf_env_path}")
             except Exception as e:
-                self.logger.error(f"Failed to get from HF Hub: {e}")
-                import traceback
-
-                self.logger.error(traceback.format_exc())
+                self._reraise_unless_fallback(env_name, e)
+                self._log_hf_failure(env_name, e)
 
         # Final fallback: local_fallback_dir (if HF download failed)
         if self.local_fallback_dir:
@@ -624,12 +715,17 @@ class HFDataManager:
         """Get environment path using HF cache directly (no local copying)."""
         if HF_AVAILABLE:
             try:
+                self._check_remote_before_download(env_name, profile)
                 print(f"Getting {env_name} from Hugging Face Hub...")
                 hf_cache_path = snapshot_download(
                     repo_id=self.repo_id,
                     repo_type="dataset",
                     allow_patterns=f"{env_name}/**",
+                    ignore_patterns=self._download_ignore(env_name, profile),
                     force_download=force_download,
+                    cache_dir=self._hf_download_cache_dir,
+                    token=self.token,
+                    revision=self.revision,
                 )
                 env_path = os.path.join(hf_cache_path, env_name)
                 if os.path.exists(env_path) and self._validate_environment_files(env_path, profile):
@@ -638,10 +734,8 @@ class HFDataManager:
                 else:
                     raise FileNotFoundError(f"Environment path not found or invalid: {env_path}")
             except Exception as e:
-                self.logger.error(f"Failed to get from HF Hub: {e}")
-                import traceback
-
-                self.logger.error(traceback.format_exc())
+                self._reraise_unless_fallback(env_name, e)
+                self._log_hf_failure(env_name, e)
 
         if self.local_fallback_dir:
             local_path = os.path.join(self.local_fallback_dir, env_name)
@@ -650,6 +744,56 @@ class HFDataManager:
                 return local_path
 
         raise FileNotFoundError(f"Environment '{env_name}' not found in HF Hub or local fallback")
+
+    # ------------------------------------------------------------------
+    # Pre-download check (internal)
+    # ------------------------------------------------------------------
+
+    def _missing_remote_files(self, env_name: str, profile: str) -> List[str]:
+        """
+        Required files/directories of *profile* that the HF folder *env_name* lacks, from the file listing.
+
+        Lets a download that would fail validation fail before it starts (an environment folder can be larger
+        than 100 GB). Returns an empty list when nothing is missing, when the profile has no requirements, or when the
+        check cannot be made (no huggingface_hub, no network, folder not in the listing): the download and the
+        validation after it then behave as before.
+        """
+        solver = SOLVER_PROFILES.get(profile)
+        if not HF_AVAILABLE or solver is None or (not solver["required_files"] and not solver["required_dirs"]):
+            return []
+        try:
+            api = HfApi(token=self.token)
+            repo_files = api.list_repo_files(self.repo_id, repo_type="dataset", revision=self.revision)
+        except Exception as e:
+            self.logger.warning(f"Could not list HF files before the download: {e}")
+            return []
+        prefix = f"{env_name}/"
+        rel = [f[len(prefix) :] for f in repo_files if f.startswith(prefix)]
+        if not rel:
+            return []
+        top = {f for f in rel if "/" not in f}
+        missing = [f for f in solver["required_files"] if f not in top]
+        for pattern_group in solver.get("required_any_files", []):
+            if not any(fnmatch.fnmatchcase(f, pattern) for pattern in pattern_group for f in top):
+                missing.append(" or ".join(pattern_group))
+        missing += [f"{d}/" for d in solver["required_dirs"] if not any(f.startswith(f"{d}/") for f in rel)]
+        return missing
+
+    def _check_remote_before_download(self, env_name: str, profile: str) -> None:
+        """Raise ``MissingEnvironmentFilesError`` before the download when the HF folder lacks required files."""
+        missing = self._missing_remote_files(env_name, profile)
+        if missing:
+            raise MissingEnvironmentFilesError(
+                f"'{env_name}' on {self.repo_id} lacks files that solver profile '{profile}' requires: "
+                f"{', '.join(missing)}. Not downloading."
+            )
+
+    def _reraise_unless_fallback(self, env_name: str, error: Exception) -> None:
+        """A missing-files error propagates unless a local fallback folder can be used instead."""
+        if isinstance(error, MissingEnvironmentFilesError) and not (
+            self.local_fallback_dir and os.path.exists(os.path.join(self.local_fallback_dir, env_name))
+        ):
+            raise error
 
     # ------------------------------------------------------------------
     # Validation
@@ -661,7 +805,7 @@ class HFDataManager:
 
         Args:
             env_dir: Path to environment directory (may be a symlink).
-            profile: Solver profile key from :data:`SOLVER_PROFILES`.
+            profile: Solver profile key from ``SOLVER_PROFILES``.
 
         Returns:
             ``True`` if all required files and directories are present.
@@ -726,7 +870,7 @@ class HFDataManager:
         self.logger.info(f"Linked: {target} -> {abs_source}")
 
     def download_environment(self, env_name: str, force_download: bool = False) -> str:
-        """Alias for :meth:`get_environment_path` (backwards compatibility)."""
+        """Alias for ``get_environment_path`` (backwards compatibility)."""
         return self.get_environment_path(env_name, force_download)
 
     def clear_cache(self, env_name: Optional[str] = None):

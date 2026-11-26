@@ -8,7 +8,16 @@ from jax import lax
 
 from hydrogym.core import CallbackBase, PDEBase, TransientSolver
 from hydrogym.jax.equation import IMEXEquation
-from hydrogym.jax.flow import FlowConfig
+
+
+def _n_steps(duration, dt):
+    """Number of whole time steps of size ``dt`` in ``duration`` (floor, robust to float round-off).
+
+    ``1 // 1e-3`` is 999.0 in floating point, so plain floor division lost one step per saved interval (3996
+    instead of 4000 steps for a 4-time-unit Kolmogorov action at dt 1e-3).
+    """
+    return int(np.floor(duration / dt + 1e-6))
+
 
 _alpha_RK4 = [0, 0.1496590219993, 0.3704009573644, 0.6222557631345, 0.9582821306748, 1]
 _beta_RK4 = [0, -0.4178904745, -1.192151694643, -1.697784692471, -1.514183444257]
@@ -16,13 +25,38 @@ _gammas_RK4 = [0.1496590219993, 0.3792103129999, 0.8229550293869, 0.699450455948
 
 
 class VelocityState(NamedTuple):
+    """Three-component velocity (or velocity-spectrum) state, one array per direction.
+
+    Attributes:
+        u: x-component; physical or spectral depending on usage.
+        v: y-component.
+        w: z-component.
+    """
+
     u: jnp.ndarray  # physical or spectral depending on usage
     v: jnp.ndarray
     w: jnp.ndarray
 
 
 class RungeKuttaCrankNicolson(TransientSolver):
-    def __init__(self, flow: FlowConfig, dt: float, save_n: int, equation: IMEXEquation, **kwargs):
+    """IMEX Crank-Nicolson Runge-Kutta transient solver for a split equation.
+
+    Advances an ``IMEXEquation`` with the nonlinear
+    terms treated explicitly and the linear terms treated implicitly, using a
+    low-storage 5-stage scheme; the whole rollout is expressed as a
+    ``lax.scan`` so it can be JIT-compiled.
+    """
+
+    def __init__(self, flow: PDEBase, dt: float, save_n: int, equation: IMEXEquation, **kwargs):
+        """Initialize the solver.
+
+        Args:
+            flow: Flow configuration providing the state (used by the base class).
+            dt: Timestep size.
+            save_n: Number of (inner) steps between saved states.
+            equation: The split (IMEX) equation being integrated.
+            **kwargs: Ignored; accepted for API compatibility.
+        """
         self.save_n = save_n
         self.dt = dt
         self.flow = flow
@@ -48,6 +82,18 @@ class RungeKuttaCrankNicolson(TransientSolver):
 
         @tree_math.wrap
         def time_step_fn(u):
+            """Advance a (tree-wrapped) state by one full 5-stage IMEX-RK step.
+
+            Each stage combines the explicit nonlinear term (with the
+            low-storage recursion ``h``) with a partially implicit
+            Crank-Nicolson solve of the linear term.
+
+            Args:
+                u: Current state (tree of arrays).
+
+            Returns:
+                The state after one timestep.
+            """
             h = 0
             for k in range(5):
                 h = unwrapped_nonlinear(u) + _beta_RK4[k] * h
@@ -58,21 +104,31 @@ class RungeKuttaCrankNicolson(TransientSolver):
 
         return time_step_fn
 
-    def step(self, flow: FlowConfig, dt: float, save_n: int, callbacks: Callable, control_field=None):
-        """
-        Lax.scan to iteratively apply a function given an initial value
+    def step(self, flow: PDEBase, dt: float, save_n: int, callbacks: Callable, control_field=None):
+        """Build a ``lax.scan`` function that advances a state by ``save_n`` timesteps.
+
+        Note this returns the *scan function*, not a stepped state: the caller
+        nests it inside an outer scan (see ``solve``).
 
         Args:
-            initialization(grid array): the initial fft vorticity field
-            steps (int):  number of timesteps
-            save_n (int): save every n steps
-            ignore_intermediate_steps (bool): if saving every n steps, ignore intermediate steps.
-                                              this drastically reduces the memory requirements.
+            flow: Flow configuration (unused here; the equation carries the
+                dynamics).
+            dt: Timestep size (unused here; the one fixed at construction
+                applies).
+            save_n: Number of timesteps each inner scan performs.
+            callbacks: Unused; per-step callback tracking is not possible
+                inside compiled scans.
+            control_field: Optional control input forwarded to the equation's
+                nonlinear terms at every step.
 
+        Returns:
+            Callable mapping an initial state to the state ``save_n``
+            timesteps later.
         """
         func = self.RK4_CN(control_field=control_field)
 
         def inner_scan(initialization):
+            """Run ``save_n`` RK4-CN timesteps from ``initialization``, keeping only the final state."""
             f = lambda init, inputs: (func(init), init)
             final_state, outputs = lax.scan(f, initialization, xs=None, length=save_n)
             return final_state
@@ -82,14 +138,49 @@ class RungeKuttaCrankNicolson(TransientSolver):
     def solve(
         self,
         dt: float,
-        flow: FlowConfig,
+        flow: PDEBase,
         t_span: Tuple[float, float],
         callbacks: Iterable[CallbackBase] = [],
         controller: Callable = None,
         save_n: int = 1,
         initial_state=None,
         control_field=None,
+        accumulate_fn: Callable = None,
     ) -> PDEBase:
+        """Integrate the equation from t=0 to ``t_span[1]`` with nested lax scans.
+
+        The rollout is run as an outer scan of inner scans, each of ``save_n // dt``
+        timesteps, so the saved trajectory holds one state per ``save_n`` time
+        units. Callbacks are invoked once at the end (per-iteration callback
+        tracking is not possible through the compiled scans).
+
+        Args:
+            dt: Timestep size.
+            flow: Flow configuration; also supplies the initial state when
+                ``initial_state`` is None.
+            t_span: ``(t0, t1)`` integration interval; ``t1`` must be at least 1.
+            callbacks: Callbacks invoked on the flow after the rollout.
+            controller: Unused; accepted for API compatibility with the
+                hydrogym solver interface.
+            save_n: Time interval between saved trajectory states.
+            initial_state: Optional starting state (FFT vorticity field);
+                defaults to ``flow.initialize_state()``.
+            control_field: Optional control input forwarded to the equation's
+                nonlinear terms at every step.
+            accumulate_fn: Optional function ``g(state) -> pytree`` evaluated on
+                the state after every solver timestep; its mean over all
+                timesteps of the rollout is returned as a third output. The
+                state update itself is unchanged.
+
+        Returns:
+            Tuple ``(final_state, outputs)`` where ``outputs`` is the stacked
+            trajectory of states at each outer-scan step (also stored on
+            ``flow.vorticity``); with ``accumulate_fn`` the tuple
+            ``(final_state, outputs, mean_of_accumulate_fn)``.
+
+        Raises:
+            ValueError: If the end time in ``t_span`` is less than 1.
+        """
         end_time = t_span[1]
         if end_time < 1:
             raise ValueError(
@@ -97,10 +188,15 @@ class RungeKuttaCrankNicolson(TransientSolver):
             )
 
         initialization = flow.initialize_state() if initial_state is None else initial_state
-        step_to_save = int(save_n // dt)
+        step_to_save = _n_steps(save_n, dt)
 
-        total_steps = int(end_time // dt)
+        total_steps = _n_steps(end_time, dt)
         outer_steps = int(total_steps // step_to_save)
+
+        if accumulate_fn is not None:
+            return self._solve_accumulate(
+                flow, initialization, step_to_save, outer_steps, callbacks, control_field, accumulate_fn
+            )
 
         inner_scan = self.step(flow, dt, step_to_save, callbacks, control_field=control_field)
 
@@ -115,9 +211,57 @@ class RungeKuttaCrankNicolson(TransientSolver):
             cb(flow)
         return final_state, outputs
 
+    def _solve_accumulate(
+        self, flow, initialization, step_to_save, outer_steps, callbacks, control_field, accumulate_fn
+    ):
+        """``solve`` with the mean of ``accumulate_fn`` over every timestep.
+
+        The timestep loop is the one of ``solve`` (same scan body, which stacks the state before every
+        step); ``accumulate_fn`` is evaluated afterwards on the stacked states, so the state update and the
+        returned trajectory are bit-identical to ``solve``.
+        """
+        func = self.RK4_CN(control_field=control_field)
+        f = lambda init, inputs: (func(init), init)  # noqa: E731  (same body as in `step`)
+
+        def outer_scan(init, inputs):
+            """``step_to_save`` timesteps; returns the new state and the sum of ``accumulate_fn`` after each step."""
+            final_state, before = lax.scan(f, init, xs=None, length=step_to_save)
+            g_before = jax.vmap(accumulate_fn)(before)
+            g_first = accumulate_fn(init)
+            g_final = accumulate_fn(final_state)
+            acc = jax.tree_util.tree_map(lambda gb, g0, gf: jnp.sum(gb, axis=0) - g0 + gf, g_before, g_first, g_final)
+            return final_state, (final_state, acc)
+
+        final_state, (outputs, accs) = lax.scan(outer_scan, initialization, xs=None, length=outer_steps)
+        n_total = outer_steps * step_to_save
+        mean = jax.tree_util.tree_map(lambda a: jnp.sum(a, axis=0) / n_total, accs)
+        flow.vorticity = outputs
+        for cb in callbacks:
+            cb(flow)
+        return final_state, outputs, mean
+
 
 class RungeKutta4:
+    """Explicit classical 4th-order Runge-Kutta stepper for a velocity state.
+
+    Each step evaluates the equation's full right-hand side four times,
+    projects the result back onto the constraint manifold
+    (``equation.project``), and optionally applies a constant-mass-flux
+    correction by rescaling the mean streamwise velocity in physical space
+    before re-applying the boundary conditions.
+    """
+
     def __init__(self, equation, dt: float, save_n: int, **kwargs):
+        """Initialize the integrator.
+
+        Args:
+            equation: Equation object providing ``rhs``, ``project``,
+                ``to_physical``, ``to_spectral`` and ``enforce_noslip``.
+            dt: Default timestep used when ``rk4_step`` gets no explicit ``dt``.
+            save_n: Number of steps between saves (stored; not used by
+                ``rk4_step`` itself).
+            **kwargs: Ignored; accepted for API compatibility.
+        """
         self.save_n = int(save_n)
         self.dt = dt
         self.equation = equation
@@ -133,11 +277,37 @@ class RungeKutta4:
         fz=0.0,
         enforce_const_massflux=True,
         target_bulk_u=8.0,
+        return_pre_bc=False,
     ):
+        """Advance the state by one RK4 step, then project and correct mass flux.
+
+        Args:
+            state_hat: Current state (spectral velocity components).
+            dt: Timestep; defaults to the value given at construction.
+            action: Control (actuation) input forwarded to the equation's rhs,
+                projection, and boundary-condition enforcement.
+            t: Current time, used for time-dependent BCs and forcing.
+            fx: x-direction body forcing.
+            fy: y-direction body forcing.
+            fz: z-direction body forcing.
+            enforce_const_massflux: If True, rescale the streamwise velocity in
+                physical space so the bulk velocity equals ``target_bulk_u``,
+                then re-apply the no-slip/jet boundary conditions.
+            target_bulk_u: Target bulk (domain-mean) streamwise velocity for
+                the mass-flux correction.
+            return_pre_bc: If True, also return what ``equation.project`` returns
+                with ``return_pre_bc=True`` (the physical wall-normal velocity
+                before the boundary/jet overwrite).
+
+        Returns:
+            The new state in spectral form (and, with ``return_pre_bc``, the
+            pre-overwrite velocity).
+        """
         eq = self.equation
         dt = self.dt if dt is None else dt
 
         def add_state(a, b, alpha=1.0):
+            """Component-wise ``a + alpha * b`` for two ``VelocityState`` values."""
             return VelocityState(
                 a.u + alpha * b.u,
                 a.v + alpha * b.v,
@@ -161,7 +331,10 @@ class RungeKutta4:
             state_hat.w + (dt / 6.0) * (k1.w + 2 * k2.w + 2 * k3.w + k4.w),
         )
 
-        new_state = eq.project(u_star, dt, action=action, t=t + dt)
+        if return_pre_bc:
+            new_state, w_pre_bc = eq.project(u_star, dt, action=action, t=t + dt, return_pre_bc=True)
+        else:
+            new_state = eq.project(u_star, dt, action=action, t=t + dt)
 
         if enforce_const_massflux:
             state_phys = eq.to_physical(new_state)
@@ -182,4 +355,6 @@ class RungeKutta4:
             )
             new_state = eq.to_spectral(VelocityState(u, v, w))
 
+        if return_pre_bc:
+            return new_state, w_pre_bc
         return new_state
