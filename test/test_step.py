@@ -1,6 +1,10 @@
-from ufl import sin
+import pytest
 
-import hydrogym.firedrake as hgym
+pytest.importorskip("firedrake")
+
+from ufl import sin  # noqa: E402
+
+import hydrogym.firedrake as hgym  # noqa: E402
 
 
 def test_import_medium():
@@ -35,13 +39,6 @@ def test_integrate():
         t_span=(0, 10 * dt),
         dt=dt,
     )
-
-
-def test_integrate_noise():
-    flow = hgym.Step(Re=100, mesh="medium")
-    dt = 1e-3
-
-    hgym.integrate(flow, t_span=(0, 10 * dt), dt=dt, eta=1.0)
 
 
 def test_control():

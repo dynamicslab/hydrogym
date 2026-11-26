@@ -1,5 +1,4 @@
 import firedrake_adjoint as fda
-from ufl import sin
 
 import hydrogym.firedrake as hgym
 
@@ -17,5 +16,4 @@ def test_grad():
 
     dy = fda.compute_gradient(y, fda.Control(c))
 
-    print(dy)
     assert abs(dy) > 0

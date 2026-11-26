@@ -1,7 +1,10 @@
 import pytest
-from ufl import sin
 
-import hydrogym.firedrake as hgym
+pytest.importorskip("firedrake")
+
+from ufl import sin  # noqa: E402
+
+import hydrogym.firedrake as hgym  # noqa: E402
 
 
 def test_import_medium():

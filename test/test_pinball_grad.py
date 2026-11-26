@@ -6,7 +6,7 @@ import hydrogym.firedrake as hgym
 
 
 def test_steady_grad():
-    flow = hgym.Pinball(Re=30, mesh="coarse")
+    flow = hgym.Pinball(Re=30, mesh="medium")
     n_cyl = len(flow.CYLINDER)
 
     # Option 1: List of AdjFloats

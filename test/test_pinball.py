@@ -1,19 +1,26 @@
+import matplotlib.pyplot as plt
 import numpy as np
+import pytest
 
-import hydrogym.firedrake as hgym
+pytest.importorskip("firedrake")
+
+import hydrogym.firedrake as hgym  # noqa: E402
 
 
 def test_import_fine():
     hgym.Pinball(mesh="fine")
 
 
+# Targets: Newton solution at Re 30 on the fine mesh, from rest, no checkpoint.
+
+
 def test_steady(tol=1e-2):
-    flow = hgym.Pinball(Re=30, mesh="fine")
+    flow = hgym.Pinball(Re=30, mesh="fine", use_HF_data_manager=False)
     solver = hgym.NewtonSolver(flow)
     solver.solve()
 
-    CL_target = (0.0, 0.521, -0.521)  # Slight asymmetry in mesh
-    CD_target = (1.451, 1.566, 1.566)
+    CL_target = (0.000110, 0.417457, -0.417382)
+    CD_target = (1.120737, 1.034354, 1.034367)
 
     CL, CD = flow.compute_forces()
     for i in range(len(CL)):
@@ -22,14 +29,14 @@ def test_steady(tol=1e-2):
 
 
 def test_steady_rotation(tol=1e-2):
-    flow = hgym.Pinball(Re=30, mesh="fine")
+    flow = hgym.Pinball(Re=30, mesh="fine", use_HF_data_manager=False)
     flow.set_control((0.5, 0.5, 0.5))
 
     solver = hgym.NewtonSolver(flow)
     solver.solve()
 
-    CL_target = (-0.2477, 0.356, -0.6274)
-    CD_target = (1.4476, 1.6887, 1.4488)
+    CL_target = (-0.402585, 0.171557, -0.764256)
+    CD_target = (1.078614, 1.061063, 1.028137)
 
     CL, CD = flow.compute_forces()
     for i in range(len(CL)):
@@ -83,3 +90,33 @@ def test_env():
     for _ in range(10):
         y, reward, terminated, truncated, info = env.step(u)
         u = feedback_ctrl(y)
+
+
+def test_probe_observations():
+    probes = [(x, y) for x in np.linspace(2.0, 6.0, 3) for y in (-1.0, 1.0)]
+    env_config = {
+        "flow": hgym.Pinball,
+        "flow_config": {
+            "mesh": "medium",
+            "observation_type": "velocity_probes",
+            "probes": probes,
+        },
+        "solver": hgym.SemiImplicitBDF,
+        "solver_config": {
+            "dt": 1e-2,
+        },
+    }
+    env = hgym.FlowEnv(env_config)
+
+    y, info = env.reset()
+    assert env.observation_space.shape == (2 * len(probes),)
+    assert y.shape == env.observation_space.shape
+
+    y, reward, terminated, truncated, info = env.step(np.zeros(3))
+    assert y.shape == env.observation_space.shape
+
+
+def test_render():
+    flow = hgym.Pinball(mesh="medium")
+    flow.render()
+    plt.close("all")

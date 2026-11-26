@@ -2,18 +2,20 @@
 
 ## Quick-Start
 
-To run HydroGym's tests one best pulls the `HydroGym-Env` [docker container](https://hub.docker.com/repository/docker/lpaehler/hydrogym-env/general):
+To run HydroGym's tests one best uses a HydroGym release image, which has
+Firedrake and all its dependencies pre-installed (the CPU image is enough for
+the Firedrake tests):
 
 ```bash
-docker pull lpaehler/hydrogym-env:stable
+docker pull clagemann/hydrogym-cpu:1.0.2
+docker run -it --ipc=host -v $(pwd):/workspace -w /workspace clagemann/hydrogym-cpu:1.0.2
 ```
 
-and then launches the VSCode Devcontainer into it. At that point one has Firedrake, and
-all its dependencies pre-installed. One then needs to activate the virtualenv at the
-command line with
+(or open this checkout in `.devcontainer/release-cpu.devcontainer.json`). Then
+activate the Firedrake environment:
 
 ```bash
-source /home/firedrake/firedrake/bin/activate
+source /opt/venvs/firedrake/bin/activate
 ```
 
 Install HydroGym and its locked development dependencies additively into the
@@ -23,7 +25,12 @@ existing Firedrake environment:
 ./scripts/bootstrap_firedrake.sh --dev
 ```
 
-And is then set up to run the tests.
+The environment is then ready to run the tests.
+
+> CI does not use a pre-built image: `.github/workflows/test.yml` builds the
+> repo's own `.devcontainer/firedrake-test.devcontainer.json` (petsc +
+> firedrake features) on every run, so that definition — not any Docker Hub
+> image — is the authoritative test environment.
 
 ## Running Tests
 
