@@ -1,0 +1,34 @@
+# Smoke test of the wing case at N = 3 from a uniform free stream (no start file): checks the boundary ids,
+# frozen far field, trip, actuators and probes on 1-2 GPUs. Otherwise identical to naca_wing.par.
+userSections = CASEDATA
+
+[GENERAL]
+polynomialOrder = 3               # smoke test only
+cubaturePolynomialOrder = 5
+stopAt = numSteps
+numSteps = 100000000              # the controller ends the run (TERMN)
+dt = 4e-5                         # fixed, as naca_wing.par
+timeStepper = tombo3              # Nek5000 bdf3 / ext3 (param 27 = 3)
+checkpointControl = steps
+checkpointInterval = 0            # chunks are written by the controller (WRFLD)
+
+[MESH]
+partitioner = rcb
+
+[FLUID PRESSURE]
+residualTol = 1e-06
+initialGuess = projectionAconj+nVector=20   # 4.1 instead of 6.0 iterations per step (default nVector=8)
+coarseSolver = boomerAMG+device            # coarse grid on the GPU (default: CPU)
+smootherType = RAS+FourthOptChebyshev      # restrictive Schwarz (default: ASM); together 0.193 instead of 0.284 s/step
+
+[FLUID VELOCITY]
+boundaryTypeMap = zeroDirichlet, udfDirichlet, udfDirichlet, zeroNeumann   # 1 wing, 2 control window, 3 far field, 4 outlet
+viscosity = 1/200000.0
+rho = 1.0
+residualTol = 1e-08
+regularization = hpfrt + nModes = 2 + scalingCoeff = 2000   # rt_filter.f: f = -2000 (I - F) u, Legendre basis
+
+[CASEDATA]
+hydrogymBoundaries = 2            # the control window (udfDirichlet, usrwrk slots 0..2)
+tripModes = 30                    # Ref1's trip, as naca_wing.par
+tripInterval = 0.008

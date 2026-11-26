@@ -1,0 +1,8 @@
+# Uncontrolled wing at dt = 8e-5 (CFL ~0.5; checked against dt = 1.5e-5): 25 steps per
+# action = 2e-3 c/U, wall samples every 2 actions = 4e-3 c/U.
+# With 60 trip modes every 0.004 this is the trip-sensitivity run of the validation:
+#   RUN=runs/zero_trip60_dt8e-5 TRIP_MODES=60 TRIP_INTERVAL=0.004 CONF=wing_dt8e-5.yml ./run.sh --policy zero
+base: wing.yml
+environment:
+  dt: 8.0e-5
+  steps_per_action: 25

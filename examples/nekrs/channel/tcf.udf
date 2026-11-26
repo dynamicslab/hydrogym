@@ -1,0 +1,31 @@
+// Turbulent open channel with the generic HydroGym control interface: everything lives in the header,
+// the case only maps the controller's wall velocity onto the actuated boundaries.
+#include "../../../hydrogym/nekrs/udf/hydrogym_nekrs.hpp"
+
+#ifdef __okl__
+
+void udfDirichlet(bcData *bc)
+{
+  if (isField("fluid velocity")) {
+    bc->uxFluid = bc->usrwrk[bc->idxVol + 0 * bc->fieldOffset];
+    bc->uyFluid = bc->usrwrk[bc->idxVol + 1 * bc->fieldOffset];
+    bc->uzFluid = bc->usrwrk[bc->idxVol + 2 * bc->fieldOffset];
+  }
+}
+
+#endif
+
+void UDF_Setup0(MPI_Comm comm, setupAide &options)
+{
+  hgnek::setup0();
+}
+
+void UDF_Setup()
+{
+  hgnek::setup();
+}
+
+void UDF_ExecuteStep(double time, int tstep)
+{
+  hgnek::executeStep(time, tstep);
+}

@@ -1,0 +1,29 @@
+# Turbulent open channel TCFlarge_3D_Re207 driven by the generic HydroGym control interface
+# (hydrogym/nekrs). Same numerics as ../legacy_drl/tcf.par (legacy Nek5000-compatible coupling).
+# Probes, actuators and the reward are defined in the HydroGym YAML (channel_re207.yml); the case only marks
+# the boundaries that may be actuated.
+userSections = CASEDATA
+
+[GENERAL]
+polynomialOrder = 7               # Nek5000 lx1 = 8
+cubaturePolynomialOrder = 11      # Nek5000 lxd = 12
+startFrom = "rs6tcf0.f00004 + time=0"
+stopAt = numSteps
+numSteps = 100000000              # the controller ends the run (TERMN)
+dt = 4.0e-3                       # fixed, as in Nek5000 (variableDt = no)
+timeStepper = tombo3              # Nek5000 bdf3 / ext3
+checkpointControl = steps
+checkpointInterval = 0
+constFlowRate = meanVelocity=1.0 + direction=X   # Nek5000 param(54) = -1, param(55) = 1
+
+[FLUID PRESSURE]
+residualTol = 1e-06
+
+[FLUID VELOCITY]
+boundaryTypeMap = udfDirichlet, zeroDirichletY/zeroNeumann   # 1: wall y = 0 (actuated), 2: symmetry y = 1
+viscosity = 1/3300.0              # Re_b = U_b h / nu
+rho = 1.0
+residualTol = 1e-08
+
+[CASEDATA]
+hydrogymBoundaries = 1            # boundary ids the controller may actuate (udfDirichlet above)

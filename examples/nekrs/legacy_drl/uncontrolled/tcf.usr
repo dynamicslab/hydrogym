@@ -1,0 +1,16 @@
+c-----------------------------------------------------------------------
+      subroutine usrdat2
+      include 'SIZE'
+      include 'TOTAL'
+
+c     genbox mesh: wall at y = 0 ('W  '), symmetry at y = 1 ('SYM'), periodic in x and z
+      do iel=1,nelt
+      do ifc=1,2*ndim
+         if (cbc(ifc,iel,1) .eq. 'W  ') boundaryID(ifc,iel) = 1
+         if (cbc(ifc,iel,1) .eq. 'SYM') boundaryID(ifc,iel) = 2
+      enddo
+      enddo
+
+      return
+      end
+c-----------------------------------------------------------------------

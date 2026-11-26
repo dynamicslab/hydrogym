@@ -1,0 +1,60 @@
+# Zero-shot deployment of channel policies on the NACA0012 wing (Re_c = 200k), generic NekRS interface.
+# Layout of the HydroGym Nek5000 case (naca0012_200k, drl_*.f),
+# expressed in wall units so that a policy trained in the channel (obs [u'/u_tau, v'/u_tau] at y+ = 15,
+# action 1 = wall-normal velocity u_tau, positive = blowing) sees the same nondimensional quantities:
+# the action keeps the channel's wall units (constant u_tau,ch), the observations and the probe height use the
+# wing's local u_tau(x).
+environment:
+  nproc: 4                 # NekRS ranks (one GPU each); overridden by run.sh NP
+  dt: 4.0e-5               # solver time step (p012 of naca_wing.rea); run.sh writes it into naca_wing.par
+  steps_per_action: 31     # p089 (ndrl) of naca_wing.rea: 1.24e-3 c/U_inf per action
+  # steps_per_action: {dt_plus: 0.68}  # the channel's control interval in wall units (wing_dtp.yml)
+  episode_actions: 0
+  target_cfl: 2.0
+
+wall_units:
+  nu: 5.0e-6
+  # X2Utau of drl_init.f: suction-side friction velocity of the uncontrolled flow at Re_c = 2e5, increasing powers
+  # of x/c (valid in the control window); sets the probe height (y+ = 15) and the observation scaling
+  u_tau:
+    axis: x
+    polynomial: [0.5332353058048384, -11.01438905529756, 108.64704373741917, -600.1676110917638,
+                 2024.2181751283968, -4320.847278500435, 5865.043918628964, -4911.1452156633795,
+                 2314.9643679323717, -470.2556301564166]
+
+actuators:
+  boundaries: [2]
+  # one agent per distinct wall GLL node of the control window, as many as there are distinct positions
+  positions: {source: boundary_nodes, boundary: 2, nodes: unique, sort: [x]}
+  footprint: {type: point}
+  direction: normal        # along the wall normal into the fluid (positive = blowing)
+  # u_tau,ch: friction velocity of the training channel, Re_tau 206; action 1 = u_tau,ch (znmf_avg of drl_action.f)
+  amplitude: 0.0624334733
+  znmf: {group_by: [x, y]} # zero net flux on every spanwise line of nodes (z average of drl_action.f)
+  resolution_check: "off"
+
+probes:
+  fields: [u, v]
+  positions: {source: actuator_offset, normal_distance: {plus: 15}}   # y+ = 15 along the normal (ypctrl)
+  frame: wall              # (u_t, v_n): velocity along the downstream wall tangent and the wall normal (a rotation)
+  # frame: hg_fortran      # normal_V_project of drl_state.f: u_t = u n_y + v n_x, v_n = u n_x + v n_y (wing_hg_fortran.yml)
+  subtract_group_mean: [x, y]   # fluctuation about the spanwise mean of each line (obs_zavg)
+  normalization: u_tau     # divide by u_tau(x) of the actuator
+
+reward:
+  type: wall_shear
+  boundary: 2
+  quantity: force          # streamwise viscous force on the window / (mu A)
+  baseline_dudy: 480.54    # dUdy of environment_config.yaml
+  average: mean
+
+monitors:                  # force histories in solver_steps.csv (viscous and pressure, x/y/z)
+  - {boundary: 1, quantity: force}
+
+power:                     # actuator power (hydrogym.power info keys), see hydrogym/nekrs/env.py
+  reference: {velocity: 1.0, length: 1.0, span: 0.1}   # C_P = P / (0.5 rho U_inf^3 c span), as C_D
+  drag: {boundaries: [1, 2], axis: x}                  # whole-wing C_D from the force monitors (bid 1 + window)
+  pressure_mean: [x, y]    # p' about the spanwise mean per station
+  power_sampling: mean     # every solver step of an action (end: after its last step, cheaper)
+  power_cost: abs          # Bewley et al. form if charged
+  power_weight: 0.0        # 0: reward unchanged

@@ -1,0 +1,7 @@
+# channel_re207.yml with a one-state snapshot library for the actuator-power check (tests/power_check.py)
+base: channel_re207.yml
+initial_conditions:
+  source: snapshots
+  snapshots: {count: 1, interval: 26, warmup: 0}
+  selection: first
+  settle_steps: 0

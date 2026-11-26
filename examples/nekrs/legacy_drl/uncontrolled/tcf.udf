@@ -1,0 +1,61 @@
+// NekRS port of the HydroGym turbulent open channel (TCFlarge_3D_Re207), uncontrolled flow.
+// Logs the plane-averaged wall shear of the bottom wall (boundary ID 1) to wall.dat.
+
+static int statInterval = 10;
+
+#ifdef __okl__
+
+#endif
+
+static void logWallShear(double time, int tstep)
+{
+  auto mesh = nrs->meshV;
+
+  static occa::memory o_bidWall;
+  static dfloat areaWall = 0;
+  if (!o_bidWall.isInitialized()) {
+    std::vector<int> bidWall = {1};
+    o_bidWall = platform->device.malloc<int>(bidWall.size(), bidWall.data());
+
+    auto o_one = platform->deviceMemoryPool.reserve<dfloat>(mesh->Nlocal);
+    platform->linAlg->fill(mesh->Nlocal, 1.0, o_one);
+    areaWall = mesh->surfaceAreaMultiplyIntegrate(o_bidWall, o_one);
+  }
+
+  auto o_Sij = nrs->strainRate();
+  auto forces = nrs->aeroForces(o_bidWall, o_Sij);
+  o_Sij.free();
+
+  dfloat mue, rho;
+  platform->options.getArgs("FLUID VISCOSITY", mue);
+  platform->options.getArgs("FLUID DENSITY", rho);
+  const auto tauw = std::abs(forces->viscousFriction()[0]) / areaWall;
+  const auto dudy = tauw / mue;
+  const auto utau = std::sqrt(tauw / rho);
+  delete forces;
+
+  if (platform->comm.mpiRank() == 0) {
+    static bool first = true;
+    std::ofstream f("wall.dat", first ? std::ios::trunc : std::ios::app);
+    if (first) {
+      f << "# step time area dUdy_wall u_tau Re_tau" << std::endl;
+      first = false;
+    }
+    f << tstep << " " << std::setprecision(10) << time << " " << areaWall << " " << dudy << " " << utau << " "
+      << utau * rho / mue << std::endl;
+  }
+}
+
+void UDF_Setup0(MPI_Comm comm, setupAide &options)
+{
+  platform->par->extract("casedata", "statinterval", statInterval);
+}
+
+void UDF_Setup() {}
+
+void UDF_ExecuteStep(double time, int tstep)
+{
+  if (tstep % statInterval == 0) {
+    logWallShear(time, tstep);
+  }
+}

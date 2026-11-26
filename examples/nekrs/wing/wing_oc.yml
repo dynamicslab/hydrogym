@@ -1,0 +1,12 @@
+# Opposition control on the NACA0012 wing (deploy.py --policy oc): wall velocity -v_n' at the y+ = 15 probe of each
+# node, the fluctuation about the spanwise mean of its line, applied every 10 solver steps at dt 2e-5 (2e-4 c/U_inf;
+# the opposition control of the Nek5000 case, oppo_ctrl.f, acts at every step), zero net flux per spanwise line.
+#   RUN=runs/oc CONF=wing_oc.yml ./run.sh --policy oc
+base: wing.yml
+environment:
+  dt: 2.0e-5
+  steps_per_action: 10
+actuators:
+  amplitude: {u_tau: 3.0}  # bound only: the opposition-control velocity is not clipped (|v_n'| < 3 u_tau)
+probes:
+  frame: wall              # v_n is the same in both frames

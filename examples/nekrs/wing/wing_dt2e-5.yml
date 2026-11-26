@@ -1,0 +1,9 @@
+# Uncontrolled wing at the time step of the validation against Ref1 (dt = 2e-5, the time step of Ref1's restart
+# files), with 62 solver steps per action: 1.24e-3 c/U_inf per action as in wing.yml, so that action counts
+# (ACTIONS, --skip) mean the same times. t = 28-48 (statistics after t = 31):
+#   POLICY=zero RUN=runs/zero_ref1 CONF=wing_dt2e-5.yml ACTIONS=16130 sbatch run_slurm.sbatch
+#   python bl_stats.py runs/zero_ref1 --skip 2420 --workers 16 && python bl_report.py runs/zero_ref1 --skip 2420
+base: wing.yml
+environment:
+  dt: 2.0e-5
+  steps_per_action: 62

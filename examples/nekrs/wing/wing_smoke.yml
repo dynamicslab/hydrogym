@@ -1,0 +1,4 @@
+# Smoke test (naca_wing_smoke.par, N = 3): the wing layout of wing.yml on 1-2 GPUs.
+base: wing.yml
+environment:
+  nproc: 1

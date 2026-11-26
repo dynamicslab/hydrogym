@@ -1,0 +1,7 @@
+# wing.yml with the observation projection of the original Nek5000 wing coupling (normal_V_project of drl_state.f:
+# u_t = u n_y + v n_x instead of the wall-tangent component u n_y - v n_x; v_n as in wing.yml). This is the projection
+# with which the roll-out of Fig. 4d of the HydroGym paper was deployed; wing.yml uses the wall-tangent frame.
+#   POLICY=td3:<policy zip> RUN=runs/td3_hg_fortran CONF=wing_hg_fortran.yml sbatch run_slurm.sbatch
+base: wing.yml
+probes:
+  frame: hg_fortran

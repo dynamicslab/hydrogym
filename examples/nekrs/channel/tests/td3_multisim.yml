@@ -1,0 +1,6 @@
+# smoke test of train_td3.py with several simulations (NSIM=2): short episodes and a library of two snapshots,
+# built by the first simulation
+base: ../channel_td3.yml
+environment: {episode_actions: 10}
+initial_conditions:
+  snapshots: {count: 2, interval: 26, save: runs/msim_smoke/snaps/tcf}
