@@ -8,18 +8,23 @@
 
 set -e
 
-# Load Nek5000 module
-module purge
-module load Nek5000/1.0-gompi-2024a-SystemCUDA-SmallWing
-
-# Activate Python environment
-source ~/venvs/hydrogym_cpu/bin/activate
+# Python environment: the HydroGym container images have it in /opt/venvs;
+# elsewhere, activate your own environment before running this script.
+if [ -f /opt/venvs/hydrogym/bin/activate ]; then source /opt/venvs/hydrogym/bin/activate; fi
+# Nek5000 case executable: in the images /opt/nek5000/cases/small_wing/nek5000;
+# elsewhere, put the directory of your small_wing build on PATH.
+if [ -d /opt/nek5000/cases/small_wing ]; then export PATH=/opt/nek5000/cases/small_wing:$PATH; fi
 
 export OMP_NUM_THREADS=1
 
 # Configuration
 WORK_DIR="./train_run"
-LOCAL_DIR="/workspace/hydrogym/packaged_envs"
+# Local copy of the environment files, used when the Hugging Face Hub is
+# unreachable (compute nodes without internet; see prepare_workspace.py).
+LOCAL_DIR="${LOCAL_DIR:-$PWD/packaged_envs}"
+# Extra mpirun options, e.g. MPIRUN_ARGS=--oversubscribe on machines with
+# fewer cores than MPI ranks (Open MPI 5 counts slots by physical core).
+MPIRUN_ARGS="${MPIRUN_ARGS:-}"
 ENV_NAME="NACA4412_3D_Re75000_AOA5"
 NPROC_NEK=12
 NUM_STEPS=30
@@ -64,7 +69,7 @@ cd "$WORK_DIR" || exit 1
 rm -f *.sch
 
 if [ -n "$POLICY_ROOT" ]; then
-    mpirun --use-hwthread-cpus\
+    mpirun --use-hwthread-cpus ${MPIRUN_ARGS} \
         -np 1 python ../zeroshot_demo_pettingzoo.py \
             --env "$ENV_NAME" \
             --nproc ${NPROC_NEK} \
@@ -75,7 +80,7 @@ if [ -n "$POLICY_ROOT" ]; then
         : \
         -np ${NPROC_NEK} nek5000
 else
-    mpirun --use-hwthread-cpus\
+    mpirun --use-hwthread-cpus ${MPIRUN_ARGS} \
         -np 1 python ../zeroshot_demo_pettingzoo.py \
             --env "$ENV_NAME" \
             --nproc ${NPROC_NEK} \

@@ -15,12 +15,12 @@ Each subdirectory demonstrates a specific environment or training workflow:
 **Action:** 4 sinusoidal body-force amplitudes (wavenumbers 4–7)
 **Observation:** 8×8 grid of velocity probe values (64-dimensional)
 **Reward:** `-(reward_alpha * TKE + action_penalty)`
-**Precision:** float64 required for JIT stability
+**Precision:** float32 or float64 (the example defaults to float64)
 
 ```python
 import jax
 
-jax.config.update("jax_enable_x64", True)  # required for JIT stability
+jax.config.update("jax_enable_x64", True)  # float64; leave it off for float32
 
 from hydrogym.jax.envs.kolmogorov import KolmogorovFlow
 
@@ -44,16 +44,21 @@ obs, state, reward, done, info = jit_step(key, state, action, params)
 **Files:**
 - `test_kolmogorov_env.py` — JIT-compiled environment runner with three modes and configurable `--dtype`, `--dt`, `--num-steps`
 - `kolmogorov.ipynb` — interactive notebook with vorticity visualizations
-- `run_kolmogorov_docker.sh` — bash launcher: `run_kolmogorov_docker.sh [mode] [num_steps] [dtype]`
+- `run_kolmogorov_docker.sh` — bash launcher: `run_kolmogorov_docker.sh [mode] [num_steps] [dtype]` (in the HydroGym
+  images, run it from a copy of the examples, `cp -r /opt/hydrogym/examples ~/hydrogym-examples`, unless you are
+  root: it writes into its directory)
 
 **Bash usage:**
 ```bash
 ./run_kolmogorov_docker.sh                            # minimize_tke, 10 steps, float64
-./run_kolmogorov_docker.sh maximize_tke 500           # maximize TKE, 500 steps
-./run_kolmogorov_docker.sh minimize_tke 100 float32   # float32 (may diverge — use smaller --dt)
+./run_kolmogorov_docker.sh maximize_tke 500           # maximize TKE, 500 steps (float64: about 45-60 min on one GH200)
+./run_kolmogorov_docker.sh minimize_tke 100 float32   # float32
 ```
 
-**Precision note:** The pseudo-spectral 2D NS solver is numerically marginally stable. Under XLA compilation (JIT), float32 arithmetic reordering can trigger blow-up. Use float64 (default) for reliable results. To experiment with float32, reduce `dt` via `env_config={"dt": 5e-4}` or `--dt 5e-4`.
+**Precision note:** The solver runs in float32 and in float64 (set by `jax_enable_x64`). float32 is faster and uses
+half the memory; the released extreme-event preset and its policies use it. The flow is chaotic, so float32 and float64
+trajectories separate after a few actions. The DNS time step is set with
+`env_config={"dt": ...}` or `--dt` (default 1e-3).
 
 ---
 
@@ -80,7 +85,8 @@ obs, state = jit_reset(key, params)
 # Zero action: passive turbulence evolution (baseline)
 action = jnp.zeros((params.action_dim,))  # shape (24,)
 obs, state, reward, done, info = jit_step(key, state, action, params)
-# reward = -WSS;  WSS ≈ 0.0019 for uncontrolled Re_tau=180
+# reward = -WSS. The magnitude is configuration-dependent (normalization,
+# grid, initial field); for the uncontrolled case at Re_tau=180 WSS is O(0.3).
 ```
 
 **Note:** The initial turbulent field (`U.npy`, `V.npy`, `W.npy`) is downloaded from Hugging Face Hub on the first run and cached at `~/.cache/hydrogym/`.
@@ -104,28 +110,72 @@ obs, state, reward, done, info = jit_step(key, state, action, params)
 **Framework:** Pure JAX (Flax + Optax + Distrax) — no Stable-Baselines3
 **Style:** PureJAX — entire rollout + update loop is JIT-compiled via `jax.lax.scan`
 
-```python
-# Select environment via --env argument
-python run_ppo.py --env kolmogorov --total-timesteps 20000
-python run_ppo.py --env channel    --total-timesteps 5000 --num-envs 2 --num-steps 5
+```bash
+# Select environment via --env argument; the defaults are getting-started settings
+python run_ppo.py --env kolmogorov   # ~10-15 min on a laptop CPU
+python run_ppo.py --env channel      # ~15-20 min on a laptop CPU
 ```
 
 The training loop uses `VecEnv` to run `NUM_ENVS` parallel environments inside a single JIT-compiled scan, which is significantly faster than Python-level parallelism.
 
-**Key hyperparameters:**
+**Getting-started settings.** The environments' own episodes are long: Kolmogorov runs 1000 actions of 10 time units
+(10,000 solver steps of dt = 1e-3 per action), the channel 100 actions of 50 DNS steps (`max_steps_in_episode = 5000`
+counts DNS steps). With them, a CPU run that ends a few episodes takes hours to a day. The defaults of `run_ppo.py`
+therefore shorten the episodes so that episodes end within minutes:
+
+| | Kolmogorov | Channel |
+|---|---|---|
+| Episode | 20 actions of 1 time unit, dt = 5e-3 (200 solver steps per action) | 10 actions of 50 DNS steps |
+| `--total-timesteps` / `--num-envs` / `--num-steps` / `--num-minibatches` | 4000 / 4 / 20 / 4 | 120 / 2 / 10 / 2 |
+| PPO updates, episodes per environment | 50, 50 | 6, 6 |
+
+dt = 5e-3 changes the time-averaged TKE by less than 0.5 % compared with dt = 1e-3. The Kolmogorov reward is
+`-(reward_alpha * TKE + sum |a|)`; the environment's default `reward_alpha = 0` leaves only the action penalty, so
+`run_ppo.py` sets `--reward-alpha 1` (reduce TKE at a small actuation cost).
+
+**Key hyperparameters** (both environments unless noted):
 
 | Parameter | Default | Description |
 |---|---|---|
-| `--total-timesteps` | 4000 | Total environment steps |
-| `--num-envs` | 4 | Parallel environments per update |
-| `--num-steps` | 10 | Rollout length per environment |
-| `--num-minibatches` | 8 | Must divide `num_envs × num_steps` |
-| `--lr` | 1e-4 | Adam learning rate |
+| `--env-defaults` | off | Use the environment's own episode length and action window |
+| `--episode-steps` | 20 / 10 | Actions per episode (Kolmogorov / channel) |
+| `--action-time`, `--dt` | 1, 5e-3 | Kolmogorov: time units per action, solver time step |
+| `--reward-alpha` | 1 | Kolmogorov: TKE weight in the reward |
+| `--total-timesteps` | 4000 / 120 | Total environment steps, all environments together |
+| `--num-envs` | 4 / 2 | Parallel environments per update |
+| `--num-steps` | 20 / 10 | Rollout length per environment and update |
+| `--num-minibatches` | 4 / 2 | Must divide `num_envs × num_steps` |
+| `--lr` | 1e-3 | Adam learning rate |
+| `--initial-log-std` | -1 | Initial log standard deviation of the policy (std 0.37) |
+| `--gamma`, `--gae-lambda` | 0.5, 0.9 | Discount factor, GAE lambda (use e.g. 0.99 for long runs) |
+| `--clip-value` / `--no-clip-value` | on | Clip the value update to 0.2 (purejaxrl) |
+| `--ent-coef` | 0 | Entropy bonus |
+
+Full-size runs (GPU recommended) keep the environments' episodes, for example
+
+```bash
+python run_ppo.py --env kolmogorov --env-defaults --total-timesteps 20000 --num-steps 100   # about a day on a CPU, ~12 h on an RTX A5000
+python run_ppo.py --env channel --env-defaults --total-timesteps 5000 --num-steps 50        # about half a day on a CPU
+```
+
+The PPO defaults are chosen for the small getting-started budget: with a few thousand samples of a chaotic flow, a
+short horizon (`gamma = 0.5`) and a small initial exploration noise (`--initial-log-std -1`) make the advantages
+reflect the immediate effect of an action. With long-horizon settings (`--initial-log-std 0 --gamma 0.99
+--gae-lambda 0.985 --ent-coef 0.1`) the getting-started Kolmogorov returns stay flat; for full-size runs, a larger
+`--gamma` is the usual choice.
+
+**What to expect.** Kolmogorov (about 10-15 min on a laptop CPU): over the 50 updates
+the mean reward per step rises from about -2.5 to -1.8 and the episode return from about -50 to -35. Most of the gain
+comes from the policy lowering its exploration noise (standard deviation from 0.37 to about 0.15) and with it the
+actuation cost; the mean TKE drops only a little (about 1.38 to 1.29). Channel (about 15-20 min): the returns stay
+flat at about -3.42 (differences below 0.2 %; the autoscaled axis magnifies them). Every episode starts from the same stored turbulent field, and
+within 10 actions (500 DNS steps) the wall shear stress hardly responds to the jets, so this run only shows the
+training pipeline end to end; drag reduction needs the full 100-action episodes and far more timesteps (GPU).
 
 **Output:**
 - `trained_model_<env>.pkl` — serialized Flax parameter tree
-- `plot_reward_<env>.png` — episode return vs. update steps
-- `rewardovertime.npy` — raw return array
+- `plot_reward_<env>.png` — mean reward per step for each PPO update with its running mean (top) and the returns of the episodes that ended in each update, every episode as a dot and their mean as a line (bottom)
+- `rewardovertime.npy` — mean reward per step for each PPO update
 
 **Files:**
 - `run_ppo.py` — full PPO implementation (ActorCritic, GAE, clipped surrogate loss)
@@ -148,7 +198,7 @@ cd 1_kolmogorov/
 ./run_kolmogorov_docker.sh                        # minimize TKE, 10 steps, float64
 ./run_kolmogorov_docker.sh maximize_tke           # maximize TKE
 ./run_kolmogorov_docker.sh no_actuation 500       # baseline, 500 steps
-./run_kolmogorov_docker.sh minimize_tke 10 float32  # float32 (may diverge)
+./run_kolmogorov_docker.sh minimize_tke 10 float32  # float32
 ```
 
 ```bash
@@ -162,9 +212,9 @@ cd 2_channel/
 
 ```bash
 cd 3_ppo/
-./run_ppo_docker.sh --env kolmogorov --total-timesteps 20000
-./run_ppo_docker.sh --env channel --num-envs 2 --num-steps 5 --total-timesteps 5000
-./run_ppo_docker.sh --help   # full argument list
+./run_ppo_docker.sh --env kolmogorov   # getting-started settings, ~10-15 min on a CPU
+./run_ppo_docker.sh --env channel      # getting-started settings, ~15-20 min on a CPU
+./run_ppo_docker.sh --help             # full argument list
 ```
 
 ## Comparison Table
@@ -183,6 +233,5 @@ cd 3_ppo/
 
 ---
 
-**Last Updated**: April 2026
 **HydroGym Version**: 1.0+
 **Maintainer**: HydroGym Team

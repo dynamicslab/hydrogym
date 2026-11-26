@@ -43,8 +43,8 @@ Outputs:
     - output/lin_fields.h5: Base flow (qB) and control influence (qC)
     - Console: Steady-state lift/drag coefficients
 
-Note: This is a work-in-progress example demonstrating linearization concepts.
-      Full LTI operator construction requires additional LinearOperator wrappers.
+Note: The script computes the base flow and the control influence field qC; the state-space operators of a
+      full LTI model are not assembled here.
 """
 
 import os

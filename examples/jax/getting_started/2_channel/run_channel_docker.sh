@@ -2,6 +2,9 @@
 #
 # Run 3D turbulent channel flow JAX environment (Re_tau = 180).
 #
+# Runs as is in the HydroGym container images (everything on PATH);
+# elsewhere, activate a Python environment with HydroGym first.
+#
 # ── Flow physics ────────────────────────────────────────────────────────────
 #
 #   This environment simulates incompressible turbulent channel flow between
@@ -76,19 +79,26 @@
 # ── Output ──────────────────────────────────────────────────────────────────
 #
 #   Per-step table: step | WSS | reward
-#   WSS ≈ 0.0019 at Re_tau=180 in the uncontrolled case.
+#   Magnitude is configuration-dependent (normalization, grid, initial field);
+#   for the uncontrolled case at Re_tau=180 with the shipped default config
+#   WSS is O(0.3).
 #   Drag reduction is achieved when WSS (and reward magnitude) decreases.
 #
 
 set -e
 
-module purge
-module load Python/3.12.3-GCCcore-13.3.0
-
-# Activate Python environment
-source /home/easybuild/venvs/hydrogym_gpu/bin/activate
+# Python environment: the HydroGym container images have it in /opt/venvs;
+# elsewhere, activate your own environment before running this script.
+if [ -f /opt/venvs/hydrogym/bin/activate ]; then source /opt/venvs/hydrogym/bin/activate; fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# With only 2-3 CPUs (e.g. a container started with --cpus/--cpuset-cpus 2-3, or srun -c 2), the XLA CPU thread pool
+# can deadlock in the channel's first compiled step. Its single-threaded Eigen path avoids that. (The images set
+# OMP_NUM_THREADS=1, which plain nproc would report.)
+if [ "$(env -u OMP_NUM_THREADS -u OMP_THREAD_LIMIT nproc)" -lt 4 ] && [[ "${XLA_FLAGS:-}" != *xla_cpu_multi_thread_eigen* ]]; then
+    export XLA_FLAGS="${XLA_FLAGS:+$XLA_FLAGS }--xla_cpu_multi_thread_eigen=false"
+fi
+
 MODE="${1:-no_actuation}"
 NUM_STEPS="${2:-5}"
 DTYPE="${3:-float32}"

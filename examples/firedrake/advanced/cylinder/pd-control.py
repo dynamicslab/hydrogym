@@ -97,7 +97,6 @@ flow = hgym.RotaryCylinder(
     Re=100,  # Reynolds number (supercritical regime)
     mesh=mesh_resolution,
     restart=restart,  # Load developed vortex shedding state
-    callbacks=callbacks,
     velocity_order=velocity_order,
     use_HF_data_manager=False,
 )

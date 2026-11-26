@@ -23,6 +23,9 @@ Flow over a backward-facing step demonstrates separated flow and reattachment.
 
 ## Quick Start
 
+Run `solve-steady.py` (section 2) first: `run-transient.py` and `unsteady.py` start from its checkpoint
+(`output/*_steady.h5`).
+
 ### 1. Basic Simulation
 
 Run transient step flow at Re=600:
@@ -63,8 +66,8 @@ python unsteady.py
 
 **What it does:** Demonstrates transition from steady to unsteady separated flow
 **Stage 1:** Solve steady state with Reynolds ramping
-**Stage 2:** Add perturbation and run long transient (Tf=1000)
-**Outputs:** Time series, Paraview animations, TKE evolution
+**Stage 2:** Add perturbation and run long transient (Tf=500)
+**Outputs:** Time series and the TKE evolution
 **Prerequisites:** None (computes steady state internally)
 
 ### 4. Test Control Response

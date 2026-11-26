@@ -26,18 +26,21 @@ observations, rewards, terminated, truncated, infos = env.step(actions)
 
 - `test_nek_parallel.py` - Test parallel environment with dict-based interface
 - `train_sb3_parallel.py` - SB3 training with **DIY centralized wrapper** (educational)
-- `run_parallel_docker.sh` - Docker/MPI execution script
+- `run_parallel_docker.sh` - MPMD launch script (runs as is in the HydroGym images)
 
 ## Usage
 
 ### Test Environment
 ```bash
-mpirun -np 1 python test_nek_parallel.py --steps 100 : -np 10 nek5000
+# from a prepared workspace: the Nek5000 case files must be in the working directory
+python ../prepare_workspace.py --env TCFmini_3D_Re180 --work-dir ./ws && cd ws
+mpirun -np 1 python ../test_nek_parallel.py --steps 100 : -np 10 nek5000
 ```
 
 ### Train RL Agent (DIY Centralized Approach)
 ```bash
-mpirun -np 1 python train_sb3_parallel.py --env MiniChannel_Re180 --algo PPO --total-timesteps 100000 : -np 10 nek5000
+# in the workspace ws/ of the block above
+mpirun -np 1 python ../train_sb3_parallel.py --env TCFmini_3D_Re180 --algo PPO --total-timesteps 100000 : -np 10 nek5000
 ```
 
 ## When to Use

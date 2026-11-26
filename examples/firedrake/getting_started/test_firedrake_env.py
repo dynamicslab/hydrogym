@@ -211,15 +211,17 @@ def run_firedrake_test(
 
     # --- PROBE CONFIGURATION ---
     # Define probe locations for probe-based observations
-    # Example: Wake probes for cylinder
+    # Example: wake probes for the cylinder and pinball flows (their wake lies in x = 1..10, |y| <= 2); the
+    # cavity and the step keep their default observation (the domains do not contain these points)
 
-    wake_probes = [
-        (x, y)
-        for x in np.linspace(1.0, 10.0, 16)  # 16 points in x
-        for y in np.linspace(-2.0, 2.0, 4)  # 4 points in y
-    ]
-    flow_config["probes"] = wake_probes
-    flow_config["observation_type"] = "velocity_probes"
+    if env_type in ("cylinder", "rotary_cylinder", "pinball"):
+        wake_probes = [
+            (x, y)
+            for x in np.linspace(1.0, 10.0, 16)  # 16 points in x
+            for y in np.linspace(-2.0, 2.0, 4)  # 4 points in y
+        ]
+        flow_config["probes"] = wake_probes
+        flow_config["observation_type"] = "velocity_probes"
 
     # --- CHECKPOINT/RESTART CONFIGURATION ---
 
@@ -305,7 +307,7 @@ def run_firedrake_test(
             filename="output/solution.pvd",
             postprocess=lambda flow: (flow.u, flow.p),
         ),
-        # 2. Checkpoint saving - save every 100 steps
+        # 2. Checkpoint saving - save every 2 steps
         CheckpointCallback(
             interval=2,
             filename="output/checkpoint.h5",
@@ -361,7 +363,7 @@ def run_firedrake_test(
     #   - Available meshes: 'medium', 'fine'
     #   - Default Re: 30
     #
-    # CAVITY (Lid-Driven Cavity):
+    # CAVITY (open cavity flow):
     #   - flow: firedrake.Cavity
     #   - num_inputs: 1
     #   - MAX_CONTROL: 0.1

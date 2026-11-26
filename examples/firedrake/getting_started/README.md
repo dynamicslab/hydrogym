@@ -7,6 +7,9 @@ This directory contains comprehensive configuration examples and testing utiliti
 > **Looking for advanced workflows?** (steady solvers, stability analysis, direct control)
 > See [`../advanced/`](../advanced/) for specialized research and development examples.
 
+> **HydroGym CPU image:** Firedrake is in its own environment. Activate it first, `source /opt/venvs/firedrake/bin/activate`
+> (the default `python` of the image is `/opt/venvs/hydrogym`, which has no Firedrake). `run_example_docker.sh` does this itself.
+
 ## Files
 
 ### [`config_reference.py`](config_reference.py)
@@ -66,7 +69,7 @@ tensorboard --logdir logs/
 ```
 
 ### [`run_example_docker.sh`](run_example_docker.sh)
-**Docker runner script** - Run Firedrake examples in Docker with automatic setup.
+**Launch script** - Runs the environment test or the SB3 training. In the HydroGym CPU image (`clagemann/hydrogym-cpu:1.0.2`, the image with Firedrake) it activates the Firedrake environment, `/opt/venvs/firedrake` (run it from a copy of `/opt/hydrogym/examples`, `cp -r /opt/hydrogym/examples ~/hydrogym-examples`, unless you are root: the example writes into its directory); elsewhere, activate your own Firedrake environment first.
 
 Usage:
 ```bash
@@ -139,7 +142,7 @@ Open `config_reference.py` and copy the example that matches your use case.
 ## Observation Types
 
 ### 1. **Force-Based Observations**
-- `'lift_drag'` → Returns `(CL, CD)` for cylinder/rotary, `(CL1, CD1, CL2, CD2, CL3, CD3)` for pinball
+- `'lift_drag'` → Returns `(CL, CD)` for cylinder/rotary, `(CL1, CL2, CL3, CD1, CD2, CD3)` for pinball
 
 ### 2. **Sensor-Based Observations**
 - `'stress_sensor'` → Returns wall shear stress (scalar)
@@ -367,7 +370,7 @@ Checkpoints follow the pattern: `{FlowClass}_2D_Re{Reynolds}_{mesh}_FD`
 
 Examples:
 - `Cylinder_2D_Re100_medium_FD` - Cylinder at Re=100 on medium mesh
-- `Pinball_2D_Re30_fine_FD` - Pinball at Re=30 on fine mesh
+- `Pinball_2D_Re30_medium_FD` - Pinball at Re=30 on medium mesh
 - `Cavity_2D_Re7500_medium_FD` - Cavity at Re=7500 on medium mesh
 
 ### **How It Works**
@@ -402,6 +405,5 @@ Import from `hydrogym.firedrake.io`:
 
 ---
 
-**Last Updated**: March 2026
 **HydroGym Version**: 1.0+
 **Maintainer**: HydroGym Team

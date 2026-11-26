@@ -3,7 +3,7 @@
 Cylinder Flow - Surface Pressure Measurements with Probes
 
 Demonstrates using point probes to measure flow quantities at specific locations.
-In this case, vorticity is measured at 8 evenly spaced points around the cylinder
+In this case, the pressure is measured at 8 evenly spaced points on the cylinder
 surface.
 
 Applications:
@@ -61,7 +61,7 @@ flow = hgym.Cylinder(
 )
 
 # Time integration parameters
-Tf = 10.0  # Final time (long enough to see several vortex shedding cycles)
+Tf = 10.0  # Final time (start-up from rest: the impulsive start; shedding develops much later)
 dt = 0.1  # Time step
 
 
@@ -116,6 +116,6 @@ plt.figure(figsize=(7, 2))
 plt.plot(t, p)  # Each column plots as separate line
 plt.grid()
 plt.xlabel("Time")
-plt.ylabel("Vorticity at Probes")  # Update label to match actual measurement
+plt.ylabel("Pressure at probes")
 plt.title(f"Surface Measurements from {n_probes} Probes")
 plt.show()

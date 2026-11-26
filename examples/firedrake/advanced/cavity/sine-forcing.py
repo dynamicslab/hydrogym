@@ -14,7 +14,7 @@ Physical setup:
     - Monitors kinetic energy and TKE response
 
 Prerequisites:
-    - Requires checkpoint from previous simulation (unsteady.py or run-transient.py)
+    - Requires the checkpoint of unsteady.py (7500_medium_output/checkpoint.h5)
 """
 
 import os
@@ -25,7 +25,7 @@ import numpy as np
 import hydrogym.firedrake as hgym
 
 Re = 7500
-mesh_resolution = "coarse"
+mesh_resolution = "medium"  # the mesh and output directory of unsteady.py
 output_dir = f"{Re}_{mesh_resolution}_output"
 os.makedirs(output_dir, exist_ok=True)
 restart = f"{Re}_{mesh_resolution}_output/checkpoint.h5"
@@ -45,7 +45,7 @@ def compute_vort(flow):
 # Custom function to extract quantities of interest at each time step
 def log_postprocess(flow):
     KE = 0.5 * fd.assemble(fd.inner(flow.u, flow.u) * fd.dx)  # Total kinetic energy
-    TKE = flow.evaluate_objective()  # Turbulent kinetic energy
+    TKE = flow.evaluate_objective()  # fluctuation kinetic energy about the base flow
     CFL = flow.max_cfl(dt)  # CFL number for numerical stability monitoring
     return [CFL, KE, TKE]
 
@@ -55,6 +55,8 @@ def log_postprocess(flow):
 env_config = {
     "flow": hgym.Cavity,
     "flow_config": {
+        "Re": Re,
+        "mesh": mesh_resolution,  # same mesh as the checkpoint of unsteady.py
         "restart": restart,  # Load from checkpoint
         "use_HF_data_manager": False,
     },

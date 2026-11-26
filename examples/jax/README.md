@@ -12,35 +12,48 @@ HydroGym's JAX backend provides pseudo-spectral Navier-Stokes solvers written en
 
 The JAX environments follow the [gymnax](https://github.com/RobertTLange/gymnax) interface (`reset_env` / `step_env` with explicit `params`) and include wrappers (`VecEnv`, `LogWrapper`, `ClipAction`, `NormalizeVecObservation`, `NormalizeVecReward`) for RL training.
 
+> **Note on `gym.make()`:** every other HydroGym backend (Firedrake, MAIA,
+> NEK5000, JAX-Fluids) is reachable through gymnasium's `gym.make()`, the
+> standard, recommended entry point across the rest of this repo. JAX is
+> the one deliberate exception: `reset_env`/`step_env` are functional
+> (state in, state out) so the whole thing stays traceable through
+> `jax.jit`/`jax.vmap`/`jax.lax.scan` — a `self`-mutating `gymnasium.Env`
+> cannot be, so wrapping it in `gym.make()` would present a misleading
+> API rather than a real one. The functional API below (or
+> `hydrogym.jax.envs.*` directly) is always the entry point for this
+> backend; there is no higher-level wrapper to bypass.
+
 ## Directory Structure
 
 ```
 jax/
 ├── README.md                    # This file
-└── getting_started/             # START HERE
-    ├── README.md                # Detailed guide and comparison table
-    ├── 1_kolmogorov/            # 2D Kolmogorov flow (Re=200)
-    ├── 2_channel/               # 3D turbulent channel flow (Re_tau=180)
-    └── 3_ppo/                   # Pure-JAX PPO training (both environments)
+├── getting_started/             # START HERE
+│   ├── README.md                # Detailed guide and comparison table
+│   ├── 1_kolmogorov/            # 2D Kolmogorov flow (Re=200)
+│   ├── 2_channel/               # 3D turbulent channel flow (Re_tau=180)
+│   └── 3_ppo/                   # Pure-JAX PPO training (both environments)
+├── kolmogorov_gppo/             # PPO vs GPPO on the Kolmogorov flow: trainers, evaluation
+└── released_policies/           # Run a released Kolmogorov policy against the uncontrolled flow, plot it
 ```
 
 ## Quick Start
 
 ```bash
-# Activate the GPU environment
-source /home/easybuild/venvs/hydrogym_gpu/bin/activate
+# In a HydroGym image the HydroGym environment (with JAX) is already active;
+# elsewhere, activate the environment you installed hydrogym[jax] into
 
 # Test Kolmogorov flow (float64, 10 steps)
 cd getting_started/1_kolmogorov
 ./run_kolmogorov_docker.sh
 
 # Test channel flow (float32, 5 steps)
-cd getting_started/2_channel
+cd ../2_channel
 ./run_channel_docker.sh
 
 # Train PPO
-cd getting_started/3_ppo
-./run_ppo_docker.sh --env kolmogorov --total-timesteps 20000
+cd ../3_ppo
+./run_ppo_docker.sh --env kolmogorov   # getting-started settings, ~10-15 min on a CPU
 ```
 
 ## Available Environments
@@ -68,13 +81,13 @@ The first call compiles (takes ~1–2 minutes); all subsequent calls run at full
 
 | Environment | Recommended | Notes |
 |---|---|---|
-| `KolmogorovFlow` | `float64` | Pseudo-spectral 2D NS requires fp64 for JIT stability; fp32 may produce NaNs under XLA reordering |
+| `KolmogorovFlow` | either | Runs in fp32 and fp64; the getting-started example defaults to fp64, the extreme-event preset (`extreme_events_re40`) and its released policies use fp32. The flow is chaotic, so fp32 and fp64 trajectories separate after a few actions |
 | `ChannelFlowSpectralEnv` | `float32` | Stable at fp32 with JIT; fp64 available but ~2x slower on A100 |
 
 Override via `env_config`:
 ```python
-# Kolmogorov: float64 is the default and required for JIT stability
-env = KolmogorovFlow(env_config={"dt": 5e-4})  # smaller dt for fp32 experiments
+# Kolmogorov: precision follows jax_enable_x64 (float64 when it is on, float32 otherwise)
+env = KolmogorovFlow(env_config={"dt": 5e-4})  # DNS time step (default 1e-3)
 
 # Channel: toggle precision
 env = ChannelFlowSpectralEnv(env_config={"dtype": "float64"})
@@ -82,7 +95,7 @@ env = ChannelFlowSpectralEnv(env_config={"dtype": "float64"})
 
 Or via the bash scripts:
 ```bash
-./run_kolmogorov_docker.sh minimize_tke 100 float32   # float32 (may diverge)
+./run_kolmogorov_docker.sh minimize_tke 100 float32   # float32
 ./run_channel_docker.sh drag_reduction 10 float64     # float64
 ```
 
@@ -93,7 +106,7 @@ import jax
 import jax.numpy as jnp
 from hydrogym.jax.envs.kolmogorov import KolmogorovFlow
 
-jax.config.update("jax_enable_x64", True)  # required for Kolmogorov + JIT
+jax.config.update("jax_enable_x64", True)  # float64; leave it off for float32
 
 env = KolmogorovFlow(env_config={}, flow_config={})
 params = env.default_params

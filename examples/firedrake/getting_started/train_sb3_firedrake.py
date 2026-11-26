@@ -20,7 +20,7 @@ Available environments:
     - cylinder: Flow around circular cylinder with jet actuation
     - rotary_cylinder: Flow around rotating cylinder
     - pinball: Flow around three cylinders (pinball configuration)
-    - cavity: Lid-driven cavity flow
+    - cavity: Open cavity flow
     - step: Backward-facing step flow
 
 Recommended dt by environment:
@@ -118,12 +118,20 @@ def train_single_agent(args):
     else:
         flow_config["mesh"] = defaults[args.env]["mesh"]
 
-    # Observation type configuration
-    if args.obs_type is not None:
-        flow_config["observation_type"] = args.obs_type
+    # Observation type configuration. The default probe grid lies in the wake of the cylinders (x in [1, 8],
+    # y in [-1, 1]); it is outside the cavity and step meshes, which use their own default observation.
+    wake_envs = ("cylinder", "rotary_cylinder", "pinball")
+    obs_type = args.obs_type
+    if obs_type is None and args.env in wake_envs:
+        obs_type = "pressure_probes"
+    if obs_type is not None:
+        flow_config["observation_type"] = obs_type
 
         # If using probes, create a default grid
-        if "probe" in args.obs_type:
+        if "probe" in obs_type:
+            if args.env not in wake_envs:
+                print(f"--obs-type {obs_type}: no default probe grid for {args.env}; set the probes in flow_config")
+                sys.exit(1)
             wake_probes = [(x, y) for x in np.linspace(1.0, 8.0, 10) for y in np.linspace(-1.0, 1.0, 5)]
             flow_config["probes"] = wake_probes
             print(f"Using {len(wake_probes)} wake probes for observation\n")
@@ -302,8 +310,9 @@ Note: Unlike MAIA/Nek, Firedrake runs directly in Python (no MPMD required).
         "--obs-type",
         type=str,
         choices=["lift_drag", "stress_sensor", "velocity_probes", "pressure_probes", "vorticity_probes"],
-        default="pressure_probes",
-        help="Observation type (default: env-specific)",
+        default=None,
+        help="Observation type (default: pressure_probes for cylinder, rotary_cylinder and pinball; "
+        "the environment's own observation for cavity and step)",
     )
     parser.add_argument("--num-substeps", type=int, default=1, help="Number of solver steps per action (default: 1)")
 

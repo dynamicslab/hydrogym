@@ -6,27 +6,27 @@ Includes Monitor, DummyVecEnv, VecNormalize, and TensorBoard best practices.
 IMPORTANT: MAIA requires MPMD execution (Multi-Program Multiple Data).
 This script must be run with mpirun using the ':' separator:
 
-    mpirun -np 1 python train_sb3_maia.py [args] : -np N maia properties.toml
+    mpirun -np 1 python train_sb3_maia.py [args] : -np N maia properties_run.toml
 
 The ':' separator indicates two separate programs:
     - Process 0: Python script (this file)
-    - Processes 1-N: MAIA solver with properties.toml configuration
+    - Processes 1-N: MAIA solver with properties_run.toml configuration
 
 Usage Examples:
     # Train PPO on Cylinder with 1 MAIA process
     cd work_dir
     mpirun -np 1 python ../train_sb3_maia.py --env Cylinder_2D_Re200 --algo PPO \
-        --total-timesteps 10000 : -np 1 maia properties.toml
+        --total-timesteps 10000 : -np 1 maia properties_run.toml
 
     # Train SAC on Pinball with 4 parallel MAIA processes
     cd work_dir
     mpirun -np 1 python ../train_sb3_maia.py --env Pinball_2D_Re100 --algo SAC \
-        --total-timesteps 50000 : -np 4 maia properties.toml
+        --total-timesteps 50000 : -np 4 maia properties_run.toml
 
     # Train TD3 with custom probes and probewise normalization
     cd work_dir
     mpirun -np 1 python ../train_sb3_maia.py --env RotaryCylinder_2D_Re1000 \
-        --algo TD3 --obs-norm probewise_mean_std : -np 2 maia properties.toml
+        --algo TD3 --obs-norm probewise_mean_std : -np 2 maia properties_run.toml
 
 Workflow:
     1. Prepare workspace (once, outside MPMD):
@@ -34,7 +34,7 @@ Workflow:
 
     2. Train with MPMD:
        cd train_run_000
-       mpirun -np 1 python ../train_sb3_maia.py --env Cylinder_2D_Re200 --algo PPO : -np 1 maia properties.toml
+       mpirun -np 1 python ../train_sb3_maia.py --env Cylinder_2D_Re200 --algo PPO : -np 1 maia properties_run.toml
 
     3. Monitor with TensorBoard:
        tensorboard --logdir logs/
@@ -140,6 +140,9 @@ def train_single_agent(args):
             local_fallback_dir=args.local_dir,
             probe_locations=probe_locations,
             obs_normalization_strategy=args.obs_norm,
+            # actuation power (hydrogym.power): charged in the reward only if --power-weight > 0
+            power_weight=args.power_weight,
+            power_cost=args.power_cost,
         )
         env = Monitor(env)  # CRITICAL: Enables episode reward/length logging
         return env
@@ -239,11 +242,11 @@ def main():
         epilog="""
 Examples:
   # Basic PPO training
-  mpirun -np 1 python train_sb3_maia.py --env Cylinder_2D_Re200 --algo PPO : -np 1 maia properties.toml
+  mpirun -np 1 python train_sb3_maia.py --env Cylinder_2D_Re200 --algo PPO : -np 1 maia properties_run.toml
 
   # SAC with custom probes
   mpirun -np 1 python train_sb3_maia.py --env Pinball_2D_Re100 --algo SAC \
-      --probe-x-range 1,10,16 : -np 4 maia properties.toml
+      --probe-x-range 1,10,16 : -np 4 maia properties_run.toml
 
 Note: This script requires MPMD execution. See docstring for details.
         """,
@@ -279,6 +282,15 @@ Note: This script requires MPMD execution. See docstring for details.
     parser.add_argument("--learning-rate", type=float, default=3e-4)
     parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument("--gamma", type=float, default=0.99)
+    parser.add_argument(
+        "--power-weight",
+        type=float,
+        default=0.0,
+        help="reward -= weight * C_P (actuation power coefficient, units of C_D); 0 = drag-only reward as released",
+    )
+    parser.add_argument(
+        "--power-cost", default="abs", choices=["signed", "positive", "abs"], help="form of C_P charged"
+    )
 
     # Logging
     parser.add_argument("--log-dir", default="./logs")

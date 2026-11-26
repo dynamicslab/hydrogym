@@ -1,0 +1,14 @@
+# Key pins (full lock: requirements-lock.txt). CUDA: add jax[cuda13]==0.11.2 (or the CUDA plugin of your
+# platform); CPU-only works too (slower, ~2-3 min per update).
+jax==0.11.2
+jaxlib==0.11.2
+flax==0.12.12
+optax==0.2.9
+distrax==0.1.9
+gymnax==0.0.9
+chex==0.1.92
+tree-math==0.2.1
+numpy==2.5.5
+# analysis / figures
+scipy==1.18.1
+matplotlib==3.11.2

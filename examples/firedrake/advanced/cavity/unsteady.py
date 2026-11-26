@@ -4,16 +4,16 @@ Cavity Flow - Complete Unsteady Workflow
 
 Two-stage simulation:
   1. Solve for steady-state base flow (Newton solver with Re ramping)
-  2. Perturb and run long transient to observe turbulence development
+  2. Perturb and run a long transient to observe the unsteady dynamics
 
-The cavity flow at Re=7500 exhibits shear-layer instability and turbulent dynamics.
+The cavity flow at Re=7500 exhibits a shear-layer instability and self-sustained oscillations.
 
 Usage:
     python unsteady.py
 
 Physical setup:
-    - Open square cavity at Re=7500
-    - Flow transitions from steady → turbulent
+    - Open cavity at Re=7500
+    - Flow leaves the unstable steady state and becomes unsteady
     - Long integration time (Tf=500) to capture statistical behavior
 """
 
@@ -62,14 +62,14 @@ hgym.print("\n" + "=" * 70)
 hgym.print("Stage 2: Transient simulation with perturbation")
 hgym.print("=" * 70)
 
-Tf = 500  # Long integration to capture turbulent statistics
+Tf = 500  # Long integration to capture the statistics of the oscillating flow
 dt = 2.5e-4
 
 
 # Custom function to extract quantities of interest at each time step
 def log_postprocess(flow):
     KE = 0.5 * fd.assemble(fd.inner(flow.u, flow.u) * fd.dx)  # Total kinetic energy
-    TKE = flow.evaluate_objective()  # Turbulent kinetic energy (fluctuation energy)
+    TKE = flow.evaluate_objective()  # fluctuation kinetic energy about the base flow
     CFL = flow.max_cfl(dt)  # CFL number for numerical stability monitoring
     mem_usage = psutil.virtual_memory().percent
     return [CFL, KE, TKE, mem_usage]
@@ -83,7 +83,7 @@ def compute_vort(flow):
 print_fmt = "t: {0:0.3f}\t\tCFL: {1:0.3f}\t\t KE: {2:0.6e}\t\t TKE: {3:0.6e}\t\t Mem: {4:0.1f}"
 callbacks = [
     # hgym.io.ParaviewCallback(interval=100, filename=pvd_out, postprocess=compute_vort),
-    # hgym.io.CheckpointCallback(interval=1000, filename=checkpoint),
+    hgym.io.CheckpointCallback(interval=1000, filename=checkpoint),  # restart state of sine-forcing.py
     hgym.io.LogCallback(
         postprocess=log_postprocess,
         nvals=4,
@@ -93,13 +93,13 @@ callbacks = [
     ),
 ]
 
-# Add random perturbation to trigger transition to turbulence
+# Add random perturbation to leave the unstable steady state
 # This kicks the system away from the unstable steady state
 hgym.print("Adding random perturbation to steady state...")
 rng = fd.RandomGenerator(fd.PCG64(seed=1234))
 flow.q += rng.normal(flow.mixed_space, 0.0, 1e-2)
 
-# Integrate in time - turbulence should develop
+# Integrate in time - the oscillations should develop
 hgym.print("Starting time integration...\n")
 hgym.integrate(flow, t_span=(0, Tf), dt=dt, callbacks=callbacks)
 

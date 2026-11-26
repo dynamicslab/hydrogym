@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-# PettingZoo reproducible config for TCFmini_3D_Re180
+# PettingZoo reproducible config for TCFlarge_3D_Re207
 # Intended to be used with prepare_workspace + mpirun from work_dir.
 
 runner:
@@ -47,8 +45,8 @@ simulation:
   # Core runtime configuration
   nproc: 512
   TOTCTRL: 128 # Buffer size for MPI
-  ndrl: 13 # dt+ = 0.6 
-  znmf_avg: 1 
+  ndrl: 13 # dt+ ~ 0.68
+  znmf_avg: 1
   target_cfl: 2.0
   y_sensing: 15.0
   retau: 207.0
@@ -58,8 +56,8 @@ simulation:
   ret_bdf: 0.0
 
   # SIZE (mesh)
-  lx1: 8 
-  Lx: 6.28 
+  lx1: 8
+  Lx: 6.28
   Ly: 1.0
   Lz: 3.14
   Nx: 10

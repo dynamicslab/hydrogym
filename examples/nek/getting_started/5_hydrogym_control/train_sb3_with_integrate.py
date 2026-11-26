@@ -11,8 +11,8 @@ This demonstrates the complete workflow:
 Shows how integrate() works with both RL policies and classical control functions.
 
 Usage:
-    # MAIA pattern (recommended)
-    mpirun -np 1 python train_sb3_with_integrate.py --env MiniChannel_Re180 --nproc 10 : -np 10 nek5000
+    # NekEnv.from_hf (recommended)
+    mpirun -np 1 python train_sb3_with_integrate.py --env TCFmini_3D_Re180 --nproc 10 : -np 10 nek5000
 
     # Legacy pattern with config
     mpirun -np 1 python train_sb3_with_integrate.py --config config.yml --nproc 10 : -np 10 nek5000
@@ -40,7 +40,7 @@ def create_environment(
     Create NekEnv with flexible initialization.
 
     Args:
-        env_name: Environment name for MAIA pattern
+        env_name: Hugging Face environment name (NekEnv.from_hf)
         nproc: Number of Nek5000 processes
         config_path: Path to YAML config (legacy)
         local_dir: Local fallback directory
@@ -50,8 +50,8 @@ def create_environment(
         NekEnv instance
     """
     if env_name:
-        # MAIA pattern (recommended)
-        print(f"  Using MAIA pattern: environment={env_name}, nproc={nproc}")
+        # NekEnv.from_hf (recommended)
+        print(f"  Using NekEnv.from_hf: environment={env_name}, nproc={nproc}")
         return NekEnv.from_hf(
             env_name,
             nproc=nproc,
@@ -72,15 +72,15 @@ def create_environment(
         )
         return NekEnv(conf=config, reward_agg="mean")
     else:
-        raise ValueError("Must provide either env_name (MAIA) or config_path (legacy)")
+        raise ValueError("Must provide either env_name (NekEnv.from_hf) or config_path (legacy)")
 
 
 def classical_controllers():
     """Return dictionary of classical control functions."""
 
     def opposition_control(t, obs, env):
-        """Opposition control: v = -alpha * observation."""
-        return -obs[: env.action_space.shape[0]] * 0.5
+        """Opposition control: a = -alpha * v' (obs is [u', v'] per actuator)."""
+        return -obs[1::2] * 0.5
 
     def zero_control(t, obs, env):
         """Zero control (baseline)."""
@@ -110,7 +110,7 @@ def train_and_evaluate(args):
 
     # Create environment with flexible initialization
     print("Creating training environment...")
-    env_train = create_environment(
+    base_env = create_environment(
         env_name=args.env,
         nproc=args.nproc,
         config_path=args.config,
@@ -135,7 +135,7 @@ def train_and_evaluate(args):
 
     # Wrap with Monitor, DummyVecEnv, VecNormalize
     print("Wrapping with Monitor, DummyVecEnv, VecNormalize...")
-    env_train = Monitor(env_train)
+    env_train = Monitor(base_env)
     env_train = DummyVecEnv([lambda: env_train])
     env_train = VecNormalize(env_train, norm_obs=True, norm_reward=True, clip_obs=10.0)
 
@@ -184,23 +184,16 @@ def train_and_evaluate(args):
     print(f"✓ Model saved: {model_path}")
     print(f"✓ Normalization stats saved: {stats_path}\n")
 
-    env_train.close()
-
     # ====================
     # Phase 2: Evaluation with integrate()
     # ====================
     print("\nPHASE 2: Evaluation with integrate()")
     print("-" * 70)
 
-    # Create fresh environment for evaluation (unwrapped)
-    print("Creating evaluation environment...")
-    env_eval = create_environment(
-        env_name=args.env,
-        nproc=args.nproc,
-        config_path=args.config,
-        local_dir=args.local_dir,
-        config_file=args.config_file,
-    )
+    # Evaluate in the same (unwrapped) environment: the Nek5000 ranks of this MPMD launch serve one
+    # environment, and closing it ends them, so the training environment is not closed before the evaluation.
+    print("Evaluation environment: the training environment, unwrapped")
+    env_eval = base_env
 
     # Load trained model with normalization stats
     print("Loading trained model and normalization stats...")
@@ -271,7 +264,7 @@ def main():
 
     # Environment specification (either --env or --config)
     parser.add_argument(
-        "--env", type=str, default=None, help="Environment name from HuggingFace (e.g., MiniChannel_Re180)"
+        "--env", type=str, default=None, help="Environment name from HuggingFace (e.g., TCFmini_3D_Re180)"
     )
     parser.add_argument("--config", type=str, default=None, help="Path to YAML configuration file (legacy, optional)")
     parser.add_argument("--nproc", type=int, required=True, help="Number of Nek5000 processes (required)")
@@ -302,7 +295,7 @@ def main():
 
     # Validate arguments
     if not args.env and not args.config:
-        parser.error("Must provide either --env (MAIA pattern) or --config (legacy pattern)")
+        parser.error("Must provide either --env (NekEnv.from_hf) or --config (legacy pattern)")
 
     try:
         train_and_evaluate(args)

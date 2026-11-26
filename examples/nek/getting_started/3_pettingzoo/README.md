@@ -24,18 +24,21 @@ observations, rewards, terminated, truncated, infos = env.step(actions)
 
 - `test_nek_pettingzoo.py` - Test PettingZoo interface
 - `train_sb3_pettingzoo.py` - **SB3 training with SuperSuit** (production approach)
-- `run_pettingzoo_docker.sh` - Docker/MPI execution
+- `run_pettingzoo_docker.sh` - MPMD launch script (runs as is in the HydroGym images)
 
 ## Usage
 
 ### Test Environment
 ```bash
-mpirun -np 1 python test_nek_pettingzoo.py --steps 100 : -np 10 nek5000
+# from a prepared workspace: the Nek5000 case files must be in the working directory
+python ../prepare_workspace.py --env TCFmini_3D_Re180 --work-dir ./ws && cd ws
+mpirun -np 1 python ../test_nek_pettingzoo.py --steps 100 : -np 10 nek5000
 ```
 
 ### Train RL Agent (SuperSuit Production Approach)
 ```bash
-mpirun -np 1 python train_sb3_pettingzoo.py --env MiniChannel_Re180 --algo PPO --total-timesteps 100000 : -np 10 nek5000
+# in the workspace ws/ of the block above
+mpirun -np 1 python ../train_sb3_pettingzoo.py --env TCFmini_3D_Re180 --algo PPO --total-timesteps 100000 : -np 10 nek5000
 ```
 
 ## Configuration-Driven Tutorial (Recommended for Reproducibility)
@@ -45,7 +48,6 @@ Use a fixed YAML config to lock simulation + runner settings across runs.
 ### 1) Prepare a workspace
 ```bash
 python ../prepare_workspace.py \
-  --local-dir ../../../packaged_envs \
   --env TCFmini_3D_Re180 \
   --work-dir ./train_run
 ```
@@ -56,19 +58,19 @@ cd train_run
 mpirun -np 1 python ../train_sb3_pettingzoo.py \
   --env TCFmini_3D_Re180 \
   --nproc 10 \
-  --config-file ../configs/pettingzoo_tcfmini_re180.yml \
+  --config-file ../../../configs/pettingzoo_tcfmini_re180.yml \
   --algo TD3 \
   --total-timesteps 5000000 \
   : -np 10 nek5000
 ```
 
-### 3) Evaluate (PettingZoo rollouts)
+### 3) Roll out (PettingZoo API, zero control)
 ```bash
 cd train_run
 mpirun -np 1 python ../test_nek_pettingzoo.py \
   --env TCFmini_3D_Re180 \
   --nproc 10 \
-  --config-file ../configs/pettingzoo_tcfmini_re180.yml \
+  --config-file ../../../configs/pettingzoo_tcfmini_re180.yml \
   --steps 2500 \
   : -np 10 nek5000
 ```
@@ -115,3 +117,26 @@ pip install pettingzoo supersuit
 - SuperSuit is the **recommended** approach for production
 - Chapter 2 (DIY wrapper) is for understanding how it works
 - PettingZoo API ensures compatibility with many MARL tools
+
+## Training settings and the shared-policy wrapper
+
+`train_sb3_pettingzoo.py` reads every algorithm setting from the `runner` section of the environment configuration
+(`batch_size`, `buffer_size`, `seed`, `learning_rate`, `learning_starts`, `train_steps`, `gradient_steps`, `tau`,
+`policy_delay`, `target_policy_noise`, `target_noise_clip`, `action_noise`, `nb_interactions`, `nb_episodes`,
+`ckpt_int`). Command-line options override a value only when given. Network defaults: actor [8], critic [16, 16, 64]
+(`--actor-arch`, `--critic-arch`). The resolved values and where each came from are
+written to `<log_dir>/resolved_settings.json`. The TD3 policy of the HydroGym paper
+(`policies/naca0012_wing_re2e5/td3/seed1998`) has actor [8] and critic [16, 64, 64] (`--critic-arch 16 64 64`); the
+`data` file of its zip records 4410 agents, gamma 0.99, batch size 2048, a replay buffer of 2·10⁷ and learning rate
+10⁻³. It was trained with Stable-Baselines3 1.7 and Gym 0.24; this script uses current Stable-Baselines3 and
+Gymnasium.
+
+By default (`--wrapper shared`) the script uses `hydrogym.nek.shared_policy.make_shared_policy_vec_env`: one agent per
+physically distinct wall point, array-based and linear in the number of agents. GLL nodes on element edges belong to
+two (at corners four) elements, and on a periodic wall the nodes at both ends coincide; the shared wrapper trains on
+each physical point once (`TCFlarge_3D_Re207`: 4410 agents from 5760 wall nodes). `--keep-duplicates` restores one
+agent per node, and `--wrapper supersuit` selects the PettingZoo + SuperSuit route (one agent per GLL node; about 50
+times slower for the channel).
+
+Note on the action interval of `TCFlarge_3D_Re207`: `ndrl = 13` solver steps of `dt = 4e-3` at `Re_b = 3300` and
+`u_tau = 0.063` give `dt+ = 13 * 4e-3 * 0.063**2 * 3300 = 0.68`.

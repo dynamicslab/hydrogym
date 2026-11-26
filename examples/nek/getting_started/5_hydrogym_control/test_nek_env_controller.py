@@ -6,14 +6,14 @@ NEK5000 Environment Test Script (MPMD Mode)
 Test NEK5000 environments with MPMD coupling (Python + Nek5000).
 
 Usage:
-    # Using MAIA pattern (recommended)
-    mpirun -np 1 python test_nek_env_controller.py --env MiniChannel_Re180 --nproc 10 : -np 10 nek5000
+    # NekEnv.from_hf (recommended)
+    mpirun -np 1 python test_nek_env_controller.py --env TCFmini_3D_Re180 --nproc 10 : -np 10 nek5000
 
     # Using config file (legacy)
-    mpirun -np 1 python test_nek_env_controller.py --config test_config.yml --nproc 10 : -np 10 nek5000
+    mpirun -np 1 python test_nek_env_controller.py --config <your_config>.yml --nproc 10 : -np 10 nek5000
 
 Arguments:
-    --env: Environment name from HuggingFace (e.g., MiniChannel_Re180)
+    --env: Environment name from HuggingFace (e.g., TCFmini_3D_Re180)
     --nproc: Number of Nek5000 processes (required)
     --config: Path to YAML configuration file (optional, for legacy usage)
     --steps: Number of simulation steps (optional, overrides config)
@@ -32,7 +32,6 @@ from typing import Optional
 import numpy as np
 
 from hydrogym.nek import NekEnv
-from hydrogym.nek.nek_lib.nek_utils import NEK_INIT
 
 # Force unbuffered output for MPMD mode
 sys.stdout = open(sys.stdout.fileno(), "w", buffering=1)
@@ -57,7 +56,7 @@ def create_controller(env, controller_type: str, logger: logging.Logger):
         def controller(t, obs, env):
             # Oppose the velocity at sensor location (obs is flattened 1D array)
             # For opposition control, use negative of observation values
-            return -obs[1::2]  # YW: Again note that we are opposing the wall-normal velocity (index = 1)
+            return -obs[1::2]  # oppose the wall-normal velocity (index 1)
     elif controller_type.upper() == "BL":
         # Constant blowing
         def controller(t, obs, env):
@@ -65,7 +64,8 @@ def create_controller(env, controller_type: str, logger: logging.Logger):
     elif controller_type.upper() == "SIN":
         # Sinusoidal wave
         def controller(t, obs, env):
-            return np.sin(2 * np.pi * t) * 0.5
+            # one value for every actuator, as the other controllers
+            return np.full(env.action_space.shape, 0.5 * np.sin(2 * np.pi * t), dtype=np.float32)
     elif controller_type.upper() == "ZERO":
         # No control
         def controller(t, obs, env):
@@ -90,7 +90,7 @@ def run_nek_test(
     Run NEK5000 environment test.
 
     Args:
-        env_name: Environment name for MAIA pattern (e.g., 'MiniChannel_Re180')
+        env_name: Hugging Face environment name (NekEnv.from_hf) (e.g., 'TCFmini_3D_Re180')
         nproc: Number of Nek5000 processes
         config_path: Path to YAML configuration (legacy, optional)
         num_steps: Number of steps per episode (None = use config)
@@ -107,14 +107,24 @@ def run_nek_test(
     logger.info("Creating NEK5000 environment...")
     try:
         if env_name:
-            # MAIA pattern (recommended)
-            logger.info(f"Using MAIA pattern: environment={env_name}, nproc={nproc}")
+            # NekEnv.from_hf (recommended)
+            logger.info(f"Using NekEnv.from_hf: environment={env_name}, nproc={nproc}")
+            # Only pass the step override when the user actually provided it:
+            # an explicit None would either fail validation or override the
+            # packaged config's episode length with None. Use the dotted
+            # config path (runner.nb_interactions) rather than the
+            # "nb_interactions" shorthand, which maps to episode.max_interactions
+            # and does not exist in the runner-style packaged configs.
+            overrides = {}
+            if num_steps is not None:
+                overrides["runner.nb_interactions"] = num_steps
+                logger.info(f"Overriding steps to: {num_steps}")
             env = NekEnv.from_hf(
                 env_name,
                 nproc=nproc,
                 use_clean_cache=False,
                 local_fallback_dir=local_dir,
-                nb_interactions=num_steps,  # Override if provided
+                **overrides,
             )
         elif config_path:
             # Legacy pattern with config file
@@ -139,11 +149,10 @@ def run_nek_test(
 
             env = NekEnv(conf=config, reward_agg="mean")
         else:
-            raise ValueError("Must provide either --env (MAIA pattern) or --config (legacy pattern)")
+            raise ValueError("Must provide either --env (NekEnv.from_hf) or --config (legacy pattern)")
 
-        # Rewrite the par file to ensure the simulation configuration is correct
-        nek_init = NEK_INIT(nek=env.conf.simulation, drl=env.conf.runner, rank_folder=env.run_folder)
-        nek_init.rewrite_REA_v19()
+        # The case's parameter file (.rea / .par) is read by Nek5000 when it is launched; prepare_workspace.py
+        # writes the configuration into the .rea of v17 cases before the launch.
 
         logger.info("✓ Environment created successfully")
     except Exception as e:
@@ -252,7 +261,7 @@ def main():
 
     # Environment specification (either --env or --config)
     parser.add_argument(
-        "--env", type=str, default=None, help="Environment name from HuggingFace (e.g., MiniChannel_Re180)"
+        "--env", type=str, default=None, help="Environment name from HuggingFace (e.g., TCFmini_3D_Re180)"
     )
     parser.add_argument("--config", type=str, default=None, help="Path to YAML configuration file (legacy, optional)")
     parser.add_argument("--nproc", type=int, required=True, help="Number of Nek5000 processes (required)")
@@ -278,7 +287,7 @@ def main():
 
     # Validate arguments
     if not args.env and not args.config:
-        parser.error("Must provide either --env (MAIA pattern) or --config (legacy pattern)")
+        parser.error("Must provide either --env (NekEnv.from_hf) or --config (legacy pattern)")
 
     # Setup logging
     logger = setup_logging(verbose=args.verbose)

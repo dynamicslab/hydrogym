@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
 Zero-shot multi-policy deployment demo on the small wing case.
-NOTE: Only DRL policies are supported due to the precomplied Nek5000 executable.
+NOTE: Opposition control is not available: the Nek5000 executable of this case is compiled for the DRL
+coupling only. Supported are SB3 policies (PPO, TD3, DDPG) and the baselines BL (constant blowing) and ZERO.
 NOTE: This case is ONLY used for demonstration purpose, one should not expect any physical results.
 
 This chapter demonstrates deployment (not training): multiple policy groups are
@@ -9,9 +10,9 @@ assigned to actuator subsets, each policy can update at its own DRL interval,
 and all groups interact simultaneously with the same environment.
 
 Usage:
-    mpirun -np 1 python test_nek_pettingzoo.py : -np 12 nek5000
+    mpirun -np 1 python zeroshot_demo_pettingzoo.py : -np 12 nek5000
 
-    mpirun -np 1 python test_nek_pettingzoo.py \
+    mpirun -np 1 python zeroshot_demo_pettingzoo.py \
         --policy-template ./meta_policy_small_wing_template.py \
         --policy-root /path/to/legacy_runs \
         --steps 3000 \
@@ -207,8 +208,8 @@ class MultiPolicyDeployer:
         Compute the actions for the group.
         The action is updated when the step is 0 or the step counter is divisible by the DRL step.
 
-        NOTE: observation and actions are normalized by the u_tau on Nek5000 end.
-        Therefore, the action/observation are NOT normalized by the u_tau on the DRL side.
+        NOTE: the Nek5000 side already scales the observations and actions with its u_tau. The u_tau of a
+        policy spec (default 1) is an extra scaling of the observations, for policies trained with another one.
 
         Args:
           obs_dict: The observation dictionary for the group.
@@ -242,7 +243,7 @@ class MultiPolicyDeployer:
                     raw_actions = pred
 
                 raw_actions = np.asarray(raw_actions, dtype=np.float32).reshape(n_agents, -1)
-                # Clip the action to the action bounds, note that the action is NOT normalized by the u_tau yet
+                # Clip the action to the action bounds (in the action units of the Nek5000 side)
                 clipped = np.clip(raw_actions[:, 0], spec.action_min, spec.action_max)
                 group["cached_actions"] = clipped.reshape(n_agents, 1)
 
@@ -264,7 +265,7 @@ class MultiPolicyDeployer:
         for group in self.groups:
             if len(group["agents"]) == 0:
                 continue
-            # [YW-MOD] invert the reward as the reward was scaled in the Environment
+            # invert the reward as the reward was scaled in the Environment
             invert_dUdy = 1.0 - np.array([rewards_dict[a] for a in group["agents"]], dtype=np.float32)
             # Calculate the mean of the dUdy for the group
             mean_dUdy = float(np.mean(invert_dUdy))
@@ -382,11 +383,8 @@ def main():
     # Set the baseline_dudy as 1 as the reward varies with streamwise position
     base_env.baseline_dudy = 1.0
 
-    # Keep behavior aligned with existing getting_started scripts.
-    from hydrogym.nek.nek_lib.nek_utils import NEK_INIT
-
-    nek_init = NEK_INIT(nek=base_env.conf.simulation, drl=base_env.conf.runner, rank_folder=base_env.run_folder)
-    nek_init.rewrite_REA_v17()
+    # The case's parameter file (.rea / .par) is read by Nek5000 when it is launched; prepare_workspace.py
+    # writes the configuration into the .rea of v17 cases before the launch.
 
     env = make_pettingzoo_env(base_env)
 

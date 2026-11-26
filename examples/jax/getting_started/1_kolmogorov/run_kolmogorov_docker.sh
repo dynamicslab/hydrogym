@@ -2,6 +2,9 @@
 #
 # Run Kolmogorov flow JAX environment for two control objectives:
 #
+# Runs as is in the HydroGym container images (everything on PATH);
+# elsewhere, activate a Python environment with HydroGym first.
+#
 #   Objective 1 -- Minimize TKE (suppress energy bursts)
 #       reward = -(reward_alpha * TKE + action_penalty),  reward_alpha > 0
 #       The agent is penalized for high turbulent kinetic energy and large
@@ -24,7 +27,7 @@
 #     ./run_kolmogorov_docker.sh                           # minimize TKE, 10 steps, float64
 #     ./run_kolmogorov_docker.sh maximize_tke              # maximize TKE
 #     ./run_kolmogorov_docker.sh no_actuation 500          # baseline, 500 steps
-#     ./run_kolmogorov_docker.sh minimize_tke 1000 float32 # float32 (fast, may diverge)
+#     ./run_kolmogorov_docker.sh minimize_tke 1000 float32 # float32
 #
 # Actuation:
 #     The control input is the amplitude of four sinusoidal body-force modes
@@ -34,17 +37,16 @@
 #     Actions are clipped to [-0.5, 0.5].
 #
 # Precision:
-#     float64 (default) -- required for JIT stability; matches non-JIT behavior
-#     float32           -- faster but may produce NaNs due to solver instability under XLA
+#     float64 (default) and float32 both run. float32 is faster and uses half the
+#     memory; the flow is chaotic, so the trajectories of the two precisions
+#     separate after a few actions.
 #
 
 set -e
 
-module purge
-module load Python/3.12.3-GCCcore-13.3.0
-
-# Activate Python environment
-source /home/easybuild/venvs/hydrogym_gpu/bin/activate
+# Python environment: the HydroGym container images have it in /opt/venvs;
+# elsewhere, activate your own environment before running this script.
+if [ -f /opt/venvs/hydrogym/bin/activate ]; then source /opt/venvs/hydrogym/bin/activate; fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MODE="${1:-minimize_tke}"

@@ -19,24 +19,27 @@ obs, reward, terminated, truncated, info = env.step(action)
 
 ## Files
 
-- `test_nek_direct.py` - Basic environment test with zero control
+- `test_nek_direct.py` - Basic environment test with opposition control
 - `train_sb3_nek_direct.py` - SB3 training (PPO/TD3/SAC) with Monitor & VecNormalize
-- `run_nekenv_docker.sh` - Docker/MPI execution script
+- `run_nekenv_docker.sh` - MPMD launch script (runs as is in the HydroGym images)
 
 ## Usage
 
 ### Test Environment
 ```bash
-mpirun -np 1 python test_nek_direct.py --steps 100 : -np 10 nek5000
+# from a prepared workspace: the Nek5000 case files must be in the working directory
+python ../prepare_workspace.py --env TCFmini_3D_Re180 --work-dir ./ws && cd ws
+mpirun -np 1 python ../test_nek_direct.py --steps 100 : -np 10 nek5000
 ```
 
 ### Train RL Agent
 ```bash
-mpirun -np 1 python train_sb3_nek_direct.py --env MiniChannel_Re180 --algo PPO --total-timesteps 100000 : -np 10 nek5000
+# in the workspace ws/ of the block above
+mpirun -np 1 python ../train_sb3_nek_direct.py --env TCFmini_3D_Re180 --algo PPO --total-timesteps 100000 : -np 10 nek5000
 ```
 
 ## When to Use
 
 - Single actuator/sensor scenarios
 - Direct SB3 compatibility (Monitor, VecNormalize wrappers included)
-- Simple baseline comparisons with zero control
+- Simple baseline comparisons with opposition control

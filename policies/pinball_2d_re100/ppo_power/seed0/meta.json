@@ -1,0 +1,9 @@
+{
+ "id": "pinball_2d_re100/ppo_power/seed0",
+ "hydrogym_env": "Pinball_2D_Re100",
+ "env_settings": {
+  "max_control": 0.25,
+  "omega": 0.0
+ },
+ "loader": "pinball_residual_npz"
+}

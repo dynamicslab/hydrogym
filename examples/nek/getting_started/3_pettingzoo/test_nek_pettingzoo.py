@@ -36,7 +36,7 @@ from hydrogym.nek.pettingzoo_env import make_pettingzoo_env
 def main():
     parser = argparse.ArgumentParser(description="Test Nek5000 PettingZoo multi-agent environment")
     parser.add_argument("--steps", type=int, default=100, help="Number of steps to run")
-    parser.add_argument("--env", type=str, default="MiniChannel_Re180", help="Environment name")
+    parser.add_argument("--env", type=str, default="TCFmini_3D_Re180", help="Environment name")
     parser.add_argument("--nproc", type=int, default=10, help="Number of Nek5000 processes")
     parser.add_argument("--local-dir", type=str, default=None, help="Local fallback directory for environments")
     parser.add_argument("--config-file", type=str, default=None, help="Config file (None = auto-detect)")
@@ -116,8 +116,10 @@ def main():
         # Strategy 3: Cooperative strategy - all agents use same signal
         # signal = np.sin(step * 0.1) * 0.01
         # actions = {agent: np.array([signal], dtype=np.float32) for agent in env.agents}
-        # Opposition Control Strategy, oppose to the wall-normal velocity (-1)
-        actions = {agent: -1.0 * obs_dict[agent][:-1] for agent in env.agents}
+        # Strategy 4: Opposition control, opposing the wall-normal velocity (gain 1; uncomment to test). With
+        # this gain and the fixed time step of TCFmini_3D_Re180, the CFL number grows and Nek5000 stops after
+        # about 200 actions, so a long run (--steps 2500) needs the zero control above.
+        # actions = {agent: -1.0 * obs_dict[agent][:-1] for agent in env.agents}
 
         # Step environment
         obs_dict, rewards_dict, terminated_dict, truncated_dict, infos_dict = env.step(actions)

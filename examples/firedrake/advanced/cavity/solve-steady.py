@@ -9,14 +9,14 @@ Usage:
     python solve-steady.py
 
 Physical setup:
-    - Open square cavity (1×1) with moving top wall
+    - Open cavity (length = depth = 1) below a boundary layer, with inflow on the left and a free-slip top
+      boundary (Barbagallo et al. 2009)
     - Inlet velocity: U = 1.0
-    - Reynolds number Re = 7500 (turbulent regime)
+    - Reynolds number Re = 7500, based on the cavity length
     - Outputs: Steady velocity, pressure, vorticity fields
 
-Note: At Re=7500, the flow is turbulent, but this solver finds the unstable
-      steady state solution, which is useful for stability analysis and as
-      a base flow for turbulence studies.
+Note: At Re=7500 the steady state is unstable and the flow oscillates; this solver finds the unstable steady
+      state, the base flow of stability analyses and of the cavity's fluctuation-energy objective.
 """
 
 import os

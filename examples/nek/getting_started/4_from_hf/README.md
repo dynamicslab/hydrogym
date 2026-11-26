@@ -1,4 +1,4 @@
-# NEK5000 from_hf Pattern (MAIA Pattern)
+# NEK5000 environments from Hugging Face (from_hf)
 
 Convenient method for loading environments with minimal configuration using `NekEnv.from_hf()`.
 
@@ -24,18 +24,21 @@ obs, reward, terminated, truncated, info = env.step(action)
 
 - `test_nek_DM.py` - Test from_hf() loading pattern
 - `train_sb3_from_hf.py` - SB3 training with from_hf() pattern
-- `run_from_hf_docker.sh` - Docker/MPI execution
+- `run_from_hf_docker.sh` - MPMD launch script (runs as is in the HydroGym images)
 
 ## Usage
 
 ### Test Environment
 ```bash
-mpirun -np 1 python test_nek_DM.py --steps 100 : -np 10 nek5000
+# from a prepared workspace: the Nek5000 case files must be in the working directory
+python ../prepare_workspace.py --env TCFmini_3D_Re180 --work-dir ./ws && cd ws
+mpirun -np 1 python ../test_nek_DM.py --steps 100 : -np 10 nek5000
 ```
 
 ### Train RL Agent
 ```bash
-mpirun -np 1 python train_sb3_from_hf.py --env MiniChannel_Re180 --algo PPO --total-timesteps 100000 : -np 10 nek5000
+# in the workspace ws/ of the block above
+mpirun -np 1 python ../train_sb3_from_hf.py --env TCFmini_3D_Re180 --algo PPO --total-timesteps 100000 : -np 10 nek5000
 ```
 
 ## When to Use
@@ -44,7 +47,6 @@ mpirun -np 1 python train_sb3_from_hf.py --env MiniChannel_Re180 --algo PPO --to
 - Need minimal configuration (environment name + nproc)
 - Want automatic config file detection
 - Using standard/pre-packaged environments
-- HuggingFace Hub integration (future)
 
 ## Comparison with Other Patterns
 

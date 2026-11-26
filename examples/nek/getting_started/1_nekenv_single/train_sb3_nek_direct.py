@@ -54,11 +54,8 @@ def train_single_agent(args):
         }
         env = NekEnv(env_config=env_config)
 
-        # Modify the par file to ensure the simulation configuration is correct before training
-        from hydrogym.nek.nek_lib.nek_utils import NEK_INIT
-
-        nek_init = NEK_INIT(nek=env.conf.simulation, drl=env.conf.runner, rank_folder=env.run_folder)
-        nek_init.rewrite_REA_v19()  # Rewrite the par file, v19 corresponds to the new Nek5000 format
+        # The case's parameter file (.rea / .par) is read by Nek5000 when it is launched; prepare_workspace.py
+        # writes the configuration into the .rea of v17 cases before the launch.
         env = Monitor(env)  # CRITICAL: Enables episode reward/length logging
         return env
 
@@ -68,7 +65,6 @@ def train_single_agent(args):
     # 3. Apply VecNormalize (Crucial for Fluid Dynamics)
     # This scales inputs to mean 0, std 1 so the Neural Net learns faster.
     # VecNormalize is not used in the literature, so it is not guaranteed to work.
-    # Please see MARL set for more details.
     env = VecNormalize(env, norm_obs=True, norm_reward=True, clip_obs=10.0)
 
     print("Environment created (Wrapped in Monitor, DummyVecEnv, VecNormalize):")

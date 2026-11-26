@@ -10,11 +10,11 @@ one MPI process runs Python (this script), another runs the m-AIA CFD solver.
 
 Usage:
     # MPMD execution with mpirun (required for MAIA)
-    mpirun -np 1 python test_maia_env.py --environment Cylinder_2D_Re200 : -np 1 maia properties.toml
+    mpirun -np 1 python test_maia_env.py --environment Cylinder_2D_Re200 : -np 1 maia properties_run.toml
 
     # Note: The ':' separator indicates two separate programs:
     #   - Process 0: Python script (this file)
-    #   - Process 1: MAIA solver with properties.toml configuration
+    #   - Process 1: MAIA solver with properties_run.toml configuration
 
 Available environments:
     2D & 3D Flows:
@@ -145,8 +145,8 @@ Example probe grids:
 Example Configurations:
 ----------------------
 
-Cylinder with default settings:
-    env = maia.from_hf('Cylinder_2D_Re200')
+Cylinder with four wake probes (probe_locations is required):
+    env = maia.from_hf('Cylinder_2D_Re200', probe_locations=[2.0, 0.0, 4.0, 0.5, 4.0, -0.5, 6.0, 0.0])
 
 Cylinder with custom probes:
     probe_locations = [x for x in np.linspace(1, 8, 16)
@@ -463,7 +463,7 @@ def run_environment_test(
     #
     # CAVITY (Open Cavity) [2D/3D]:
     #   - environment: Cavity_2D_Re{Re}
-    #   - Available Re: 4140, 7500
+    #   - Available Re: 4200, 7500
     #   - num_inputs: 1
     #   - Actuation: 1 Jet
     #   - Reward: Problem-specific (mixing, vortex control, etc.)

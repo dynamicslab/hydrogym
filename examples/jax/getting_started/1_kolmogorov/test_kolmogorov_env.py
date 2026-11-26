@@ -65,7 +65,7 @@ def to_real(omega_hat):
     return np.asarray(jnp.fft.irfftn(omega_hat))
 
 
-def run_steps(env, params, action, num_steps):
+def run_steps(env, params, action, num_steps, print_rows=False):
     jit_reset = jax.jit(env.reset_env)
     jit_step = jax.jit(env.step_env)
 
@@ -85,6 +85,8 @@ def run_steps(env, params, action, num_steps):
         key, subkey = jax.random.split(key)
         obs, state, reward, done, info = jit_step(subkey, state, action, params)
         rows.append((i, float(info["mean_tke"]), float(reward)))
+        if print_rows:  # one line per step as it is computed (long float64 runs show their progress)
+            print(f"{i:>5}  {rows[-1][1]:>12.4f}  {rows[-1][2]:>12.4f}", flush=True)
         if done:
             break
     obs.block_until_ready()
@@ -145,13 +147,13 @@ def main():
         "--dt",
         type=float,
         default=None,
-        help="DNS timestep (default: 1e-3). Halve to improve fp32 stability.",
+        help="DNS timestep (default: 1e-3).",
     )
     parser.add_argument(
         "--dtype",
         default="float64",
         choices=["float32", "float64"],
-        help="Floating-point precision (default: float64 — required for JIT stability)",
+        help="Floating-point precision (default: float64; float32 also runs)",
     )
     parser.add_argument(
         "--plot",
@@ -189,9 +191,7 @@ def main():
 
     print(f"{'Step':>5}  {'mean_TKE':>12}  {'reward':>12}")
     print("-" * 35)
-    _, rows = run_steps(env, params, action, args.num_steps)
-    for step, tke, reward in rows:
-        print(f"{step:>5}  {tke:>12.4f}  {reward:>12.4f}")
+    run_steps(env, params, action, args.num_steps, print_rows=True)
 
 
 if __name__ == "__main__":

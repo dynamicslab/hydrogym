@@ -1,0 +1,10 @@
+{
+ "id": "pinball_2d_re150/td3_long/seed2",
+ "hydrogym_env": "Pinball_2D_Re150",
+ "env_settings": {
+  "max_control": 0.4,
+  "num_sim_substeps_per_actuation": 152,
+  "omega": 0.0
+ },
+ "loader": "jax_td3_pkl"
+}

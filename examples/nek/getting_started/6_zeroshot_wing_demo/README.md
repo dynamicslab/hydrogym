@@ -6,9 +6,13 @@ __This is a deployment/evaluation demo only (no training). The template and cont
 
 > NOTE: The provided Nek5000 executable is pre-compiled for this chapter, so this demo focuses on the DRL-style rollout/deployment workflow.
 
+> NOTE: Nek5000 reads the case name with its full path, which must be shorter than 132 characters. From a deeper
+> working directory Nek5000 stops at start-up ("Cannot open .rea file!") and the Python rank then waits forever;
+> run the demo from a short path (e.g. a copy of the examples in your home directory).
+
 ## What the script does
 
-`test_nek_pettingzoo.py`:
+`zeroshot_demo_pettingzoo.py`:
 - loads a base `NekEnv` via `NekEnv.from_hf(...)` and wraps it with `make_pettingzoo_env(...)`
 - builds one controller per entry in `POLICY_SPECS` (from `meta_policy_small_wing_template.py`)
 - assigns each controller to actuator agents by `x_range` and `side` (`SS` means `y > 0`, `PS` means `y < 0`)
@@ -34,9 +38,9 @@ obs_dict, rewards_dict, terminations, truncations, infos = env.step(actions)
 
 ## Files
 
-- `test_nek_pettingzoo.py` - zero-shot multi-policy rollout demo (deployment only)
+- `zeroshot_demo_pettingzoo.py` - zero-shot multi-policy rollout demo (deployment only)
 - `meta_policy_small_wing_template.py` - template defining `ENV_NAME`, `NPROC`, and `POLICY_SPECS`
-- `run_pettingzoo_docker.sh` - runner script (module load + workspace prep + `mpirun`)
+- `run_pettingzoo_docker.sh` - launch script (image environment + workspace prep + `mpirun`)
 
 ## Usage
 
@@ -50,22 +54,30 @@ From `6_zeroshot_wing_demo/`:
 
 ### Direct: run the Python deployment script
 
+Nek5000 reads the case from the current directory, so run the script from a prepared workspace (as the runner does).
+Keep the workspace path short (see the note at the top).
+
 Default template:
 ```bash
-mpirun -np 1 python test_nek_pettingzoo.py : -np 12 nek5000
+# Nek5000 executable of this case (in the HydroGym images; elsewhere your small_wing build)
+export PATH=/opt/nek5000/cases/small_wing:$PATH
+# Prepare the workspace once (copies the case files). Offline: add --local-dir DIR here and to the mpirun line
+python ../prepare_workspace.py --env NACA4412_3D_Re75000_AOA5 --work-dir ./ws --profile NEK5000_v17
+cd ws && rm -f *.sch
+mpirun -np 1 python ../zeroshot_demo_pettingzoo.py --policy-template ../meta_policy_small_wing_template.py : -np 12 nek5000
 ```
 
-Legacy policy template + run root:
+Policy template + run root (from `ws/`):
 ```bash
-mpirun -np 1 python test_nek_pettingzoo.py \
-  --policy-template ./meta_policy_small_wing_template.py \
+mpirun -np 1 python ../zeroshot_demo_pettingzoo.py \
+  --policy-template ../meta_policy_small_wing_template.py \
   --policy-root /path/to/legacy_runs \
   --steps 3000 \
   : -np 12 nek5000
 ```
 
 Useful overrides:
-- `--policy-template PATH` (defaults to `./meta_policy_small_wing_template.py`)
+- `--policy-template PATH` (defaults to `./meta_policy_small_wing_template.py` in the current directory)
 - `--env ENV_NAME` (defaults from template `ENV_NAME`)
 - `--nproc NPROC` (defaults from template `NPROC`)
 - `--steps NUM_STEPS` (defaults from template `NUM_STEPS`)
@@ -75,7 +87,7 @@ Useful overrides:
 
 ## Policy Template (`meta_policy_small_wing_template.py`)
 
-The template defines a lightweight legacy-`MetaPolicy.py`-style configuration.
+The template defines a multi-policy deployment configuration (one policy group per wall segment).
 
 Required top-level variables:
 - `ENV_NAME`
@@ -113,5 +125,5 @@ For RL policies (`PPO`, `TD3`, `DDPG`), if `model_path` is not set, the default 
 
 - Deployment-only (evaluation). No training happens in this chapter.
 - `drl_step` controls when the controller is queried; between refreshes, the last action is held for the whole group.
-- `u_tau` is used to normalize observations before calling the controller (the code comments note that solver-side normalization by `u_tau` should be kept consistent with how the policies were trained).
+- `u_tau` is an extra scaling of the observations before the controller is called (obs / u_tau); the Nek5000 side already scales observations and actions with its own u_tau, so keep `u_tau: 1.0` for policies trained with that scaling.
 - This demo uses deterministic controller calls (`controller.predict(..., deterministic=True)`), and displays a reward summary to help compare controller configurations.

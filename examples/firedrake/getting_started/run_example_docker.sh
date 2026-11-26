@@ -10,12 +10,9 @@ set -e
 
 export OMP_NUM_THREADS=1
 
-# Load Firedrake modules
-module purge
-module load MAIA/1.0-gompi-2024a-SystemCUDA-CPU HDF5/1.14.5-gompi-2024a-SystemCUDA mpi4py/4.0.1-gompi-2024a-SystemCUDA
-
-# Activate Python environment
-source /home/easybuild/venvs/hydrogym_cpu/bin/activate
+# Python environment: the HydroGym container images have it in /opt/venvs;
+# elsewhere, activate your own environment before running this script.
+if [ -f /opt/venvs/firedrake/bin/activate ]; then source /opt/venvs/firedrake/bin/activate; fi
 
 # Configuration
 ENVIRONMENT="cylinder"

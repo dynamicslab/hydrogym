@@ -7,14 +7,14 @@ This script prepares a workspace from a local or Hugging Face environment packag
 Usage:
     # From local packaged directory
     python prepare_workspace.py \
-        --local-dir ../../../packaged_envs \
+        --local-dir /path/to/packaged_envs \
         --env TCFmini_3D_Re180 \
         --work-dir ./test_run_001 \
         --cache-dir ~/.cache/hydrogym_nek
 
-    # From Hugging Face (when uploaded)
+    # From Hugging Face
     python prepare_workspace.py \
-        --env MiniChannel_Re180 \
+        --env TCFmini_3D_Re180 \
         --work-dir ./test_run_001
 """
 
@@ -23,9 +23,6 @@ import os
 import shutil
 import sys
 from pathlib import Path
-
-# Add hydrogym to path if needed
-sys.path.insert(0, str(Path(__file__).parents[4] / "hydrogym"))
 
 from hydrogym.data_manager import HFDataManager
 
@@ -37,7 +34,8 @@ def prepare_nek_workspace(
     local_dir: str = None,
     force_download: bool = False,
     restart_index: int = 1,
-    profile: str = "NEK5000_v19",
+    profile: str = None,
+    config_file: str = None,
 ):
     """
     Prepare NEK5000 workspace with runtime files.
@@ -48,6 +46,10 @@ def prepare_nek_workspace(
         cache_dir: Clean cache directory (default: ~/.cache/hydrogym_nek)
         local_dir: Local directory containing packaged envs (for testing)
         force_download: Force re-download from HF
+        profile: "NEK5000_v17" (.rea case) or "NEK5000_v19" (.par case); default: taken from the
+            environment's sentinel file (.NEK5000_v17), otherwise NEK5000_v19
+        config_file: configuration written into the .rea file of a v17 case (default: the environment's
+            environment_config.yaml); pass the same file to NekEnv (configuration_file)
 
     Returns:
         Tuple of (work_dir, par_file_path, cache_dir, env_path)
@@ -85,6 +87,10 @@ def prepare_nek_workspace(
     environment_path = dm.get_environment_path(env_name, force_download=force_download)
     print(f"✓ Environment copied to clean cache: {environment_path}")
 
+    if profile is None:
+        profile = "NEK5000_v17" if (Path(environment_path) / ".NEK5000_v17").exists() else "NEK5000_v19"
+        print(f"Profile:          {profile} (from the environment)")
+
     # Prepare workspace with symlinks to clean cache
     print("\nStep 2: Preparing workspace with symlinks...")
     work_paths = dm.prepare_working_directory(
@@ -107,6 +113,12 @@ def prepare_nek_workspace(
             case_name = par_file.stem
             break
 
+    if par_file is None:
+        ext = ".rea" if profile == "NEK5000_v17" else ".par"
+        raise FileNotFoundError(
+            f"No {ext} file in {work_dir_resolved} for profile {profile}; "
+            "a .rea (Nek5000 v17) case needs --profile NEK5000_v17, a .par case --profile NEK5000_v19"
+        )
     print(f"par_file: {par_file}")
     par_file = Path(work_dir_resolved) / par_file
 
@@ -114,7 +126,7 @@ def prepare_nek_workspace(
     print("\nStep 3: Creating Nek5000 session files...")
     session_file = Path(work_dir_resolved) / "SESSION.NAME"
     with open(session_file, "w") as f:
-        f.write(case_name + "\n")  # [YW-MOD] Case name
+        f.write(case_name + "\n")  # Case name
         f.write(f"{work_dir_resolved}\n")  # Absolute path to working directory
     print(f"✓ Created SESSION.NAME: {session_file}")
 
@@ -135,28 +147,49 @@ def prepare_nek_workspace(
     else:
         print("⚠ Warning: int_pos not found (may be needed for DRL coupling)")
 
-    # Symlink the mask files if they exist (v17 only)
+    # Copy the mask files if they exist (v17 only). A copy, not a link: Nek5000 opens the mask with MPI-IO, which
+    # fails on the read-only cached file for a non-root user ("Error in byte_open_mpi").
     if profile == "NEK5000_v17":
         mask_files = [f for f in os.listdir(environment_path) if f.startswith("mask_")]
         for mask_file in mask_files:
             mask_src = Path(environment_path) / mask_file
             mask_dst = Path(work_dir_resolved) / mask_file
-            if mask_src.exists():
-                if mask_dst.exists():
-                    mask_dst.unlink()
-            mask_dst.symlink_to(mask_src.resolve())
-            print(f"✓ Symlinked mask file: {mask_dst}")
-        else:
-            print(f"⚠ Warning: mask file not found: {mask_file}")
+            if mask_dst.exists() or mask_dst.is_symlink():
+                mask_dst.unlink()
+            shutil.copyfile(mask_src, mask_dst)  # contents only: writable copy
+            print(f"✓ Copied mask file: {mask_dst}")
+        if not mask_files:
+            print("⚠ Warning: no mask file (mask_*) in the environment")
 
     # Copy the restart files with from work_dir_resolved/restart_files to work_dir_resolved/
     restart_src = Path(work_dir_resolved) / "restart_files" / f"init_{restart_index}"
     if restart_src.exists():
         for rs_file in os.listdir(restart_src):
-            shutil.copy(restart_src / rs_file, Path(work_dir_resolved) / rs_file)
+            dst = Path(work_dir_resolved) / rs_file
+            if dst.exists() or dst.is_symlink():
+                dst.unlink()
+            shutil.copyfile(restart_src / rs_file, dst)  # contents only: the cached restarts are read-only
         print(f"✓ Copied restarts: {Path(work_dir_resolved) / rs_file} with index {restart_index}")
     else:
         print(f"⚠ Warning: restart_files not found in {work_dir_resolved}")
+
+    # v17 cases: write the configuration into the .rea now. Nek5000 reads the file once when it is launched, so values
+    # that NekEnv would write later (frame p092, power p096, dt, ndrl, ...) would not reach the solver.
+    if profile == "NEK5000_v17":
+        from omegaconf import OmegaConf
+
+        from hydrogym.nek.nek_lib.nek_utils import V17_PARAM_MAPPING, read_rea_params, write_rea_from_config
+
+        cfg_path = Path(config_file) if config_file else Path(environment_path) / "environment_config.yaml"
+        conf = OmegaConf.load(cfg_path)
+        rea = write_rea_from_config(conf, work_dir_resolved)
+        vals = read_rea_params(rea)
+        shown = ", ".join(
+            f"{k} {vals[k]:g}"
+            for k in (V17_PARAM_MAPPING[a] for a in ("dt", "ndrl", "frame", "power_mode"))
+            if k in vals
+        )
+        print(f"✓ Wrote {cfg_path.name} into {rea} ({shown})")
 
     # Print the case_name
     print("\n" + "=" * 70)
@@ -184,18 +217,18 @@ if __name__ == "__main__":
     Examples:
         # Local packaged environment
         python prepare_workspace.py \\
-            --local-dir ../../../packaged_envs \\
+            --local-dir /path/to/packaged_envs \\
             --env TCFmini_3D_Re180 \\
             --work-dir ./test_run_001
 
         # From Hugging Face
         python prepare_workspace.py \\
-            --env MiniChannel_Re180 \\
+            --env TCFmini_3D_Re180 \\
             --work-dir ./test_run_001
 
         # Custom cache directory
         python prepare_workspace.py \\
-            --local-dir ../../../packaged_envs \\
+            --local-dir /path/to/packaged_envs \\
             --env TCFmini_3D_Re180 \\
             --work-dir ./test_run_001 \\
             --cache-dir /scratch/hydrogym_cache
@@ -211,7 +244,18 @@ if __name__ == "__main__":
     parser.add_argument("--force-download", action="store_true", help="Force re-download/re-copy from source")
     # Add restart index
     parser.add_argument("--restart-index", type=int, default=1, help="Restart index (default: 1)")
-    parser.add_argument("--profile", type=str, default="NEK5000_v19", help="Profile (default: NEK5000_v19)")
+    parser.add_argument(
+        "--profile",
+        type=str,
+        default=None,
+        choices=["NEK5000_v17", "NEK5000_v19"],
+        help="Profile (default: from the environment's sentinel file, otherwise NEK5000_v19)",
+    )
+    parser.add_argument(
+        "--config",
+        default=None,
+        help="v17: configuration written into the .rea before the launch (default: environment_config.yaml of the env)",
+    )
 
     args = parser.parse_args()
 
@@ -222,15 +266,16 @@ if __name__ == "__main__":
             cache_dir=args.cache_dir,
             local_dir=args.local_dir,
             force_download=args.force_download,
-            restart_index=args.restart_index,  # [YW-MOD] Add restart index
-            profile=args.profile,  # [YW-MOD] Add profile
+            restart_index=args.restart_index,
+            profile=args.profile,
+            config_file=args.config,
         )
 
         print("\nNext steps:")
         print(f"  1. Inspect cached files: ls -lh {env_path}")
         print(f"  2. Review configuration: cat {par_file}")
         print(f"  3. Restart index: {args.restart_index}")
-        print("  4. Run test: ./run_example.sh")
+        print("  4. Run an example from the work directory, e.g. gym_make_demo.py (see its docstring)")
 
     except Exception as e:
         print(f"\n✗ Error: {e}", file=sys.stderr)

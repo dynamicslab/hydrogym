@@ -1,0 +1,678 @@
+# Index of the policies in this folder, read by load_policy.py. See README.md.
+schema: hydrogym-policies/v1
+version: 1.0.2
+layout: '<case>/<variant>/seed<k>/'
+loader: 'load_policy.py: load_policy(id) -> callable obs -> action; ''python load_policy.py --check'' verifies the files'
+fields:
+  hydrogym_env: 'HydroGym environment id (id_3d: the 3D environment of the same policy), backend, and the environment settings
+    the policy runs with (config, on top of the environment''s default configuration)'
+  observation: 'probes_file: observation probe coordinates in probes/'
+  action: 'scale_2d_to_3d: 3D command = clip(scale_2d_to_3d * a, -1, 1)'
+  loader: format of load_policy.py, the role of the file it reads, max_control (command = a * max_control)
+  files: role, path relative to this folder, sha256, size in bytes, whether tracked in git
+policies:
+- id: pinball_2d_re150/ppo/seed2
+  group: pinball
+  hydrogym_env:
+    id: Pinball_2D_Re150
+    backend: m-AIA
+    config:
+      max_control: 0.4
+      num_sim_substeps_per_actuation: 152
+      omega: 0.0
+  observation:
+    probes_file: probes/pinball_2d_wake_probes.json
+  loader:
+    format: jax_ppo_pkl
+    file_role: weights
+    max_control: 0.4
+  files:
+  - role: weights
+    path: pinball_2d_re150/ppo/seed2/final_params.pkl
+    sha256: f9ca24e3766693a12b6587a6d8968dccc34a9e8e9af9576615955563ff71abb3
+    size_bytes: 704037
+    tracked_in_git: true
+  - role: weights_best_eval
+    path: pinball_2d_re150/ppo/seed2/best_params.pkl
+    sha256: 6dbbd07deb7147c14ae1f4d17d66795ff47359e7968044ea5ca9ef29e27801e0
+    size_bytes: 704037
+    tracked_in_git: true
+  - role: run_meta
+    path: pinball_2d_re150/ppo/seed2/meta.json
+    sha256: 992fa59d014a6b70426b8c4393b1fca10dd1c64d8981b06160a37324661d1384
+    size_bytes: 204
+    tracked_in_git: true
+- id: pinball_2d_re150/td3_long/seed2
+  group: pinball
+  hydrogym_env:
+    id: Pinball_2D_Re150
+    backend: m-AIA
+    config:
+      max_control: 0.4
+      num_sim_substeps_per_actuation: 152
+      omega: 0.0
+  observation:
+    probes_file: probes/pinball_2d_wake_probes.json
+  loader:
+    format: jax_td3_pkl
+    file_role: weights
+    max_control: 0.4
+  files:
+  - role: weights
+    path: pinball_2d_re150/td3_long/seed2/final_params.pkl
+    sha256: a63f8924499df4767b905f89f062936b4e5096d015e0c54d1c7d435747460bf7
+    size_bytes: 1060520
+    tracked_in_git: true
+  - role: weights_best_eval
+    path: pinball_2d_re150/td3_long/seed2/best_params.pkl
+    sha256: 39b22c0eb640db4ac4986868c6aa132e4d666b6bb20c5f4fdffc90a16436378f
+    size_bytes: 1060520
+    tracked_in_git: true
+  - role: run_meta
+    path: pinball_2d_re150/td3_long/seed2/meta.json
+    sha256: c5592baca5b51e08838264ae3f6d528e5b8e6c46cf880f6c56edc5c12ef081ab
+    size_bytes: 209
+    tracked_in_git: true
+- id: pinball_2d_re150/ppo_power/seed1
+  group: pinball
+  hydrogym_env:
+    id: Pinball_2D_Re150
+    backend: m-AIA
+    config:
+      max_control: 0.4
+      num_sim_substeps_per_actuation: 152
+      omega: 0.0
+  observation:
+    probes_file: probes/pinball_2d_wake_probes.json
+  loader:
+    format: pinball_residual_npz
+    file_role: weights
+    max_control: 0.4
+  files:
+  - role: weights
+    path: pinball_2d_re150/ppo_power/seed1/controller.npz
+    sha256: e31db5f143a647f267e86a180a10f4f214e311b090ebb9e855f3e285345b0578
+    size_bytes: 727960
+    tracked_in_git: true
+  - role: run_meta
+    path: pinball_2d_re150/ppo_power/seed1/meta.json
+    sha256: db63b97b5c455bb5f2d11030ee63dead20454b5af14c441fc64515a2c4b5fdf0
+    size_bytes: 219
+    tracked_in_git: true
+- id: cylinder_2d_re200/ppo/seed1
+  group: cylinder
+  hydrogym_env:
+    id: Cylinder_2D_Re200
+    backend: m-AIA
+    config:
+      max_control: 0.017320508
+      num_sim_substeps_per_actuation: 88
+  observation:
+    probes_file: probes/probes_wake__cylinder_2d_re200.txt
+  loader:
+    format: jax_ppo_pkl
+    file_role: weights
+    max_control: 0.017320508
+  files:
+  - role: weights
+    path: cylinder_2d_re200/ppo/seed1/params.pkl
+    sha256: 397f24827ddb5dbf81b459cff1ef78ae0db152ef945b0d8509b679d397aeb5df
+    size_bytes: 695805
+    tracked_in_git: true
+- id: cylinder_2d_re1000/ppo/seed2
+  group: cylinder
+  hydrogym_env:
+    id: Cylinder_2D_Re1000
+    backend: m-AIA
+    config:
+      max_control: 0.017320508
+      num_sim_substeps_per_actuation: 224
+  observation:
+    probes_file: probes/probes_wake__cylinder_2d_re1000.txt
+  loader:
+    format: jax_ppo_pkl
+    file_role: weights
+    max_control: 0.017320508
+  files:
+  - role: weights
+    path: cylinder_2d_re1000/ppo/seed2/params.pkl
+    sha256: 4e3be347be3acc55c17a2353491140b74f7f68c25fe9192330324e4f86027233
+    size_bytes: 695805
+    tracked_in_git: true
+- id: cylinder_2d_re3900/ppo/seed1
+  group: cylinder
+  hydrogym_env:
+    id: Cylinder_2D_Re3900
+    backend: m-AIA
+    config:
+      max_control: 0.017320508
+      num_sim_substeps_per_actuation: 496
+  observation:
+    probes_file: probes/probes_wake__cylinder_2d_re3900.txt
+  loader:
+    format: jax_ppo_pkl
+    file_role: weights
+    max_control: 0.017320508
+  files:
+  - role: weights
+    path: cylinder_2d_re3900/ppo/seed1/params.pkl
+    sha256: f5d9c8164e36c098ba39aa1f4a83d90b06a7aad3f574e356ab30d64ea75707a4
+    size_bytes: 695805
+    tracked_in_git: true
+- id: cylinder_2d_re1000/ppo_finetune_from_re200/seed2
+  group: cylinder
+  hydrogym_env:
+    id: Cylinder_2D_Re1000
+    backend: m-AIA
+    config:
+      max_control: 0.017320508
+      num_sim_substeps_per_actuation: 224
+  observation:
+    probes_file: probes/probes_wake__cylinder_2d_re1000.txt
+  loader:
+    format: jax_ppo_pkl
+    file_role: weights
+    max_control: 0.017320508
+  files:
+  - role: weights
+    path: cylinder_2d_re1000/ppo_finetune_from_re200/seed2/params.pkl
+    sha256: 54fd74b1d7e60b8d09dcc1c04a9979e277922796039172ffd75349f038ccabf6
+    size_bytes: 695805
+    tracked_in_git: true
+- id: cylinder_2d_re3900/ppo_finetune_from_re1000/seed2
+  group: cylinder
+  hydrogym_env:
+    id: Cylinder_2D_Re3900
+    backend: m-AIA
+    config:
+      max_control: 0.017320508
+      num_sim_substeps_per_actuation: 496
+  observation:
+    probes_file: probes/probes_wake__cylinder_2d_re3900.txt
+  loader:
+    format: jax_ppo_pkl
+    file_role: weights
+    max_control: 0.017320508
+  files:
+  - role: weights
+    path: cylinder_2d_re3900/ppo_finetune_from_re1000/seed2/params.pkl
+    sha256: 88f98771423ee5a74df2a4f992e7acbbe9493f5c44ea1b5df91764a48c09211a
+    size_bytes: 695805
+    tracked_in_git: true
+- id: naca0012_gust_re1000/td3_3jet_jet1.5U/seed1
+  group: naca_gust
+  hydrogym_env:
+    id: NACA0012Gust_2D_Re1000_AOA20
+    id_3d: NACA0012Gust_3D_Re1000_AOA20
+    backend: m-AIA
+    config:
+      gust: fig2c
+  loader:
+    format: gust_deploy_npz
+    file_role: deploy_3d_at1.5
+  files:
+  - role: weights
+    path: naca0012_gust_re1000/td3_3jet_jet1.5U/seed1/params.pkl
+    sha256: 3566624000f7a38444e9d4b9acbfe6dd72fd0c704ab29414a142accb7ce89ea8
+    size_bytes: 1051280
+    tracked_in_git: true
+  - role: deploy_2d
+    path: naca0012_gust_re1000/td3_3jet_jet1.5U/seed1/deploy_2d.npz
+    sha256: 9555ca0cbf7d260c6bd3fbb522edb8de2acbe9709c1e8cc3d479010f6ff5afab
+    size_bytes: 705222
+    tracked_in_git: true
+  - role: deploy_3d_at1.3
+    path: naca0012_gust_re1000/td3_3jet_jet1.5U/seed1/deploy_3d_at1.3.npz
+    sha256: 128c6daa3a07032bda6dd97411c3b5dea617f4ba39cfcb27b47ba2d15f1e5957
+    size_bytes: 705222
+    tracked_in_git: true
+  - role: deploy_3d_at1.5
+    path: naca0012_gust_re1000/td3_3jet_jet1.5U/seed1/deploy_3d_at1.5.npz
+    sha256: a7b84163c65a0b3ada105b90d4033761b27eed3041d4d672ba4222843dbd0b3b
+    size_bytes: 705222
+    tracked_in_git: true
+- id: naca0012_gust_re1000/td3_2jet_jet1.5U/seed0
+  group: naca_gust
+  hydrogym_env:
+    id: NACA0012Gust_2D_Re1000_AOA20
+    id_3d: NACA0012Gust_3D_Re1000_AOA20
+    backend: m-AIA
+    config:
+      gust: fig2c
+  loader:
+    format: gust_deploy_npz
+    file_role: deploy_3d_at1.5
+  files:
+  - role: weights
+    path: naca0012_gust_re1000/td3_2jet_jet1.5U/seed0/params.pkl
+    sha256: 346d477efbdd8c87827199d6109bf6806b10b01afaa4317b1ad33f93ef31dc28
+    size_bytes: 1051280
+    tracked_in_git: true
+  - role: deploy_2d
+    path: naca0012_gust_re1000/td3_2jet_jet1.5U/seed0/deploy_2d.npz
+    sha256: 13cc63bdda958b1ef9f9c1e88bdee6dfae07fc25ff705323e342af3fbb2b2ae1
+    size_bytes: 705578
+    tracked_in_git: true
+  - role: deploy_3d_at1.5
+    path: naca0012_gust_re1000/td3_2jet_jet1.5U/seed0/deploy_3d_at1.5.npz
+    sha256: bbee7b6352fd6d8972f769649bd92d4b9b7b8b19ccd24c59b0fec91946c4ca87
+    size_bytes: 705578
+    tracked_in_git: true
+- id: cavity_2d_re7500/ppo_1jet/seed0
+  group: cavity
+  hydrogym_env:
+    id: Cavity_2D_Re7500
+    backend: m-AIA
+    config: {}
+  loader:
+    format: cavity_spec_npz
+    file_role: controller_spec
+  files:
+  - role: controller_spec
+    path: cavity_2d_re7500/ppo_1jet/seed0/c7500_1j_ppo.npz
+    sha256: 66c3c14070f2f78d757f4675cb4dfddcbf28d7bdba8bbebf03b5d0821c322353
+    size_bytes: 1463687
+    tracked_in_git: true
+  - role: weights
+    path: cavity_2d_re7500/ppo_1jet/seed0/params.pkl
+    sha256: fb77113f74b3f81e336f9a665a39e5c4fc51339b3dfa20b1e7d72cfc766b8112
+    size_bytes: 2723078
+    tracked_in_git: true
+- id: cavity_2d_re7500/ppo_3jet/seed1
+  group: cavity
+  hydrogym_env:
+    id: Cavity3Jet_2D_Re7500
+    backend: m-AIA
+    config: {}
+  loader:
+    format: cavity_spec_npz
+    file_role: controller_spec
+  files:
+  - role: controller_spec
+    path: cavity_2d_re7500/ppo_3jet/seed1/c7500_3j_ppo.npz
+    sha256: 55a67211190a70d04e38e20346a59671b33b0a129ac1592b241d00906cc08a8b
+    size_bytes: 1484311
+    tracked_in_git: true
+  - role: weights
+    path: cavity_2d_re7500/ppo_3jet/seed1/params.pkl
+    sha256: 15c59428bf33df222f36a26905e328cacfad36d18a23bb7572d4e91f4a0e48a0
+    size_bytes: 2760102
+    tracked_in_git: true
+- id: cavity_3d_re7500/ppo_IM_1jet/seed1
+  group: cavity3d
+  hydrogym_env:
+    id: Cavity_3D_Re7500_lz024
+    backend: m-AIA
+    config: {}
+  loader:
+    format: cavity3d_npz
+    file_role: controller
+  files:
+  - role: controller
+    path: cavity_3d_re7500/ppo_IM_1jet/seed1/c7500_1jet.npz
+    sha256: 702cb9dd008df1e63b1a2f1666659edef9fe2505e0c8446589169a1cbe04b8bb
+    size_bytes: 1370110
+    tracked_in_git: true
+  - role: weights
+    path: cavity_3d_re7500/ppo_IM_1jet/seed1/params.pkl
+    sha256: 9f3aeeecdd5316e1383e788416442f834b8c42c59a9cde58144f8bcedad2f006
+    size_bytes: 1367460
+    tracked_in_git: true
+- id: cavity_3d_re7500/ppo_IM_3jet/seed3
+  group: cavity3d
+  hydrogym_env:
+    id: Cavity3Jet_3D_Re7500_lz024
+    backend: m-AIA
+    config: {}
+  loader:
+    format: cavity3d_npz
+    file_role: controller
+  files:
+  - role: controller
+    path: cavity_3d_re7500/ppo_IM_3jet/seed3/c7500_3jet.npz
+    sha256: a54ae21804a6704455adcb4010ee1af2c9e86d8370037868f92fa351d32d674d
+    size_bytes: 1394846
+    tracked_in_git: true
+  - role: weights
+    path: cavity_3d_re7500/ppo_IM_3jet/seed3/params.pkl
+    sha256: 287e6e6813b4a9874351d508dffaf5aa7878f5589e10aa19de2972d157a7f7f4
+    size_bytes: 1388084
+    tracked_in_git: true
+- id: cavity_3d_re4200/ppo_IM_1jet/seed11
+  group: cavity3d
+  hydrogym_env:
+    id: Cavity_3D_Re4200_lz024
+    backend: m-AIA
+    config: {}
+  loader:
+    format: cavity3d_npz
+    file_role: controller
+  files:
+  - role: controller
+    path: cavity_3d_re4200/ppo_IM_1jet/seed11/c4200_1jet.npz
+    sha256: 1805d7bdb117b2157cdc110bd6122d9c482a23eb35ed29643aec47dfcc5578ba
+    size_bytes: 1370110
+    tracked_in_git: true
+  - role: weights
+    path: cavity_3d_re4200/ppo_IM_1jet/seed11/params.pkl
+    sha256: c0b91226d9da668e985edcf66aff848d2c32e2096852454f6d7ff0101cd65407
+    size_bytes: 1364228
+    tracked_in_git: true
+- id: cavity_3d_re4200/ppo_IM_3jet/seed13
+  group: cavity3d
+  hydrogym_env:
+    id: Cavity3Jet_3D_Re4200_lz024
+    backend: m-AIA
+    config: {}
+  loader:
+    format: cavity3d_npz
+    file_role: controller
+  files:
+  - role: controller
+    path: cavity_3d_re4200/ppo_IM_3jet/seed13/c4200_3jet.npz
+    sha256: cc14a2244b2aa7a3ef5a96db99b05e5fc8452d7896e3afecaed91c4cda0fb5d1
+    size_bytes: 1394846
+    tracked_in_git: true
+  - role: weights
+    path: cavity_3d_re4200/ppo_IM_3jet/seed13/params.pkl
+    sha256: e246f0b2881811258fc31db74b840d38024c5d5757f493eeea743f470c7a6546
+    size_bytes: 1384788
+    tracked_in_git: true
+- id: kolmogorov_re40/ppo/seed30
+  group: kolmogorov
+  hydrogym_env:
+    id: KolmogorovFlow.extreme_events_re40()
+    backend: JAX (hydrogym.jax.envs.kolmogorov)
+    config: {}
+  loader:
+    format: kolmogorov_npz
+    file_role: weights
+  files:
+  - role: weights
+    path: kolmogorov_re40/ppo/seed30/policy.npz
+    sha256: be1864162c0a85eae2994ed6d75b3c90159d9a3dc59670dc7ff49cd79f04b44e
+    size_bytes: 670792
+    tracked_in_git: true
+  - role: weights_flax
+    path: kolmogorov_re40/ppo/seed30/params.msgpack
+    sha256: 7ead21b8e27915bcb7eeb88ca8126a13d0c063cdd06dda2019db43cbbdebaeea
+    size_bytes: 665029
+    tracked_in_git: true
+- id: kolmogorov_re40/gppo/seed30
+  group: kolmogorov
+  hydrogym_env:
+    id: KolmogorovFlow.extreme_events_re40()
+    backend: JAX (hydrogym.jax.envs.kolmogorov)
+    config: {}
+  loader:
+    format: kolmogorov_npz
+    file_role: weights
+  files:
+  - role: weights
+    path: kolmogorov_re40/gppo/seed30/policy.npz
+    sha256: 35eac76a953d35af22771536a7cc12915df7cde9c2df6bc5d19d7714703d6eab
+    size_bytes: 670792
+    tracked_in_git: true
+  - role: weights_flax
+    path: kolmogorov_re40/gppo/seed30/params.msgpack
+    sha256: 6f229f2051f9f1d0c83371ef525ab4f6f49a04a514b95f5b6ad285b67f439d9d
+    size_bytes: 665029
+    tracked_in_git: true
+- id: square_cylinder_2d_re200/ppo/seed0
+  group: cylinder
+  hydrogym_env:
+    id: SquareCylinder_2D_Re200
+    backend: m-AIA
+    config:
+      max_control: 0.021
+  observation:
+    probes_file: probes/probes_wake__square_cylinder_2d_re200.txt
+  loader:
+    format: jax_ppo_pkl
+    file_role: weights
+    max_control: 0.021
+  files:
+  - role: weights
+    path: square_cylinder_2d_re200/ppo/seed0/params.pkl
+    sha256: 7f0df184c5e21e4ac996f86b10b89b0ff281b919fbcbc9f5a0797e7039335f5a
+    size_bytes: 696837
+    tracked_in_git: true
+- id: square_cylinder_2d_re200/ppo_finetune_from_cylinder_re200/seed2
+  group: cylinder
+  hydrogym_env:
+    id: SquareCylinder_2D_Re200
+    backend: m-AIA
+    config:
+      max_control: 0.021
+  observation:
+    probes_file: probes/probes_wake__square_cylinder_2d_re200.txt
+  loader:
+    format: jax_ppo_pkl
+    file_role: weights
+    max_control: 0.021
+  files:
+  - role: weights
+    path: square_cylinder_2d_re200/ppo_finetune_from_cylinder_re200/seed2/params.pkl
+    sha256: 0b36f715e9df7682e3224b99db789df33a8671d68785ddf1ef3a06777db185b8
+    size_bytes: 696839
+    tracked_in_git: true
+- id: pinball_2d_re100/ppo_tuned/seed0
+  group: pinball
+  hydrogym_env:
+    id: Pinball_2D_Re100
+    backend: m-AIA
+    config:
+      max_control: 0.3125
+      omega: 0.0
+  loader:
+    format: jax_ppo_pkl
+    file_role: weights
+    max_control: 0.3125
+  files:
+  - role: weights
+    path: pinball_2d_re100/ppo_tuned/seed0/final_params.pkl
+    sha256: f673a78c456e3afa6501b18d49f7f72168549c46902e69a3b9b23f5fa8580df2
+    size_bytes: 704037
+    tracked_in_git: true
+  - role: run_meta
+    path: pinball_2d_re100/ppo_tuned/seed0/meta.json
+    sha256: e2a0bcb8cf3a18bc696c507ecbd4129cee68670b56cd1ea8869487948ab7f47c
+    size_bytes: 172
+    tracked_in_git: true
+- id: pinball_2d_re100/ppo_IM/seed0
+  group: pinball
+  hydrogym_env:
+    id: Pinball_2D_Re100
+    backend: m-AIA
+    config:
+      max_control: 0.3125
+      omega: 0.0
+  loader:
+    format: jax_ppo_pkl
+    file_role: weights
+    max_control: 0.3125
+  files:
+  - role: weights
+    path: pinball_2d_re100/ppo_IM/seed0/final_params.pkl
+    sha256: ab69b9641246510e79a0ff0fb89bbca4e1e85f2ec91331adac4def24404c3f85
+    size_bytes: 40085
+    tracked_in_git: true
+  - role: run_meta
+    path: pinball_2d_re100/ppo_IM/seed0/meta.json
+    sha256: bac141fad46cea7cded12786e25f2378e27f72d20de735af9a8859ca8e6fc17a
+    size_bytes: 169
+    tracked_in_git: true
+- id: pinball_2d_re100/ppo_power/seed0
+  group: pinball
+  hydrogym_env:
+    id: Pinball_2D_Re100
+    backend: m-AIA
+    config:
+      max_control: 0.25
+      omega: 0.0
+  observation:
+    probes_file: probes/pinball_2d_wake_probes.json
+  loader:
+    format: pinball_residual_npz
+    file_role: weights
+    max_control: 0.25
+  files:
+  - role: weights
+    path: pinball_2d_re100/ppo_power/seed0/controller.npz
+    sha256: 060ca48101aa809ad43eda9687b639d3f34645c2ba5820a59890700e0252764c
+    size_bytes: 727960
+    tracked_in_git: true
+  - role: run_meta
+    path: pinball_2d_re100/ppo_power/seed0/meta.json
+    sha256: 6fa8d0dd1f91720eda5f8e0ac46aae25100fc622be895fd07c01186c870d4435
+    size_bytes: 179
+    tracked_in_git: true
+- id: cavity_2d_re4200/ppo_IM/seed0
+  group: cavity
+  hydrogym_env:
+    id: Cavity_2D_Re4200
+    backend: m-AIA
+    config: {}
+  loader:
+    format: cavity_spec_npz
+    file_role: controller_spec
+  files:
+  - role: controller_spec
+    path: cavity_2d_re4200/ppo_IM/seed0/c4200_1j_ppo_IM.npz
+    sha256: b07116d845ec641f619093691c782d1fc2355db87ed5a0ba459d4881fd93d63e
+    size_bytes: 838295
+    tracked_in_git: true
+- id: cavity_2d_re4200/ppo_tuned/seed0
+  group: cavity
+  hydrogym_env:
+    id: Cavity_2D_Re4200
+    backend: m-AIA
+    config: {}
+  loader:
+    format: cavity_spec_npz
+    file_role: controller_spec
+  files:
+  - role: controller_spec
+    path: cavity_2d_re4200/ppo_tuned/seed0/c4200_1j_ppo_tuned.npz
+    sha256: 44489263abd97dfd212808787b013ad284552025a951c97ec3c40d959b826004
+    size_bytes: 838295
+    tracked_in_git: true
+- id: pinball_3d_re150/ppo_IM/seed0
+  group: pinball
+  hydrogym_env:
+    id: Pinball_3D_Re150
+    backend: m-AIA
+    config:
+      max_control: 0.35
+      num_sim_substeps_per_actuation: 352
+      omega: 0.0
+  observation:
+    probes_file: probes/pinball_3d_wake_probes.json
+  action:
+    scale_2d_to_3d: 1.6
+  loader:
+    format: jax_ppo_pkl
+    file_role: weights
+    max_control: 0.35
+  files:
+  - role: weights
+    path: pinball_3d_re150/ppo_IM/seed0/final_params.pkl
+    sha256: 824549f4317f1566998d9e0af56d49fa88315948e0cb1798894f2f64e142b450
+    size_bytes: 40084
+    tracked_in_git: true
+  - role: run_meta
+    path: pinball_3d_re150/ppo_IM/seed0/meta.json
+    sha256: 5958b84b912797faab415f6d31f33df5d6a9cfc180c331f4c8c2f4a6cb7251eb
+    size_bytes: 208
+    tracked_in_git: true
+- id: pinball_3d_re150/ppo_tuned/seed0
+  group: pinball
+  hydrogym_env:
+    id: Pinball_3D_Re150
+    backend: m-AIA
+    config:
+      max_control: 0.35
+      num_sim_substeps_per_actuation: 352
+      omega: 0.0
+  observation:
+    probes_file: probes/pinball_3d_wake_probes.json
+  action:
+    scale_2d_to_3d: 1.6
+  loader:
+    format: jax_ppo_pkl
+    file_role: weights
+    max_control: 0.35
+  files:
+  - role: weights
+    path: pinball_3d_re150/ppo_tuned/seed0/final_params.pkl
+    sha256: b718ade16b05f81d914305d15c26a18e78419ab312fafd737ef5e252a0dc8f42
+    size_bytes: 353453
+    tracked_in_git: true
+  - role: run_meta
+    path: pinball_3d_re150/ppo_tuned/seed0/meta.json
+    sha256: 4579f3e081cb64159ea721165f7fa2bbcba011a74512ce58f8d3cafeefa7faff
+    size_bytes: 211
+    tracked_in_git: true
+- id: naca0012_wing_re2e5/td3/seed1998
+  group: naca_wing
+  hydrogym_env:
+    id: NACA0012_3D_Re200000_AOA0
+    backend: NekRS (examples/nekrs/wing)
+    config:
+      file: examples/nekrs/wing/wing.yml
+  loader:
+    format: wall_mlp_npz
+    file_role: weights
+  files:
+  - role: weights
+    path: naca0012_wing_re2e5/td3/seed1998/actor.npz
+    sha256: 1a5bd9b4a2c7d83e22705c7547ab22c08c2e4f8e985e9aae56aad2559b4035d9
+    size_bytes: 8466
+    tracked_in_git: true
+  - role: weights_sb3
+    path: naca0012_wing_re2e5/td3/seed1998/eval_model_lc_omega1_SS_BASE_dr.zip
+    sha256: aa474b0c303e870321bc0b6e9d6722ac2ec6f1b7d078a406c2334663b66697b8
+    size_bytes: 314156
+    tracked_in_git: true
+- id: naca0012_wing_re2e5/td3_N1/seed0
+  group: naca_wing
+  hydrogym_env:
+    id: NACA0012_3D_Re200000_AOA0
+    backend: NekRS (examples/nekrs/wing)
+    config:
+      file: examples/nekrs/wing/wing.yml
+  loader:
+    format: wall_mlp_npz
+    file_role: weights
+  files:
+  - role: weights
+    path: naca0012_wing_re2e5/td3_N1/seed0/actor.npz
+    sha256: 7d13013584ffdbc566d659363603ae8c10ba0bfbeb1eebe660600b68bdb83b9d
+    size_bytes: 3786
+    tracked_in_git: true
+- id: naca0012_wing_re2e5/td3_N1F/seed3
+  group: naca_wing
+  hydrogym_env:
+    id: NACA0012_3D_Re200000_AOA0
+    backend: NekRS (examples/nekrs/wing)
+    config:
+      file: examples/nekrs/wing/wing.yml
+  loader:
+    format: wall_blocks
+    file_role: weights
+  files:
+  - role: weights
+    path: naca0012_wing_re2e5/td3_N1F/seed3/blocks.json
+    sha256: 6870cbf5f21bfc91ab0decf9fff1adaa6fe45c267b529675b6db03d22faaf2ae
+    size_bytes: 118
+    tracked_in_git: true
+  - role: block_weights
+    path: naca0012_wing_re2e5/td3_N1F/seed3/actor_F.npz
+    sha256: ff172a613a45266ae9cfe8128ac806d6b4835e7bc201e4d36b541961e87afa16
+    size_bytes: 3786
+    tracked_in_git: true
+  - role: block_weights
+    path: naca0012_wing_re2e5/td3_N1F/seed3/actor_N1.npz
+    sha256: 7d13013584ffdbc566d659363603ae8c10ba0bfbeb1eebe660600b68bdb83b9d
+    size_bytes: 3786
+    tracked_in_git: true

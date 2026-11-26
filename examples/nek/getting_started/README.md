@@ -6,6 +6,41 @@ This directory contains comprehensive examples for using HydroGym's NEK5000-base
 
 > **Note:** NEK5000 requires MPI for parallel execution. All examples use `mpirun` to coordinate between the Python controller and NEK5000 solver processes.
 
+> **Note:** The examples write into their directories. In the HydroGym images, `/opt/hydrogym/examples` is writable only for root: as any other user (and under Apptainer), copy the examples first, `cp -r /opt/hydrogym/examples ~/hydrogym-examples`, and run them from the copy.
+
+> **Note:** The `run_*_docker.sh` scripts download the environment from the Hugging Face Hub. On compute nodes without
+> internet access, download the environment folder (e.g. `TCFmini_3D_Re180/`) on a login node and point the scripts
+> at the directory that holds it: `LOCAL_DIR=/path/to/envs ./run_nekenv_docker.sh` (default: `packaged_envs/` next to
+> the script). Run the examples from a short path: Nek5000 accepts case paths of fewer than 132 characters.
+
+## Standard entry point: `gym.make()`
+
+For the common single-agent case, the standard, recommended way to start
+a Nek5000 environment is gymnasium's `gym.make()` — same call shape as
+every other backend, MPMD coupling handled underneath:
+
+```bash
+# from a prepared workspace (see prepare_workspace.py)
+mpirun -np 1 python gym_make_demo.py --nproc 10 : -np 10 nek5000
+# offline (compute node without internet): the directory given to prepare_workspace.py --local-dir
+mpirun -np 1 python gym_make_demo.py --nproc 10 --local-dir /path/to/packaged_envs : -np 10 nek5000
+```
+
+```python
+import gymnasium as gym
+import hydrogym.registration
+
+env = gym.make("hydrogym-nek/TCFmini_3D_Re180-v0", nproc=10)  # nproc required, must match the MPMD launch
+obs, info = env.reset()
+obs, reward, terminated, truncated, info = env.step(env.action_space.sample())
+```
+
+See `gym_make_demo.py` in this directory. The 6 patterns below (multi-agent
+wrappers, `from_hf`, `integrate()`, zero-shot deployment) are the
+lower-level entry points for everything `gym.make()`'s single-agent
+default doesn't cover — construct `NekEnv` directly, same as `gym.make()`
+does underneath.
+
 ## Directory Structure
 
 Each subdirectory demonstrates a specific interface pattern with complete examples:
@@ -36,9 +71,9 @@ model.learn(total_timesteps=100000)
 ```
 
 **Files:**
-- `test_nek_direct.py` - Basic environment test with zero control
+- `test_nek_direct.py` - Basic environment test with opposition control
 - `train_sb3_nek_direct.py` - SB3 training with Monitor & VecNormalize
-- `run_nekenv_docker.sh` - Docker/MPI execution script
+- `run_nekenv_docker.sh` - MPMD launch script (runs as is in the HydroGym images, from a copy of `/opt/hydrogym/examples` for a non-root user)
 
 ---
 
@@ -48,16 +83,17 @@ model.learn(total_timesteps=100000)
 **SB3 Compatible:** ⚠️ Requires wrapper (SuperSuit or custom)
 
 ```python
-from hydrogym.nek import parallel_env
+from hydrogym.nek import NekEnv
+from hydrogym.nek.parallel_env import NekParallelEnv
 
-env = parallel_env(
-    environment_name="TCFmini_3D_Re180",
-    nproc=10,
-    num_agents=3,  # Multiple agents
-)
+# NekParallelEnv wraps an already-constructed NekEnv (composition, not a
+# factory taking environment_name/nproc directly) -- one agent per actuator,
+# discovered automatically from the base env's actuator info.
+base_env = NekEnv(env_config={"environment_name": "TCFmini_3D_Re180", "nproc": 10})
+env = NekParallelEnv(base_env)
 
 # Dictionary-based observations and actions
-obs = env.reset()  # {'agent_0': array, 'agent_1': array, 'agent_2': array}
+obs, info = env.reset()  # {'jet_np...': array, ...}, one key per actuator agent
 actions = {agent: env.action_space(agent).sample() for agent in env.agents}
 obs, rewards, terminations, truncations, infos = env.step(actions)
 ```
@@ -65,63 +101,66 @@ obs, rewards, terminations, truncations, infos = env.step(actions)
 **Files:**
 - `test_nek_parallel.py` - Multi-agent environment test
 - `train_sb3_parallel.py` - SB3 training with SuperSuit wrappers
-- `run_parallel_docker.sh` - Docker/MPI execution script
+- `run_parallel_docker.sh` - MPMD launch script (runs as is in the HydroGym images, from a copy of `/opt/hydrogym/examples` for a non-root user)
 
 ---
 
-### 3. [`3_pettingzoo/`](3_pettingzoo/) - PettingZoo AEC Interface
-**Interface:** PettingZoo AEC (Agent Environment Cycle)
-**Use Case:** Turn-based multi-agent scenarios
-**Configuration File:**: An example of using configuration to replicate training. 
+### 3. [`3_pettingzoo/`](3_pettingzoo/) - PettingZoo-Spec-Compliant Parallel API
+**Interface:** `pettingzoo.ParallelEnv` subclass wrapping `NekParallelEnv`
+**Use Case:** Same simultaneous, dict-based multi-agent interaction as
+`2_parallel_env/` above, but as a genuine `pettingzoo.ParallelEnv`
+subclass (PettingZoo `metadata`, cached `observation_space`/`action_space`)
+for interop with PettingZoo-ecosystem tools that type-check for it.
+**Not** the turn-based AEC (`agent_iter()`/`last()`) interface — Nek5000
+has no AEC wrapper; every agent acts every step, same as `2_parallel_env/`.
 **SB3 Compatible:** ⚠️ Requires wrapper
 
 ```python
-from hydrogym.nek import parallel_env
-from pettingzoo.utils import parallel_to_aec
+from hydrogym.nek import NekEnv
+from hydrogym.nek.pettingzoo_env import make_pettingzoo_env
 
-parallel = parallel_env(environment_name="TCFmini_3D_Re180", nproc=10)
-env = parallel_to_aec(parallel)
+base_env = NekEnv(env_config={"environment_name": "TCFmini_3D_Re180", "nproc": 10})
+env = make_pettingzoo_env(base_env)
 
-# Turn-based API
-env.reset()
-for agent in env.agent_iter():
-    observation, reward, termination, truncation, info = env.last()
-    action = env.action_space(agent).sample()
-    env.step(action)
+# Same dict-based, simultaneous-action API as NekParallelEnv above
+obs, info = env.reset()
+actions = {agent: env.action_space(agent).sample() for agent in env.agents}
+obs, rewards, terminations, truncations, infos = env.step(actions)
 ```
 
 **Files:**
-- `test_nek_pettingzoo.py` - AEC interface test
-- `train_sb3_pettingzoo.py` - Training with turn-based agents
-- `run_pettingzoo_docker.sh` - Docker/MPI execution script
+- `test_nek_pettingzoo.py` - `pettingzoo.ParallelEnv`-compliance test
+- `train_sb3_pettingzoo.py` - Training with SuperSuit-wrapped parallel agents
+- `run_pettingzoo_docker.sh` - MPMD launch script (runs as is in the HydroGym images, from a copy of `/opt/hydrogym/examples` for a non-root user)
 
 ---
 
-### 4. [`4_from_hf/`](4_from_hf/) - HuggingFace Data Manager
+### 4. [`4_from_hf/`](4_from_hf/) - HuggingFace Packaged Environments
 **Interface:** Load pre-packaged environments from HuggingFace Hub or local directories
 **Use Case:** Using standardized, version-controlled environment configurations
 **SB3 Compatible:** ✅ Works with any env type
 
 ```python
-from hydrogym.nek import NekDataManager, NekEnv
+from hydrogym.nek import NekEnv
 
-# Initialize data manager
-dm = NekDataManager(local_dir="./packaged_envs")
-
-# Prepare workspace (downloads/extracts if needed)
-config = dm.prepare_workspace(
-    env_name="TCFmini_3D_Re180",
+# Load a pre-packaged environment from HuggingFace Hub (or a local
+# directory via local_fallback_dir) — workspace setup is automatic
+env = NekEnv.from_hf(
+    "TCFmini_3D_Re180",
     nproc=10,
+    use_clean_cache=False,
+    local_fallback_dir="./packaged_envs",  # optional
 )
 
-# Create environment
-env = NekEnv(env_config=config)
+# Standard Gym interface
+obs, info = env.reset()
+obs, reward, terminated, truncated, info = env.step(action)
 ```
 
 **Files:**
-- `test_nek_DM.py` - Data manager test
+- `test_nek_DM.py` - from_hf() loading test
 - `train_sb3_from_hf.py` - Training with HF environments
-- `run_from_hf_docker.sh` - Docker/MPI execution script
+- `run_from_hf_docker.sh` - MPMD launch script (runs as is in the HydroGym images, from a copy of `/opt/hydrogym/examples` for a non-root user)
 
 ---
 
@@ -131,8 +170,7 @@ env = NekEnv(env_config=config)
 **SB3 Compatible:** ✅ Pass trained model as controller
 
 ```python
-from hydrogym import integrate
-from hydrogym.nek import NekEnv
+from hydrogym.nek import NekEnv, integrate
 
 # Train an RL agent
 env = NekEnv(env_config=config)
@@ -150,13 +188,13 @@ integrate(
 **Files:**
 - `test_nek_env_controller.py` - Environment with controller test
 - `train_sb3_with_integrate.py` - Training + deployment with integrate
-- `run_control_docker.sh` - Docker/MPI execution script
+- `run_control_docker.sh` - MPMD launch script (runs as is in the HydroGym images, from a copy of `/opt/hydrogym/examples` for a non-root user)
 
 ---
 
 ### 6. [`6_zeroshot_wing_demo/`](6_zeroshot_wing_demo/) - Zero-Shot Wing Deployment
 **Interface:** `NekEnv` + PettingZoo rollout with deployment controllers
-**Use Case:** Deploy pre-trained/legacy DRL policies on small wing without new training
+**Use Case:** Deploy pre-trained DRL policies on the small wing without new training
 **SB3 Compatible:** ✅ For loading trained policies; demo script is rollout-only
 
 ```python
@@ -168,9 +206,9 @@ env = make_pettingzoo_env(base_env)
 ```
 
 **Files:**
-- `test_nek_pettingzoo.py` - zero-shot wing rollout demo
-- `meta_policy_small_wing_template.py` - template for explicit legacy `MetaPolicy.py` usage
-- `run_pettingzoo_docker.sh` - Docker/MPI execution script
+- `zeroshot_demo_pettingzoo.py` - zero-shot wing rollout demo
+- `meta_policy_small_wing_template.py` - template for multi-policy deployment
+- `run_pettingzoo_docker.sh` - MPMD launch script (runs as is in the HydroGym images, from a copy of `/opt/hydrogym/examples` for a non-root user)
 
 ---
 
@@ -187,12 +225,15 @@ Pick the directory that matches your use case:
 ### 2. Test the Environment
 ```bash
 cd 1_nekenv_single/
-mpirun -np 1 python test_nek_direct.py --steps 100 : -np 10 nek5000
+# from a prepared workspace: the Nek5000 case files must be in the working directory
+python ../prepare_workspace.py --env TCFmini_3D_Re180 --work-dir ./ws && cd ws
+mpirun -np 1 python ../test_nek_direct.py --steps 100 : -np 10 nek5000
 ```
 
 ### 3. Train an RL Agent
 ```bash
-mpirun -np 1 python train_sb3_nek_direct.py \
+# in the workspace ws/ of the block above
+mpirun -np 1 python ../train_sb3_nek_direct.py \
     --env TCFmini_3D_Re180 \
     --algo PPO \
     --total-timesteps 100000 \
@@ -205,7 +246,7 @@ mpirun -np 1 python train_sb3_nek_direct.py \
 |-----------|-----------|------------|---------------|------------|----------|
 | **1_nekenv_single** | `NekEnv` | Array | Array | ✅ Yes | Single actuator, simple baseline |
 | **2_parallel_env** | `parallel_env` | Dict | Dict | ⚠️ Wrapper | Independent multi-agent scenarios |
-| **3_pettingzoo** | AEC | Sequential | Sequential | ⚠️ Wrapper | Turn-based agents |
+| **3_pettingzoo** | `pettingzoo.ParallelEnv` | Dict | Dict | ⚠️ Wrapper | PettingZoo-ecosystem interop |
 | **4_from_hf** | Any | Depends | Depends | Depends | Reproducible, versioned environments |
 | **5_hydrogym_control** | Any + `integrate()` | Any | Any | ✅ Yes | Classical + RL hybrid control |
 | **6_zeroshot_wing_demo** | PettingZoo Parallel | Dict | Dict | ✅ Deployment | Small-wing zero-shot DRL rollout |
@@ -213,21 +254,21 @@ mpirun -np 1 python train_sb3_nek_direct.py \
 ## Requirements
 
 ### NEK5000 Setup
-NEK5000 must be compiled and the `nek5000` executable must be in your PATH or specified in the environment configuration. WE highly recommend using the provided Docker container.
+NEK5000 must be compiled and the `nek5000` executable must be in your PATH — the example launch lines invoke it directly as the second MPMD process group (`mpirun ... : -np 10 nek5000`), and there is no `nek_path`-style config key for it. We highly recommend using the HydroGym container images
+(`clagemann/hydrogym-nvhpc-26.5_cuda-12.9:1.0.2` or `clagemann/hydrogym-cpu:1.0.2`): they contain the case
+executables in `/opt/nek5000/cases/<case>/nek5000`, and the `run_*_docker.sh` scripts put the right one on the PATH.
 
 ```bash
-# Check NEK5000 is available
+# Check NEK5000 is available (in the images, e.g. for TCFmini_3D_Re180)
+export PATH=/opt/nek5000/cases/mini_channel:$PATH
 which nek5000
-
-# Or set path explicitly in config
-env_config = {
-    'environment_name': 'TCFmini_3D_Re180',
-    'nek_path': '/path/to/nek5000',
-    'nproc': 10,
-}
 ```
+
+The examples start 1 Python and 10 (or more) Nek5000 ranks. Open MPI 5 counts slots by physical core: on a machine
+with fewer cores than ranks, pass `--oversubscribe` to `mpirun` (the scripts take extra `mpirun` options from
+`MPIRUN_ARGS`, e.g. `MPIRUN_ARGS=--oversubscribe ./run_nekenv_docker.sh`).
+
 ---
 
-**Last Updated**: March 2026
 **HydroGym Version**: 1.0+
 **Maintainer**: HydroGym Team

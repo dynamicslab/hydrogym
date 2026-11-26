@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Train SB3 agent using NekEnv.from_hf() pattern (MAIA pattern).
+Train SB3 agent using NekEnv.from_hf() pattern.
 
 Demonstrates the convenient from_hf() method for loading environments
 with minimal configuration. This is the recommended pattern for most users.
@@ -14,11 +14,10 @@ from datetime import datetime
 from pathlib import Path
 
 from hydrogym.nek import NekEnv
-from hydrogym.nek.nek_lib.nek_utils import NEK_INIT
 
 
 def train_with_from_hf(args):
-    """Train using from_hf() pattern (MAIA pattern)."""
+    """Train using from_hf() pattern."""
     print("=" * 70)
     print("Training SB3 with from_hf() Pattern")
     print("=" * 70)
@@ -36,9 +35,8 @@ def train_with_from_hf(args):
         local_fallback_dir=args.local_dir,
     )
 
-    # Rewrite the par file to ensure the simulation configuration is correct
-    nek_init = NEK_INIT(nek=env.conf.simulation, drl=env.conf.runner, rank_folder=env.run_folder)
-    nek_init.rewrite_REA_v19()
+    # The case's parameter file (.rea / .par) is read by Nek5000 when it is launched; prepare_workspace.py
+    # writes the configuration into the .rea of v17 cases before the launch.
 
     print("\nEnvironment created:")
     print(f"  Observation space: {env.observation_space.shape}")
@@ -52,7 +50,7 @@ def train_with_from_hf(args):
         from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 
         if args.algo == "PPO":
-            # NOTE: PPO is not used in the literature, so it is not guaranteed to work.
+            # NOTE: PPO is not the algorithm of the published channel studies; its settings here are not tuned.
             from stable_baselines3 import PPO as Algorithm
         elif args.algo == "TD3":
             from stable_baselines3 import TD3 as Algorithm
@@ -66,7 +64,7 @@ def train_with_from_hf(args):
     print("Wrapping with Monitor, DummyVecEnv, VecNormalize...")
     env = Monitor(env)
     env = DummyVecEnv([lambda: env])
-    # NOTE: Add VecNormalize is not used in the literature, so it is not guaranteed to work.
+    # NOTE: the published channel studies did not use VecNormalize; its settings here are not tuned.
     env = VecNormalize(env, norm_obs=True, norm_reward=True, clip_obs=10.0)
 
     print("Environment wrapped:")

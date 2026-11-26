@@ -19,7 +19,6 @@ import gymnasium as gym
 import numpy as np
 
 from hydrogym.nek import NekEnv, NekParallelEnv
-from hydrogym.nek.nek_lib.nek_utils import NEK_INIT
 
 
 class CentralizedParallelWrapper(gym.Env):
@@ -129,10 +128,8 @@ def train_parallel_centralized(args):
     }
     base_env = NekEnv(env_config=env_config)
 
-    # Rewrite the parameter file to ensure the simulation configuration is correct, and
-    # complies with the v19 Nek5000 format
-    nek_init = NEK_INIT(nek=base_env.conf.simulation, drl=base_env.conf.runner, rank_folder=base_env.run_folder)
-    nek_init.rewrite_REA_v19()
+    # The case's parameter file (.rea / .par) is read by Nek5000 when it is launched; prepare_workspace.py
+    # writes the configuration into the .rea of v17 cases before the launch.
 
     # Wrap with parallel interface (dict-based)
     print("Wrapping with NekParallelEnv (dict-based)...")

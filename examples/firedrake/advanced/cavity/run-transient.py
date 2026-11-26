@@ -3,13 +3,13 @@
 Cavity Flow - Transient Simulation from Base Flow
 
 Simulate unstable cavity flow starting from a steady base state.
-Loads steady solution and adds perturbation to observe transition to turbulence.
+Loads the steady solution and adds a perturbation to observe the departure from the unstable steady state.
 
 Physical Behavior:
     - At Re=7500, cavity flow is highly unstable (well above critical Re)
     - Shear layer at cavity opening develops instabilities
     - Flow exhibits recirculation and complex vortex dynamics
-    - Turbulent kinetic energy (TKE) measures fluctuation intensity
+    - The fluctuation kinetic energy (TKE) about the base flow measures the fluctuation intensity
 
 Usage:
     python run-transient.py              # Single-process execution
@@ -45,7 +45,7 @@ flow = hgym.Cavity(Re=Re, restart=restart, use_HF_data_manager=False)
 # TKE measures energy in fluctuations relative to base flow
 flow.qB.assign(flow.q)
 
-# Add random perturbation to base flow to trigger turbulence
+# Add random perturbation to the base flow to leave the unstable steady state
 rng = fd.RandomGenerator(fd.PCG64(seed=1234))
 flow.q += rng.normal(flow.mixed_space, 0.0, 1e-2)
 
@@ -53,7 +53,7 @@ flow.q += rng.normal(flow.mixed_space, 0.0, 1e-2)
 # Custom function to extract quantities of interest at each time step
 def log_postprocess(flow):
     KE = 0.5 * fd.assemble(fd.inner(flow.u, flow.u) * fd.dx)  # Total kinetic energy
-    TKE = flow.evaluate_objective()  # Turbulent kinetic energy (fluctuation energy)
+    TKE = flow.evaluate_objective()  # fluctuation kinetic energy about the base flow
     CFL = flow.max_cfl(dt)  # CFL number for numerical stability monitoring
     mem_usage = psutil.virtual_memory().percent  # RAM usage
     return [CFL, KE, TKE, mem_usage]

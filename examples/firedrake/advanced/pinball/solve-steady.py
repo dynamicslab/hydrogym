@@ -11,7 +11,7 @@ Usage:
 Physical setup:
     - Three cylinders in equilateral triangle configuration
     - Uniform inflow (U∞ = 1.0)
-    - Re = 100 (default)
+    - Re = 80, reached by ramping 40 -> 60 -> 80
     - Complex wake structure with three-body interaction
 
 Note: Pinball flow exhibits rich dynamics even at moderate Reynolds numbers.

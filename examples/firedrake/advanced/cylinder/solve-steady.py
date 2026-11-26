@@ -11,7 +11,7 @@ Usage:
 Physical setup:
     - Circular cylinder (radius = 0.5) in channel
     - Uniform inflow (U∞ = 1.0)
-    - Re = 40 (subcritical, steady flow expected)
+    - Re = 100 (set Re = 40 or another value below 47 for a stable steady state)
     - Outputs: Steady velocity, pressure, vorticity fields
 
 Note: At Re=100, the steady state is linearly unstable (vortex shedding).

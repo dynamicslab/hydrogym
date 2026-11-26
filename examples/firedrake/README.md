@@ -2,6 +2,9 @@
 
 Comprehensive examples demonstrating Hydrogym's Firedrake backend for CFD and flow control.
 
+> **HydroGym CPU image:** Firedrake is in its own environment. Activate it first, `source /opt/venvs/firedrake/bin/activate`
+> (the default `python` of the image is `/opt/venvs/hydrogym`, which has no Firedrake). `run_example_docker.sh` does this itself.
+
 ## Directory Structure
 
 ```
@@ -9,9 +12,10 @@ firedrake/
 ├── README.md                        # This file
 ├── getting_started/                 # START HERE - Standard RL interface
 │   ├── README.md                    # Complete getting started guide
-│   ├── test_firedrake_env.py        # Interactive test script
+│   ├── gym_make_demo.py             # gym.make() -- the standard entry point
+│   ├── test_firedrake_env.py        # Interactive test script (lower-level, direct FlowEnv)
 │   ├── config_reference.py          # Copy-paste configuration examples
-│   └── run_example_docker.sh        # Docker runner script
+│   └── run_example_docker.sh        # launch script (HydroGym CPU image or your own environment)
 └── advanced/                        # Advanced workflows (not standard RL)
     ├── README.md                    # Advanced examples overview
     ├── cavity/                      # Open cavity flow
@@ -31,7 +35,7 @@ firedrake/
     │   ├── step_input.py            # Step response test
     │   ├── pd-phase-sweep.py        # Phase-swept control
     │   ├── pressure-probes.py       # Multi-point sensing
-    │   └── lti_system.py            # Linearization (WIP)
+    │   └── lti_system.py            # Base flow and control influence (linearization)
     ├── pinball/                     # Three-cylinder configuration
     │   ├── README.md                # Pinball-specific documentation
     │   ├── run-transient.py         # Direct simulation (not RL interface)
@@ -47,16 +51,29 @@ firedrake/
 
 ## Quick Start
 
-### **New Users: Start with the RL Interface**
+### **New Users: Start with `gym.make()`**
 
-If you want to use HydroGym for **reinforcement learning** (the standard use case):
+The standard, recommended entry point for RL use is gymnasium's `gym.make()`:
 
 ```bash
 cd getting_started
-python test_firedrake_env.py --environment cylinder --num-steps 10
+python gym_make_demo.py --env hydrogym/Cylinder-v0 --steps 10
 ```
 
-This demonstrates the standard `env.reset()` / `env.step()` interface.
+```python
+import gymnasium as gym
+import hydrogym.registration
+
+env = gym.make("hydrogym/Cylinder-v0")
+obs, info = env.reset()
+obs, reward, terminated, truncated, info = env.step(env.action_space.sample())
+```
+
+`test_firedrake_env.py` demonstrates the same `env.reset()` / `env.step()`
+interface via the lower-level, direct `FlowEnv` construction path (see
+"Lower-level entry points" below) -- useful when you need something
+`gym.make()`'s registered defaults don't cover, but `gym.make()` is the
+right place to start.
 
 **Next steps:**
 1. Read [getting_started/README.md](getting_started/README.md) for complete documentation
@@ -81,11 +98,27 @@ python run-transient.py
 **Purpose:** Train reinforcement learning agents
 
 **Key files:**
-- `test_firedrake_env.py` - Interactive testing with standard Gym API
+- `gym_make_demo.py` - the standard entry point, `gym.make()`
+- `test_firedrake_env.py` - Interactive testing via the lower-level, direct `FlowEnv` path
 - `config_reference.py` - 10 copy-paste configuration examples
 - Full documentation in [getting_started/README.md](getting_started/README.md)
 
-**Typical usage:**
+**Typical usage (standard entry point):**
+```python
+import gymnasium as gym
+import hydrogym.registration
+
+env = gym.make("hydrogym/Cylinder-v0", env_config={"flow_config": {"mesh": "medium", "Re": 100}})
+obs, info = env.reset()
+
+for _ in range(100):
+    action = env.action_space.sample()
+    obs, reward, terminated, truncated, info = env.step(action)
+```
+
+**Lower-level entry point** (direct `FlowEnv` construction -- same result,
+useful for custom flow/solver classes `gym.make()`'s registry doesn't
+know about):
 ```python
 from hydrogym import FlowEnv
 import hydrogym.firedrake as hgym
@@ -176,7 +209,7 @@ python test_firedrake_env.py --environment cylinder --num-steps 10
 # MPI parallel
 mpirun -np 4 python test_firedrake_env.py --environment cylinder --num-steps 50
 
-# In Docker
+# In the HydroGym CPU image (activates /opt/venvs/firedrake)
 bash run_example_docker.sh
 ```
 

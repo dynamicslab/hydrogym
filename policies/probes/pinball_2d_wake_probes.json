@@ -1,0 +1,189 @@
+{
+ "units": "cylinder diameters d",
+ "origin": "geometry origin of the released m-AIA pinball: front cylinder centre (-1.299, 0), rear cylinders (0, +0.75) and (0, -0.75)",
+ "order": "probe i of the observation: u_i at index i, v_i at index 40 + i",
+ "probes_xy": [
+  [
+   1.500001,
+   -0.999999
+  ],
+  [
+   2.500001,
+   -0.999999
+  ],
+  [
+   3.500001,
+   -0.999999
+  ],
+  [
+   4.500001,
+   -0.999999
+  ],
+  [
+   5.500001,
+   -0.999999
+  ],
+  [
+   6.500001,
+   -0.999999
+  ],
+  [
+   7.500001,
+   -0.999999
+  ],
+  [
+   8.500001,
+   -0.999999
+  ],
+  [
+   1.500001,
+   -0.499999
+  ],
+  [
+   2.500001,
+   -0.499999
+  ],
+  [
+   3.500001,
+   -0.499999
+  ],
+  [
+   4.500001,
+   -0.499999
+  ],
+  [
+   5.500001,
+   -0.499999
+  ],
+  [
+   6.500001,
+   -0.499999
+  ],
+  [
+   7.500001,
+   -0.499999
+  ],
+  [
+   8.500001,
+   -0.499999
+  ],
+  [
+   1.500001,
+   -1e-06
+  ],
+  [
+   2.500001,
+   -1e-06
+  ],
+  [
+   3.500001,
+   -1e-06
+  ],
+  [
+   4.500001,
+   -1e-06
+  ],
+  [
+   5.500001,
+   -1e-06
+  ],
+  [
+   6.500001,
+   -1e-06
+  ],
+  [
+   7.500001,
+   -1e-06
+  ],
+  [
+   8.500001,
+   -1e-06
+  ],
+  [
+   1.500001,
+   0.499999
+  ],
+  [
+   2.500001,
+   0.499999
+  ],
+  [
+   3.500001,
+   0.499999
+  ],
+  [
+   4.500001,
+   0.499999
+  ],
+  [
+   5.500001,
+   0.499999
+  ],
+  [
+   6.500001,
+   0.499999
+  ],
+  [
+   7.500001,
+   0.499999
+  ],
+  [
+   8.500001,
+   0.499999
+  ],
+  [
+   1.500001,
+   0.999999
+  ],
+  [
+   2.500001,
+   0.999999
+  ],
+  [
+   3.500001,
+   0.999999
+  ],
+  [
+   4.500001,
+   0.999999
+  ],
+  [
+   5.500001,
+   0.999999
+  ],
+  [
+   6.500001,
+   0.999999
+  ],
+  [
+   7.500001,
+   0.999999
+  ],
+  [
+   8.500001,
+   0.999999
+  ]
+ ],
+ "construction": "every coordinate within 1e-07 d of a face of the grid cell selected by the released m-AIA probe lookup (cell with c - h < p <= c + h) is moved by 1e-06 d into that cell, so that the probe -> cell mapping does not depend on the face tie-break of the m-AIA version (nearest-cell sampling; the sampled cell is unchanged)",
+ "n_on_or_near_face": 40,
+ "n_exactly_on_face": 8,
+ "grids": {
+  "Pinball_2D_Re100": {
+   "lengthLevel0": 102.40000009536743,
+   "centerOfGravity": [
+    21.200000000000003,
+    0.0
+   ],
+   "minLevel": 9
+  },
+  "Pinball_2D_Re150": {
+   "lengthLevel0": 102.40000009536743,
+   "centerOfGravity": [
+    21.200000000000003,
+    0.0
+   ],
+   "minLevel": 9
+  },
+  "note": "the two released 2D pinball grids give the same shifted coordinates and the same cells"
+ }
+}

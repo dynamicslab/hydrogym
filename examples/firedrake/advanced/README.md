@@ -25,30 +25,34 @@ These examples are intended for:
 ## Example Types
 
 ### Steady-State Solvers (`solve-steady.py`)
-Find equilibrium solutions using Newton iteration:
+Find equilibrium solutions using Newton iteration (see `cylinder/solve-steady.py`
+for the full, runnable version with Reynolds-number ramping and output saving):
 ```python
-from hydrogym.firedrake import Cylinder, IPCS
-from hydrogym.firedrake.utils import solve_steady_state_stokes
+import hydrogym.firedrake as hgym
 
-flow = Cylinder(Re=100, mesh="medium")
-solver_parameters = {"snes_monitor": None}
+flow = hgym.Cylinder(Re=100, mesh="medium", use_HF_data_manager=False)
 solver = hgym.NewtonSolver(
     flow,
     stabilization="gls",
-    solver_parameters=solver_parameters,
+    solver_parameters={"snes_monitor": None},
 )
 
-solver.solve()
+qB = solver.solve()
+CL, CD = flow.compute_forces()
 ```
 
 ### Direct Control (`pd-control.py`)
 Apply feedback control directly (not through RL interface):
 ```python
-# Direct PD control loop
-for i in range(num_steps):
-    CL, CD = flow.get_observations()
-    action = -Kp * CL - Kd * (CL - CL_prev) / dt
-    solver.step(action)
+# PD control through hgym.integrate (from hydrogym.firedrake.utils.pd import PDController)
+pd_controller = PDController(kp, kd, dt, n_steps, filter_type="bilinear", N=20)
+
+
+def controller(t, obs):  # obs: the flow's observation (here the lift coefficient)
+    return pd_controller(t, obs)
+
+
+hgym.integrate(flow, t_span=(0, tf), dt=dt, callbacks=callbacks, controller=controller)
 ```
 
 ### Workflow Scripts (`unsteady.py`)
