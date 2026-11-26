@@ -19,20 +19,21 @@ The JAX environments follow the [gymnax](https://github.com/RobertTLange/gymnax)
 ## Quick Start
 
 ```bash
-# Activate the GPU environment
-source /home/easybuild/venvs/hydrogym_gpu/bin/activate
+# In a HydroGym image the HydroGym environment (with JAX) is already active; the examples write into their
+# directories, so as a non-root user work in a copy: cp -r /opt/hydrogym/examples ~/hydrogym-examples
+# and cd ~/hydrogym-examples/jax. Elsewhere, activate the environment you installed hydrogym[jax] into
 
 # Test Kolmogorov flow
 cd getting_started/1_kolmogorov
 ./run_kolmogorov_docker.sh
 
 # Test channel flow
-cd getting_started/2_channel
+cd ../2_channel
 ./run_channel_docker.sh
 
 # Train PPO
-cd getting_started/3_ppo
-./run_ppo_docker.sh --env kolmogorov --total-timesteps 20000
+cd ../3_ppo
+./run_ppo_docker.sh --env kolmogorov   # getting-started settings, ~10-15 min on a CPU
 ```
 
 ## Available Environments

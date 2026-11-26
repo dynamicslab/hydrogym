@@ -31,18 +31,20 @@ Each `'agent_N'` key corresponds to one actuator degree of freedom in the underl
 
 | File | Purpose |
 |------|---------|
-| [`test_nek_parallel.py`](https://github.com/dynamicslab/hydrogym/blob/main/examples/nek/getting_started/2_parallel_env/test_nek_parallel.py) | Runs the dict-based multi-agent interface with random actions, printing per-agent observations and rewards |
+| [`test_nek_parallel.py`](https://github.com/dynamicslab/hydrogym/blob/main/examples/nek/getting_started/2_parallel_env/test_nek_parallel.py) | Runs the dict-based multi-agent interface with zero actions, printing per-agent observations and rewards |
 | [`train_sb3_parallel.py`](https://github.com/dynamicslab/hydrogym/blob/main/examples/nek/getting_started/2_parallel_env/train_sb3_parallel.py) | Demonstrates a DIY centralised wrapper that concatenates all agents into a single array, enabling direct SB3 training |
-| [`run_parallel_docker.sh`](https://github.com/dynamicslab/hydrogym/blob/main/examples/nek/getting_started/2_parallel_env/run_parallel_docker.sh) | Docker/MPI launcher |
+| [`run_parallel_docker.sh`](https://github.com/dynamicslab/hydrogym/blob/main/examples/nek/getting_started/2_parallel_env/run_parallel_docker.sh) | MPMD launch script (runs as is in the HydroGym images, from a copy of `/opt/hydrogym/examples` for a non-root user) |
 
 ## Running the examples
 
 ```bash
 # Test the parallel environment
-mpirun -np 1 python test_nek_parallel.py --steps 100 : -np 10 nek5000
+# from a prepared workspace: the Nek5000 case files must be in the working directory
+python ../prepare_workspace.py --env TCFmini_3D_Re180 --work-dir ./ws && cd ws
+mpirun -np 1 python ../test_nek_parallel.py --steps 100 : -np 10 nek5000
 
 # Train with DIY centralised wrapper
-mpirun -np 1 python train_sb3_parallel.py \
+mpirun -np 1 python ../train_sb3_parallel.py \
     --env TCFmini_3D_Re180 \
     --algo PPO \
     --total-timesteps 100000 \

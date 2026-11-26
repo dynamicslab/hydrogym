@@ -45,30 +45,37 @@ obs_dict, rewards_dict, terminations, truncations, infos = env.step(actions)
 |------|---------|
 | [`zeroshot_demo_pettingzoo.py`](https://github.com/dynamicslab/hydrogym/blob/main/examples/nek/getting_started/6_zeroshot_wing_demo/zeroshot_demo_pettingzoo.py) | Multi-policy rollout demo |
 | [`meta_policy_small_wing_template.py`](https://github.com/dynamicslab/hydrogym/blob/main/examples/nek/getting_started/6_zeroshot_wing_demo/meta_policy_small_wing_template.py) | Template defining `ENV_NAME`, `NPROC`, and `POLICY_SPECS` |
-| [`run_pettingzoo_docker.sh`](https://github.com/dynamicslab/hydrogym/blob/main/examples/nek/getting_started/6_zeroshot_wing_demo/run_pettingzoo_docker.sh) | Docker/MPI launcher |
+| [`run_pettingzoo_docker.sh`](https://github.com/dynamicslab/hydrogym/blob/main/examples/nek/getting_started/6_zeroshot_wing_demo/run_pettingzoo_docker.sh) | MPMD launch script (runs as is in the HydroGym images, from a copy of `/opt/hydrogym/examples` for a non-root user) |
 
 ## Running the demo
 
-The runner script is the recommended entry point — it handles module loading and workspace preparation automatically:
+The runner script is the recommended entry point — it activates the image's Python environment, puts the case's Nek5000 executable on the `PATH`, prepares the workspace and starts the MPMD run:
 
 ```bash
 # Default template
 ./run_pettingzoo_docker.sh
 
 # Specify a root directory containing pre-trained model runs
-./run_pettingzoo_docker.sh --policy-root /workspace/legacy_runs
+./run_pettingzoo_docker.sh --policy-root /workspace/policy_runs
 ```
 
-To invoke the Python script directly:
+To invoke the Python script directly, run it from a prepared workspace (Nek5000 reads the case from the current
+directory; keep the path short, Nek5000 v17 accepts at most 132 characters for the `.rea` path):
 
 ```bash
+# Nek5000 executable of this case (in the HydroGym images; elsewhere your small_wing build)
+export PATH=/opt/nek5000/cases/small_wing:$PATH
+# Prepare the workspace once (copies the case files). Offline: add --local-dir DIR here and to the mpirun line
+python ../prepare_workspace.py --env NACA4412_3D_Re75000_AOA5 --work-dir ./ws --profile NEK5000_v17
+cd ws && rm -f *.sch
+
 # Default template
-mpirun -np 1 python zeroshot_demo_pettingzoo.py : -np 12 nek5000
+mpirun -np 1 python ../zeroshot_demo_pettingzoo.py --policy-template ../meta_policy_small_wing_template.py : -np 12 nek5000
 
 # Custom template and policy root
-mpirun -np 1 python zeroshot_demo_pettingzoo.py \
-  --policy-template ./meta_policy_small_wing_template.py \
-  --policy-root /path/to/legacy_runs \
+mpirun -np 1 python ../zeroshot_demo_pettingzoo.py \
+  --policy-template ../meta_policy_small_wing_template.py \
+  --policy-root /path/to/policy_runs \
   --steps 3000 \
   : -np 12 nek5000
 ```
@@ -83,7 +90,7 @@ Available command-line overrides:
 | `--steps NUM_STEPS` | From template `NUM_STEPS` | Total rollout steps |
 | `--policy-root PATH` | From template `POLICY_ROOT` | Root directory for RL model run folders |
 | `--local-dir PATH` | — | Optional local fallback for packaged environments |
-| `--log-every N` | — | Reward table print frequency |
+| `--log-every N` | 100 | Reward table print frequency |
 
 ## Policy template format
 

@@ -3,8 +3,7 @@ sidebar_label: lglnodes
 title: hydrogym.nek.nek_lib.lglnodes
 ---
 
-A function for identify the lglnodes by order N
-@yuningw
+Gauss-Lobatto-Legendre (GLL) nodes and weights of order N (author: Yuning Wang).
 
 ## gll\_Mapper Objects
 

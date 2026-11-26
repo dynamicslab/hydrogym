@@ -33,12 +33,14 @@ NEK5000 environments use MPMD (Multiple Program Multiple Data) execution: a Pyth
 ## Quick start
 
 ```bash
-# Test the single-agent environment (10 MPI ranks: 1 controller + 10 solver)
+# Test the single-agent environment (11 MPI ranks: 1 controller + 10 solver)
 cd 1_nekenv_single/
-mpirun -np 1 python test_nek_direct.py --steps 100 : -np 10 nek5000
+# from a prepared workspace: the Nek5000 case files must be in the working directory
+python ../prepare_workspace.py --env TCFmini_3D_Re180 --work-dir ./ws && cd ws
+mpirun -np 1 python ../test_nek_direct.py --steps 100 : -np 10 nek5000
 
 # Train a PPO agent
-mpirun -np 1 python train_sb3_nek_direct.py \
+mpirun -np 1 python ../train_sb3_nek_direct.py \
     --env TCFmini_3D_Re180 \
     --algo PPO \
     --total-timesteps 100000 \
@@ -47,16 +49,17 @@ mpirun -np 1 python train_sb3_nek_direct.py \
 
 ## NEK5000 setup
 
-NEK5000 must be compiled and available as `nek5000` on your `PATH`, or its location must be given explicitly in the environment configuration. The provided Docker image includes a pre-compiled binary and is the recommended way to run these examples.
+The `nek5000` executable is compiled per case and started by `mpirun` as the second MPMD program. The [HydroGym container images](../../installation/containers) include the executables of the HydroGym cases in `/opt/nek5000/cases/<case>/nek5000` and are the recommended way to run these examples; the `run_*_docker.sh` scripts put the right one on the `PATH`. Elsewhere, put the directory of your own build on the `PATH`, or give its path in the `mpirun` line:
 
 ```bash
-# Verify that NEK5000 is available
+# In the images: the minimal channel (TCFmini_3D_Re180)
+export PATH=/opt/nek5000/cases/mini_channel:$PATH
 which nek5000
 
-# Or specify the path in the environment config
-env_config = {
-    'environment_name': 'TCFmini_3D_Re180',
-    'nek_path': '/opt/nek5000/bin/nek5000',
-    'nproc': 10,
-}
+# Or name the executable in the MPMD launch
+# in the workspace ws/ of the block above
+mpirun -np 1 python ../test_nek_direct.py --env TCFmini_3D_Re180 --nproc 10 \
+    : -np 10 /opt/nek5000/cases/mini_channel/nek5000
 ```
+
+On a machine with 10 cores or fewer, add `--oversubscribe` to `mpirun` (1 Python + 10 Nek5000 ranks; for the example scripts: `MPIRUN_ARGS=--oversubscribe`).

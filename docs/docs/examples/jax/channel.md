@@ -29,8 +29,8 @@ to have a clean working environment, we will also need to reset the environment 
 key = jax.random.PRNGKey(0)
 obs, state = env.reset_env(key, params)
 print("Initial state shape U:", state.U.shape)
-print("Initial state shape V:", state.U.shape)
-print("Initial state shape W:", state.U.shape)
+print("Initial state shape V:", state.V.shape)
+print("Initial state shape W:", state.W.shape)
 print("Initial mean observation value: ", jnp.mean(obs))
 ```
 
@@ -53,12 +53,7 @@ print("Mean observation value: ", jnp.mean(obs))
 print("Reward:", reward)
 ```
 
-to validate the right performance of the environment, we should see approximately the following output:
-
-| Type of Variable | Value |
-| -------- | -------- |
-| Mean Observation Value | 3.3810941472675573 |
-| Reward | -0.3378005217734956 |
+This prints the mean of the observation and the reward of the step.
 
 ## Visualizing U without Control
 
@@ -99,7 +94,7 @@ plt.show()
 
 ![Channel flow visualization without control](img/channel_1.png)
 
-At which point we can also explore the performance of the full suction jets. Here we will perform $6$ steps in the environment, and then inspect the mean observation values and rewards after each step.
+At which point we can also explore the performance of the jets (positive action = suction). Here we will perform $6$ steps in the environment, and then inspect the mean observation values and rewards after each step.
 
 ```python
 key = jax.random.PRNGKey(0)
@@ -115,16 +110,9 @@ for i in range(num_steps):
     print("Reward:", reward)
 ```
 
-The performance you should see should look somewhat like the following:
-
-| Steps | Mean Observation Value | Reward |
-| -------- | -------- | -------- |
-| 1 | 3.3811771453005943 | -0.3379856556277938 |
-| 2 | 3.374816954342459 | -0.3296336066794982 |
-| 3 | 3.3952557633014124 | -0.32246759246707535 |
-| 4 | 3.4049538883848918 | -0.317317974468479 |
-| 5 | 3.369506324681792 | -0.31543620069660644 |
-| 6 | 3.3887298110075403 | -0.31826735862330213 |
+This prints the mean observation and the reward of every step. The jets are a zero-net-mass-flux wall transpiration
+velocity, and zero action is the uncontrolled channel; `ChannelFlowSpectralEnv({"legacy_jets": True})` selects the jet
+model of HydroGym ≤ 1.0.
 
 ## Visualizing U after a few Steps in the Environment with Control
 

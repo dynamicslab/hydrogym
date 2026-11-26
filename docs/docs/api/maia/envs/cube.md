@@ -54,6 +54,14 @@ that penalizes drag, lift, and side forces.
   - reward: Scalar reward (or list for multiple boundaries)
   - obj_dict: Dictionary with force information
 
+#### drag\_coefficient\_from\_objective
+
+```python
+def drag_coefficient_from_objective(obj_dict)
+```
+
+Total drag coefficient over the boundary segments (normalised like the reward's force coefficients).
+
 ## Cube Objects
 
 ```python
@@ -63,6 +71,13 @@ class Cube(CubeBase)
 3D cube environment with flow control.
 
 This environment simulates flow around a 3D cube geometry.
+
+Actuation power (`hydrogym.maia.wall_jets`, one actuator per jet): the slot jets of BC 2007 object class 2
+(parabolic profile across `lbJetSlotAxis` within `lbJetLimits`, direction `lbJetNormals`) are the fluid
+cells next to the cube faces (faces on cell faces: exactly the solver's jet cells; along the slot every k-th cell
+with k-fold weight, at most 64), `C_P = 2 P / (U^3 D zLength)` like `C_D`. The jets are independent (not
+zero-net-mass-flux); `p_ref` is the mean wall pressure over the jets. The jet geometry is checked against the
+BC-2007 rule in the unit tests.
 
 **Attributes**:
 

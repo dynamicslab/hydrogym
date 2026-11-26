@@ -28,7 +28,7 @@ pip install -U "jax[cuda12]"
 pip install -U "jax[cuda13]"
 ```
 
-The CUDA 12 wheel is built against CUDA 12.3 and is compatible with any CUDA ≥ 12.1 installation. The CUDA 13 wheel requires CUDA ≥ 13.0. JAX installs its own CUDA and cuDNN libraries via pip, so a matching system CUDA toolkit is not strictly required — the NVIDIA driver is the only system-level dependency.
+Check the driver with `nvidia-smi`: with a driver older than 580 the CUDA 13 wheel installs, but JAX cannot use the GPU (`cudaErrorInsufficientDriver`); use `jax[cuda12]` there. The CUDA 12 wheel is built against CUDA 12.3 and is compatible with any CUDA ≥ 12.1 installation. The CUDA 13 wheel requires CUDA ≥ 13.0. JAX installs its own CUDA and cuDNN libraries via pip, so a matching system CUDA toolkit is not strictly required — the NVIDIA driver is the only system-level dependency.
 
 :::note
 CUDA-enabled JAX wheels are available for Linux only. macOS does not support CUDA; use the CPU installation on Apple hardware.
@@ -50,7 +50,7 @@ After installing JAX and verifying its correct working, install the HydroGym JAX
 pip install hydrogym[jax]
 ```
 
-This will install all required packages for the correct running of the JAX-based examples. If JAX is already installed with GPU supportm the `jax` and `jaxlib` pins in `hydrogym[jax]` will not downgrade it.
+This will install all required packages for the correct running of the JAX-based examples. If JAX is already installed with GPU support, the `jax` and `jaxlib` pins in `hydrogym[jax]` will not downgrade it.
 
 ## Platform support
 

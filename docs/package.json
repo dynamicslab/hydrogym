@@ -1,11 +1,11 @@
 {
   "name": "HydroGym Documentation",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "private": true,
   "scripts": {
     "docusaurus": "docusaurus",
     "start": "docusaurus start",
-    "generate-api": "cd .. && uv run --locked --no-default-groups --group docs pydoc-markdown && cp -r docs/docs/api/hydrogym/* docs/docs/api/ && rm -rf docs/docs/api/hydrogym && find docs/docs/api -name '*.md' -exec sed -i.bak 's/{\\([a-z_]*\\)}/`{\\1}`/g' {} \\; && find docs/docs/api -name '*.bak' -delete && sed -i.bak 's|api/hydrogym/|api/|g' docs/docs/api/sidebars-api.json && rm -f docs/docs/api/sidebars-api.json.bak && python3 -c \"import json; f=open('docs/docs/api/sidebars-api.json'); d=json.load(f); f.close(); f=open('docs/docs/api/sidebars-api.json','w'); json.dump(d['items'][0], f, indent=2)\"",
+    "generate-api": "cd .. && find docs/docs/api -mindepth 1 -type f ! -name _category_.json -delete && find docs/docs/api -mindepth 1 -type d -empty -delete && uv run --locked --no-default-groups --group docs pydoc-markdown && cp -r docs/docs/api/hydrogym/* docs/docs/api/ && rm -rf docs/docs/api/hydrogym docs/docs/api/sidebars-api.json && python3 docs/scripts/postprocess_api.py docs/docs/api",
     "build": "npm run generate-api && docusaurus build",
     "swizzle": "docusaurus swizzle",
     "deploy": "docusaurus deploy",

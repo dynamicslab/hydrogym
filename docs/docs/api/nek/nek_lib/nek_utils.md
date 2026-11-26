@@ -5,6 +5,40 @@ title: hydrogym.nek.nek_lib.nek_utils
 
 Collection of NEK5000 usage
 
+#### power\_mode
+
+```python
+def power_mode(conf)
+```
+
+p096 from the `power` section of a configuration: 0 without it (or enabled: false), else the sampling.
+
+#### read\_rea\_params
+
+```python
+def read_rea_params(path)
+```
+
+\{pkey: value\} of the mapped entries (V17_PARAM_MAPPING) of a .rea file.
+
+#### rea\_mismatches
+
+```python
+def rea_mismatches(nek, path)
+```
+
+Mapped entries whose value in the .rea file differs from the configuration: [(pkey, attr, file, config)].
+
+#### write\_rea\_from\_config
+
+```python
+def write_rea_from_config(conf, folder)
+```
+
+Write the configuration into the .rea file of a v17 workspace before Nek5000 is launched (Nek5000 reads the file
+once at start-up). A symbolic link (to the read-only cache) is replaced by a copy first. Sets
+simulation.power_mode from the power section. Returns the path of the .rea file.
+
 ## NEK\_INIT Objects
 
 ```python
@@ -55,7 +89,7 @@ For the controllable params, please see config.
 def rewrite_REA_v19()
 ```
 
-Write parameter files for NEK version &gt;= 19
+Write parameter files for NEK version >= 19
 
 #### init\_restart
 

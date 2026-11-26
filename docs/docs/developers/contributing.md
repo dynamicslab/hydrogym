@@ -19,9 +19,14 @@ HydroGym is research software under active development. Breaking changes can occ
 Fork the repository on GitHub, then clone your fork:
 
 ```bash
+git lfs install          # once per machine: meshes and case files are Git LFS files
 git clone https://github.com/<your-username>/hydrogym.git
 cd hydrogym
 ```
+
+:::note
+Git LFS: the Firedrake meshes (`hydrogym/firedrake/envs/*/*.msh`) and the Nek5000 case files (`third_party/nek5000/cases/`) are stored with [Git LFS](https://git-lfs.com). Run `git lfs install` before cloning, or `git lfs pull` in an existing clone; otherwise these files are small pointer files and HydroGym stops with "... is a Git LFS pointer". The wheels on PyPI contain the meshes.
+:::
 
 ### 2. Create the locked development environment
 
@@ -38,7 +43,7 @@ uv sync --locked --extra jax
 uv sync --locked --extra jaxfluids
 ```
 
-Firedrake owns its own Python environment. In the provided Firedrake container, use:
+Firedrake owns its own Python environment. In a Firedrake container (the HydroGym CPU image `clagemann/hydrogym-cpu:1.0.2` after `source /opt/venvs/firedrake/bin/activate`, or `.devcontainer/firedrake-test.devcontainer.json`), use:
 
 ```bash
 ./scripts/bootstrap_firedrake.sh --dev
@@ -73,7 +78,7 @@ If you add a new feature, please include a test that exercises it and verify its
 
 ## Documentation changes
 
-The documentation lives in the `docs/` subdirectory and is built with Docusaurus. To preview changes locally:
+The documentation lives in the `docs/` subdirectory and is built with Docusaurus (Node.js ≥ 20, see `docs/.node-version`). To preview changes locally:
 
 ```bash
 cd docs

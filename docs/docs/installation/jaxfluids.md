@@ -35,7 +35,7 @@ pip install -e .
 ```
 
 :::note[Apple Silicon (M-series Macs)]
-`jaxlib` wheel availability for macOS changes frequently. If the `pip install "jax[cpu]"` step fails or produces an incompatible `jaxlib`, consult the [JAX GitHub discussion thread for M-series Macs](https://github.com/google/jax/discussions/14866) for the latest workarounds.
+`jaxlib` wheel availability for macOS changes frequently. If the `pip install "jax[cpu]"` step fails or produces an incompatible `jaxlib`, consult the [JAX GitHub discussion thread for M-series Macs](https://github.com/jax-ml/jax/discussions/14866) for the latest workarounds.
 :::
 
 ## Installing the HydroGym Python package

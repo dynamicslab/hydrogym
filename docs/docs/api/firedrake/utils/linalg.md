@@ -47,7 +47,7 @@ A simple wrapper for the inverse of a matrix pencil.
 Note that this object will own the output Function unless
 `copy_output=True` is set.  This is memory-efficient, but could
 lead to confusion if the output reference is modified. The Arnoldi
-iteration algorithm is written so this isn&#x27;t a problem.
+iteration algorithm is written so this isn't a problem.
 
 #### T
 
@@ -68,5 +68,5 @@ def __matmul__(v0)
 
 Solve the matrix pencil A @ f = M @ v0 for f.
 
-This is equivalent to the &quot;inverse iteration&quot; f = (A^{-1} @ M) @ v0
+This is equivalent to the "inverse iteration" f = (A^\{-1\} @ M) @ v0
 

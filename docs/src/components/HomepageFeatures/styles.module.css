@@ -106,7 +106,7 @@
   box-shadow: var(--ifm-global-shadow-lw);
 }
 
-/* Fixed frame + contain: GIFs keep full frame visible (cover was cropping animations). */
+/* Fixed frame + contain: the GIFs keep their full frame visible. */
 .exampleThumbWrap {
   width: 100%;
   min-height: 0;

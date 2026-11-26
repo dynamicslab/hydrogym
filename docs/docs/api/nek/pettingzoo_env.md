@@ -14,7 +14,7 @@ class NekPettingZooEnv(ParallelEnv)
 
 PettingZoo-compatible wrapper for NekParallelEnv.
 
-This wrapper makes the environment compatible with PettingZoo&#x27;s API,
+This wrapper makes the environment compatible with PettingZoo's API,
 allowing use with PettingZoo-specific libraries and tools.
 
 **Arguments**:

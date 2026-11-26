@@ -15,11 +15,15 @@ This directory contains examples and utilities for HydroGym's MAIA-based flow en
 
 Usage:
 ```bash
+# From a prepared workspace (m-AIA reads properties_run.toml from the working directory)
+python prepare_workspace.py --env Cylinder_2D_Re200 --work-dir ./test_run_000
+cd test_run_000
+
 # Basic usage (1 Python + 1 MAIA process)
-mpirun -np 1 python test_maia_env.py --environment Cylinder_2D_Re200 : -np 1 maia properties.toml
+mpirun -np 1 python ../test_maia_env.py --environment Cylinder_2D_Re200 : -np 1 maia properties_run.toml
 
 # Parallel MAIA (1 Python + 4 MAIA processes)
-mpirun -np 1 python test_maia_env.py --environment Cylinder_2D_Re200 : -np 4 maia properties.toml
+mpirun -np 1 python ../test_maia_env.py --environment Cylinder_2D_Re200 : -np 4 maia properties_run.toml
 ```
 
 ### [`train_sb3_maia.py`](https://github.com/dynamicslab/hydrogym/blob/main/examples/maia/getting_started/train_sb3_maia.py)
@@ -38,7 +42,7 @@ python prepare_workspace.py --env Cylinder_2D_Re200 --work-dir ./train_run
 
 # Then train with MPMD execution
 cd train_run
-mpirun -np 1 python ../train_sb3_maia.py --env Cylinder_2D_Re200 --algo PPO --total-timesteps 100000 : -np 1 maia properties.toml
+mpirun -np 1 python ../train_sb3_maia.py --env Cylinder_2D_Re200 --algo PPO --total-timesteps 100000 : -np 1 maia properties_run.toml
 
 # Monitor training
 tensorboard --logdir logs/
@@ -53,7 +57,7 @@ python prepare_workspace.py --env Cylinder_2D_Re200 --work-dir ./my_workspace
 ```
 
 ### [`run_example_docker.sh`](https://github.com/dynamicslab/hydrogym/blob/main/examples/maia/getting_started/run_example_docker.sh)
-**Docker runner script** - Run MAIA examples in Docker with automatic setup.
+**Launch script** - Prepares the workspace and starts the MPMD run (1 Python + 1 m-AIA rank). Runs as is in the HydroGym images, where `maia` starts the m-AIA build for the visible GPU (as a non-root user, from a copy of `/opt/hydrogym/examples`, which is not writable); elsewhere, activate your HydroGym environment and set `MAIA=/path/to/maia`.
 
 Usage:
 ```bash
@@ -78,15 +82,17 @@ python prepare_workspace.py --env Cylinder_2D_Re200 --work-dir ./test_run_000
 
 This creates:
 - `test_run_000/` - working directory
-- `test_run_000/properties.toml` - MAIA configuration file (symlink)
-- `test_run_000/grid` - mesh file (symlink)
-- `test_run_000/out/` - output directory
+- `test_run_000/properties_run.toml` - MAIA run configuration (symlink)
+- `test_run_000/geometry.toml` - geometry configuration (symlink)
+- `test_run_000/environment_config.yaml` - environment/actuation configuration (symlink)
+- `test_run_000/out_lb/` - solver output directory (grid + restart files symlinked inside)
+- `test_run_000/stl/` - STL geometry files (symlink)
 
 **Step 2:** Run the test with MPMD execution:
 
 ```bash
 cd test_run_000
-mpirun -np 1 python ../test_maia_env.py --environment Cylinder_2D_Re200 --num-steps 10 : -np 1 maia properties.toml
+mpirun -np 1 python ../test_maia_env.py --environment Cylinder_2D_Re200 --num-steps 10 : -np 1 maia properties_run.toml
 ```
 
 This runs:
@@ -100,7 +106,7 @@ To run with more MAIA processes for larger meshes:
 
 ```bash
 cd test_run_000
-mpirun -np 1 python ../test_maia_env.py --environment Cylinder_2D_Re200 : -np 4 maia properties.toml
+mpirun -np 1 python ../test_maia_env.py --environment Cylinder_2D_Re200 : -np 4 maia properties_run.toml
 ```
 
 ### Explore Options
@@ -146,14 +152,16 @@ env.close()
 
 **Important:** This script must be run with MPMD:
 ```bash
-mpirun -np 1 python your_script.py : -np 4 maia properties.toml
+mpirun -np 1 python your_script.py : -np 4 maia properties_run.toml
 ```
 
 ### Example 2: Training with Stable-Baselines3
 
 ```python
-# See train_sb3_maia.py for full implementation
+# See train_sb3_maia.py for the full implementation (there --obs-norm defaults to none, VecNormalize
+# normalizes the observations)
 import hydrogym.maia as maia
+import numpy as np
 from stable_baselines3 import PPO
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
@@ -188,7 +196,7 @@ env.save("vec_normalize.pkl")
 **Run with MPMD:**
 ```bash
 cd work_dir
-mpirun -np 1 python ../train_sb3_maia.py --env Cylinder_2D_Re200 --algo PPO : -np 1 maia properties.toml
+mpirun -np 1 python ../train_sb3_maia.py --env Cylinder_2D_Re200 --algo PPO : -np 1 maia properties_run.toml
 ```
 
 ### Example 3: Custom Probe Configuration
@@ -217,6 +225,7 @@ print(f"Observation shape: {obs.shape}")  # (100,) for 50 probes × 2 velocity c
 
 ```python
 import hydrogym.maia as maia
+import numpy as np
 
 # Define wake probes (flattened format)
 wake_probes = []
@@ -231,7 +240,7 @@ custom_scale = [1.0] * 80
 
 env = maia.from_hf(
     "Cylinder_2D_Re200",
-    probe_locations=[...],  # Your probe locations
+    probe_locations=[2.0, 0.0, 4.0, 0.5, 4.0, -0.5, 6.0, 0.0],  # x, y of each probe  # Your probe locations
     obs_normalization_strategy="customized",
     obs_loc=custom_loc,
     obs_scale=custom_scale,
@@ -246,9 +255,8 @@ import hydrogym.maia as maia
 # Use pre-downloaded environment files (no internet required)
 env = maia.from_hf(
     "Cylinder_2D_Re200",
-    probe_locations=[...],
-    local_fallback_dir="/scratch/my_project/hf_environments/models--dynamicslab--HydroGym-environments/snapshots/main",
-    use_clean_cache=False,  # Don't try to download from HF Hub
+    probe_locations=[2.0, 0.0, 4.0, 0.5, 4.0, -0.5, 6.0, 0.0],  # x, y of each probe
+    local_fallback_dir="/scratch/<project>/hf_environments",  # holds Cylinder_2D_Re200/, see Offline Usage
 )
 ```
 
@@ -258,27 +266,20 @@ env = maia.from_hf(
 
 ### HPC Offline Workflow
 
-**Step 1:** On a machine with internet (login node or workstation), download environment data:
+**Step 1:** Download the environments into a directory on a filesystem that the compute nodes can read:
 
 ```bash
-# Download to Hugging Face cache
+# on a machine with internet access (login node, workstation)
 python -c "
-from hydrogym.data_manager import HFDataManager
-dm = HFDataManager(repo_id='dynamicslab/HydroGym-environments', use_clean_cache=False)
-env_path = dm.get_environment_path('Cylinder_2D_Re200')
-print(f'Environment downloaded to: {env_path}')
+from huggingface_hub import snapshot_download
+snapshot_download(repo_id='dynamicslab/HydroGym-environments', repo_type='dataset',
+                  allow_patterns='Cylinder_2D_Re200/**', local_dir='/scratch/<project>/hf_environments')
 "
 ```
 
-**Step 2:** Copy to shared HPC filesystem (if needed):
+This writes `/scratch/<project>/hf_environments/Cylinder_2D_Re200/`; further environments go into the same directory.
 
-```bash
-# Copy from HF cache to shared storage accessible from compute nodes
-cp -r ~/.cache/huggingface/hub/models--dynamicslab--HydroGym-environments \
-      /scratch/my_project/hf_environments/
-```
-
-**Step 3:** Create a workspace preparation script that uses local files:
+**Step 2:** Create a workspace preparation script that uses the local files:
 
 ```python
 # prepare_offline_workspace.py
@@ -287,37 +288,29 @@ from hydrogym.maia.workspace import prepare_maia_workspace
 work_dir, props_file = prepare_maia_workspace(
     environment_name="Cylinder_2D_Re200",
     work_dir="./my_run",
-    local_fallback_dir="/scratch/my_project/hf_environments/models--dynamicslab--HydroGym-environments/snapshots/main",
-    use_clean_cache=False,  # Use existing cache
-    force_download=False,  # Don't try to download
+    local_fallback_dir="/scratch/<project>/hf_environments",  # used directly, without contacting the Hub
 )
 
 print(f"Workspace: {work_dir}")
 print(f"Properties: {props_file}")
 ```
 
-**Step 4:** In your RL script, use the same `local_fallback_dir`:
+**Step 3:** In your RL script, use the same `local_fallback_dir`:
 
 ```python
 import hydrogym.maia as maia
 
 env = maia.from_hf(
     "Cylinder_2D_Re200",
-    probe_locations=[...],
-    local_fallback_dir="/scratch/my_project/hf_environments/models--dynamicslab--HydroGym-environments/snapshots/main",
-    use_clean_cache=False,
+    probe_locations=[2.0, 0.0, 4.0, 0.5, 4.0, -0.5, 6.0, 0.0],  # x, y of each probe
+    local_fallback_dir="/scratch/<project>/hf_environments",
 )
 ```
 
-**Step 5:** Run on compute node (offline):
+**Step 4:** Run on compute node (offline):
 
 ```bash
 cd my_run
-mpirun -np 1 python ../my_rl_script.py : -np 4 maia properties.toml
+mpirun -np 1 python ../my_rl_script.py : -np 4 maia properties_run.toml
 ```
 
----
-
-**Last Updated**: March 2026
-**HydroGym Version**: 1.0+
-**Maintainer**: HydroGym Team

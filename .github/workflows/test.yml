@@ -1,0 +1,110 @@
+name: Test
+
+# Runs the pytest suite (test/) in the Firedrake devcontainer.
+#
+# Design notes:
+# - The container is built from the repo's own `.devcontainer/` feature
+#   system (`firedrake-test.devcontainer.json` = petsc + firedrake features),
+#   the same definition used for local validation containers.
+# - The build is heavy (PETSc + Firedrake compiled from source, pinned
+#   commits): expect 1.5-3h per run on a hosted runner. Publishing the built
+#   image to GHCR and pulling it here would shorten this.
+# - `lfs: true` on checkout is required: meshes (*.msh, *.re2, ...) are LFS
+#   pointers otherwise.
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  docstring-coverage:
+    # Enforce the docstring-coverage floor so it cannot silently regress.
+    # The measurement tool is stdlib-only, so this job needs no
+    # dependencies and runs in seconds.
+    name: Docstring coverage floor
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    container: python:3.12-slim
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Measure docstring coverage
+        run: python test/measure_docstrings.py --fail-under 99
+
+  developer-template-skeletons:
+    # The reference skeletons under examples/developer_templates/ must stay
+    # runnable without Firedrake, MPI, GPU or solver binaries. This job
+    # deliberately does not install hydrogym or any backend dependency --
+    # only gymnasium + numpy, matching hydrogym/core.py's own imports --
+    # so a change that couples the skeletons to a backend dependency
+    # fails here.
+    name: Developer-template skeletons
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    container: python:3.12-slim
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install minimal deps
+        run: pip install --no-cache-dir pytest gymnasium numpy
+      - name: Run skeleton tests
+        run: python -m pytest examples/developer_templates/ -q
+
+  firedrake-tests:
+    name: Firedrake test suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          lfs: true
+
+      # The base image includes the NVHPC/CUDA stack (~17GB+); hosted
+      # runners start with limited free disk, so clear the usual large
+      # preinstalled toolchains before building.
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup \
+            /opt/hostedtoolcache/CodeQL /usr/local/lib/android \
+            /usr/share/swift
+          sudo docker image prune --all --force || true
+          df -h /
+
+      - name: Install devcontainer CLI
+        run: npm install -g @devcontainers/cli@0.88.0
+
+      - name: Build Firedrake devcontainer
+        run: |
+          devcontainer up \
+            --workspace-folder "${{ github.workspace }}" \
+            --config .devcontainer/firedrake-test.devcontainer.json \
+            --id-label devcontainer.config_variant=firedrake-test \
+            --log-level info
+
+      - name: Run test suite
+        run: |
+          CID=$(docker ps \
+            --filter "label=devcontainer.config_variant=firedrake-test" \
+            --format '{{.ID}}' | head -1)
+          if [[ -z "${CID}" ]]; then
+            echo "ERROR: no firedrake-test container found" >&2
+            exit 1
+          fi
+          docker exec "${CID}" bash -c '
+            set -euo pipefail
+            source /opt/venvs/firedrake/activate_firedrake.sh
+            cd /tmp
+            python -c "import firedrake, hydrogym; print(\"firedrake + hydrogym import OK\")"
+            cd /workspace/test
+            # The gradient tests (test_*_grad.py) are excluded: they import
+            # firedrake_adjoint, which the Firedrake venv does not provide,
+            # so they fail at COLLECTION (ModuleNotFoundError), not at
+            # runtime (test/README.md: "The gradient tests are currently not
+            # run").
+            python -m pytest . -x --durations=10 \
+              --ignore=test_cavity_grad.py \
+              --ignore=test_pinball_grad.py \
+              --ignore=test_step_grad.py
+          '

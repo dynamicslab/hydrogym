@@ -13,7 +13,7 @@ Produces an animation of the trajectory.
 
 **Arguments**:
 
-- `trajectory` - numpy file of fft vorticity trajectory
+- `trajectory` - fft vorticity trajectory (array, or the path of a numpy file)
 - `gif_name` - file name of gif file that will be saved
-- `interval` - frame interval as related to the length of the trajectory.
+- `frame_interval_factor` - frame interval as related to the length of the trajectory.
 

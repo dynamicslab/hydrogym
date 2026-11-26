@@ -1,41 +1,26 @@
 # Website
 
-This website is built using [Docusaurus](https://docusaurus.io/), a modern static website generator.
+The HydroGym documentation is built with [Docusaurus](https://docusaurus.io/) (Node.js ≥ 20, see `.node-version`).
 
 ## Installation
 
 ```bash
-yarn
+npm ci
 ```
 
-## Local Development
+## Local development
 
 ```bash
-yarn start
+npm start
 ```
 
-This command starts a local development server and opens up a browser window. Most changes are reflected live without having to restart the server.
+This starts a local development server and opens a browser window; most changes are reflected live.
 
 ## Build
 
 ```bash
-yarn build
+npm run build
 ```
 
-This command generates static content into the `build` directory and can be served using any static contents hosting service.
-
-## Deployment
-
-Using SSH:
-
-```bash
-USE_SSH=true yarn deploy
-```
-
-Not using SSH:
-
-```bash
-GIT_USER=<Your GitHub username> yarn deploy
-```
-
-If you are using GitHub pages for hosting, this command is a convenient way to build the website and push to the `gh-pages` branch.
+This regenerates the API pages from the docstrings (`npm run generate-api`, needs `uv`) and writes the static site
+into `build/`. The site is deployed to GitHub Pages by `.github/workflows/deploy.yml`.

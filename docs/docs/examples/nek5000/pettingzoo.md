@@ -30,18 +30,20 @@ observations, rewards, terminated, truncated, infos = env.step(actions)
 
 | File | Purpose |
 |------|---------|
-| [`test_nek_pettingzoo.py`](https://github.com/dynamicslab/hydrogym/blob/main/examples/nek/getting_started/3_pettingzoo/test_nek_pettingzoo.py) | Runs the PettingZoo interface with random actions and verifies the observation/action shapes |
+| [`test_nek_pettingzoo.py`](https://github.com/dynamicslab/hydrogym/blob/main/examples/nek/getting_started/3_pettingzoo/test_nek_pettingzoo.py) | Runs the PettingZoo interface with zero actions and verifies the observation/action shapes |
 | [`train_sb3_pettingzoo.py`](https://github.com/dynamicslab/hydrogym/blob/main/examples/nek/getting_started/3_pettingzoo/train_sb3_pettingzoo.py) | Production SB3 training via SuperSuit |
-| [`run_pettingzoo_docker.sh`](https://github.com/dynamicslab/hydrogym/blob/main/examples/nek/getting_started/3_pettingzoo/run_pettingzoo_docker.sh) | Docker/MPI launcher |
+| [`run_pettingzoo_docker.sh`](https://github.com/dynamicslab/hydrogym/blob/main/examples/nek/getting_started/3_pettingzoo/run_pettingzoo_docker.sh) | MPMD launch script (runs as is in the HydroGym images, from a copy of `/opt/hydrogym/examples` for a non-root user) |
 
 ## Running the examples
 
 ```bash
 # Test
-mpirun -np 1 python test_nek_pettingzoo.py --steps 100 : -np 10 nek5000
+# from a prepared workspace: the Nek5000 case files must be in the working directory
+python ../prepare_workspace.py --env TCFmini_3D_Re180 --work-dir ./ws && cd ws
+mpirun -np 1 python ../test_nek_pettingzoo.py --steps 100 : -np 10 nek5000
 
 # Train with SuperSuit + SB3
-mpirun -np 1 python train_sb3_pettingzoo.py \
+mpirun -np 1 python ../train_sb3_pettingzoo.py \
     --env TCFmini_3D_Re180 \
     --nproc 10 \
     --algo TD3 \
@@ -56,7 +58,6 @@ For reproducible training runs, use a YAML configuration file to lock all simula
 ```bash
 # 1. Prepare a workspace
 python ../prepare_workspace.py \
-  --local-dir ../../../packaged_envs \
   --env TCFmini_3D_Re180 \
   --work-dir ./train_run
 
@@ -65,16 +66,16 @@ cd train_run
 mpirun -np 1 python ../train_sb3_pettingzoo.py \
   --env TCFmini_3D_Re180 \
   --nproc 10 \
-  --config-file ../configs/pettingzoo_tcfmini_re180.yml \
+  --config-file ../../../configs/pettingzoo_tcfmini_re180.yml \
   --algo TD3 \
   --total-timesteps 5000000 \
   : -np 10 nek5000
 
-# 3. Evaluate
+# 3. Roll out with the PettingZoo API (zero control; test_nek_pettingzoo.py does not load the trained model)
 mpirun -np 1 python ../test_nek_pettingzoo.py \
   --env TCFmini_3D_Re180 \
   --nproc 10 \
-  --config-file ../configs/pettingzoo_tcfmini_re180.yml \
+  --config-file ../../../configs/pettingzoo_tcfmini_re180.yml \
   --steps 2500 \
   : -np 10 nek5000
 ```

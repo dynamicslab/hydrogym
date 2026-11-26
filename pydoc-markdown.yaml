@@ -16,3 +16,7 @@ renderer:
   relative_output_path: api
   relative_sidebar_path: sidebars-api.json
   sidebar_top_level_label: 'API Reference'
+  markdown:
+    # html-escaping in pydoc-markdown corrupts docstrings with more than ten code spans; the MDX-relevant
+    # characters are escaped by docs/scripts/postprocess_api.py instead
+    escape_html_in_docstring: false

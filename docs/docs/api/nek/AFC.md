@@ -4,7 +4,6 @@ title: hydrogym.nek.AFC
 ---
 
 The classical approaches for wing control
-Matching the structure from drl_repo_TEST/src/lib/AFC.py
 
 ## AFC Objects
 
@@ -44,7 +43,7 @@ Opposition control implementation
 def policy(observation)
 ```
 
-v = -alpha * (v - &lt;v&gt;)
+v = -alpha * (v - &lt;v>)
 
 ## BLCtrl Objects
 
@@ -84,7 +83,7 @@ Get the node info to impose the Sinusoidal Wave
 def policy(observation)
 ```
 
-We define the V-Vel &lt;==&gt; 1
+We define the V-Vel &lt;==> 1
 
 #### nameAgent
 
@@ -116,13 +115,13 @@ The controller adapts between array-based (NekEnv) and dict-based
 
 To use an SB3 model, you can pass it directly to integrate():
 from stable_baselines3 import PPO
-loaded_model = PPO.load(&quot;path/to/model&quot;)
+loaded_model = PPO.load("path/to/model")
 hgym.integrate(env, ..., controller=loaded_model)
 
 **Arguments**:
 
 - `env` - Environment instance (NekEnv, NekParallelEnv, or NekPettingZooEnv)
-- `ctrl_type` - Algorithm name (&quot;AFC&quot;, &quot;OC&quot;, &quot;BL&quot;, &quot;SIN&quot;, &quot;ZERO&quot;, or SB3 algorithm name)
+- `ctrl_type` - Algorithm name ("AFC", "OC", "BL", "SIN", "ZERO", or SB3 algorithm name)
   
 
 **Returns**:

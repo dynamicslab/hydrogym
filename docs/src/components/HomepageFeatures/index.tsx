@@ -14,10 +14,11 @@ const FeatureList: FeatureItem[] = [
     title: 'Diverse Environments',
     description: (
       <>
-        88 pre-configured environments across 6 CFD solvers. Flow environments
+        89 pre-configured environments across 7 CFD solvers. Flow environments
         are supported by multiple backends: Finite Element (Firedrake),
         Lattice Boltzmann (MAIA LBM), Finite Volume (MAIA FV), Spectral
-        Element (NEK5000), and fully Differentiable solvers (JAX-Fluids)
+        Element (NEK5000, NekRS), and fully differentiable solvers (JAX,
+        JAX-Fluids)
       </>
     ),
   },
@@ -69,7 +70,7 @@ const examplePanels: ExamplePanel[] = [
         airfoil.
       </>
     ),
-    img: '/img/La2_200k_animation-2.gif',
+    img: '/img/naca0012_lambda2_re200k.gif',
   },
   {
     title: 'Fluidic Pinball',
@@ -89,14 +90,14 @@ const examplePanels: ExamplePanel[] = [
         wave control for Re<sub>τ</sub> = 200, 1550, and 2200
       </>
     ),
-    img: '/img/tbl_lambda2_sliced-ezgif.com-video-to-gif-converter.gif',
+    img: '/img/tbl_lambda2.gif',
   },
   {
     title: 'Cylinder',
     description: (
       <>
         2D & 3D flows at Re = 100 - 3,900. Drag reduction via rotation and
-        jet actuation. Achieves more than 20% drag reduction.
+        jet actuation.
       </>
     ),
     img: '/img/cylinder.gif',
@@ -135,7 +136,7 @@ const examplePanels: ExamplePanel[] = [
     title: 'Open Cavity Flow',
     description: (
       <>
-        Shear layer stabilization at Re = 4,140 - 7,500.
+        Shear layer stabilization at Re = 4,200 - 7,500.
         Acoustic feedback disruption through leading-edge control.
       </>
     ),

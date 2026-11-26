@@ -64,8 +64,6 @@ const config: Config = {
           sidebarPath: './sidebars.ts',
           remarkPlugins: [remarkMath],
           rehypePlugins: [rehypeKatex],
-          // Please change this to your repo.
-          // Remove this to remove the "edit this page" links.
           editUrl:
             'https://github.com/dynamicslab/hydrogym/tree/main/docs',
         },
@@ -78,7 +76,6 @@ const config: Config = {
   ],
 
   themeConfig: {
-    // Replace with your project's social card
     image: 'img/hydrogym-social-card.jpg',
     colorMode: {
       respectPrefersColorScheme: true,

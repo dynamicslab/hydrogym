@@ -32,21 +32,35 @@ Computing the fourier velocity components (u_hat, v_hat) from the stream functio
 **Arguments**:
 
 - `omega_hat` - the Fourier transform of the vorticity
-- `grid` - the jnp grid
+- `kx` - wavenumbers x
+- `ky` - wavenumbers y
+  
+
+**Returns**:
+
+  Tuple `(u_hat, v_hat)`.
 
 #### dealiasing
 
 ```python
-def dealiasing(advection_term)
+def dealiasing(advection_term, m=None)
 ```
 
-Adds the 2/3 aliasing technique to the velocity field, which
-sets the last 1/3 high frequency Fourier modes to 0.
-Reference: https://notes.yeshiwei.com/pseudo_spectral_method/algorithm.html
+2/3 dealiasing rule for a 2D field in `rfftn` layout: the Fourier modes with
+`|k_x| > n // 3` or `k_y > m // 3` are set to 0 (the same cut-off as
+`dealias_mask_2_3`).
+Reference: S. A. Orszag, J. Atmos. Sci. 28, 1074 (1971) (the 2/3 rule).
 
 **Arguments**:
 
-- `vel_hat` - velocity field in Fourier space
+- `advection_term` - field in Fourier space, shape `(n, m // 2 + 1)`.
+- `m` - length of the real-space axis that was transformed with `rfft`
+  (default `2 * (advection_term.shape[1] - 1)`, i.e. an even grid).
+  
+
+**Returns**:
+
+  The truncated field (same shape and dtype).
 
 #### compute\_energy\_mode
 
@@ -58,7 +72,7 @@ Compute the energy of a specific mode and wavenumber.
 
 **Arguments**:
 
-- `omega_hat` - fft vorticity
+  uhat, vhat: fft velocity components
 - `kx` - wavenumber x
 - `ky` - wavenumber y
   n, m: grid size
@@ -89,9 +103,8 @@ Compute the velocity of a specific point in real space.
 **Arguments**:
 
   uhat, vhat: fft velocity components
-- `kx` - wavenumber x
-- `ky` - wavenumber y
-  n, m: grid size
+- `x_idx` - grid index of the point in x
+- `y_idx` - grid index of the point in y
 
 #### compute\_energy\_dissipation
 
@@ -101,7 +114,7 @@ def compute_energy_dissipation(omega_hat, kx, ky, nu, n)
 
 Computes the energy dissipation of the system given the fft vorticity field.
 The instantaneous energy dissipation rate can be estimated by:
-Ɛ(x,t) = 2v&lt;(S_ij S_ij)&gt; [2]
+Ɛ(x,t) = 2v&lt;(S_ij S_ij)> [2]
 where S_ij denotes the fluctuation strain-rate tensor and v denotes the kinematic viscosity [1,2].
 [1] Pope, 2000
 [2] Buaria et. al, eq 1.1 in doi: 10.1098/rsta.2021.0088
@@ -112,7 +125,7 @@ where S_ij denotes the fluctuation strain-rate tensor and v denotes the kinemati
 - `kx` - wavenumber x
 - `ky` - wavenumber y
 - `nu` - kinematic viscosity
-- `n` - grid length
+- `n` - grid length (not used)
 
 #### compute\_tke
 

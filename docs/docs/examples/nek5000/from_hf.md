@@ -35,18 +35,20 @@ Setting `use_clean_cache=False` reuses a previously prepared workspace, which is
 
 | File | Purpose |
 |------|---------|
-| [`test_nek_DM.py`](https://github.com/dynamicslab/hydrogym/blob/main/examples/nek/getting_started/4_from_hf/test_nek_DM.py) | Smoke-test `from_hf()` loading with zero control |
+| [`test_nek_DM.py`](https://github.com/dynamicslab/hydrogym/blob/main/examples/nek/getting_started/4_from_hf/test_nek_DM.py) | Smoke-test `from_hf()` loading with opposition control |
 | [`train_sb3_from_hf.py`](https://github.com/dynamicslab/hydrogym/blob/main/examples/nek/getting_started/4_from_hf/train_sb3_from_hf.py) | SB3 training starting from an HF-managed environment |
-| [`run_from_hf_docker.sh`](https://github.com/dynamicslab/hydrogym/blob/main/examples/nek/getting_started/4_from_hf/run_from_hf_docker.sh) | Docker/MPI launcher |
+| [`run_from_hf_docker.sh`](https://github.com/dynamicslab/hydrogym/blob/main/examples/nek/getting_started/4_from_hf/run_from_hf_docker.sh) | MPMD launch script (runs as is in the HydroGym images, from a copy of `/opt/hydrogym/examples` for a non-root user) |
 
 ## Running the examples
 
 ```bash
 # Test
-mpirun -np 1 python test_nek_DM.py --steps 100 : -np 10 nek5000
+# from a prepared workspace: the Nek5000 case files must be in the working directory
+python ../prepare_workspace.py --env TCFmini_3D_Re180 --work-dir ./ws && cd ws
+mpirun -np 1 python ../test_nek_DM.py --steps 100 : -np 10 nek5000
 
 # Train
-mpirun -np 1 python train_sb3_from_hf.py \
+mpirun -np 1 python ../train_sb3_from_hf.py \
     --env TCFmini_3D_Re180 \
     --algo PPO \
     --total-timesteps 100000 \

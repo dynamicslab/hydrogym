@@ -22,7 +22,11 @@ multiple data (MPMD) execution model. The m-AIA binary and Python controller
 must be launched together, sharing MPI_COMM_WORLD.
 
 Example launch command:
-mpirun -np &lt;n_controller_ranks&gt; &lt;controller&gt; : -np &lt;n_maia_ranks&gt; &lt;maia&gt;
+mpirun -np &lt;n_controller_ranks> &lt;controller> : -np &lt;n_maia_ranks> &lt;maia>
+
+With launchers that give all ranks the same application number (e.g. `srun --multi-prog`), set the
+environment variable `MAIA_MPMD_APPNUM` to 0 for the controller ranks and 1 for the m-AIA ranks; it takes
+precedence over `MPI_APPNUM` (see `hydrogym.core_external.mpmd_appnum`).
 
 **Attributes**:
 
@@ -47,17 +51,32 @@ Initialize the MaiaInterface.
 #### init\_comm
 
 ```python
-def init_comm(comm_world: MPI.Comm) -> None
+def init_comm(comm_world: MPI.Comm, nproc: Optional[int] = None) -> None
 ```
 
 Initialize MPI communication with m-AIA.
 
 Sets up the communicators and determines the root ranks for both
-the Python controller and the m-AIA solver.
+the Python controller and the m-AIA solver. The split math itself
+lives in `hydrogym.core_external.split_comm_by_appnum` (shared
+module for MPMD world-split strategies); only the
+attribute assignment stays here.
 
 **Arguments**:
 
 - `comm_world` - MPI communicator, typically MPI.COMM_WORLD.
+- `nproc` - Expected number of m-AIA solver ranks. When given,
+  validated against the actual remote-app rank count
+  (`comm_world.Get_size() - appNoRanks`, i.e. every world
+  rank not part of this app) and a clear `RuntimeError` is
+  raised on mismatch, as `hydrogym.core_external.mpi_split`
+  does for Nek. `None` (default) skips the check.
+  
+
+**Raises**:
+
+- `RuntimeError` - If `nproc` is given and does not match the
+  actual number of m-AIA solver ranks in the MPMD job.
 
 #### continueRun
 
@@ -140,6 +159,24 @@ Get the force acting on a boundary segment.
 **Returns**:
 
   Force vector array of length nDim.
+
+#### getActuationPower
+
+```python
+def getActuationPower() -> np.ndarray
+```
+
+Get the actuation power of the jets of the structured finite-volume solver (boundary condition 1008).
+
+m-AIA forms the power per wall face of the jet footprints: the flux of pressure work and kinetic energy
+`v_n (p - p_ref + rho |u|^2 / 2)` through the wall, with `p_ref` the mean wall pressure over the jets,
+normalised like the force coefficients of the solver.
+
+**Returns**:
+
+  `[P, P_pos, P_abs, P_0, ..., P_{N-1}, Q_0, ..., Q_{N-1}]`: the signed, positive-part and absolute power
+  coefficient of all jets, the signed power coefficient of each jet and its volume flux into the fluid
+  (normalised by the free-stream speed).
 
 #### reinit
 

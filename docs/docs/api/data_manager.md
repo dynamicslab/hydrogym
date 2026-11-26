@@ -4,13 +4,12 @@ title: hydrogym.data_manager
 ---
 
 HydroGym Data Manager
-=====================
 
 General Hugging Face data manager for all HydroGym solvers.
 
 Supports three caching strategies:
 - use_clean_cache=True:    Create symlinks into HF cache (recommended — clean paths, no duplication)
-- use_clean_cache=&#x27;copy&#x27;:  Copy to ~/.cache/hydrogym/ (clean paths, duplicated storage)
+- use_clean_cache='copy':  Copy to ~/.cache/hydrogym/ (clean paths, duplicated storage)
 - use_clean_cache=False:   Use HF cache paths directly (no duplication, messy paths)
 
 Local fallback optimization:
@@ -19,37 +18,49 @@ directly without copying/linking to the cache (cache layer is only used for HF d
 
 Solver profiles
 ---------------
-Each entry in :data:`SOLVER_PROFILES` describes one solver backend:
+Each entry in `SOLVER_PROFILES` describes one solver backend:
 
-- ``sentinel``:        Hidden file stored alongside environment data on HF that identifies the
-solver (e.g. ``.MAIA_LB``). Used for automatic profile detection.
-- ``required_files``:  Files that must exist for validation to pass.
-- ``required_dirs``:   Directories that must exist and be non-empty.
-- ``optional_files``:  Files that are logged but not required.
-- ``workspace_files``: ``{source_filename: target_rel_path}`` mapping used by
-:meth:``5 to create
+- `sentinel`:        Hidden file stored alongside environment data on HF that identifies the
+solver (e.g. `.MAIA_LB`). Used for automatic profile detection.
+- `required_files`:  Files that must exist for validation to pass.
+- `required_dirs`:   Directories that must exist and be non-empty.
+- `optional_files`:  Files that are logged but not required.
+- `workspace_files`: `{source_filename: target_rel_path}` mapping used by
+`HFDataManager.prepare_working_directory` to create
 solver-specific symlinks in a run directory.
-- ``workspace_dirs``:  Same idea for directories.
+- `workspace_dirs`:  Same idea for directories.
+- `workspace_optional_globs`: file patterns linked into the run directory under
+their own names when present (no warning when absent).
 
 To add a new solver, add an entry here. No other file needs to change for
 basic support (download + validation + workspace prep).
 
-Usage::
+Usage:
 
+```python
 # Symlinks (recommended)
 dm = HFDataManager(use_clean_cache=True)
 
 # Copy files (if you need to modify them)
-dm = HFDataManager(use_clean_cache=&#x27;copy&#x27;)
+dm = HFDataManager(use_clean_cache="copy")
 
 # Use HF cache directly
 dm = HFDataManager(use_clean_cache=False)
 
 # Get environment path (downloads if needed)
-env_path = dm.get_environment_path(&#x27;Cylinder_2D_Re200&#x27;)
+env_path = dm.get_environment_path("Cylinder_2D_Re200")
 
 # Prepare a solver-specific working directory
-paths = dm.prepare_working_directory(env_path, &#x27;./run_dir&#x27;)
+paths = dm.prepare_working_directory(env_path, "./run_dir")
+```
+
+## MissingEnvironmentFilesError Objects
+
+```python
+class MissingEnvironmentFilesError(FileNotFoundError)
+```
+
+An environment folder on the Hub lacks files its solver profile requires (raised before any download).
 
 ## HFDataManager Objects
 
@@ -62,10 +73,10 @@ Manages CFD environment data from Hugging Face Hub.
 Handles downloading, caching (via symlinks, copies, or direct HF paths),
 solver-profile detection, validation, and working-directory preparation.
 
-Solver profiles are detected automatically from sentinel files (e.g. ``.MAIA_LB``,
-``.MAIA_STRCTRD``) stored alongside environment data on HF. The local cache is
+Solver profiles are detected automatically from sentinel files (e.g. `.MAIA_LB`,
+`.MAIA_STRCTRD`) stored alongside environment data on HF. The local cache is
 checked first; if no sentinel is found the HF file listing is queried (lightweight
-— no full download). ``fallback_profile`` is used when neither source yields a
+— no full download). `fallback_profile` is used when neither source yields a
 result (e.g. legacy environments or offline mode).
 
 #### \_\_init\_\_
@@ -75,7 +86,9 @@ def __init__(repo_id: str = "dynamicslab/HydroGym-environments",
              cache_dir: Optional[str] = None,
              local_fallback_dir: Optional[str] = None,
              use_clean_cache: Union[bool, str] = True,
-             fallback_profile: str = "MAIA_LB")
+             fallback_profile: str = "MAIA_LB",
+             token: Optional[str] = None,
+             revision: Optional[str] = None)
 ```
 
 Initialize the HF Data Manager.
@@ -83,19 +96,28 @@ Initialize the HF Data Manager.
 **Arguments**:
 
 - `repo_id` - Hugging Face repository ID.
-- `cache_dir` - Clean local cache directory (default: ``~/.cache/hydrogym``).
+- `cache_dir` - Clean local cache directory (default: `~/.cache/hydrogym`).
   Only used for HF downloads; local_fallback_dir is used directly.
+  When explicitly set, it is also passed to `snapshot_download` so
+  the raw HF download cache lands under it instead of the
+  huggingface_hub default (~/.cache/huggingface).
 - `local_fallback_dir` - Local directory with environment files used when HF
   is unreachable. When available, used directly without cache layer.
   use_clean_cache:
-  - ``True``:    Create symlinks into HF cache (recommended).
-  - ``&#x27;copy&#x27;``:  Copy files to clean cache.
-  - ``False``:   Use HF cache paths directly.
-- `cache_dir`1 - cache_dir is only used for HF downloads, not for local_fallback.
-- `cache_dir`2 - Solver profile to use when no sentinel file is found.
-  Defaults to ``&#x27;MAIA_LB&#x27;``.  Pass the environment class&#x27;s
-  ``SOLVER_TYPE`` attribute to get the right fallback in offline /
+  - `True`:    Create symlinks into HF cache (recommended).
+  - `'copy'`:  Copy files to clean cache.
+  - `False`:   Use HF cache paths directly.
+- `Note` - cache_dir is only used for HF downloads, not for local_fallback.
+- `fallback_profile` - Solver profile to use when no sentinel file is found.
+  Defaults to `'MAIA_LB'`.  Pass the environment class's
+  `SOLVER_TYPE` attribute to get the right fallback in offline /
   legacy scenarios.
+- `token` - Hugging Face access token, for private/gated repos. `None`
+  (default) preserves ambient authentication (`HF_TOKEN` env var
+  or `huggingface-cli login`).
+- `revision` - Git revision (branch name, tag, or commit hash) to pin
+  downloads and file listings to. `None` (default) uses the
+  repo's default branch.
 
 #### get\_available\_environments
 
@@ -122,7 +144,7 @@ any download occurs.
 
 **Arguments**:
 
-- `env_name` - Environment name (e.g. ``&#x27;Cylinder_2D_Re200&#x27;``).
+- `env_name` - Environment name (e.g. `'Cylinder_2D_Re200'`).
 - `force_download` - Force re-download even if cached.
   
 
@@ -141,26 +163,26 @@ def prepare_working_directory(env_path: str,
 Create *work_dir* and populate it with solver-specific symlinks.
 
 The mapping of source files/directories to their target locations inside
-*work_dir* is defined by the ``workspace_files`` and ``workspace_dirs``
-entries in :data:`SOLVER_PROFILES`.
+*work_dir* is defined by the `workspace_files` and `workspace_dirs`
+entries in `SOLVER_PROFILES`.
 
-If *profile* is ``None`` the profile is auto-detected from sentinel files
-already present in *env_path*, then falls back to ``self.fallback_profile``.
+If *profile* is `None` the profile is auto-detected from sentinel files
+already present in *env_path*, then falls back to `self.fallback_profile`.
 
 **Arguments**:
 
 - `env_path` - Path to the cached environment data (as returned by
-  :meth:``0).
-- ``1 - Target working directory (created if it does not exist).
-- ``2 - Solver profile key (e.g. ``&#x27;MAIA_LB&#x27;``).  Auto-detected when
-  ``None``.
+  `get_environment_path`).
+- `work_dir` - Target working directory (created if it does not exist).
+- `profile` - Solver profile key (e.g. `'MAIA_LB'`).  Auto-detected when
+  `None`.
   
 
 **Returns**:
 
-  Dictionary with at least ``&#x27;work_dir&#x27;`` and ``&#x27;env_data_path&#x27;`` keys.
+  Dictionary with at least `'work_dir'` and `'env_data_path'` keys.
   Additional keys may be present depending on the profile (e.g.
-  ``&#x27;properties_file&#x27;`` for MAIA_LB).
+  `'properties_file'` for MAIA_LB).
 
 #### download\_environment
 
@@ -168,7 +190,7 @@ already present in *env_path*, then falls back to ``self.fallback_profile``.
 def download_environment(env_name: str, force_download: bool = False) -> str
 ```
 
-Alias for :meth:`get_environment_path` (backwards compatibility).
+Alias for `get_environment_path` (backwards compatibility).
 
 #### clear\_cache
 
@@ -180,5 +202,5 @@ Clear cached environment files.
 
 **Arguments**:
 
-- `env_name` - Specific environment to clear, or ``None`` for all.
+- `env_name` - Specific environment to clear, or `None` for all.
 

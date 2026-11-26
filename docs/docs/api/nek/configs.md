@@ -3,8 +3,7 @@ sidebar_label: configs
 title: hydrogym.nek.configs
 ---
 
-Configuration of runner and NEK
-@yuningw
+Configuration of the runner and of the Nek5000 case (author: Yuning Wang).
 
 ## Runner Objects
 
@@ -35,19 +34,15 @@ Frequency of saving policy
 
 #### n\_epochs
 
-Setup of Pol
+PPO: optimisation epochs per policy update
 
 #### seed
 
-If -5000 -&gt; None
-
-#### random\_init
-
--1==No Shuffle, use the No.init = RANK; -2==NOT Cover the current rs8
+If -5000 -> None
 
 #### rank
 
-NAME of test case
+number of the initial-condition folder init_&lt;rank> (random_init &lt; 0)
 
 #### rew\_mode
 
@@ -88,6 +83,14 @@ Volume for Body-Force
 
 Amplitude for Body-Force
 
+#### frame
+
+wall (wall-tangent frame) | hg_fortran (projection of the original coupling)
+
+#### power\_mode
+
+0 off, 1 every solver step, 2 end of action; set by NekEnv from the power section
+
 #### lx1
 
 Polynomial Order
@@ -122,7 +125,7 @@ Simulation wall time
 
 #### READCHKPT
 
-Restat from checkpoint
+Restart from checkpoint
 
 #### CHKPFNUMBER
 
@@ -130,5 +133,5 @@ Restart file number
 
 #### CHKPINTERVAL
 
-Checkpiont saving frequency (number of time steps)
+Checkpoint saving frequency (number of time steps)
 

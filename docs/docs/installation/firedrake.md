@@ -8,18 +8,20 @@ sidebar_position: 1
 
 ## Option 1: Docker (recommended)
 
-The fastest way to get a working Firedrake + HydroGym environment is to pull the pre-built Docker image:
+The fastest way to get a working Firedrake + HydroGym environment is to pull the pre-built HydroGym CPU image (Firedrake runs on the CPU; the GPU images do not contain it):
 
 ```bash
-docker pull clagemann/hydrogym-nvhpc-26.1_cuda-12.9_hopper_blackwell
-docker run -it clagemann/hydrogym-nvhpc-26.1_cuda-12.9_hopper_blackwell
+docker pull clagemann/hydrogym-cpu:1.0.2
+docker run -it --ipc=host clagemann/hydrogym-cpu:1.0.2
 ```
 
-Inside the container, activate the Firedrake virtual environment and install HydroGym:
+Inside the container, activate the Firedrake virtual environment; HydroGym is already installed in it:
 
 ```bash
-. /home/firedrake/firedrake/bin/activate
-pip install hydrogym[firedrake]
+source /opt/venvs/firedrake/bin/activate
+cp -r /opt/hydrogym/examples ~/hydrogym-examples   # the examples write into their directory
+cd ~/hydrogym-examples/firedrake/getting_started
+python test_firedrake_env.py --environment cylinder --num-steps 3 --mesh-resolution medium
 ```
 
 The official Firedrake images (without HydroGym) are also available if you prefer to build on top of them yourself:
@@ -81,7 +83,7 @@ To include SLEPc (required for the stability analysis scripts in the cylinder, c
 ```bash
 python3 ../firedrake-configure --show-petsc-configure-options | \
     xargs -L1 ./configure --download-slepc
-export SLEPC_DIR=$PETSC_DIR/$PETSC_ARCH
+export SLEPC_DIR=$(pwd)/arch-firedrake-default   # run in petsc/
 ```
 
 ### Step 3 — Create a virtual environment and install Firedrake
@@ -108,7 +110,11 @@ With the Firedrake virtual environment still active:
 pip install hydrogym[firedrake]
 ```
 
-This installs `gmsh` (for mesh generation) and `psutil` alongside the core HydroGym package.
+This installs `gmsh` (for mesh generation) and `psutil` alongside the core HydroGym package. The getting-started test (`test_firedrake_env.py`) also writes ParaView output, which needs VTK: `pip install vtk` (or install Firedrake with `firedrake[check,vtk]`).
+
+:::note
+Git LFS: the Firedrake meshes (`hydrogym/firedrake/envs/*/*.msh`) and the Nek5000 case files (`third_party/nek5000/cases/`) are stored with [Git LFS](https://git-lfs.com). Run `git lfs install` before cloning, or `git lfs pull` in an existing clone; otherwise these files are small pointer files and HydroGym stops with "... is a Git LFS pointer". `pip install hydrogym[firedrake]` from PyPI includes the meshes; this applies to installs from a clone (`pip install -e .`).
+:::
 
 ### Persistent environment variables
 

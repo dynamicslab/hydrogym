@@ -2,8 +2,7 @@
  * CSS files with the .module.css suffix will be treated as CSS modules
  * and scoped locally.
  *
- * Hero background matches https://smokbel.github.io/TheHydroGymProject/ —
- * logo SVG as cover image plus a light scrim (same as their inline styles).
+ * Hero background: logo SVG as cover image plus a light scrim.
  */
 
 .heroBanner {
@@ -45,7 +44,7 @@
   justify-content: center;
 }
 
-/* Matches .hero-box on https://smokbel.github.io/TheHydroGymProject/ */
+/* Hero box */
 .heroBox {
   position: relative;
   z-index: 2;

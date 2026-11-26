@@ -13,12 +13,12 @@ All scripts live in [`examples/nek/getting_started/5_hydrogym_control/`](https:/
 ```python
 from hydrogym.nek import NekEnv, integrate
 
-env = NekEnv.from_hf("TCFmini_3D_Re80", nproc=10)
+env = NekEnv.from_hf("TCFmini_3D_Re180", nproc=10)
 
 
 # Classical controller: opposition control
 def opposition_control(t, obs, env):
-    return -obs[: env.action_space.shape[0]]
+    return -obs[1::2]  # obs is [u', v'] per actuator: oppose the wall-normal velocity
 
 
 integrate(env, controller=opposition_control, num_steps=1000)
@@ -38,19 +38,22 @@ integrate(env, controller=model, num_steps=1000)
 |------|---------|
 | [`test_nek_env_controller.py`](https://github.com/dynamicslab/hydrogym/blob/main/examples/nek/getting_started/5_hydrogym_control/test_nek_env_controller.py) | Runs several classical controllers in sequence and prints the resulting rewards |
 | [`train_sb3_with_integrate.py`](https://github.com/dynamicslab/hydrogym/blob/main/examples/nek/getting_started/5_hydrogym_control/train_sb3_with_integrate.py) | Complete train → save → load → evaluate workflow, including a comparison between the trained policy and a classical baseline |
-| [`run_control_docker.sh`](https://github.com/dynamicslab/hydrogym/blob/main/examples/nek/getting_started/5_hydrogym_control/run_control_docker.sh) | Docker/MPI launcher |
+| [`run_control_docker.sh`](https://github.com/dynamicslab/hydrogym/blob/main/examples/nek/getting_started/5_hydrogym_control/run_control_docker.sh) | MPMD launch script (runs as is in the HydroGym images, from a copy of `/opt/hydrogym/examples` for a non-root user) |
 
 ## Running the examples
 
 ```bash
+# from a prepared workspace: the Nek5000 case files must be in the working directory
+python ../prepare_workspace.py --env TCFmini_3D_Re180 --work-dir ./ws && cd ws
+
 # Test controllers
-mpirun -np 1 python test_nek_env_controller.py \
-    --config test_config.yml \
+mpirun -np 1 python ../test_nek_env_controller.py \
+    --env TCFmini_3D_Re180 --nproc 10 \
     : -np 10 nek5000
 
 # Full train + evaluate workflow
-mpirun -np 1 python train_sb3_with_integrate.py \
-    --env TCFmini_3D_Re180 \
+mpirun -np 1 python ../train_sb3_with_integrate.py \
+    --env TCFmini_3D_Re180 --nproc 10 \
     --algo PPO \
     --total-timesteps 50000 \
     --eval-steps 200 \
@@ -68,7 +71,7 @@ import numpy as np
 
 
 def opposition_control(t, obs, env):
-    return -obs[: env.action_space.shape[0]] * 0.5
+    return -obs[1::2] * 0.5
 
 
 def sinusoidal(t, obs, env):
@@ -111,17 +114,19 @@ from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 
 # --- Phase 1: training ---
-env = Monitor(NekEnv(env_config=config))
-env = VecNormalize(DummyVecEnv([lambda: env]), norm_obs=True, norm_reward=True)
+base_env = NekEnv(env_config=config)
+env = VecNormalize(DummyVecEnv([lambda: Monitor(base_env)]), norm_obs=True, norm_reward=True)
 
 model = PPO("MlpPolicy", env)
 model.learn(total_timesteps=50_000)
 model.save("model.zip")
 env.save("vec_normalize.pkl")
 
-# --- Phase 2: evaluation ---
-base_eval = NekEnv(env_config=config)
-env_eval = VecNormalize.load("vec_normalize.pkl", DummyVecEnv([lambda: base_eval]))
+# --- Phase 2: evaluation, in the same environment ---
+# One MPMD launch (mpirun ... : ... nek5000) serves one NekEnv: its constructor joins the Nek5000 ranks once,
+# so a second NekEnv(...) would wait for them. Evaluate with the training environment.
+env_eval = VecNormalize.load("vec_normalize.pkl", DummyVecEnv([lambda: base_env]))
+env_eval.training, env_eval.norm_reward = False, False
 model = PPO.load("model.zip")
 
 integrate(env_eval, controller=model, num_steps=1000)

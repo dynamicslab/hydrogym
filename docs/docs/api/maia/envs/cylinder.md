@@ -21,7 +21,7 @@ This class provides the common functionality for cylinder-based CFD
 environments, including reward computation based on drag and lift forces.
 
 The reward is computed as:
-reward = -|C_D| - omega * |C_L|
+reward = -|C_D| - omega * |C_L| [- power_weight * C_P]
 
 where C_D is the drag coefficient, C_L is the lift coefficient,
 and omega is a weighting factor.
@@ -54,6 +54,14 @@ that penalizes drag and lift forces.
   Tuple containing:
   - reward: Scalar reward (or list for multiple boundaries)
   - obj_dict: Dictionary with force information
+
+#### drag\_coefficient\_from\_objective
+
+```python
+def drag_coefficient_from_objective(obj_dict)
+```
+
+Total drag coefficient over the boundary segments of the cylinder.
 
 ## Cylinder Objects
 
@@ -112,7 +120,7 @@ class RotaryCylinder(CylinderBase)
 Rotary cylinder environment with rotational actuation.
 
 This environment simulates flow around a circular cylinder that can
-rotate. The actuation controls the cylinder&#x27;s angular velocity.
+rotate. The actuation controls the cylinder's angular velocity.
 
 #### \_\_init\_\_
 

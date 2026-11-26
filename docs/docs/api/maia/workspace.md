@@ -19,8 +19,8 @@ class MaiaWorkspace()
 Manages MAIA workspace setup including file downloads and symbolic links.
 
 File preparation is driven by solver profiles in
-:data:`~hydrogym.data_manager.SOLVER_PROFILES`.  The correct profile
-(``&#x27;MAIA_LB&#x27;`` or ``&#x27;MAIA_STRCTRD&#x27;``) is auto-detected from sentinel files.
+`SOLVER_PROFILES`.  The correct profile
+(`'MAIA_LB'` or `'MAIA_STRCTRD'`) is auto-detected from sentinel files.
 
 #### \_\_init\_\_
 
@@ -30,21 +30,25 @@ def __init__(environment_name: str,
              hf_repo_id: str = "dynamicslab/HydroGym-environments",
              local_fallback_dir: Optional[str] = None,
              use_clean_cache: bool = True,
-             solver_type: Optional[str] = None)
+             solver_type: Optional[str] = None,
+             hf_token: Optional[str] = None,
+             hf_revision: Optional[str] = None)
 ```
 
 Initialize the MAIA workspace.
 
 **Arguments**:
 
-- `environment_name` - Name of the environment (e.g., &#x27;Cylinder_2D_Re200&#x27;).
-- `work_dir` - Working directory path. If None, uses &#x27;./run_`{environment_name}`&#x27;.
+- `environment_name` - Name of the environment (e.g., 'Cylinder_2D_Re200').
+- `work_dir` - Working directory path. If None, uses './run_\{environment_name\}'.
 - `hf_repo_id` - Hugging Face repository ID.
 - `local_fallback_dir` - Optional local fallback directory.
 - `use_clean_cache` - Whether to use clean cache for HF downloads.
-- `solver_type` - Solver profile key (``&#x27;MAIA_LB&#x27;`` or ``&#x27;MAIA_STRCTRD&#x27;``).
-  Auto-detected from sentinel files if ``None`` (recommended).
-  Defaults to ``&#x27;MAIA_LB&#x27;`` as fallback for legacy environments.
+- `solver_type` - Solver profile key (`'MAIA_LB'` or `'MAIA_STRCTRD'`).
+  Auto-detected from sentinel files if `None` (recommended); `'MAIA_LB'` is the fallback
+  for environments without a sentinel file.
+- `hf_token` - Hugging Face access token (private/gated repos; `None` = ambient auth).
+- `hf_revision` - Git revision to pin HF downloads/listings to (`None`: the default branch).
 
 #### setup
 
@@ -69,10 +73,10 @@ This method:
 **Returns**:
 
   Dictionary containing paths to key files:
-  - &#x27;work_dir&#x27;: Path to work directory
-  - &#x27;properties_file&#x27;: Path to properties file for MAIA
-  - &#x27;config_file&#x27;: Path to environment config file
-  - &#x27;env_data_path&#x27;: Path to source environment data
+  - 'work_dir': Path to work directory
+  - 'properties_file': Path to properties file for MAIA
+  - 'config_file': Path to environment config file
+  - 'env_data_path': Path to source environment data
 
 #### cleanup
 
@@ -107,7 +111,7 @@ and creates symbolic links with proper file extensions.
 
 **Arguments**:
 
-- `environment_name` - Name of the environment (e.g., &#x27;Cylinder_2D_Re200&#x27;).
+- `environment_name` - Name of the environment (e.g., 'Cylinder_2D_Re200').
 - `work_dir` - Working directory path. If None, auto-generates name.
 - `hf_repo_id` - Hugging Face repository ID.
 - `force_download` - Force re-download from HF Hub.
@@ -121,11 +125,11 @@ and creates symbolic links with proper file extensions.
 
 **Example**:
 
-  &gt;&gt;&gt; import hydrogym.maia as maia
-  &gt;&gt;&gt;
-  &gt;&gt;&gt; # Prepare workspace (before submitting HPC job)
-  &gt;&gt;&gt; work_dir, props_file = maia.prepare_maia_workspace(&#x27;Cylinder_2D_Re200&#x27;)
-  &gt;&gt;&gt;
-  &gt;&gt;&gt; # Then use work_dir and props_file in your job script:
-  &gt;&gt;&gt; # sbatch job.slurm  # where job.slurm references work_dir
+  >>> import hydrogym.maia as maia
+  >>>
+  >>> # Prepare workspace (before submitting HPC job)
+  >>> work_dir, props_file = maia.prepare_maia_workspace('Cylinder_2D_Re200')
+  >>>
+  >>> # Then use work_dir and props_file in your job script:
+  >>> # sbatch job.slurm  # where job.slurm references work_dir
 

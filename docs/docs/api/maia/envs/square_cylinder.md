@@ -54,6 +54,14 @@ that penalizes drag and lift forces.
   - reward: Scalar reward (or list for multiple boundaries)
   - obj_dict: Dictionary with force information
 
+#### drag\_coefficient\_from\_objective
+
+```python
+def drag_coefficient_from_objective(obj_dict)
+```
+
+Total drag coefficient over the boundary segments (normalised like the reward's force coefficients).
+
 ## SquareCylinder Objects
 
 ```python
@@ -63,6 +71,18 @@ class SquareCylinder(SquareCylinderBase)
 Square cylinder environment with flow control.
 
 This environment simulates flow around a square cylinder geometry.
+
+Actuation power (`hydrogym.maia.wall_jets`, one actuator per jet): the two slot jets of BC 2007 (object
+class 0 on the top and bottom faces, parabolic across `lbJetRanges`) are the fluid cells next to the faces
+(faces on cell faces: exactly the solver's jet cells), `C_P = 2 P / (U^3 D [zLength])` like `C_D`. The jets are
+independent (not zero-net-mass-flux); `p_ref` is the mean wall pressure over both jets.
+
+Stable jet amplitude (`SquareCylinder_2D_Re200`, D/20, BGKC): sustained suction through a jet above about
+0.021 lattice units (0.36 U at Ma 0.1) excites a grid-scale odd-even mode across the 4-cell slot (moving-wall
+bounce-back with a wall-normal velocity on a face that lies in the near-stagnant fluid under the separated shear
+layer); at 0.44 U it saturates and corrupts the forces, at 0.52 U the run diverges after 30-40 actions. Blowing,
+sign-alternating commands and the circular cylinder at the same amplitude are stable. The Hugging Face
+configuration therefore uses `max_control: 0.021`.
 
 **Attributes**:
 

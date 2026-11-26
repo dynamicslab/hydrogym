@@ -8,7 +8,7 @@ A recent development of Hydrogym is the inclusion of differentiable solvers like
 
 ## Setting up the JAX Environment
 
-To set up our environment, we begin by first importing JAX, plotting libraries, and the required components from HydroGym. The most important component in HydroGym being the [Pseudospectal Navier Stokes Solver in 2D](https://github.com/dynamicslab/hydroGym/blob/main/hydroGym/jax/envs/kolmogorov.py).
+To set up our environment, we begin by first importing JAX, plotting libraries, and the required components from HydroGym. The most important component in HydroGym being the [Pseudospectal Navier Stokes Solver in 2D](https://github.com/dynamicslab/hydrogym/blob/main/hydrogym/jax/envs/kolmogorov.py).
 
 ```python
 import os
@@ -45,7 +45,7 @@ os.makedirs(output_dir, exist_ok=True)
 
 ## The Reinforcement Learning Environment
 
-To set up the reinforcement learning environment, we will be utilizing HydroGym's [FlowConfig](https://github.com/dynamicslab/hydroGym/blob/main/hydroGym/jax/envs/kolmogorov.py). If you would like to change the grid resolution, you will need to define it as an argument of the FlowConfig, like
+To set up the reinforcement learning environment, we will be utilizing HydroGym's [FlowConfig](https://github.com/dynamicslab/hydrogym/blob/main/hydrogym/jax/envs/kolmogorov.py). If you would like to change the grid resolution, you will need to define it as an argument of the FlowConfig, like
 
 ```python
 FlowConfig(domain_x = 256, domain_y = 256)...
@@ -59,7 +59,7 @@ flow.Re = 100
 dt = 0.001
 equation = PseudoSpectralNavierStokes2D(flow)
 solver = RungeKuttaCrankNicolson(flow, dt, 1, equation)
-end_time = 50  # This is in seconds!
+end_time = 50  # simulation time (nondimensional)
 
 callbacks = [
     io.LogCallback(
@@ -135,11 +135,11 @@ for i in range(data.shape[0]):
 imageio.mimsave(output_dir + "/" + gif_file_name + ".gif", frames, fps=10)
 ```
 
-![Kolmogorov Flow GIF](img/kolmogorov.gif)
+![Kolmogorov Flow GIF](/img/kolmogorov.gif)
 
 ## Applying Control
 
-To add a controller to the system, simply specify the desired controller under `flow.control_function`. For instance, if one would like a control of sinusoidal forcing of wavenumber 4 and amplitude of -0.5, we can do the following:
+To add a controller to the system, simply specify the desired controller under `flow.control_function`. For instance, if one would like a control of sinusoidal forcing of wavenumber 4 and amplitude of -0.6, we can do the following:
 
 ```python
 x, y = flow.load_mesh(name="")
@@ -150,9 +150,19 @@ def control_func(a, k, y):
 
 
 flow.control_function = control_func(-0.6, 4, y)
-final, trajectory = solver.solve(dt, flow, (0, end_time), callbacks, None, save_n=1)
+final, trajectory = solver.solve(
+    dt, flow, (0, end_time), callbacks, None, save_n=1, control_field=flow.control_function
+)
 jnp.save(output_dir + "/" + "kolmogorov_controlled", trajectory)
 ```
+
+The control field is a body force: the solver adds its curl to the vorticity equation, so the force applied is
+exactly `control_func(a, k, y)`. To reproduce results of HydroGym ≤ 1.0, create the flow with
+`FlowConfig(legacy_control_scaling=True, legacy_grid_endpoint=True, legacy_dealiasing=True)` (for the gymnax
+environment: `KolmogorovFlow(env_config, flow_config={"legacy_control_scaling": True, "legacy_grid_endpoint": True,
+"legacy_dealiasing": True})`): the control scaling, the grid with the periodic end point and the advection term
+without dealiasing of that version. Without dealiasing the default configuration (Re 200 on the 64 x 64 grid)
+becomes unstable after a few actions.
 
 the controlled flow can then be visualized as follows:
 

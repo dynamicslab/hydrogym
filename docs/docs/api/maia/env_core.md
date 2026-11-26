@@ -9,18 +9,10 @@ Core MaiaGym Environment Module
 This module provides the base environment class for CFD reinforcement learning
 with Hugging Face Hub integration for configuration management.
 
-## ConfigError Objects
-
-```python
-class ConfigError(Exception)
-```
-
-Exception raised for configuration-related errors.
-
 ## MaiaFlowEnv Objects
 
 ```python
-class MaiaFlowEnv(gym.Env)
+class MaiaFlowEnv(HFEnvConfigMixin, gym.Env)
 ```
 
 Base MaiaFlowEnv with Hugging Face Hub integration for configuration management.
@@ -54,21 +46,29 @@ Initialize the MaiaFlowEnv environment.
 
 - `env_config` - Configuration dictionary containing:
   - environment_name (str): Required. Name of the environment.
-  - hf_repo_id (str): HF repository ID. Default: &#x27;dynamicslab/HydroGym-environments&#x27;
+  - hf_repo_id (str): HF repository ID. Default: 'dynamicslab/HydroGym-environments'
   - local_fallback_dir (str): Optional local fallback directory.
   - use_clean_cache (bool): Whether to use clean cache. Default: True
   - configuration_file (str): Optional path to config file.
   - is_testing (bool): Whether in testing mode. Default: False
   - probe_locations (list): Probe coordinate locations.
-  - obs_normalization_strategy (str): One of &#x27;U_inf&#x27;, &#x27;probewise_mean_std&#x27;,
-  &#x27;none&#x27;, &#x27;customized&#x27;.
-  - obs_loc (list): Required if strategy is &#x27;customized&#x27;.
-  - obs_scale (list): Required if strategy is &#x27;customized&#x27;.
+  - obs_normalization_strategy (str): One of 'U_inf', 'probewise_mean_std',
+  'none', 'customized'.
+  - obs_loc (list): Required if strategy is 'customized'.
+  - obs_scale (list): Required if strategy is 'customized'.
+  - nproc (int): Optional. Expected number of m-AIA solver
+  ranks in the MPMD launch. When given, validated against
+  the actual MPI world at construction time; a mismatch
+  raises a clear `RuntimeError` naming the fix, instead
+  of failing confusingly downstream. Omit to skip this
+  check (default).
   
 
 **Raises**:
 
 - `ConfigError` - If required configuration is missing or invalid.
+- `RuntimeError` - If `nproc` is given and does not match the
+  actual number of m-AIA solver ranks in the MPMD job.
 
 #### get\_environment\_files\_info
 
@@ -104,10 +104,10 @@ def setup_normalization() -> None
 Setup observation normalization factors based on the selected strategy.
 
 Strategies:
-- &#x27;U_inf&#x27;: Normalize by freestream velocity
-- &#x27;none&#x27;: No normalization (loc=0, scale=1)
-- &#x27;probewise_mean_std&#x27;: Compute mean/std from simulation episodes
-- &#x27;customized&#x27;: Use user-provided loc and scale values
+- 'U_inf': Normalize by freestream velocity
+- 'none': No normalization (loc=0, scale=1)
+- 'probewise_mean_std': Compute mean/std from simulation episodes
+- 'customized': Use user-provided loc and scale values
 
 **Raises**:
 
@@ -134,7 +134,7 @@ then computes mean and standard deviation for normalization.
 @classmethod
 def create_from_hf_env(cls,
                        environment_name: str,
-                       hf_repo_id: str = "your-username/maiagym-envs",
+                       hf_repo_id: str = "dynamicslab/HydroGym-environments",
                        local_fallback_dir: Optional[str] = None,
                        **kwargs)
 ```
@@ -143,7 +143,7 @@ Create environment directly from HF environment name.
 
 **Arguments**:
 
-- `environment_name` - Name of environment (e.g., &#x27;Cylinder_2D_Re200&#x27;).
+- `environment_name` - Name of environment (e.g., 'Cylinder_2D_Re200').
 - `hf_repo_id` - Hugging Face repository ID.
 - `local_fallback_dir` - Local fallback directory.
 - `**kwargs` - Additional environment configuration parameters.
@@ -195,6 +195,9 @@ Advance the state of the environment by one step.
 **Returns**:
 
   Tuple of (observation, reward, terminated, truncated, info).
+  terminated is always False (no in-band physics-failure signal);
+  truncated becomes True once the step budget
+  (max_episode_steps) is reached.
 
 #### reset
 
@@ -214,6 +217,50 @@ Reset the environment to initial state.
 **Returns**:
 
   Tuple of (initial_observation, info).
+
+#### setup\_actuation\_power
+
+```python
+def setup_actuation_power(kind: Optional[str],
+                          geometry: Optional[str] = None,
+                          model_options: Optional[Dict] = None) -> None
+```
+
+Build the actuation-power model of this environment (call at the end of the subclass constructor).
+
+**Arguments**:
+
+- `kind` - `"rotation"` (rotating circular bodies, BC 2008), `"slot_jets"` (slot jets on circular bodies,
+  BC 2007), `"wall_jets"` (BC 2007 jets on other walls, `hydrogym.maia.wall_jets`), `"solver"`
+  (power coefficient `C_P` returned by the solver in the objective dict, e.g. the structured
+  finite-volume surface-wave cases), `"solver_jets"` (jets of the structured finite-volume solver,
+  BC 1008: power per jet and cost forms formed per wall face by the solver,
+  `MaiaInterface.getActuationPower`) or `None` (no power model; the info keys are NaN).
+- `geometry` - for `"wall_jets"`: `"flat"` (jets on flat walls along the lattice axes), `"curve"` (2D
+  wall from the case's BC-2007 geometry file, extruded in 3D) or `"sphere"` (object class 3).
+- `model_options` - keyword arguments of `hydrogym.maia.wall_jets.WallJetPower` (e.g.
+  `wall_distances`).
+
+#### power\_projection
+
+```python
+def power_projection() -> float
+```
+
+Projection length (2D, cells) or area (3D, cells^2) of the drag coefficient, used for `C_P`.
+
+Default: `referenceLength / dX * zLength / dX` (`zLength = dX` in 2D), as in the force coefficients.
+
+#### drag\_coefficient\_from\_objective
+
+```python
+def drag_coefficient_from_objective(
+        obj_dict: Optional[Dict]) -> Optional[float]
+```
+
+Total drag coefficient of the controlled bodies from the objective dict of `get_reward`.
+
+Subclasses override this; the default returns None (no drag reported).
 
 #### compute\_nondim\_coefficients
 
@@ -324,7 +371,7 @@ Register an environment class for automatic detection.
 
 **Arguments**:
 
-- `env_prefix` - Environment prefix (e.g., &#x27;Cylinder&#x27;).
+- `env_prefix` - Environment prefix (e.g., 'Cylinder').
 - `env_class` - Environment class to register.
 
 #### from\_hf
@@ -339,7 +386,7 @@ Factory function to create any MaiaGym environment from Hugging Face Hub.
 
 **Arguments**:
 
-- `environment_name` - Name of environment (e.g., &#x27;Cylinder_2D_Re200&#x27;).
+- `environment_name` - Name of environment (e.g., 'Cylinder_2D_Re200').
 - `hf_repo_id` - Hugging Face repository ID.
 - `**kwargs` - Additional environment configuration parameters.
   
@@ -357,15 +404,17 @@ Factory function to create any MaiaGym environment from Hugging Face Hub.
 
 **Examples**:
 
-  &gt;&gt;&gt; env = maiaGym.from_hf(&#x27;Cylinder_2D_Re200&#x27;)
-  &gt;&gt;&gt; env = maiaGym.from_hf(&#x27;RotaryCylinder_2D_Re1000&#x27;, obs_loc=custom_loc)
-  &gt;&gt;&gt; env = maiaGym.from_hf(&#x27;Cavity_2D_Re4140&#x27;)
+  >>> env = maiaGym.from_hf('Cylinder_2D_Re200')
+  >>> env = maiaGym.from_hf('RotaryCylinder_2D_Re1000', obs_loc=custom_loc)
+  >>> env = maiaGym.from_hf('Cavity_2D_Re4200')
 
 #### list\_available\_environments
 
 ```python
 def list_available_environments(
-        hf_repo_id: str = "dynamicslab/HydroGym-environments") -> List[str]
+        hf_repo_id: str = "dynamicslab/HydroGym-environments",
+        hf_token: Optional[str] = None,
+        hf_revision: Optional[str] = None) -> List[str]
 ```
 
 List all available environments from HF Hub.
@@ -373,6 +422,8 @@ List all available environments from HF Hub.
 **Arguments**:
 
 - `hf_repo_id` - Hugging Face repository ID.
+- `hf_token` - Hugging Face access token (private/gated repos; `None` = ambient auth).
+- `hf_revision` - Git revision to pin the file listing to.
   
 
 **Returns**:

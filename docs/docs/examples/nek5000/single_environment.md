@@ -32,18 +32,20 @@ The `nproc` parameter sets the number of NEK5000 solver processes. The total MPI
 
 | File | Purpose |
 |------|---------|
-| [`test_nek_direct.py`](https://github.com/dynamicslab/hydrogym/blob/main/examples/nek/getting_started/1_nekenv_single/test_nek_direct.py) | Runs a fixed number of environment steps with zero control, printing observations and rewards |
+| [`test_nek_direct.py`](https://github.com/dynamicslab/hydrogym/blob/main/examples/nek/getting_started/1_nekenv_single/test_nek_direct.py) | Runs a fixed number of environment steps with opposition control, printing observations and rewards |
 | [`train_sb3_nek_direct.py`](https://github.com/dynamicslab/hydrogym/blob/main/examples/nek/getting_started/1_nekenv_single/train_sb3_nek_direct.py) | SB3 training script with `Monitor` and `VecNormalize` wrappers; supports PPO, TD3, and SAC |
-| [`run_nekenv_docker.sh`](https://github.com/dynamicslab/hydrogym/blob/main/examples/nek/getting_started/1_nekenv_single/run_nekenv_docker.sh) | Convenience wrapper that handles Docker image selection and the `mpirun` launch |
+| [`run_nekenv_docker.sh`](https://github.com/dynamicslab/hydrogym/blob/main/examples/nek/getting_started/1_nekenv_single/run_nekenv_docker.sh) | Launch script (workspace preparation and the `mpirun` launch; runs as is in the HydroGym images, from a copy of `/opt/hydrogym/examples` for a non-root user) |
 
 ## Running the examples
 
 ```bash
 # Test the environment
-mpirun -np 1 python test_nek_direct.py --steps 100 : -np 10 nek5000
+# from a prepared workspace: the Nek5000 case files must be in the working directory
+python ../prepare_workspace.py --env TCFmini_3D_Re180 --work-dir ./ws && cd ws
+mpirun -np 1 python ../test_nek_direct.py --steps 100 : -np 10 nek5000
 
 # Train with PPO
-mpirun -np 1 python train_sb3_nek_direct.py \
+mpirun -np 1 python ../train_sb3_nek_direct.py \
     --env TCFmini_3D_Re180 \
     --algo PPO \
     --total-timesteps 100000 \

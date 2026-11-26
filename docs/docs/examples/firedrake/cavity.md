@@ -8,14 +8,14 @@ sidebar_position: 2
 The scripts on this page access the Firedrake solver directly — they do not use the standard `env.reset()` / `env.step()` interface. For RL training, see [Getting Started](./getting_started).
 :::
 
-The open cavity is a classic benchmark in computational fluid dynamics. Driven by the no-slip condition on the moving top wall, the flow develops a primary recirculation zone inside the cavity and exhibits strong shear-layer instability at high Reynolds numbers. The [`Cavity`](../../api/firedrake/envs/cavity/flow) environment in HydroGym uses this configuration to study turbulence transition and actuation-driven reattachment.
+The open cavity is a classic benchmark in computational fluid dynamics. A boundary layer separates at the leading edge of the cavity; the shear layer above the cavity is unstable at high Reynolds numbers and drives a recirculation zone inside it. The [`Cavity`](../../api/firedrake/envs/cavity/flow) environment in HydroGym uses this configuration to study turbulence transition and actuation-driven reattachment.
 
 All scripts live in [`examples/firedrake/advanced/cavity/`](https://github.com/dynamicslab/hydrogym/tree/main/examples/firedrake/advanced/cavity).
 
 ## Physical setup
 
-- **Geometry:** open square cavity (1 × 1) with a moving top wall
-- **Boundary conditions:** uniform lid velocity U = 1.0 on the top wall; no-slip on all other walls
+- **Geometry:** open square cavity (1 × 1) below a channel, configuration of Barbagallo et al. (2009)
+- **Boundary conditions:** uniform inflow U = 1.0 on the left, free-slip top, no-slip walls; blowing/suction actuator at the leading edge of the cavity
 - **Reynolds number:** Re = 7 500
 
 ## Workflow overview
@@ -61,7 +61,7 @@ Outputs written to `output/stats.dat`:
 With the steady state computed, the linearised Navier-Stokes operator can be analysed to identify the unstable global modes that trigger shear-layer instability.
 
 ```bash
-python stability.py --Re 7500 --num-eigs 10
+python stability.py --reynolds 7500
 ```
 
 **Source:** [`stability.py`](https://github.com/dynamicslab/hydrogym/blob/main/examples/firedrake/advanced/cavity/stability.py)
@@ -91,6 +91,6 @@ All four scripts support MPI-parallel execution via Firedrake's PETSc backend. P
 ```bash
 mpirun -np 4 python solve-steady.py
 mpirun -np 4 python run-transient.py
-mpirun -np 4 python stability.py --Re 7500 --num-eigs 10
+mpirun -np 4 python stability.py --reynolds 7500
 mpirun -np 4 python unsteady.py
 ```
