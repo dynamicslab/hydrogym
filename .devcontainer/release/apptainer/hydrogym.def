@@ -1,0 +1,54 @@
+# HydroGym for NVIDIA GH200 (aarch64), Apptainer: HydroGym itself (editable,
+# in /opt/hydrogym, with the NekRS channel case files) on top of
+# hydrogym-cuda-base.sif (hydrogym-cuda.def). The last, small step of the
+# build: a new HydroGym revision with the same solver pins and lock file only
+# repeats this one (../../scripts/build_apptainer_arm64.sh hydrogym).
+#
+#   apptainer build --fakeroot --build-arg BASE=hydrogym-cuda-base.sif \
+#       --build-arg HYDROGYM_TAR=hydrogym.tar --build-arg HYDROGYM_REVISION=<rev> \
+#       hydrogym.sif hydrogym.def
+#
+# HYDROGYM_TAR: the hydrogym/ directory of the build context (a `git archive`
+# of HYDROGYM_REF without the solver submodules), as a tar file.
+
+Bootstrap: localimage
+From: {{ BASE }}
+
+%arguments
+    BASE=hydrogym-cuda-base.sif
+    HYDROGYM_TAR=hydrogym.tar
+    HYDROGYM_VERSION=1.0.2
+    HYDROGYM_REVISION=unknown
+    EXPECTED_POLICY_ENTRIES=30
+
+%files
+    {{ HYDROGYM_TAR }} /opt/hydrogym.tar
+
+%post
+    set -e
+    . /.singularity.d/env/91-hydrogym.sh
+    rm -rf /opt/hydrogym && mkdir -p /opt/hydrogym
+    tar -C /opt/hydrogym -xf /opt/hydrogym.tar && rm -f /opt/hydrogym.tar
+    ln -sfn /opt/nek5000 /opt/hydrogym/third_party/nek5000
+    MODE=project HYDROGYM_SRC=/opt/hydrogym bash /usr/local/libexec/hydrogym/install_hydrogym_venv.sh
+    /opt/venvs/hydrogym/bin/python -c "import hydrogym, jax, jaxfluids, torch, mpi4py; print('python OK')"
+    # the build stops unless the policy index of this revision has this many
+    # entries (all files present, a forward pass each) and the venv imports /opt/hydrogym
+    /opt/venvs/hydrogym/bin/python /opt/hydrogym/policies/load_policy.py --check | tee /dev/stderr | \
+        grep -qx "check: OK ({{ EXPECTED_POLICY_ENTRIES }} entries)"
+    /opt/venvs/hydrogym/bin/python -c "import hydrogym; assert hydrogym.__file__.startswith('/opt/hydrogym/'), hydrogym.__file__"
+    printf 'HYDROGYM_VERSION=%s\nHYDROGYM_REVISION=%s\n' "{{ HYDROGYM_VERSION }}" "{{ HYDROGYM_REVISION }}" > /opt/hydrogym/IMAGE_VERSION
+
+%runscript
+    # no command: an interactive shell (as the Docker images), otherwise run the command
+    if [ $# -eq 0 ]; then exec /bin/bash; fi
+    exec "$@"
+
+%labels
+    org.opencontainers.image.title "HydroGym (NVIDIA GH200, aarch64)"
+    org.opencontainers.image.description "HydroGym {{ HYDROGYM_VERSION }}: m-AIA, NekRS, Nek5000, JAX and JAX-Fluids backends; CUDA 12.9, aarch64, GPU architecture cc90"
+    org.opencontainers.image.version "{{ HYDROGYM_VERSION }}"
+    org.opencontainers.image.revision "{{ HYDROGYM_REVISION }}"
+    org.opencontainers.image.source "https://github.com/dynamicslab/hydrogym"
+    org.opencontainers.image.url "https://dynamicslab.github.io/hydrogym"
+    org.opencontainers.image.licenses "MIT"

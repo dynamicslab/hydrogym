@@ -1,0 +1,128 @@
+# HydroGym for NVIDIA GH200 (aarch64), Apptainer: the image without HydroGym
+# itself (hydrogym.def adds it on top). The arm64 counterpart of the final
+# stage of ../Dockerfile.hydrogym-cuda: the CUDA 12.9 development image (nvcc
+# for the OCCA JIT of NekRS, the CUDA math libraries) plus the solvers and the
+# Python environment compiled in the build environment
+# (hydrogym-cuda-build.def) by ../../scripts/build_apptainer_arm64.sh, which
+# packs them, with what they need at run time from the NVIDIA HPC SDK (HPC-X,
+# the NVHPC runtime libraries), into one tar file at the same paths:
+#
+#   /opt/nvidia/hpc_sdk/Linux_aarch64/26.5/{comm_libs/12.9/hpcx/hpcx-2.50,compilers/lib}
+#   /opt/mpi-gnu      HPC-X compiler wrappers with gcc/g++/gfortran underneath
+#   /opt/maia_deps    Parallel-NetCDF, parallel HDF5, FFTW
+#   /opt/maia/cc90    m-AIA (NVHPC stdpar, Hopper)
+#   /opt/nekrs        NekRS (CUDA, cudaArch 90) + nekrs-mpmd
+#   /opt/nek5000      Nek5000 case binaries
+#   /opt/venvs        /opt/venvs/hydrogym: the HydroGym dependencies from uv.lock
+#   /usr/local/bin/uv, /usr/local/bin/compute_parallelism.sh, site CA certificates
+#
+# (A tar file because %files copies the targets of symbolic links.)
+#
+#   apptainer build --fakeroot --build-arg SOLVERS_TAR=$PWD/solvers.tar \
+#       --build-arg CONTEXT=<build context> hydrogym-cuda-base.sif hydrogym-cuda.def
+
+Bootstrap: docker
+From: nvidia/cuda:12.9.1-devel-ubuntu24.04
+
+%arguments
+    CONTEXT=.
+    SOLVERS_TAR=solvers.tar
+    CUDA_ARCH=90
+    UBUNTU_MIRROR=
+
+%files
+    {{ CONTEXT }}/build/release/apt_install.sh /usr/local/libexec/hydrogym/apt_install.sh
+    {{ CONTEXT }}/build/release/maia_wrapper.sh /opt/src/maia_wrapper.sh
+    {{ CONTEXT }}/build/release/gpu_cc.c /opt/src/gpu_cc.c
+    {{ CONTEXT }}/build/release/install_hydrogym_venv.sh /usr/local/libexec/hydrogym/install_hydrogym_venv.sh
+    {{ SOLVERS_TAR }} /opt/solvers.tar
+
+%post
+    set -e
+    export DEBIAN_FRONTEND=noninteractive
+    # A --fakeroot build without user namespaces cannot run groupadd: the
+    # system groups that libibverbs1 and openssh-client create are added
+    # directly (their install scripts accept an existing group).
+    for g in rdma _ssh; do
+        if ! grep -q "^${g}:" /etc/group; then
+            gid=$(awk -F: 'BEGIN { m = 100 } $3 > m && $3 < 1000 { m = $3 } END { print m + 1 }' /etc/group)
+            echo "${g}:x:${gid}:" >> /etc/group
+            [ ! -f /etc/gshadow ] || echo "${g}:!::" >> /etc/gshadow
+        fi
+    done
+    # Compilers and CMake: NekRS builds the case's udf/usr files and OCCA its
+    # kernels at run time. X11 client libraries for VTK (pyvista).
+    UBUNTU_MIRROR="{{ UBUNTU_MIRROR }}" sh /usr/local/libexec/hydrogym/apt_install.sh \
+        build-essential gfortran cmake git wget curl ca-certificates pkg-config \
+        libopenblas-dev liblapack-dev zlib1g-dev libsz2 libaec0 libnuma1 libibverbs1 librdmacm1 ibverbs-providers \
+        python3 python3-dev python3-venv openssh-client \
+        libx11-6 libxrender1 libxext6 libgl1 libegl1
+    tar -C / -xf /opt/solvers.tar && rm -f /opt/solvers.tar
+    update-ca-certificates
+
+    NVHPC_ROOT=/opt/nvidia/hpc_sdk/Linux_aarch64/26.5
+    # The SDK's CUDA 12.9 and its math libraries are this image's CUDA 12.9.
+    mkdir -p ${NVHPC_ROOT}/cuda ${NVHPC_ROOT}/math_libs
+    ln -sfn /usr/local/cuda-12.9 ${NVHPC_ROOT}/cuda/12.9
+    ln -sfn /usr/local/cuda-12.9 ${NVHPC_ROOT}/math_libs/12.9
+
+    mkdir -p /opt/maia/bin /opt/maia/libexec
+    install -m 755 /opt/src/maia_wrapper.sh /opt/maia/bin/maia
+    gcc -O2 -o /opt/maia/libexec/gpu_cc /opt/src/gpu_cc.c -ldl
+    rm -rf /opt/src
+    /opt/maia/bin/maia --list-builds
+
+    # Every solver binary must find all its libraries in this image (libcuda
+    # comes from the host driver at run time).
+    . /.singularity.d/env/91-hydrogym.sh
+    for f in /opt/maia/cc*/bin/maia /opt/nekrs/bin/nekrs /opt/nekrs/bin/nekrs-mpmd /opt/nekrs/lib/*.so \
+            /opt/nek5000/cases/*/nek5000; do
+        [ -e "$f" ] || continue   # (no m-AIA in an image packed with PACK_WITHOUT_MAIA=1)
+        missing="$(ldd "$f" | grep 'not found' | grep -v -E 'libcuda\.so|libnvidia-ml' || true)"
+        if [ -n "$missing" ]; then echo "$f: $missing"; exit 1; fi
+    done
+    /opt/venvs/hydrogym/bin/python -c "import jax, jaxfluids, torch, mpi4py; print('python OK')"
+    mkdir -p /workspace
+
+# NVIDIA_REQUIRE_CUDA: the binaries need CUDA 12 (device code is compiled
+# ahead of time, JAX brings its own ptxas), so any CUDA 12 driver will do.
+# LD_LIBRARY_PATH ends with the host driver libraries of `apptainer --nv`.
+%setup
+    mkdir -p "${APPTAINER_ROOTFS}/.singularity.d/env"
+    cat > "${APPTAINER_ROOTFS}/.singularity.d/env/91-hydrogym.sh" <<'EOF'
+# Apptainer passes the host environment in: compiler and search-path settings
+# of host modules would reach the compilers in the image (NekRS compiles the
+# case's udf/usr files and its kernels at run time; CMake finds compilers
+# through CMAKE_PREFIX_PATH).
+unset CC CXX FC F77 F90 CPP CFLAGS CXXFLAGS FFLAGS FCFLAGS LDFLAGS CPPFLAGS \
+    CPATH C_INCLUDE_PATH CPLUS_INCLUDE_PATH CMAKE_PREFIX_PATH PKG_CONFIG_PATH PYTHONHOME
+export LIBRARY_PATH=/usr/local/cuda/lib64/stubs
+export NVHPC_ROOT=/opt/nvidia/hpc_sdk/Linux_aarch64/26.5
+export HPCX_HOME=${NVHPC_ROOT}/comm_libs/12.9/hpcx/hpcx-2.50
+export MPI_HOME=${HPCX_HOME}/ompi
+# Where HPC-X Open MPI, PRRTE and PMIx find their components and help files
+# (as hpcx-init.sh sets them): mpirun passes this on to the ranks it starts,
+# but ranks started by srun need it here; without it the UCX PML (and so
+# CUDA-aware MPI) is not available to them. The PMIx client in the image has
+# the native security module only (srun may offer munge as well).
+export OPAL_PREFIX=${MPI_HOME} PRTE_PREFIX=${MPI_HOME} PMIX_PREFIX=${MPI_HOME} PMIX_INSTALL_PREFIX=${MPI_HOME}
+export PMIX_MCA_psec=${PMIX_MCA_psec:-native}
+export PATH=/opt/venvs/hydrogym/bin:/opt/maia/bin:/opt/nekrs/bin:/opt/mpi-gnu/bin:${MPI_HOME}/bin:/usr/local/cuda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+export LD_LIBRARY_PATH=${MPI_HOME}/lib:${NVHPC_ROOT}/compilers/lib:/usr/local/nvidia/lib:/usr/local/nvidia/lib64:/.singularity.d/libs
+export CUDA_HOME=/usr/local/cuda
+export NEKRS_HOME=/opt/nekrs
+export NEKRS_BACKEND=CUDA
+export OCCA_CUDA_COMPILER=/opt/nekrs/cuda/bin/nvcc
+export OMP_NUM_THREADS=${OMP_NUM_THREADS:-1}
+export XLA_PYTHON_CLIENT_PREALLOCATE=${XLA_PYTHON_CLIENT_PREALLOCATE:-false}
+export NVIDIA_REQUIRE_CUDA="cuda>=12.0"
+export SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+export REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
+export UV_NATIVE_TLS=1
+EOF
+
+%labels
+    org.opencontainers.image.title "HydroGym (NVIDIA GH200, aarch64)"
+    org.opencontainers.image.source "https://github.com/dynamicslab/hydrogym"
+    org.opencontainers.image.licenses "MIT"
+    hydrogym.cuda_architectures "{{ CUDA_ARCH }}"

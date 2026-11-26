@@ -1,0 +1,19 @@
+NekRS 26.0 picks hypre's CUDA targets from the toolkit version alone (CUDA 12: HYPRE_CUDA_SM=70 80, CUDA 13: 80 90),
+and hypre compiles them as SASS only (-gencode arch=compute_XX,code=sm_XX, no PTX). sm_80 code runs on sm_86 (A6000),
+but not on sm_90 (GH200, H100): there hypre's kernels fail to load ("no kernel image is available") with CUDA 12.
+Pass CMAKE_CUDA_ARCHITECTURES (always set by build_nekrs.sh) through as hypre's target list instead.
+--- a/cmake/hypre.cmake
++++ b/cmake/hypre.cmake
+@@ -66,6 +66,12 @@
+     #disable for now as it might not play well with all MPI implementations
+     #set(HYPRE_CONFIGURE_FLAGS "--enable-device-malloc-async")
+   endif()
++  # hypre builds SASS only (no PTX) for these: take the targets of the NekRS build instead
++  if(CMAKE_CUDA_ARCHITECTURES)
++    string(REGEX REPLACE "-(real|virtual)" "" _hypre_cuda_arch "${CMAKE_CUDA_ARCHITECTURES}")
++    string(REPLACE ";" " " _hypre_cuda_arch "${_hypre_cuda_arch}")
++    set(HYPRE_DEVICE_ARCH "HYPRE_CUDA_SM=${_hypre_cuda_arch}")
++  endif()
+ 
+ elseif(OCCA_HIP_ENABLED)
+   enable_language(HIP)

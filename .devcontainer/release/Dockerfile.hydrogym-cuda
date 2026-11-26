@@ -1,0 +1,308 @@
+# HydroGym for NVIDIA GPUs: m-AIA (NVHPC stdpar), NekRS (OCCA CUDA, GPU HYPRE),
+# Nek5000 (CPU), JAX (CUDA) and JAX-Fluids, all built in at image
+# build time, so the image runs without network access to the solvers' sources
+# and needs no build step at container start. Built by
+# .devcontainer/scripts/build_release_images.sh, whose build context holds
+# hydrogym/ (a `git archive` of the HydroGym revision, plus the NekRS channel
+# case files), build/ (the build scripts of this directory), nekrs/
+# (third_party/nekrs), maia/ (third_party/m-AIA with include/Eigen and
+# include/doctest) and nek5000/ (third_party/nek5000 with the KTH Nek5000 and
+# Toolbox submodules).
+#
+# GPU architectures (build arguments; build_release_images.sh sets them,
+# all_gpus: cc75-cc120 in one image):
+#   CUDA_ARCH    NekRS/HYPRE CMAKE_CUDA_ARCHITECTURES, e.g. "75;80;86;89"
+#                (one nvcc build with device code for each)
+#   MAIA_PRESET1..6  m-AIA --enable-pstl presets, e.g. turing ampere ada (empty:
+#                no build): one single-architecture m-AIA build each,
+#                /opt/maia/<ccXY>/bin/maia;
+#                `maia` on PATH (maia_wrapper.sh) starts the one for the GPU it
+#                finds (ampere = cc80 also serves cc86 GPUs)
+# HYPRE and m-AIA are compiled ahead of time for exactly these (SASS); the
+# NekRS solver kernels are JIT-compiled by OCCA for the GPU found at run time.
+#
+# One CUDA: 12.9 for m-AIA, NekRS/HYPRE and the OCCA JIT (the HYPRE vendored
+# in NekRS 26.0 does not build with CUDA 13), and the CUDA 12 build of JAX
+# (its CUDA libraries come as pip wheels). Any driver with CUDA 12 support
+# (>= 525) runs the image.
+#
+# One MPI: HPC-X Open MPI 5 for CUDA 12.9 from the NVIDIA HPC SDK
+# (CUDA-aware). m-AIA calls it with nvc++, everything else (NekRS, Nek5000,
+# mpi4py) through the wrappers in /opt/mpi-gnu/bin, which put gcc/g++/gfortran
+# underneath (OMPI_CC/OMPI_CXX/OMPI_FC). So the Python controller and every
+# solver of an MPMD launch load the same libmpi.
+#
+# No Firedrake: its build needs the MPI Fortran modules (`use mpi`), which
+# HPC-X provides for nvfortran only. Firedrake (CPU-only) is in the CPU image,
+# Dockerfile.hydrogym-cpu.
+#
+# Two stages: the solvers are compiled in the NVIDIA HPC SDK image (~50 GB);
+# the image itself is the CUDA 12.9 development image (nvcc for the OCCA JIT,
+# the CUDA math libraries) plus what the solvers need at run time from the SDK
+# (HPC-X, the NVHPC runtime libraries), copied to the same paths.
+#
+# Python environments:
+#   /opt/venvs/hydrogym   hydrogym[maia,nek,nekrs,jax,jaxfluids], torch (CPU),
+#                         JAX (CUDA 12), JAX-Fluids; on PATH, also reachable as
+#                         /opt/venvs/nekrs
+# Solvers: maia, nekrs, nekrs-mpmd on PATH; Nek5000 case binaries in
+# /opt/nek5000/cases/<case>/nek5000.
+
+ARG BUILD_IMAGE=nvcr.io/nvidia/nvhpc:26.5-devel-cuda_multi-ubuntu24.04
+ARG RUNTIME_IMAGE=nvidia/cuda:12.9.1-devel-ubuntu24.04
+
+# ============================================================================
+# Build stage
+# ============================================================================
+FROM ${BUILD_IMAGE} AS base
+
+ENV DEBIAN_FRONTEND=noninteractive
+# UBUNTU_MIRROR: an Ubuntu mirror for build hosts that cannot reach archive.ubuntu.com
+ARG UBUNTU_MIRROR=
+COPY build/release/apt_install.sh /usr/local/libexec/hydrogym/apt_install.sh
+RUN UBUNTU_MIRROR="${UBUNTU_MIRROR}" sh /usr/local/libexec/hydrogym/apt_install.sh \
+    cmake build-essential gfortran git wget curl ca-certificates pkg-config \
+    autoconf automake libtool zlib1g-dev flex bison libopenblas-dev liblapack-dev \
+    python3 python3-dev python3-venv
+
+# Site CA certificates (TLS-intercepting proxies) - see
+# .devcontainer/base/extra-ca-certs/README.md.
+COPY build/base/extra-ca-certs/ /usr/local/share/ca-certificates/extra/
+RUN update-ca-certificates
+ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt \
+    REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt \
+    PIP_CERT=/etc/ssl/certs/ca-certificates.crt \
+    UV_NATIVE_TLS=1
+COPY build/base/compute_parallelism.sh /usr/local/bin/compute_parallelism.sh
+RUN chmod +x /usr/local/bin/compute_parallelism.sh && \
+    curl -LsSf https://astral.sh/uv/0.11.3/install.sh | sh && mv /root/.local/bin/uv /usr/local/bin/uv
+
+ENV NVHPC_ROOT=/opt/nvidia/hpc_sdk/Linux_x86_64/26.5
+ENV HPCX_HOME=${NVHPC_ROOT}/comm_libs/12.9/hpcx/hpcx-2.50 \
+    CUDA_HOME=${NVHPC_ROOT}/cuda
+ENV MPI_HOME=${HPCX_HOME}/ompi
+# Only CUDA 12.9 below: the SDK image's defaults (PATH, CPATH, LD_LIBRARY_PATH)
+# point at its CUDA 13.2 and the matching HPC-X.
+ENV PATH=/opt/mpi-gnu/bin:${MPI_HOME}/bin:${NVHPC_ROOT}/compilers/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
+    CPATH= \
+    LIBRARY_PATH= \
+    LD_LIBRARY_PATH=${MPI_HOME}/lib:${NVHPC_ROOT}/compilers/lib:${CUDA_HOME}/12.9/lib64:${NVHPC_ROOT}/math_libs/12.9/lib64 \
+    OMPI_ALLOW_RUN_AS_ROOT=1 \
+    OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1
+
+# HPC-X compiler wrappers with the GNU compilers underneath.
+RUN mkdir -p /opt/mpi-gnu/bin && cd /opt/mpi-gnu/bin && \
+    for spec in mpicc:CC=gcc mpicxx:CXX=g++ mpic++:CXX=g++ mpif77:FC=gfortran mpif90:FC=gfortran mpifort:FC=gfortran; do \
+        printf '#!/bin/sh\nexport OMPI_%s\nexec %s/bin/%s "$@"\n' "${spec#*:}" "${MPI_HOME}" "${spec%%:*}" > "${spec%%:*}"; \
+    done && chmod 755 /opt/mpi-gnu/bin/* && \
+    mpicc --version | head -1 && mpifort --version | head -1
+
+# ============================================
+# Libraries for m-AIA (nvc, HPC-X)
+# ============================================
+# Parallel make jobs of the single-threaded builds below (the m-AIA and NekRS
+# stages, which run at the same time, have their own: MAIA_JOBS, NEKRS_JOBS).
+ARG JOBS=16
+COPY build/release/build_maia_deps.sh /opt/src/release/
+RUN JOBS="${JOBS}" MPI_CC=${MPI_HOME}/bin/mpicc MPI_CXX=${MPI_HOME}/bin/mpicxx MPI_FC=${MPI_HOME}/bin/mpifort \
+        bash /opt/src/release/build_maia_deps.sh
+
+# ============================================
+# m-AIA (nvc++ stdpar), one build per GPU architecture, in parallel stages
+# ============================================
+FROM base AS maia-src
+COPY maia /opt/src/m-AIA
+COPY build/release/build_maia_container.sh build/release/MAIA_CONTAINER_NVHPC.cmake /opt/src/release/
+# make -j per m-AIA build (with BuildKit they run at once; some translation
+# units need ~4 GB)
+ARG MAIA_JOBS=4
+
+FROM maia-src AS maia1
+ARG MAIA_PRESET1=turing
+ARG MAIA_JOBS
+RUN MAIA_SRC=/opt/src/m-AIA MAIA_COMPILER=nvhpc MAIA_PSTL_PRESET="${MAIA_PRESET1}" MAIA_JOBS="${MAIA_JOBS}" \
+    MAIA_HOST_TEMPLATE=/opt/src/release/MAIA_CONTAINER_NVHPC.cmake \
+        bash /opt/src/release/build_maia_container.sh && rm -rf /opt/src/m-AIA
+
+FROM maia-src AS maia2
+ARG MAIA_PRESET2=ampere
+ARG MAIA_JOBS
+RUN MAIA_SRC=/opt/src/m-AIA MAIA_COMPILER=nvhpc MAIA_PSTL_PRESET="${MAIA_PRESET2}" MAIA_JOBS="${MAIA_JOBS}" \
+    MAIA_HOST_TEMPLATE=/opt/src/release/MAIA_CONTAINER_NVHPC.cmake \
+        bash /opt/src/release/build_maia_container.sh && rm -rf /opt/src/m-AIA
+
+FROM maia-src AS maia3
+ARG MAIA_PRESET3=ada
+ARG MAIA_JOBS
+RUN MAIA_SRC=/opt/src/m-AIA MAIA_COMPILER=nvhpc MAIA_PSTL_PRESET="${MAIA_PRESET3}" MAIA_JOBS="${MAIA_JOBS}" \
+    MAIA_HOST_TEMPLATE=/opt/src/release/MAIA_CONTAINER_NVHPC.cmake \
+        bash /opt/src/release/build_maia_container.sh && rm -rf /opt/src/m-AIA
+
+FROM maia-src AS maia4
+ARG MAIA_PRESET4=
+ARG MAIA_JOBS
+RUN MAIA_SRC=/opt/src/m-AIA MAIA_COMPILER=nvhpc MAIA_PSTL_PRESET="${MAIA_PRESET4}" MAIA_JOBS="${MAIA_JOBS}" \
+    MAIA_HOST_TEMPLATE=/opt/src/release/MAIA_CONTAINER_NVHPC.cmake \
+        bash /opt/src/release/build_maia_container.sh && rm -rf /opt/src/m-AIA
+
+FROM maia-src AS maia5
+ARG MAIA_PRESET5=
+ARG MAIA_JOBS
+RUN MAIA_SRC=/opt/src/m-AIA MAIA_COMPILER=nvhpc MAIA_PSTL_PRESET="${MAIA_PRESET5}" MAIA_JOBS="${MAIA_JOBS}" \
+    MAIA_HOST_TEMPLATE=/opt/src/release/MAIA_CONTAINER_NVHPC.cmake \
+        bash /opt/src/release/build_maia_container.sh && rm -rf /opt/src/m-AIA
+
+FROM maia-src AS maia6
+ARG MAIA_PRESET6=
+ARG MAIA_JOBS
+RUN MAIA_SRC=/opt/src/m-AIA MAIA_COMPILER=nvhpc MAIA_PSTL_PRESET="${MAIA_PRESET6}" MAIA_JOBS="${MAIA_JOBS}" \
+    MAIA_HOST_TEMPLATE=/opt/src/release/MAIA_CONTAINER_NVHPC.cmake \
+        bash /opt/src/release/build_maia_container.sh && rm -rf /opt/src/m-AIA
+
+# ============================================
+# NekRS (CUDA 12.9) + nekrs-mpmd
+# ============================================
+FROM base AS nekrs
+ARG CUDA_ARCH="75;80;86;89"
+ARG GPU_MPI=true
+ARG NEKRS_JOBS=6
+COPY nekrs /opt/src/nekrs
+COPY build/features/nekrs /opt/src/nekrs-feature
+COPY hydrogym/examples/nekrs/mpmd /opt/src/nekrs-mpmd
+# No GPU driver during the image build: OCCA's own tools link against libcuda,
+# so the toolkit's stub stands in for it, on LD_LIBRARY_PATH only (the linker
+# looks for libraries' dependencies there; nothing records the path).
+RUN mkdir -p /tmp/cuda-stub && ln -s ${CUDA_HOME}/12.9/lib64/stubs/libcuda.so /tmp/cuda-stub/libcuda.so.1 && \
+    LD_LIBRARY_PATH=/tmp/cuda-stub:${LD_LIBRARY_PATH} \
+    NEKRS_SRC=/opt/src/nekrs NEKRS_HOME=/opt/nekrs MPMD_SRC=/opt/src/nekrs-mpmd NPROC="${NEKRS_JOBS}" \
+    BACKEND=CUDA GPUARCH="${CUDA_ARCH}" CUDA_VERSION=12.9 GPUMPI="${GPU_MPI}" BUILDTYPE=RelWithDebInfo \
+    MPI_BIN=${MPI_HOME}/bin MPI_CC=gcc MPI_CXX=g++ MPI_FC=gfortran \
+        bash /opt/src/nekrs-feature/build_nekrs.sh && \
+    grep -m1 -E "CMAKE_CUDA_ARCHITECTURES" /opt/src/nekrs/build/CMakeCache.txt && \
+    rm -rf /opt/src/nekrs /tmp/cuda-stub && \
+    ! grep -r -l cuda-stub /opt/nekrs/bin /opt/nekrs/lib
+
+# ============================================
+# CPU solvers (Nek5000 cases), then the HydroGym venv
+# ============================================
+FROM base AS build
+ARG JOBS=16
+COPY nek5000 /opt/nek5000
+COPY build/features/nek5000/build_nek5000.sh /opt/src/build_nek5000.sh
+RUN NEK_ROOT=/opt/nek5000 MPI_FC=/opt/mpi-gnu/bin/mpif77 MPI_CC=/opt/mpi-gnu/bin/mpicc MPI_BIN=/opt/mpi-gnu/bin \
+        bash /opt/src/build_nek5000.sh && \
+    find /opt/nek5000/cases -name '*.o' -delete && \
+    ls /opt/nek5000/cases/*/nek5000
+
+# Dependencies only (from the lock file); HydroGym itself is the last layer of
+# the image, so a new HydroGym revision rebuilds just that.
+COPY hydrogym/pyproject.toml hydrogym/uv.lock /opt/src/hydrogym-lock/
+COPY build/release/install_hydrogym_venv.sh /opt/src/release/
+RUN MODE=deps HYDROGYM_SRC=/opt/src/hydrogym-lock MPI_CC=/opt/mpi-gnu/bin/mpicc JAX_SPEC="jax[cuda12]" \
+        bash /opt/src/release/install_hydrogym_venv.sh
+
+# ============================================================================
+# Image
+# ============================================================================
+FROM ${RUNTIME_IMAGE}
+
+ARG CUDA_ARCH="75;80;86;89"
+ARG IMAGE_TITLE="HydroGym (NVIDIA GPU)"
+
+ENV DEBIAN_FRONTEND=noninteractive
+# UBUNTU_MIRROR: an Ubuntu mirror for build hosts that cannot reach archive.ubuntu.com
+ARG UBUNTU_MIRROR=
+COPY build/release/apt_install.sh /usr/local/libexec/hydrogym/apt_install.sh
+# Compilers and CMake: NekRS builds the case's udf/usr files and OCCA its
+# kernels at run time.
+RUN UBUNTU_MIRROR="${UBUNTU_MIRROR}" sh /usr/local/libexec/hydrogym/apt_install.sh \
+    build-essential gfortran cmake git wget curl ca-certificates pkg-config \
+    libopenblas-dev liblapack-dev zlib1g-dev libsz2 libaec0 libnuma1 libibverbs1 librdmacm1 ibverbs-providers \
+    python3 python3-dev python3-venv openssh-client
+
+COPY --from=build /usr/local/share/ca-certificates/extra/ /usr/local/share/ca-certificates/extra/
+RUN update-ca-certificates
+COPY --from=build /usr/local/bin/uv /usr/local/bin/compute_parallelism.sh /usr/local/bin/
+
+ENV NVHPC_ROOT=/opt/nvidia/hpc_sdk/Linux_x86_64/26.5
+ENV HPCX_HOME=${NVHPC_ROOT}/comm_libs/12.9/hpcx/hpcx-2.50
+ENV MPI_HOME=${HPCX_HOME}/ompi
+COPY --from=build ${HPCX_HOME} ${HPCX_HOME}
+COPY --from=build ${NVHPC_ROOT}/compilers/lib ${NVHPC_ROOT}/compilers/lib
+# The SDK's CUDA 12.9 and its math libraries are this image's CUDA 12.9.
+RUN mkdir -p ${NVHPC_ROOT}/cuda ${NVHPC_ROOT}/math_libs && \
+    ln -s /usr/local/cuda-12.9 ${NVHPC_ROOT}/cuda/12.9 && \
+    ln -s /usr/local/cuda-12.9 ${NVHPC_ROOT}/math_libs/12.9
+COPY --from=build /opt/mpi-gnu /opt/mpi-gnu
+COPY --from=build /opt/maia_deps /opt/maia_deps
+COPY --from=maia1 /opt/maia /opt/maia
+COPY --from=maia2 /opt/maia /opt/maia
+COPY --from=maia3 /opt/maia /opt/maia
+COPY --from=maia4 /opt/maia /opt/maia
+COPY --from=maia5 /opt/maia /opt/maia
+COPY --from=maia6 /opt/maia /opt/maia
+COPY build/release/maia_wrapper.sh /opt/maia/bin/maia
+COPY build/release/gpu_cc.c /opt/src/gpu_cc.c
+RUN mkdir -p /opt/maia/libexec && gcc -O2 -o /opt/maia/libexec/gpu_cc /opt/src/gpu_cc.c -ldl && \
+    chmod 755 /opt/maia/bin/maia && rm -rf /opt/src && /opt/maia/bin/maia --list-builds
+COPY --from=nekrs /opt/nekrs /opt/nekrs
+COPY --from=build /opt/nek5000 /opt/nek5000
+COPY --from=build /opt/venvs /opt/venvs
+COPY build/release/install_hydrogym_venv.sh /usr/local/libexec/hydrogym/
+
+ENV PATH=/opt/venvs/hydrogym/bin:/opt/maia/bin:/opt/nekrs/bin:/opt/mpi-gnu/bin:${MPI_HOME}/bin:/usr/local/cuda/bin:${PATH} \
+    LD_LIBRARY_PATH=${MPI_HOME}/lib:${NVHPC_ROOT}/compilers/lib:/usr/local/nvidia/lib:/usr/local/nvidia/lib64 \
+    CUDA_HOME=/usr/local/cuda \
+    NEKRS_HOME=/opt/nekrs \
+    NEKRS_BACKEND=CUDA \
+    OCCA_CUDA_COMPILER=/opt/nekrs/cuda/bin/nvcc \
+    OMPI_ALLOW_RUN_AS_ROOT=1 \
+    OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1 \
+    OMP_NUM_THREADS=1 \
+    XLA_PYTHON_CLIENT_PREALLOCATE=false \
+    NVIDIA_REQUIRE_CUDA="cuda>=12.0"
+
+# NVIDIA_REQUIRE_CUDA: the CUDA base image asks the container runtime for a
+# CUDA 12.9 driver; the binaries here need CUDA 12 (minor version
+# compatibility: device code is compiled ahead of time, JAX brings its own
+# ptxas), so any CUDA 12 driver is accepted.
+# Every solver binary must find all its libraries in this image (libcuda comes
+# from the host driver at run time).
+RUN set -e; for f in /opt/maia/cc*/bin/maia /opt/nekrs/bin/nekrs /opt/nekrs/bin/nekrs-mpmd /opt/nekrs/lib/*.so \
+        /opt/nek5000/cases/*/nek5000; do \
+        missing="$(ldd "$f" | grep 'not found' | grep -v -E 'libcuda\.so|libnvidia-ml' || true)"; \
+        if [ -n "$missing" ]; then echo "$f: $missing"; exit 1; fi; \
+    done
+
+# X11 client libraries for VTK (pyvista, used by JAX-Fluids and the plots);
+# no display needed.
+RUN UBUNTU_MIRROR="${UBUNTU_MIRROR}" sh /usr/local/libexec/hydrogym/apt_install.sh \
+    libx11-6 libxrender1 libxext6 libgl1 libegl1
+
+# ============================================
+# HydroGym (the revision given to build_release_images.sh, with the NekRS
+# channel case files), editable
+# ============================================
+ARG HYDROGYM_VERSION=1.0.2
+ARG HYDROGYM_REVISION=unknown
+# The build stops unless the policy index of this revision has this many entries
+# (all files present, a forward pass each) and the venv imports /opt/hydrogym.
+ARG EXPECTED_POLICY_ENTRIES=30
+COPY hydrogym /opt/hydrogym
+RUN ln -sfn /opt/nek5000 /opt/hydrogym/third_party/nek5000 && \
+    MODE=project HYDROGYM_SRC=/opt/hydrogym bash /usr/local/libexec/hydrogym/install_hydrogym_venv.sh && \
+    /opt/venvs/hydrogym/bin/python -c "import hydrogym, jax, jaxfluids, torch, mpi4py; print('python OK')" && \
+    /opt/venvs/hydrogym/bin/python /opt/hydrogym/policies/load_policy.py --check | tee /dev/stderr | \
+        grep -qx "check: OK (${EXPECTED_POLICY_ENTRIES} entries)" && \
+    /opt/venvs/hydrogym/bin/python -c "import hydrogym; assert hydrogym.__file__.startswith('/opt/hydrogym/'), hydrogym.__file__" && \
+    printf 'HYDROGYM_VERSION=%s\nHYDROGYM_REVISION=%s\n' "${HYDROGYM_VERSION}" "${HYDROGYM_REVISION}" > /opt/hydrogym/IMAGE_VERSION
+
+LABEL org.opencontainers.image.title="${IMAGE_TITLE}" \
+      org.opencontainers.image.description="HydroGym ${HYDROGYM_VERSION}: m-AIA, NekRS, Nek5000, JAX and JAX-Fluids backends (Firedrake: CPU image); CUDA 12.9, GPU architectures (CMake) ${CUDA_ARCH}" \
+      org.opencontainers.image.version="${HYDROGYM_VERSION}" \
+      org.opencontainers.image.revision="${HYDROGYM_REVISION}" \
+      org.opencontainers.image.source="https://github.com/dynamicslab/hydrogym" \
+      org.opencontainers.image.url="https://dynamicslab.github.io/hydrogym" \
+      org.opencontainers.image.licenses="MIT"
+
+WORKDIR /workspace

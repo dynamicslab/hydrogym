@@ -1,0 +1,159 @@
+# HydroGym without GPU: m-AIA (GCC), NekRS (OCCA serial backend, CPU HYPRE),
+# Nek5000, Firedrake, JAX (CPU) and JAX-Fluids, all built in at image build
+# time. Built by .devcontainer/scripts/build_release_images.sh (variant cpu),
+# from the same build context as Dockerfile.hydrogym-cuda.
+#
+# One MPI: the Ubuntu Open MPI (GCC/gfortran) for m-AIA, NekRS, Nek5000,
+# PETSc and mpi4py, so the Python controller and every solver of an MPMD
+# launch load the same libmpi.
+#
+# Python environments:
+#   /opt/venvs/hydrogym   hydrogym[maia,nek,nekrs,jax,jaxfluids], torch (CPU),
+#                         JAX (CPU), JAX-Fluids; on PATH, also reachable as
+#                         /opt/venvs/nekrs
+#   /opt/venvs/firedrake  Firedrake + hydrogym[firedrake]
+#                         (source /opt/venvs/firedrake/bin/activate)
+# Solvers: maia, nekrs, nekrs-mpmd on PATH (NekRS: --backend SERIAL, which
+# NEKRS_BACKEND selects for the HydroGym run scripts); Nek5000 case binaries
+# in /opt/nek5000/cases/<case>/nek5000.
+
+ARG BASE_IMAGE=ubuntu:24.04
+FROM ${BASE_IMAGE}
+
+ARG JOBS=16
+
+ENV DEBIAN_FRONTEND=noninteractive
+# UBUNTU_MIRROR: an Ubuntu mirror for build hosts that cannot reach archive.ubuntu.com
+ARG UBUNTU_MIRROR=
+COPY build/release/apt_install.sh /usr/local/libexec/hydrogym/apt_install.sh
+RUN UBUNTU_MIRROR="${UBUNTU_MIRROR}" sh /usr/local/libexec/hydrogym/apt_install.sh \
+    cmake build-essential gfortran git wget curl ca-certificates pkg-config \
+    autoconf automake libtool zlib1g-dev flex bison libopenblas-dev liblapack-dev \
+    libopenmpi-dev openmpi-bin openssh-client \
+    python3 python3-dev python3-venv
+
+# Site CA certificates (TLS-intercepting proxies) - see
+# .devcontainer/base/extra-ca-certs/README.md.
+COPY build/base/extra-ca-certs/ /usr/local/share/ca-certificates/extra/
+RUN update-ca-certificates
+ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt \
+    REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt \
+    PIP_CERT=/etc/ssl/certs/ca-certificates.crt \
+    UV_NATIVE_TLS=1
+COPY build/base/compute_parallelism.sh /usr/local/bin/compute_parallelism.sh
+RUN chmod +x /usr/local/bin/compute_parallelism.sh && \
+    curl -LsSf https://astral.sh/uv/0.11.3/install.sh | sh && mv /root/.local/bin/uv /usr/local/bin/uv
+
+# Containers run as root; more ranks than cores allowed (small test runs).
+# Shared-memory transfers keep Open MPI's default (CMA): NekRS needs MPI
+# windows (MPI_Win_create), which fail without a single-copy mechanism.
+ENV OMPI_ALLOW_RUN_AS_ROOT=1 \
+    OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1 \
+    OMPI_MCA_rmaps_base_oversubscribe=1
+
+# ============================================
+# Libraries for m-AIA
+# ============================================
+COPY build/release/build_maia_deps.sh /opt/src/release/
+RUN JOBS="${JOBS}" MPI_CC=mpicc MPI_CXX=mpicxx MPI_FC=mpifort bash /opt/src/release/build_maia_deps.sh
+
+# ============================================
+# Nek5000 cases
+# ============================================
+COPY nek5000 /opt/nek5000
+COPY build/features/nek5000/build_nek5000.sh /opt/src/build_nek5000.sh
+RUN NEK_ROOT=/opt/nek5000 MPI_FC=/usr/bin/mpif77 MPI_CC=/usr/bin/mpicc MPI_BIN=/usr/bin \
+        bash /opt/src/build_nek5000.sh && \
+    find /opt/nek5000/cases -name '*.o' -delete && \
+    ls /opt/nek5000/cases/*/nek5000
+
+# ============================================
+# PETSc + Firedrake
+# ============================================
+ENV PETSC_DIR=/opt/petsc \
+    PETSC_ARCH=arch-firedrake-default
+COPY build/release/build_firedrake.sh /opt/src/release/
+RUN JOBS="${JOBS}" MPI_CC=mpicc MPI_CXX=mpicxx MPI_FC=mpifort bash /opt/src/release/build_firedrake.sh
+
+# ============================================
+# NekRS (OCCA serial) + nekrs-mpmd
+# ============================================
+COPY nekrs /opt/src/nekrs
+COPY build/features/nekrs /opt/src/nekrs-feature
+COPY hydrogym/examples/nekrs/mpmd /opt/src/nekrs-mpmd
+ENV NEKRS_HOME=/opt/nekrs \
+    NEKRS_BACKEND=SERIAL
+RUN NEKRS_SRC=/opt/src/nekrs MPMD_SRC=/opt/src/nekrs-mpmd NPROC="${JOBS}" \
+    BACKEND=CPU BUILDTYPE=RelWithDebInfo \
+    MPI_BIN=/usr/bin MPI_CC=gcc MPI_CXX=g++ MPI_FC=gfortran \
+        bash /opt/src/nekrs-feature/build_nekrs.sh && \
+    rm -rf /opt/src/nekrs
+
+# ============================================
+# m-AIA (GCC)
+# ============================================
+COPY maia /opt/src/m-AIA
+COPY build/release/build_maia_container.sh build/release/MAIA_CONTAINER_GNU.cmake /opt/src/release/
+ARG MAIA_JOBS=12
+RUN MAIA_SRC=/opt/src/m-AIA MAIA_COMPILER=gnu MAIA_JOBS="${MAIA_JOBS}" \
+    MAIA_HOST_TEMPLATE=/opt/src/release/MAIA_CONTAINER_GNU.cmake \
+        bash /opt/src/release/build_maia_container.sh && \
+    rm -rf /opt/src/m-AIA
+
+# ============================================
+# HydroGym venvs: dependencies (from the lock file) first
+# ============================================
+COPY hydrogym/pyproject.toml hydrogym/uv.lock /opt/src/hydrogym-lock/
+COPY build/release/install_hydrogym_venv.sh /usr/local/libexec/hydrogym/
+RUN MODE=deps HYDROGYM_SRC=/opt/src/hydrogym-lock MPI_CC=/usr/bin/mpicc JAX_SPEC="jax" \
+        bash /usr/local/libexec/hydrogym/install_hydrogym_venv.sh && \
+    rm -rf /opt/src
+
+ENV PATH=/opt/venvs/hydrogym/bin:/opt/maia/bin:/opt/nekrs/bin:${PATH} \
+    OMP_NUM_THREADS=1
+# Open MPI 4.1.6: the lockedfile shared-file-pointer component aborts ("buffer
+# overflow detected") for file paths of about 250 characters or more
+# (Firedrake/h5py checkpoints); the other sharedfp components cover its use.
+ENV OMPI_MCA_sharedfp=^lockedfile
+
+RUN set -e; for f in /opt/maia/bin/maia /opt/nekrs/bin/nekrs /opt/nekrs/bin/nekrs-mpmd /opt/nekrs/lib/*.so \
+        /opt/nek5000/cases/*/nek5000; do \
+        missing="$(ldd "$f" | grep 'not found' || true)"; \
+        if [ -n "$missing" ]; then echo "$f: $missing"; exit 1; fi; \
+    done
+
+# X11 client libraries for VTK (pyvista, used by JAX-Fluids and the plots);
+# no display needed.
+RUN UBUNTU_MIRROR="${UBUNTU_MIRROR}" sh /usr/local/libexec/hydrogym/apt_install.sh \
+    libx11-6 libxrender1 libxext6 libgl1 libegl1
+
+# ============================================
+# HydroGym (the revision given to build_release_images.sh, with the NekRS
+# channel case files), editable in both venvs
+# ============================================
+ARG HYDROGYM_VERSION=1.0.2
+ARG HYDROGYM_REVISION=unknown
+ARG IMAGE_TITLE="HydroGym (CPU)"
+# The build stops unless the policy index of this revision has this many entries
+# (all files present, a forward pass each) and both venvs import /opt/hydrogym.
+ARG EXPECTED_POLICY_ENTRIES=30
+COPY hydrogym /opt/hydrogym
+RUN ln -sfn /opt/nek5000 /opt/hydrogym/third_party/nek5000 && \
+    MODE=project HYDROGYM_SRC=/opt/hydrogym bash /usr/local/libexec/hydrogym/install_hydrogym_venv.sh && \
+    /opt/venvs/hydrogym/bin/python -c "import hydrogym, jax, jaxfluids, torch, mpi4py; print('python OK')" && \
+    for py in /opt/venvs/hydrogym/bin/python /opt/venvs/firedrake/bin/python; do \
+        "${py}" /opt/hydrogym/policies/load_policy.py --check | tee /dev/stderr | \
+            grep -qx "check: OK (${EXPECTED_POLICY_ENTRIES} entries)" && \
+        "${py}" -c "import hydrogym; assert hydrogym.__file__.startswith('/opt/hydrogym/'), hydrogym.__file__" || exit 1; \
+    done && \
+    printf 'HYDROGYM_VERSION=%s\nHYDROGYM_REVISION=%s\n' "${HYDROGYM_VERSION}" "${HYDROGYM_REVISION}" > /opt/hydrogym/IMAGE_VERSION
+
+LABEL org.opencontainers.image.title="${IMAGE_TITLE}" \
+      org.opencontainers.image.description="HydroGym ${HYDROGYM_VERSION}: m-AIA, NekRS, Nek5000, Firedrake, JAX and JAX-Fluids backends, CPU only" \
+      org.opencontainers.image.version="${HYDROGYM_VERSION}" \
+      org.opencontainers.image.revision="${HYDROGYM_REVISION}" \
+      org.opencontainers.image.source="https://github.com/dynamicslab/hydrogym" \
+      org.opencontainers.image.url="https://dynamicslab.github.io/hydrogym" \
+      org.opencontainers.image.licenses="MIT"
+
+WORKDIR /workspace

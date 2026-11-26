@@ -1,0 +1,18 @@
+{
+  "name": "RELEASE IMAGE: NVIDIA GPUs (cc75-cc120, x86_64)",
+  // Prebuilt, self-contained image (see README.md, "Release images"):
+  // m-AIA (one build per GPU architecture behind the `maia` wrapper), NekRS,
+  // Nek5000, JAX and JAX-Fluids are installed in /opt; nothing is built at
+  // container start. No Firedrake (use release-cpu.devcontainer.json for it).
+  // The installed HydroGym is /opt/hydrogym (editable in /opt/venvs/hydrogym);
+  // this checkout is mounted at /workspace - `pip install --no-deps -e
+  // /workspace` in the venv to work on it instead.
+  "image": "clagemann/hydrogym-nvhpc-26.5_cuda-12.9:1.0.2",
+  "runArgs": [
+    "--gpus=all",
+    "--ipc=host"
+  ],
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind",
+  "workspaceFolder": "/workspace",
+  "remoteUser": "root"
+}

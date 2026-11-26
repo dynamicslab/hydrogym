@@ -1,5 +1,4 @@
 # Dockerfile with HydroGym included
-#   --> highly unstable for now.
 
 FROM lpaehler/hydrogym-env:stable
 

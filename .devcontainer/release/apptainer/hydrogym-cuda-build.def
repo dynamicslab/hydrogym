@@ -1,0 +1,77 @@
+# HydroGym for NVIDIA GH200 (aarch64, Grace + Hopper), Apptainer: the build
+# environment, i.e. the `base` stage of ../Dockerfile.hydrogym-cuda for arm64.
+# NVIDIA HPC SDK 26.5 (CUDA 12.9 of its cuda_multi layout), HPC-X Open MPI,
+# the GNU compiler wrappers in /opt/mpi-gnu and the m-AIA libraries in
+# /opt/maia_deps. The solvers are compiled in it with `apptainer exec`
+# (../../scripts/build_apptainer_arm64.sh), so the long compiles can run as
+# ordinary (resumable) batch jobs; the image itself (hydrogym-cuda.def) takes
+# what it needs from there.
+#
+#   apptainer build --fakeroot --build-arg CONTEXT=$PWD build-env.sif hydrogym-cuda-build.def
+#
+# CONTEXT is the build context of build_release_images.sh (STAGE_ONLY=1).
+
+Bootstrap: docker
+From: nvcr.io/nvidia/nvhpc:26.5-devel-cuda_multi-ubuntu24.04
+
+%arguments
+    CONTEXT=.
+    JOBS=16
+    UBUNTU_MIRROR=
+
+%files
+    {{ CONTEXT }}/build/release/apt_install.sh /usr/local/libexec/hydrogym/apt_install.sh
+    {{ CONTEXT }}/build/base/extra-ca-certs /usr/local/share/ca-certificates/extra
+    {{ CONTEXT }}/build/base/compute_parallelism.sh /usr/local/bin/compute_parallelism.sh
+    {{ CONTEXT }}/build/release/build_maia_deps.sh /opt/src/release/build_maia_deps.sh
+    {{ CONTEXT }}/build/release/apptainer/mpif_sizeof_gfortran.sh /opt/src/release/mpif_sizeof_gfortran.sh
+
+%post
+    set -e
+    export DEBIAN_FRONTEND=noninteractive
+    UBUNTU_MIRROR="{{ UBUNTU_MIRROR }}" sh /usr/local/libexec/hydrogym/apt_install.sh \
+        cmake build-essential gfortran git wget curl ca-certificates pkg-config \
+        autoconf automake libtool zlib1g-dev flex bison libopenblas-dev liblapack-dev \
+        python3 python3-dev python3-venv
+    update-ca-certificates
+    chmod 755 /usr/local/bin/compute_parallelism.sh
+    curl -LsSf https://astral.sh/uv/0.11.3/install.sh | env UV_INSTALL_DIR=/usr/local/bin UV_NO_MODIFY_PATH=1 sh
+
+    . /.singularity.d/env/91-hydrogym-build.sh
+    test -x "${MPI_HOME}/bin/mpicc" || { echo "ERROR: no HPC-X in ${HPCX_HOME}:"; ls -d ${NVHPC_ROOT}/comm_libs/*/hpcx/*; exit 1; }
+    # mpif.h for gfortran (see the script)
+    sh /opt/src/release/mpif_sizeof_gfortran.sh "$(readlink -f ${MPI_HOME}/include/mpif-sizeof.h)"
+    # HPC-X compiler wrappers with the GNU compilers underneath.
+    mkdir -p /opt/mpi-gnu/bin && cd /opt/mpi-gnu/bin
+    for spec in mpicc:CC=gcc mpicxx:CXX=g++ mpic++:CXX=g++ mpif77:FC=gfortran mpif90:FC=gfortran mpifort:FC=gfortran; do
+        printf '#!/bin/sh\nexport OMPI_%s\nexec %s/bin/%s "$@"\n' "${spec#*:}" "${MPI_HOME}" "${spec%%:*}" > "${spec%%:*}"
+    done
+    chmod 755 /opt/mpi-gnu/bin/*
+    mpicc --version | head -1 && mpifort --version | head -1
+
+    # Parallel-NetCDF, parallel HDF5, FFTW for m-AIA (nvc via HPC-X).
+    JOBS="{{ JOBS }}" MPI_CC=${MPI_HOME}/bin/mpicc MPI_CXX=${MPI_HOME}/bin/mpicxx MPI_FC=${MPI_HOME}/bin/mpifort \
+        bash /opt/src/release/build_maia_deps.sh
+    mkdir -p /opt/maia /opt/nekrs /opt/nek5000 /opt/venvs /opt/src/m-AIA /opt/src/nekrs /opt/src/nekrs-feature \
+        /opt/src/nekrs-mpmd /opt/src/hydrogym-lock /opt/export
+
+# Sourced before %post and on every `apptainer exec`: only CUDA 12.9 (the SDK
+# image's defaults - PATH, CPATH, LD_LIBRARY_PATH - point at its CUDA 13).
+%setup
+    mkdir -p "${APPTAINER_ROOTFS}/.singularity.d/env"
+    cat > "${APPTAINER_ROOTFS}/.singularity.d/env/91-hydrogym-build.sh" <<'EOF'
+export NVHPC_ROOT=/opt/nvidia/hpc_sdk/Linux_aarch64/26.5
+export HPCX_HOME=${NVHPC_ROOT}/comm_libs/12.9/hpcx/hpcx-2.50
+export CUDA_HOME=${NVHPC_ROOT}/cuda
+export MPI_HOME=${HPCX_HOME}/ompi
+export PATH=/opt/mpi-gnu/bin:${MPI_HOME}/bin:${NVHPC_ROOT}/compilers/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+export CPATH=
+export LIBRARY_PATH=
+export LD_LIBRARY_PATH=${MPI_HOME}/lib:${NVHPC_ROOT}/compilers/lib:${CUDA_HOME}/12.9/lib64:${NVHPC_ROOT}/math_libs/12.9/lib64
+export SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+export REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
+export PIP_CERT=/etc/ssl/certs/ca-certificates.crt
+export UV_NATIVE_TLS=1
+export OMPI_ALLOW_RUN_AS_ROOT=1
+export OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1
+EOF

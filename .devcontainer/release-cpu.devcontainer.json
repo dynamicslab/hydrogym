@@ -1,0 +1,16 @@
+{
+  "name": "RELEASE IMAGE: CPU only (x86_64)",
+  // Prebuilt, self-contained image (see README.md, "Release images"):
+  // m-AIA, NekRS, Nek5000, JAX, JAX-Fluids and Firedrake are installed in
+  // /opt; nothing is built at container start. The installed HydroGym is
+  // /opt/hydrogym (editable in /opt/venvs/hydrogym; Firedrake has its own
+  // venv, /opt/venvs/firedrake); this checkout is mounted at /workspace -
+  // `pip install --no-deps -e /workspace` in the venv to work on it instead.
+  "image": "clagemann/hydrogym-cpu:1.0.2",
+  "runArgs": [
+    "--ipc=host"
+  ],
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind",
+  "workspaceFolder": "/workspace",
+  "remoteUser": "root"
+}
