@@ -1,0 +1,7 @@
+#!/bin/bash
+# Generate the mesh of the large channel from channel.box (run in this directory).
+NEK_BIN="../../../solver/KTH_DRL_Framework/Nek5000/bin"
+"${NEK_BIN}/genbox"
+"${NEK_BIN}/genmap"
+mv box.re2 ../tcf.re2
+mv box.ma2 ../tcf.ma2

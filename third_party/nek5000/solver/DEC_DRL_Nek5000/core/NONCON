@@ -1,0 +1,23 @@
+c
+c      Non conforming variables
+c
+      real  umult(lx1*ly1*lz1*lelt)
+     $   ,  jmat(lx1,lx1,2,maxmor)
+     $   ,  xsp(lx1,lz1),ysp(lx1,lz1),zsp(lx1,lz1)
+     $   ,  xch(lx1,lz1),ych(lx1,lz1),zch(lx1,lz1)
+     $   ,  rtwid(lx1),stwid(lx1)
+     $   ,  dtrk(ldim)
+     $   ,  rs( 2 , 2 , 2 )
+       common /allr/ umult,jmat,xsp,ysp,zsp,xch,ych,zch,
+     $               rtwid,stwid,dtrk,rs
+c
+      integer noncon_f(maxmor)
+     $     ,  noncon_e(maxmor)
+     $     ,  noncon_ip(maxmor)
+     $     ,  mortar(6,lelt)
+     $     ,  imin(3,2)
+     $     ,  mort_m
+       common /alli/  noncon_f,noncon_e,noncon_ip,mortar,imin,mort_m
+c
+       logical ifnc,ifhalf,ifjt(maxmor)
+       common /logg/ ifnc,ifhalf,ifjt

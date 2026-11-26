@@ -1,0 +1,2 @@
+# Nek5000 mesh map files of the cases (naca_wing.map is about 24 MB)
+*.map filter=lfs diff=lfs merge=lfs -text

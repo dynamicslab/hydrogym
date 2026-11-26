@@ -1,0 +1,6 @@
+! Accumulators of the actuation power over one action (drl/drl_power.f)
+        real pw_sum(6),pw_agsum(totctrl),pw_wsum
+        integer pw_nsamp
+        logical pw_open
+        common /drl_pwr_r/ pw_sum,pw_agsum,pw_wsum
+        common /drl_pwr_i/ pw_nsamp,pw_open

@@ -1,0 +1,30 @@
+c
+c	Adjoint variables
+c
+      real vxadj    (lx1,ly1,lz1,lelv)
+     $   , vyadj    (lx1,ly1,lz1,lelv)
+     $   , vzadj    (lx1,ly1,lz1,lelv)
+     $   , tpadj    (lx1,ly1,lz1,lelt)	
+     $   , vxadjold (lx1,ly1,lz1,lelv)
+     $   , vyadjold (lx1,ly1,lz1,lelv)
+     $   , vzadjold (lx1,ly1,lz1,lelv)
+     $   , tpadjold (lx1,ly1,lz1,lelt)
+     $   , endtime, adjtol, alpha_max
+      common /adj_real/ vxadj, vyadj, vzadj, vxadjold, vyadjold
+     $                , vzadjold, endtime, adjtol, tpadj
+     $                , tpadjold, alpha_max
+
+      integer              npassadj, maxpassadj
+      common /adj_integer/ npassadj, maxpassadj
+
+      logical              ifadj
+      common /adj_logical/ ifadj
+
+      REAL dTdx(lx1*ly1*lz1*lelt)
+     $   , dTdy(lx1*ly1*lz1*lelt) 
+     $   , dTdz(lx1*ly1*lz1*lelt)
+      COMMON /dTgrad/  dTdx, dTdy, dTdz
+
+      REAL g_adj(3), beta_b
+      COMMON /gravity_adjoint/ g_adj
+     $   , beta_b(lx1*ly1*lz1*lelt)

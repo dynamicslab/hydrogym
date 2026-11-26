@@ -1,0 +1,54 @@
+c
+c     This case monitors the error for an exact 2D solution
+c     to the Navier-Stokes equations based on the paper of Walsh [1],
+c     with an additional translational velocity (u0,v0).
+c     
+c     The computational domain is [0,2pi]^2 with doubly-periodic 
+c     boundary conditions.
+c     
+c     Walsh's solution consists of an array of vortices determined 
+c     as a linear combinations of eigenfunctions of having form:
+c     
+c         cos(pi m x)cos(pi n y), cos(pi m x)sin(pi n y)
+c         sin(pi m x)cos(pi n y), sin(pi m x)sin(pi n y)
+c     
+c     and
+c
+c         cos(pi k x)cos(pi l y), cos(pi k x)sin(pi l y)
+c         sin(pi k x)cos(pi l y), sin(pi k x)sin(pi l y)
+c     
+c     While there are constraints on admissible (m,n),(k,l)
+c     pairings, Walsh shows that there is a large class of
+c     possible pairings that give rise to very complex vortex
+c     patterns.
+c     
+c     Walsh's solution applies either to unsteady Stokes or 
+c     unsteady Navier-Stokes.  The solution is a non-translating
+c     decaying array of vortices that decays at the rate 
+c
+c          exp ( -4 pi^2 (m^2+n^2) visc time ),
+c
+c     with (m^2+n^2) = (k^2+l^2). A nearly stationary state may
+c     be obtained by taking the viscosity to be extremely small,
+c     so the effective decay is negligible.   This limit, however,
+c     leads to an unstable state, thus diminsishing the value of 
+c     Walsh's solution as a high-Reynolds number test case.
+c
+c     It is possible to extend Walsh's solution to a stable convectively-
+c     dominated case by simulating an array of vortices that translate
+c     at arbitrary speed by adding a constant to the initial velocity field.  
+c     This approach provides a good test for convection-diffusion dynamics.
+c     In the current file set the translational velocity is specified as:
+c
+c         U0 =[u0,v0] := [param(96),param(97)]    ( in the .rea file )
+c
+c     
+c     The approach can also be extended to incompressible MHD with non-unit
+c     magnetic Prandtl number Pm.
+c     
+c [1] Owen Walsh, "Eddy Solutions of the Navier-Stokes Equations,"
+c     in The Navier-Stokes Equations II - Theory and Numerical Methods,
+c     Proceedings, Oberwolfach 1991, J.G. Heywood, K. Masuda,
+c     R. Rautmann,  S.A. Solonnikov, Eds., Springer-Verlag, pp. 306--309
+c     (1992).
+c

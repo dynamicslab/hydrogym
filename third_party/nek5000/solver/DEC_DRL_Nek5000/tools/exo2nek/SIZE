@@ -1,0 +1,61 @@
+c
+c GLOBAL sizing parameters:
+c
+      parameter (ldim = 3)                       ! max number of dimensions (2D/3D)
+      parameter (max_num_elem     = 5 000 000)   ! max total number of elements
+      parameter (max_num_sidesets =        10)   ! max number of sidesets in exodus file
+      parameter (max_num_elem_blk = 1 000 000)   ! max number of elemets per block in exodus file
+
+c=======================================================================================
+c
+c
+c EXODUS related variables:
+c
+      character*32  exoname     ! MXSTLN=32 max string length in an exodus file
+
+      real    x_exo              (3**ldim*max_num_elem)
+      real    y_exo              (3**ldim*max_num_elem)
+      real    z_exo              (3**ldim*max_num_elem)
+
+      integer num_elem_in_block  (max_num_elem_blk)  
+      integer connect            (3**ldim*max_num_elem)
+      integer elem_list          (2*ldim*max_num_elem, max_num_sidesets)
+      integer side_list          (2*ldim*max_num_elem, max_num_sidesets)
+      integer num_sides_in_set   (max_num_sidesets)
+      integer idss               (max_num_sidesets)
+      integer num_dim, num_elem, num_elem_blk, num_side_sets
+c
+c
+c NEK CORE variables:
+c
+      real   xm1   (3,3,3,max_num_elem)
+      real   ym1   (3,3,3,max_num_elem) 
+      real   zm1   (3,3,3,max_num_elem)
+      real    bc   (5,2*ldim,max_num_elem)
+      real curve   (2*ldim,12,max_num_elem) 
+
+      character*1  ccurve ((4+8*(ldim-2)),max_num_elem)
+      character*3  cbc    (2*ldim,max_num_elem)
+c
+c
+c .RE2 file related variables
+c
+      character*80   re2name
+c
+c
+c     Input common block structure:
+c
+c     INPUT1:  REAL       
+c     INPUT2:  REAL*4 
+c     INPUT3:  INTEGER 
+c     INPUT4:  CHARACTER
+c
+      common /INPUT1/ x_exo, y_exo, z_exo, xm1, ym1, zm1 
+      common /INPUT2/ bc, curve
+
+      common /INPUT3/ num_dim,           num_elem,         num_elem_blk,
+     &                num_side_sets,     num_sides_in_set, idss,
+     &                elem_list,         side_list,        connect,
+     &                num_elem_in_block
+
+      common /INPUT4/ cbc, ccurve, exoname, re2name

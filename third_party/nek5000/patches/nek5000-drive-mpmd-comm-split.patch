@@ -1,0 +1,48 @@
+diff --git a/core/drive.f b/core/drive.f
+index ccd4e5e..6cb0a7f 100644
+--- a/core/drive.f
++++ b/core/drive.f
+@@ -1,11 +1,38 @@
+       program NEKTON
+ 
+       include 'mpif.h'
+-      integer comm
+-      comm = MPI_COMM_WORLD
++      integer comm, local_comm
++      integer rank, color, ierr
+ 
+-      call nek_init(comm)
+-      call nek_solve()
+-      call nek_end()
++c     MPMD coupling: this binary shares MPI_COMM_WORLD with an
++c     external driver (world rank 0, e.g. Python/hydrogym). Split it
++c     off into a Nek-only communicator before nek_init, so iglobalcomm
++c     ends up scoped to just the Nek ranks - required for DRL_main's
++c     MPI_INTERCOMM_CREATE to match the driver's own Split()+
++c     Create_intercomm() pair. Without this, nek_init would dup the
++c     full (driver+Nek) MPI_COMM_WORLD as its own comm, and later
++c     Nek-only collectives would hang waiting on a driver rank that
++c     never participates in them.
++      call mpi_init(ierr)
++      call mpi_comm_rank(MPI_COMM_WORLD, rank, ierr)
++
++      if (rank.eq.0) then
++        color = 0
++      else
++        color = 1
++      endif
++
++      call mpi_comm_split(MPI_COMM_WORLD, color, rank,
++     $                    local_comm, ierr)
++
++      if (color.eq.1) then
++        comm = local_comm
++        call nek_init(comm)
++        call nek_solve()
++        call nek_end()
++        call mpi_comm_free(local_comm, ierr)
++      endif
++
++      call mpi_finalize(ierr)
+ 
+       end

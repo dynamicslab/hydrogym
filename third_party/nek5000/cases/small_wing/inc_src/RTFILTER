@@ -1,0 +1,16 @@
+!    Definitions for Relaxation term filtering
+
+      real rtfx(lx1,ly1,lz1,lelt)
+      real rtfy(lx1,ly1,lz1,lelt)
+      real rtfz(lx1,ly1,lz1,lelt)
+
+      real rt_kai,rt_wght
+      integer rt_kut
+
+      logical rt_ifboyd
+
+      common /RTFIL/ rtfx, rtfy, rtfz,
+     $    rt_kai, rt_wght,
+     $    rt_kut,
+     $    rt_ifboyd
+
