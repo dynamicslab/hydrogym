@@ -21,7 +21,7 @@
 #   POLICY=td3:<policy zip> RUN=runs/td3_utau60 CONF=wing_utau_trip60.yml sbatch run_slurm.sbatch
 #       (wing_utau_trip60.yml written first by: python fit_utau.py runs/zero_trip60 --skip 500 --out wing_utau_trip60.yml)
 #   BACKEND=HIP POLICY=oc RUN=runs/oc sbatch run_slurm.sbatch      (AMD ROCm image, apptainer --rocm)
-# NP NekRS ranks (default 4) on the GPUs of the node. On aarch64 nodes the wing needs NP >= 8 (with fewer ranks the
+# NP NekRS ranks (default 4, on aarch64 8) on the GPUs of the node. On aarch64 nodes the wing needs NP >= 8 (with fewer ranks the
 # static Nek5000 arrays per rank exceed the aarch64 relocation range); when NP is larger than the number of GPUs of
 # the node, ../gpu_share.sh shares the GPUs among the ranks (GPU_SHARE=1, automatic; GPU_SHARE=0: off), e.g.
 # NP=8 on 4 GPUs: 2 ranks per GPU.
@@ -38,7 +38,7 @@ source ../slurm_image.sh       # SIF, BACKEND (CUDA | HIP), GPUFLAG
 POLICY="${POLICY:?set POLICY (zero | oc | ub | td3:<zip> | td3:<released policy id>)}"
 RUN="${RUN:?set RUN (e.g. runs/zero)}"
 ACTIONS="${ACTIONS:-2500}"
-NP="${NP:-4}"
+NP="${NP:-$([ "$(uname -m)" = aarch64 ] && echo 8 || echo 4)}"   # aarch64: the wing needs NP >= 8
 MAX_HOURS="${MAX_HOURS:-7.0}"     # deploy.py wall time (NekRS setup and the first JIT come on top)
 CONF="${CONF:-wing.yml}"         # env YAML, e.g. wing_utau_trip60.yml from fit_utau.py
 PAR="${PAR:-naca_wing.par}"      # NekRS par file (relative to this directory)

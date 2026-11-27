@@ -135,6 +135,7 @@ def save_plot(env, params, action_actuated, outfile="kolmogorov_comparison.png")
 
 
 def main():
+    print(f"JAX devices: {jax.devices()}, x64: {jax.config.jax_enable_x64}", flush=True)  # a CPU fallback is silent otherwise
     parser = argparse.ArgumentParser(description="Kolmogorov flow JAX environment runner")
     parser.add_argument(
         "mode",

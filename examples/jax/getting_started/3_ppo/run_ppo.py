@@ -628,6 +628,7 @@ if __name__ == "__main__":
     del env_probe
 
     print(f"=== PPO Training: {args.env} environment ===")
+    print(f"  JAX devices     : {jax.devices()}")
     print(f"  Episode length  : {episode} actions of {window}")
     print(f"  Total timesteps : {config['TOTAL_TIMESTEPS']}")
     print(f"  Num envs        : {config['NUM_ENVS']}")

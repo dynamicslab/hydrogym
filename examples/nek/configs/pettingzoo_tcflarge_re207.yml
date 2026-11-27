@@ -61,7 +61,7 @@ simulation:
   Ly: 1.0
   Lz: 3.14
   Nx: 10
-  Ny: 9
+  Ny: 8
   Nz: 9
   # -- Size of the actuator patch --
   nxs: 1

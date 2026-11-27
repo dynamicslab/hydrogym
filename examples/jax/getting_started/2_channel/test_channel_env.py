@@ -35,6 +35,7 @@ def make_action(mode: str, action_dim: int) -> jnp.ndarray:
 
 
 def main():
+    print(f"JAX devices: {jax.devices()}, x64: {jax.config.jax_enable_x64}", flush=True)  # a CPU fallback is silent otherwise
     parser = argparse.ArgumentParser(description="Channel flow JAX environment runner")
     parser.add_argument(
         "mode",

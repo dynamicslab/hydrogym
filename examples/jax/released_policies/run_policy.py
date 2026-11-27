@@ -87,6 +87,7 @@ def main():
     import evaluate as EV  # examples/jax/kolmogorov_gppo: preset, reset, network and loading of the package
     import jax
     import jax.numpy as jnp
+    print(f"JAX devices: {jax.devices()}, x64: {jax.config.jax_enable_x64}", flush=True)  # a CPU fallback is silent otherwise
     import plot_policy  # matplotlib: fail before the roll-outs, not after them
 
     pids = a.policy or list(POLICIES)
