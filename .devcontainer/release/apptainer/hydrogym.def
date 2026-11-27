@@ -1,4 +1,4 @@
-# HydroGym for NVIDIA GH200 (aarch64), Apptainer: HydroGym itself (editable,
+# HydroGym for NVIDIA GPUs on aarch64, Apptainer: HydroGym itself (editable,
 # in /opt/hydrogym, with the NekRS channel case files) on top of
 # hydrogym-cuda-base.sif (hydrogym-cuda.def). The last, small step of the
 # build: a new HydroGym revision with the same solver pins and lock file only
@@ -45,8 +45,8 @@ From: {{ BASE }}
     exec "$@"
 
 %labels
-    org.opencontainers.image.title "HydroGym (NVIDIA GH200, aarch64)"
-    org.opencontainers.image.description "HydroGym {{ HYDROGYM_VERSION }}: m-AIA, NekRS, Nek5000, JAX and JAX-Fluids backends; CUDA 12.9, aarch64, GPU architecture cc90"
+    org.opencontainers.image.title "HydroGym (NVIDIA GPUs, aarch64)"
+    org.opencontainers.image.description "HydroGym {{ HYDROGYM_VERSION }}: m-AIA, NekRS, Nek5000, JAX and JAX-Fluids backends; CUDA 12.9, aarch64, GPU architectures cc75-cc120"
     org.opencontainers.image.version "{{ HYDROGYM_VERSION }}"
     org.opencontainers.image.revision "{{ HYDROGYM_REVISION }}"
     org.opencontainers.image.source "https://github.com/dynamicslab/hydrogym"

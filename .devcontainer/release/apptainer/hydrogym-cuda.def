@@ -1,4 +1,4 @@
-# HydroGym for NVIDIA GH200 (aarch64), Apptainer: the image without HydroGym
+# HydroGym for NVIDIA GPUs on aarch64 (GH200, GB200, DGX Spark, ...), Apptainer: the image without HydroGym
 # itself (hydrogym.def adds it on top). The arm64 counterpart of the final
 # stage of ../Dockerfile.hydrogym-cuda: the CUDA 12.9 development image (nvcc
 # for the OCCA JIT of NekRS, the CUDA math libraries) plus the solvers and the
@@ -10,8 +10,8 @@
 #   /opt/nvidia/hpc_sdk/Linux_aarch64/26.5/{comm_libs/12.9/hpcx/hpcx-2.50,compilers/lib}
 #   /opt/mpi-gnu      HPC-X compiler wrappers with gcc/g++/gfortran underneath
 #   /opt/maia_deps    Parallel-NetCDF, parallel HDF5, FFTW
-#   /opt/maia/cc90    m-AIA (NVHPC stdpar, Hopper)
-#   /opt/nekrs        NekRS (CUDA, cudaArch 90) + nekrs-mpmd
+#   /opt/maia/cc*     m-AIA (NVHPC stdpar), one build per GPU generation (cc75 ... cc120)
+#   /opt/nekrs        NekRS (CUDA, cudaArch list in CUDA_ARCH) + nekrs-mpmd
 #   /opt/nek5000      Nek5000 case binaries
 #   /opt/venvs        /opt/venvs/hydrogym: the HydroGym dependencies from uv.lock
 #   /usr/local/bin/uv, /usr/local/bin/compute_parallelism.sh, site CA certificates
@@ -27,7 +27,7 @@ From: nvidia/cuda:12.9.1-devel-ubuntu24.04
 %arguments
     CONTEXT=.
     SOLVERS_TAR=solvers.tar
-    CUDA_ARCH=90
+    CUDA_ARCH=75;80;86;89;90;100;120
     UBUNTU_MIRROR=
 
 %files
@@ -122,7 +122,7 @@ export UV_NATIVE_TLS=1
 EOF
 
 %labels
-    org.opencontainers.image.title "HydroGym (NVIDIA GH200, aarch64)"
+    org.opencontainers.image.title "HydroGym (NVIDIA GPUs, aarch64)"
     org.opencontainers.image.source "https://github.com/dynamicslab/hydrogym"
     org.opencontainers.image.licenses "MIT (HydroGym); bundled solvers under their own licences, see THIRD_PARTY_NOTICES.md"
     hydrogym.cuda_architectures "{{ CUDA_ARCH }}"

@@ -160,7 +160,7 @@ apptainer exec --nv hydrogym-gh200.sif maia --list-builds
 ```
 
 To build it yourself: `.devcontainer/release/apptainer/*.def`
-build the same stack as an Apptainer SIF: m-AIA for cc90 behind the same `maia` wrapper, NekRS 26.0 (CUDA, GPU HYPRE,
+build the same stack as an Apptainer SIF: m-AIA for cc75-cc120 behind the same `maia` wrapper (`MAIA_PRESETS=hopper CUDA_ARCH=90` builds GH200 only), NekRS 26.0 (CUDA, GPU HYPRE,
 GPU-aware MPI), the Nek5000 case executables and `/opt/venvs/hydrogym` with JAX (CUDA 12) and JAX-Fluids, at the same
 paths as in the x86_64 images. It has no Firedrake.
 

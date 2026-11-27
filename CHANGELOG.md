@@ -79,6 +79,7 @@ Notable user-facing changes to HydroGym. Format loosely follows
 - Examples that run and plot the released policies (`examples/jax/released_policies`, `examples/maia/released_policies`).
 
 ### Documentation, tests and CI
+- The aarch64 Apptainer recipe builds m-AIA for all GPU generations cc75-cc120 and NekRS/HYPRE for the same list by default; `MAIA_PRESETS` and `CUDA_ARCH` select fewer.
 - Developer guides, installation pages for NekRS, reference solver templates, regenerated API pages.
 - Extended unit tests; CI runs linting, the test suite and a docstring-coverage check.
 - Container images with all backends: one NVIDIA GPU image (compute capabilities 7.5 to 12.0) and one CPU image,
