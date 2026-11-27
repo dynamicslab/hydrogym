@@ -124,5 +124,5 @@ EOF
 %labels
     org.opencontainers.image.title "HydroGym (NVIDIA GH200, aarch64)"
     org.opencontainers.image.source "https://github.com/dynamicslab/hydrogym"
-    org.opencontainers.image.licenses "MIT"
+    org.opencontainers.image.licenses "MIT (HydroGym); bundled solvers under their own licences, see THIRD_PARTY_NOTICES.md"
     hydrogym.cuda_architectures "{{ CUDA_ARCH }}"

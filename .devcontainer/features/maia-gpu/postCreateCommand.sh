@@ -52,7 +52,7 @@ if [[ -z "$(ls -A "${MAIA_DIR}" 2>/dev/null)" ]]; then
         echo "Run this on the HOST before opening the devcontainer, where a"
         echo "credential prompt (if the repository needs authentication)"
         echo "can be answered interactively:"
-        echo "  git submodule update --init --recursive -- third_party/m-AIA"
+        echo "  git submodule update --init -- third_party/m-AIA"
         exit 1
     fi
 fi

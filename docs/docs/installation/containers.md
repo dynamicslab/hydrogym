@@ -5,7 +5,8 @@ sidebar_position: 0
 # Container images
 
 The HydroGym 1.0.2 images have the solver backends built in, together with MPI, CUDA and the Python environment.
-Nothing is compiled when a container starts, and the solver sources are not needed at run time.
+The solvers are built into the images and their sources are not needed at run time. The only compilation at run time is
+NekRS's just-in-time build of its device kernels and of the case's `udf` on first use (cached afterwards).
 
 | Image | Platform | Backends | Requirements |
 |---|---|---|---|

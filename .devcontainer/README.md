@@ -58,18 +58,18 @@ Not sure which one you have? Run `nvidia-smi --query-gpu=name,compute_cap
 `third_party/m-AIA` is the m-AIA solver (`git.rwth-aachen.de/aia/MAIA/Solver.git`,
 branch `wipmaiaml`) with the RL features HydroGym's flow control cases depend
 on: the LB jet-actuation boundary conditions (BC `2007`/`2008`) and the
-MPMD-based external flow-control channel. The branch is public: a plain
-`git clone --recurse-submodules` (or `git submodule update --init
---recursive` after a plain clone) needs no credentials.
+MPMD-based external flow-control channel. The branch is public:
+`git submodule update --init third_party/m-AIA` after a plain clone needs no
+credentials. Do not add `--recursive` (see the nested submodule below).
 
 One nested submodule of m-AIA, `include/PyJacReactionMechanisms`, is not
 publicly accessible and is **not** needed unless
 `ENABLE_PYJAC` is on — `maia-gpu`/`maia-cpu`'s `postCreateCommand.sh`
 deliberately excludes it from MAIA's own submodule init (see
 `include/Eigen include/cantera include/doctest include/hypre include/mfem
-include/sundials` in that script), so a blanket
-`git submodule update --init --recursive` from the top of this repo will
-fail at that one path — expected, not a sign anything else is broken; use
+include/sundials` in that script), so `git clone --recurse-submodules` or a
+blanket `git submodule update --init --recursive` from the top of this repo
+fails at that one path — expected, not a sign anything else is broken; use
 the scoped commands `postCreateCommand.sh` itself uses instead if you're
 initializing submodules by hand.
 

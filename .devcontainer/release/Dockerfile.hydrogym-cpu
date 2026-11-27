@@ -154,6 +154,6 @@ LABEL org.opencontainers.image.title="${IMAGE_TITLE}" \
       org.opencontainers.image.revision="${HYDROGYM_REVISION}" \
       org.opencontainers.image.source="https://github.com/dynamicslab/hydrogym" \
       org.opencontainers.image.url="https://dynamicslab.github.io/hydrogym" \
-      org.opencontainers.image.licenses="MIT"
+      org.opencontainers.image.licenses="MIT (HydroGym); bundled solvers under their own licences, see THIRD_PARTY_NOTICES.md"
 
 WORKDIR /workspace
