@@ -64,17 +64,18 @@ You can then connect your local ParaView client (the same version as the server)
 
 ## Run environments
 
-HydroGym provides **89 environments** across 7 solver backends (counts are
-the environment configurations currently published on the
-[Hugging Face Hub](https://huggingface.co/datasets/dynamicslab/HydroGym-environments)):
+HydroGym provides **96 environments** across 7 solver backends. An environment is one folder of the
+[Hugging Face dataset](https://huggingface.co/datasets/dynamicslab/HydroGym-environments) that holds data (flow,
+Reynolds number, dimension, mesh or grid variant); three more (m-AIA finite volume) are coming soon. The full list is
+in the [environment catalogue](./environments).
 
 | Solver backend | Count | Description | Dimensions |
 | --- | ---: | --- | --- |
-| **Firedrake** `FEM` | 20 | Canonical flow control benchmarks | 2D |
-| **MAIA** `LBM` | 55 | Lattice Boltzmann method environments | 2D, 3D |
-| **MAIA** `STRUCTURED FV` | 4 | High-Reynolds turbulent boundary layers | 3D |
-| **NEK5000** `SEM` | 4 | Spectral element turbulent channel/airfoil flow | 3D |
-| **NekRS** `SEM`, GPU | 2 | The channel and the wing of NEK5000, on GPUs | 3D |
+| **Firedrake** `FEM` | 25 | Canonical flow control benchmarks | 2D |
+| **MAIA** `LBM` | 59 | Lattice Boltzmann method environments | 2D, 3D |
+| **MAIA** `STRUCTURED FV` | 1 (+3 coming soon) | High-Reynolds-number airfoil flows | 3D |
+| **NEK5000** `SEM` | 5 | Spectral element turbulent channel/airfoil flow | 3D |
+| **NekRS** `SEM`, GPU | (2) | The channel and the wing of NEK5000, on GPUs | 3D |
 | **JAX** `SEM, FD` | 2 | Differentiable fluid dynamics | 2D, 3D |
 | **JAX-Fluids** `FVM` | 4 | Compressible shock vector control | 2D, 3D |
 

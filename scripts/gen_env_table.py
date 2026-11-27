@@ -183,6 +183,7 @@ def render(envs: list[dict], revision: str) -> str:
 COUNT_FILES = [
     ("README.md", re.compile(r"\*\*(\d+) environments")),
     ("README.md", re.compile(r"HydroGym provides \*\*(\d+) environments")),
+    ("docs/docs/quickstart.md", re.compile(r"HydroGym provides \*\*(\d+) environments")),
     ("docs/docs/introduction.md", re.compile(r"to (\d+) pre-configured CFD environments")),
     ("docs/src/components/HomepageFeatures/index.tsx", re.compile(r"(\d+) pre-configured environments")),
 ]
