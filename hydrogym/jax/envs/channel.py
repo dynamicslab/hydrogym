@@ -844,7 +844,14 @@ def run_channel_pseudospectral(
 
 class ChannelFlowSpectralEnv(JAXFlowEnvBase):
     """
-    3D turbulent channel flow environment using a pseudo-spectral DNS solver.
+    3D turbulent channel flow environment using a pseudo-spectral DNS solver (legacy channel).
+
+    This is the earlier channel of HydroGym, selected with ``ChannelFlowEnv({"solver": "spectral"})``. Its stored flow
+    is not the ``Re_tau = 180`` channel: the field of ``Channel_3D_Retau180`` is a Chebyshev-grid flow at bulk
+    velocity 8.0 with the constant body force 2.0, whose wall shear stress corresponds to ``Re_tau`` of about 310
+    (``u_tau`` about 0.6, ``nu = 1.9e-3``, half-height 1). The finite-difference channel
+    (:class:`hydrogym.jax.envs.channel_fd.ChannelFlowFDEnv`, ``solver="fd"``, the default of ``ChannelFlowEnv``) is
+    the ``Re_tau = 180`` channel.
 
     x streamwise, y spanwise (periodic), z wall-normal (Chebyshev, walls at
     ``z = -Lz/2, Lz/2``); constant mass flux at bulk velocity ``U_b = 8``.
