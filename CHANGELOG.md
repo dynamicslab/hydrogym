@@ -28,7 +28,7 @@ Notable user-facing changes to HydroGym. Format loosely follows
   et al. 1999). `ChannelFlowEnv(env_config)` is now the channel entry point and selects it with
   `solver="fd"` (default); the previous pseudo-spectral channel is available with `solver="spectral"`; it runs at
   Re_tau ~ 310 (bulk velocity 8.0, body force 2.0) and keeps using the `Channel_3D_Retau180` data. The finite-difference
-  channel starts from the `Channel_3D_Retau180_FD` data.
+  channel starts from the `Channel_3D_Retau180_JAXFD` data.
 - `Pinball_3D_Re150` now runs at Ma 0.1 by default (`max_control` 0.35, 352 lattice steps per action, start state a
   developed uncontrolled Ma 0.1 flow); the Ma 0.2 configuration is `Pinball_3D_Re150_Ma02`.
 - Canonical gymnasium IDs for all gymnasium-API backends (`hydrogym.registration`, `gym.make(...)`).

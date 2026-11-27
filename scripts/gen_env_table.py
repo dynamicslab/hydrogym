@@ -79,12 +79,12 @@ def classify(folder: str, sentinels: set[str]) -> str:
     for s in sentinels:
         if s in SENTINELS:
             return SENTINELS[s]
-    if folder in ("Kolmogorov_2D", "Channel_3D_Retau180", "Channel_3D_Retau180_FD"):
-        return "jax"  # (before the "_FD" rule: Channel_3D_Retau180_FD is the finite-difference channel, not a Firedrake case)
     if folder.endswith("_FD"):
         return "firedrake"
     if folder.startswith("Nozzle"):
         return "jaxfluids"
+    if folder in ("Kolmogorov_2D", "Channel_3D_Retau180", "Channel_3D_Retau180_JAXFD"):
+        return "jax"
     return "maia_lb"
 
 

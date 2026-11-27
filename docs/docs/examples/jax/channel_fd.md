@@ -66,7 +66,7 @@ tau_w = solver.wall_shear(state.u, "mean")
 import jax, jax.numpy as jnp
 from hydrogym.jax.envs.channel_fd import ChannelFlowEnv
 
-env = ChannelFlowEnv({"solver": "fd"})              # needs the Channel_3D_Retau180_FD data (or initial_field_dir)
+env = ChannelFlowEnv({"solver": "fd"})              # needs the Channel_3D_Retau180_JAXFD data (or initial_field_dir)
 params = env.default_params
 key = jax.random.PRNGKey(0)
 obs, state = env.reset(key, params)
@@ -79,7 +79,7 @@ obs, state, reward, done, info = env.step(key, state, jnp.zeros(params.action_di
 | Jets | wall-normal velocity on the bottom wall, parabolic in the distance $r$ from the jet centre, $w = g\,(a - \bar a)(1 - r^2/R^2)$ inside the radius $R$ (`jet_radius`, default 0.25), zero outside. $g$ = `jet_amplitude` $\times\, u_\tau$ with `jet_amplitude` = 0.0624 (the peak velocity per unit action in units of the nominal friction velocity $u_\tau = \sqrt{f_x H/2} = 0.342$, i.e. $g = 0.0213$; `jet_gain` sets $g$ in absolute units); the area-weighted mean action $\bar a$ is removed, so the net mass flux is exactly zero and every jet is zero at its edge. |
 | Observation | streamwise velocity $u$ at the 24 jet centres on the wall-parallel plane of cell centres closest to $y^+ = 15$ (`obs_yplus`; with the nominal $u_\tau = \sqrt{f_x H/2}$) |
 | Reward | $\tau_\mathrm{ref}/\tau_w$ (`reward="ratio"`, default) or $-\tau_w$ (`reward="neg_tau"`). $\tau_w = \nu\langle u\rangle(z_1)/z_1$ is the mean over the controlled (bottom) wall from the first cell ($y^+ \approx 0.5$, viscous sub-layer) at the end of the action interval; $\tau_\mathrm{ref}$ (`tau_ref`) is the value of the uncontrolled flow. |
-| Initial state | `initial_condition="turbulent"` (default): fields from `Channel_3D_Retau180_FD` or `initial_field_dir`; `"laminar"`: a parabolic profile of bulk velocity `u_bulk_init` plus a random perturbation (relative amplitude `perturbation`) generated at every reset (many time units are needed to become turbulent) |
+| Initial state | `initial_condition="turbulent"` (default): fields from `Channel_3D_Retau180_JAXFD` or `initial_field_dir`; `"laminar"`: a parabolic profile of bulk velocity `u_bulk_init` plus a random perturbation (relative amplitude `perturbation`) generated at every reset (many time units are needed to become turbulent) |
 | `info` | `wall_shear_stress`, `obs_yplus` (of the measured friction velocity), `poisson_iterations`, `courant`, and the actuation power entries of the other environments (`actuation_power*`, `drag_coefficient`, `objective`) |
 
 The step is differentiable with respect to the action (`jax.grad` through `step_env`). `dtype` is `"float32"` by
