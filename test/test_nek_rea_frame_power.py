@@ -5,7 +5,9 @@ from pathlib import Path
 
 import pytest
 
+pytest.importorskip("mpi4py")  # hydrogym.nek.env (imported by nek_utils) needs mpi4py and pandas
 pytest.importorskip("omegaconf")
+pytest.importorskip("pandas")
 from omegaconf import OmegaConf  # noqa: E402
 
 from hydrogym.nek.nek_lib.nek_utils import (  # noqa: E402

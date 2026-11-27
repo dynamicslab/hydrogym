@@ -27,10 +27,12 @@ existing Firedrake environment:
 
 The environment is then ready to run the tests.
 
-> CI does not use a pre-built image: `.github/workflows/test.yml` builds the
-> repo's own `.devcontainer/firedrake-test.devcontainer.json` (petsc +
-> firedrake features) on every run, so that definition — not any Docker Hub
-> image — is the authoritative test environment.
+> CI (`.github/workflows/test.yml`) runs the suite inside the published CPU image (`clagemann/hydrogym-cpu:1.0.2`) with
+> the checkout mounted over the image's sources, once in the HydroGym environment and once in the Firedrake
+> environment. A plain `pip`/`uv` install runs the subset whose backends are installed; the other test modules skip.
+> Tests that need `mpirun -np N` (`test_nek_power_rpc.py`, `test_nek_rpc_batching.py`) are launched with
+> `mpirun -np 3 python -m pytest <file>`. `test_nek5000_power_kernel.py` starts 3 ranks and allows oversubscription;
+> `NEK_TEST_MPIRUN` and `NEK_TEST_MPIRUN_ARGS` override the launcher and its arguments.
 
 ## Running Tests
 

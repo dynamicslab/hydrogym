@@ -69,7 +69,8 @@ def _floats(path):
 
 def _run(d, nranks):
     cmd = [MPIRUN, *os.environ.get("NEK_TEST_MPIRUN_ARGS", "").split(), "-np", str(nranks), "./pwtest"]
-    env = dict(os.environ, OMPI_MCA_rmaps_base_oversubscribe="1")
+    # Allow more ranks than slots: Open MPI 4 reads the OMPI_MCA variable, Open MPI 5 (PRRTE) the PRTE one.
+    env = dict(os.environ, OMPI_MCA_rmaps_base_oversubscribe="1", PRTE_MCA_rmaps_default_mapping_policy=":oversubscribe")
     subprocess.run(cmd, cwd=d, check=True, env=env, timeout=120)
 
 
