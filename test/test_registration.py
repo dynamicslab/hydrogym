@@ -290,3 +290,28 @@ def test_jaxfluids_factory_caller_can_override_environment_name(fake_jaxfluids):
         env_config={"environment_name": "Nozzle2D_fine"},
     )
     assert fake_jaxfluids["call"]["environment_name"] == "Nozzle2D_fine"
+
+
+def test_every_catalogue_environment_is_registered():
+    """Every environment with data in docs/docs/environments.md (generated from the dataset) has a gym id."""
+    import re
+    from pathlib import Path
+
+    page = Path(__file__).resolve().parents[1] / "docs" / "docs" / "environments.md"
+    namespace = {
+        "m-AIA lattice Boltzmann": "hydrogym-maia",
+        "m-AIA structured finite volume": "hydrogym-maia",
+        "Nek5000": "hydrogym-nek",
+        "JAX-Fluids": "hydrogym-jaxfluids",
+    }
+    section = None
+    checked = 0
+    for line in page.read_text().splitlines():
+        if line.startswith("## "):
+            section = line[3:].strip()
+        m = re.match(r"\| `([^`]+)` \|.*\| available \|$", line)
+        if m and section in namespace:
+            env_id = f"{namespace[section]}/{m.group(1)}-v0"
+            assert env_id in gym.registry, f"{env_id} not registered"
+            checked += 1
+    assert checked >= 60  # 60 m-AIA, 5 Nek5000, 4 JAX-Fluids at the time of writing

@@ -6,6 +6,9 @@ Notable user-facing changes to HydroGym. Format loosely follows
 ## 1.0.2
 
 ### Environments
+- Gymnasium registration (`hydrogym.registration`): every environment of the catalogue with data is registered under its
+  Hugging Face name (`hydrogym-maia/<name>-v0`, `hydrogym-nek/<name>-v0`, `hydrogym-jaxfluids/<name>-v0`); m-AIA environments
+  other than `Cylinder_2D_Re200` need `probe_locations`.
 - New NekRS backend (`hydrogym.nekrs`): channel and NACA0012 wing cases with an MPMD control interface.
 - NACA0012 wing (Nek5000): case at Re_c = 2×10⁵ with the tripping of ref. (Wang, Atzori & Vinuesa 2025), 30 spanwise
   modes renewed every 0.008 c/U∞; time step 4×10⁻⁵ and 31 solver steps per action; the start state is the developed

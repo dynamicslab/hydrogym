@@ -30,10 +30,10 @@ Design notes:
   in `gym.make` would present a misleading API; use
   `hydrogym.jax.envs.*` directly (see docs/docs/developers/adding-a-solver.md,
   Pattern 3).
-- The MAIA/NEK/JAX-Fluids IDs below are representative entry points, not an
-  exhaustive catalog: the HF Hub hosts many more environments per backend,
-  and each backend's own `from_hf` accepts any registered environment
-  name (see docs/docs/developers/adding-an-environment.md).
+- Every environment of the catalogue (docs/docs/environments.md) that has data is registered under its
+  Hugging Face name: `hydrogym-maia/<name>-v0`, `hydrogym-nek/<name>-v0`, `hydrogym-jaxfluids/<name>-v0`; the
+  Firedrake flows are `hydrogym/<Flow>-v0` (the mesh and Reynolds number are flow_config entries). Each backend's own
+  `from_hf` accepts the same names.
 """
 
 import gymnasium as gym
@@ -52,7 +52,7 @@ _FIREDRAKE_ENVS = {
     "hydrogym/Step-v0": "Step",
 }
 
-# Representative MAIA environment names.
+# m-AIA environments: every environment of the catalogue (docs/docs/environments.md) that has data.
 # `probe_locations` has no universal default (the sensible probe grid is a
 # per-flow-geometry choice -- MaiaFlowEnv raises a clear ConfigError if it's
 # omitted, see env_core.py), so only environments with a known working
@@ -61,7 +61,69 @@ _FIREDRAKE_ENVS = {
 # Cylinder_2D_Re200's default is the wake-sampling grid from
 # examples/maia/getting_started/test_maia_env.py's create_probe_locations
 # (8 downstream x 5 crossflow, x in [1, 8], y in [-1, 1]).
-_MAIA_ENVS = {
+_MAIA_ENV_NAMES = (
+    "Cavity3Jet_2D_Re4200",
+    "Cavity3Jet_2D_Re7500",
+    "Cavity3Jet_3D_Re4200_lz024",
+    "Cavity3Jet_3D_Re7500_lz024",
+    "Cavity_2D_Re4200",
+    "Cavity_2D_Re7500",
+    "Cavity_3D_Re4200_lz024",
+    "Cavity_3D_Re7500_lz024",
+    "Cube_3D_Re1000",
+    "Cube_3D_Re300",
+    "Cube_3D_Re3700",
+    "Cylinder_2D_Re1000",
+    "Cylinder_2D_Re200",
+    "Cylinder_2D_Re3900",
+    "Cylinder_3D_Re1000",
+    "Cylinder_3D_Re200",
+    "Cylinder_3D_Re3900",
+    "DRA2303Jet_3D_Re400000_Ma02",
+    "NACA0012Gust_2D_Re1000_AOA20",
+    "NACA0012Gust_2D_Re1000_AOA40",
+    "NACA0012Gust_2D_Re100_AOA20",
+    "NACA0012Gust_2D_Re100_AOA40",
+    "NACA0012Gust_3D_Re10000_AOA12",
+    "NACA0012Gust_3D_Re1000_AOA20",
+    "NACA0012Gust_3D_Re1000_AOA40",
+    "NACA0012Gust_3D_Re100_AOA20",
+    "NACA0012Gust_3D_Re100_AOA40",
+    "NACA0012Gust_3D_Re50000_AOA12",
+    "NACA0012_2D_Re1000_AOA20",
+    "NACA0012_2D_Re1000_AOA40",
+    "NACA0012_2D_Re100_AOA20",
+    "NACA0012_2D_Re100_AOA40",
+    "NACA0012_3D_Re10000_AOA12",
+    "NACA0012_3D_Re1000_AOA20",
+    "NACA0012_3D_Re1000_AOA40",
+    "NACA0012_3D_Re100_AOA20",
+    "NACA0012_3D_Re100_AOA40",
+    "NACA0012_3D_Re50000_AOA12",
+    "Pinball_2D_Re100",
+    "Pinball_2D_Re150",
+    "Pinball_2D_Re30",
+    "Pinball_2D_Re75",
+    "Pinball_3D_Re100",
+    "Pinball_3D_Re150",
+    "Pinball_3D_Re150_Ma02",
+    "Pinball_3D_Re30",
+    "Pinball_3D_Re75",
+    "RotaryCylinder_2D_Re1000",
+    "RotaryCylinder_2D_Re200",
+    "RotaryCylinder_2D_Re3900",
+    "RotaryCylinder_3D_Re1000",
+    "RotaryCylinder_3D_Re200",
+    "RotaryCylinder_3D_Re3900",
+    "Sphere_3D_Re300",
+    "Sphere_3D_Re3700",
+    "SquareCylinder_2D_Re1000",
+    "SquareCylinder_2D_Re200",
+    "SquareCylinder_3D_Re1000",
+    "SquareCylinder_3D_Re200",
+    "SquareCylinder_3D_Re3900",
+)
+_MAIA_DEFAULTS = {
     "Cylinder_2D_Re200": {
         "probe_locations": [
             coord
@@ -71,15 +133,19 @@ _MAIA_ENVS = {
         ],
         "obs_normalization_strategy": "U_inf",
     },
-    "RotaryCylinder_2D_Re1000": {},
-    "Cavity_2D_Re4200": {},
-}  # ns: hydrogym-maia
+}
+_MAIA_ENVS = {name: _MAIA_DEFAULTS.get(name, {}) for name in _MAIA_ENV_NAMES}  # ns: hydrogym-maia
 
-# Representative NEK environment (the documented smoke-test case; nproc must
-# match the MPMD launch, so it is a required make() kwarg here).
-_NEK_ENVS = ["TCFmini_3D_Re180"]  # ns: hydrogym-nek
+# Nek5000 environments of the catalogue (nproc must match the MPMD launch, so it is a required make() kwarg).
+_NEK_ENVS = [
+    "NACA0012_3D_Re200000_AOA0",
+    "NACA4412_3D_Re75000_AOA5",
+    "TCFlarge_3D_Re206",
+    "TCFlarge_3D_Re207",
+    "TCFmini_3D_Re180",
+]  # ns: hydrogym-nek
 
-# Representative JAX-Fluids environments (constructed from an env_config
+# JAX-Fluids environments (constructed from an env_config
 # dict, as in examples/jaxfluids/). Maps gym ID suffix -> (env_class_name,
 # default HF environment_name). There is no plain "Nozzle2D"/"Nozzle3D" HF
 # environment -- only resolution-suffixed variants (Nozzle2D_coarse/_fine,
@@ -88,6 +154,10 @@ _NEK_ENVS = ["TCFmini_3D_Re180"]  # ns: hydrogym-nek
 _JAXFLUIDS_ENVS = {
     "Nozzle2D": ("Nozzle2D", "Nozzle2D_coarse"),
     "Nozzle3D": ("Nozzle3D", "Nozzle3D_coarse"),
+    "Nozzle2D_coarse": ("Nozzle2D", "Nozzle2D_coarse"),
+    "Nozzle2D_fine": ("Nozzle2D", "Nozzle2D_fine"),
+    "Nozzle3D_coarse": ("Nozzle3D", "Nozzle3D_coarse"),
+    "Nozzle3D_fine": ("Nozzle3D", "Nozzle3D_fine"),
 }  # ns: hydrogym-jaxfluids
 
 
