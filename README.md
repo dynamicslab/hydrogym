@@ -11,13 +11,13 @@
 
 # HydroGym: Reinforcement Learning for Fluid Dynamics
 
-**89 environments | 7 solver backends | 2D & 3D | Ready for RL training**
+**96 environments | 7 solver backends | 2D & 3D | Ready for RL training**
 
 HydroGym is a comprehensive platform for applying reinforcement learning to fluid dynamics and flow control. With environments ranging from canonical benchmarks to turbulent flows, HydroGym provides a standardized Gymnasium-compatible interface for training RL agents on challenging CFD problems.
 
 ## Key Features
 
-- **Diverse Environments**: 89 pre-configured environments across 7 CFD solvers
+- **Diverse Environments**: 96 pre-configured environments across 7 CFD solvers
 - **Standard RL Interface**: Gymnasium-compatible API works with Stable-Baselines3, RLlib, and other RL libraries
 - **Compute Efficient**: Highly optimized GPU & CPU backends for efficient RL deployment ranging from local workstations to exascale HPC systems
 - **Scalable**: MPI-parallelized solvers for large-scale HPC deployment (MPMD co-launch of RL and solver processes)
@@ -122,29 +122,37 @@ for building the images and the matching devcontainer configurations.
 
 ### Installing from PyPI or from source
 
+HydroGym needs Python 3.11 or newer.
+
 ```bash
 pip install hydrogym              # core; solver extras: hydrogym[firedrake|maia|nek|nekrs|jax|jaxfluids|all]
 
 git lfs install                   # from source: once per machine, before cloning
-git clone --recurse-submodules https://github.com/dynamicslab/hydrogym.git
+git clone https://github.com/dynamicslab/hydrogym.git
 cd hydrogym && pip install -e ".[jax]"   # or uv sync --locked --extra jax
 ```
+
+The solver sources under `third_party/` are git submodules. They are only needed to build a solver from source (the
+container images ship them built), so a plain `git clone` is enough for the Python package. Initialise a single one
+when you need it, e.g. `git submodule update --init third_party/m-AIA`. Do not use `--recurse-submodules` or
+`--recursive`: m-AIA contains a nested submodule that is not publicly accessible, so the recursive clone fails.
 
 > Git LFS: the Firedrake meshes (`hydrogym/firedrake/envs/*/*.msh`) and the Nek5000 case files (`third_party/nek5000/cases/`) are stored with [Git LFS](https://git-lfs.com). Run `git lfs install` before cloning, or `git lfs pull` in an existing clone; otherwise these files are small pointer files and HydroGym stops with "... is a Git LFS pointer". The wheels on PyPI contain the meshes.
 
 ## Available Environments
 
-HydroGym provides **89 environments** across 7 solver backends (counts are
-the environment configurations currently published on the
-[Hugging Face Hub](https://huggingface.co/datasets/dynamicslab/HydroGym-environments); the two NekRS cases are GPU
-implementations of NEK5000 cases and are set up from `examples/nekrs`):
+HydroGym provides **96 environments** across 7 solver backends. An environment is one folder of the
+[Hugging Face dataset](https://huggingface.co/datasets/dynamicslab/HydroGym-environments) that holds data (flow,
+Reynolds number, dimension, mesh or grid variant); three more (m-AIA finite volume) are coming soon. The two NekRS cases are
+GPU implementations of NEK5000 cases and are set up from `examples/nekrs`. The full list is generated from the dataset
+by `scripts/gen_env_table.py` and is in [docs/docs/environments.md](docs/docs/environments.md).
 
 | Solver Backend | Count | Description | Dimensions |
 |----------------|-------|-------------|------------|
-| **Firedrake** (FEM) | 20 | Canonical flow control benchmarks | 2D |
-| **MAIA LBM** | 55 | Lattice Boltzmann method environments | 2D, 3D |
-| **MAIA Structured FV** | 4 | High-Reynolds turbulent boundary layers | 3D |
-| **NEK5000** | 4 | Spectral element turbulent channel/airfoil flow | 3D |
+| **Firedrake** (FEM) | 25 | Canonical flow control benchmarks | 2D |
+| **MAIA LBM** | 59 | Lattice Boltzmann method environments | 2D, 3D |
+| **MAIA Structured FV** | 1 (+3 coming soon) | High-Reynolds-number airfoil and turbulent boundary-layer flows: DRA2303 airfoil at Ma 0.2 with jets today; the Ma 0.7 and surface-wave variants, and the zero-pressure-gradient boundary layer (`ZPGTBL*`), are coming soon | 3D |
+| **NEK5000** | 5 | Spectral element turbulent channel/airfoil flow | 3D |
 | **NekRS** | (2) | GPU spectral element: the NEK5000 turbulent channel and NACA0012 wing | 3D |
 | **JAX** | 2 | Differentiable fluid dynamics | 2D, 3D |
 | **JAX-Fluids** | 4 | Compressible shock vector control | 2D, 3D |
@@ -167,8 +175,8 @@ implementations of NEK5000 cases and are set up from `examples/nekrs`):
 - NACA0012 with gust disturbance (Re=100-50000, 2D/3D)
 
 **High Reynolds Number Flows**:
-- Zero-pressure-gradient turbulent boundary layer with jet/surface wave actuation (Re_Tau=180-2200, 3D)
-- DRA2303 airfoil with jet/surface wave actuation (Re=400000, Ma=0.2-0.7, 3D)
+- DRA2303 airfoil with jet actuation (Re=400000, Ma=0.2, 3D); Ma 0.7 and surface-wave actuation: coming soon
+- Zero-pressure-gradient turbulent boundary layer with jet/surface wave actuation (Re_Tau=180-2200, 3D): coming soon
 - NACA0012 airfoil with jet actuation (Re=200000, 3D)
 
 **Fully Differentiable Flows**:

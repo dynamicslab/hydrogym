@@ -14,7 +14,7 @@ const FeatureList: FeatureItem[] = [
     title: 'Diverse Environments',
     description: (
       <>
-        89 pre-configured environments across 7 CFD solvers. Flow environments
+        96 pre-configured environments across 7 CFD solvers. Flow environments
         are supported by multiple backends: Finite Element (Firedrake),
         Lattice Boltzmann (MAIA LBM), Finite Volume (MAIA FV), Spectral
         Element (NEK5000, NekRS), and fully differentiable solvers (JAX,
