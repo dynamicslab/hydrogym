@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Build the HydroGym Apptainer image for NVIDIA GH200 nodes (aarch64: Grace
-# CPU + Hopper GPU, cc90) in steps, on an aarch64 machine with Apptainer
+# Build the HydroGym Apptainer image for NVIDIA GPUs on aarch64 hosts (GH200,
+# GB200, DGX Spark, Arm servers; cc75-cc120, default) in steps, on an aarch64 machine with Apptainer
 # (>= 1.3, `apptainer build --fakeroot`), e.g. the login node of a GH200
 # cluster. The arm64 counterpart of build_release_images.sh +
 # release/Dockerfile.hydrogym-cuda; definition files in release/apptainer/.
@@ -15,8 +15,8 @@
 #   venv      /opt/venvs/hydrogym from uv.lock: torch (CPU), JAX (CUDA 12),
 #             JAX-Fluids, mpi4py built against HPC-X           [internet]
 #   nek5000   Nek5000 case binaries
-#   maia      m-AIA, one build per MAIA_PRESETS entry (default hopper = cc90)
-#   nekrs     NekRS (CUDA, CUDA_ARCH, default 90) + nekrs-mpmd
+#   maia      m-AIA, one build per MAIA_PRESETS entry (default: all six, cc75-cc120)
+#   nekrs     NekRS (CUDA, CUDA_ARCH, default 75;80;86;89;90;100;120) + nekrs-mpmd
 #   pack      BUILD_ROOT/solvers.tar: the above + HPC-X and NVHPC runtime libraries
 #   image     WORK/hydrogym-cuda-base.sif, hydrogym-cuda.def   [internet: apt]
 #   hydrogym  WORK/hydrogym-<version>-<revision>-gh200.sif: base + HydroGym
@@ -40,8 +40,8 @@
 #   BUILD_ENV   build environment: a sandbox directory (default
 #               BUILD_ROOT/build-env) or, if it ends in .sif, a SIF file
 #   JOBS        make -j (default 16); MAIA_JOBS, NEKRS_JOBS (default JOBS)
-#   MAIA_PRESETS  m-AIA --enable-pstl presets (default hopper)
-#   CUDA_ARCH   NekRS/HYPRE CMAKE_CUDA_ARCHITECTURES (default 90)
+#   MAIA_PRESETS  m-AIA --enable-pstl presets (default "turing ampere ada hopper blackwell blackwell_consumer")
+#   CUDA_ARCH   NekRS/HYPRE CMAKE_CUDA_ARCHITECTURES (default "75;80;86;89;90;100;120")
 #   RESUME      1: maia/nekrs continue the existing build trees
 #   PACK_WITHOUT_MAIA  1: pack (and so the image) without m-AIA, e.g. an interim image
 #   VERSION     image version (1.0.2); HYDROGYM_REVISION (default: CTX/HYDROGYM_REVISION)
@@ -56,8 +56,8 @@ BUILD_ENV="${BUILD_ENV:-${BUILD_ROOT}/build-env}"
 JOBS="${JOBS:-16}"
 MAIA_JOBS="${MAIA_JOBS:-${JOBS}}"
 NEKRS_JOBS="${NEKRS_JOBS:-${JOBS}}"
-MAIA_PRESETS="${MAIA_PRESETS:-hopper}"
-CUDA_ARCH="${CUDA_ARCH:-90}"
+MAIA_PRESETS="${MAIA_PRESETS:-turing ampere ada hopper blackwell blackwell_consumer}"
+CUDA_ARCH="${CUDA_ARCH:-75;80;86;89;90;100;120}"
 RESUME="${RESUME:-0}"
 VERSION="${VERSION:-1.0.2}"
 DEFS="${CTX}/build/release/apptainer"
