@@ -27,10 +27,10 @@ runner:
   rank: 1
   evaluation: false
   normalize_input: "utau"
-  ctrl_min_amp: -0.063
-  ctrl_max_amp: 0.063
+  ctrl_min_amp: -0.0624
+  ctrl_max_amp: 0.0624
   npl_state: 2
-  u_tau: 0.0630
+  u_tau: 0.0624
   dUdy: 13.10
 
 simulation:
@@ -45,7 +45,7 @@ simulation:
   # Core runtime configuration
   nproc: 512
   TOTCTRL: 128 # Buffer size for MPI
-  ndrl: 13 # dt+ ~ 0.68
+  ndrl: 13 # dt+ ~ 0.67
   znmf_avg: 1
   target_cfl: 2.0
   y_sensing: 15.0

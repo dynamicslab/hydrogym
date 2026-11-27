@@ -139,4 +139,4 @@ agent per node, and `--wrapper supersuit` selects the PettingZoo + SuperSuit rou
 times slower for the channel).
 
 Note on the action interval of `TCFlarge_3D_Re207`: `ndrl = 13` solver steps of `dt = 4e-3` at `Re_b = 3300` and
-`u_tau = 0.063` give `dt+ = 13 * 4e-3 * 0.063**2 * 3300 = 0.68`.
+`u_tau = 0.0624` give `dt+ = 13 * 4e-3 * 0.0624**2 * 3300 = 0.67`.
