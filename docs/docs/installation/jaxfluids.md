@@ -25,6 +25,7 @@ JAX-Fluids is not published on PyPI and must be installed from source:
 ```bash
 git clone https://github.com/tumaer/JAXFLUIDS.git
 cd JAXFLUIDS
+git checkout 819edcd2f496e1719d1f7db751d06b9fd9a1f3cc   # the version of the HydroGym images
 pip install .
 ```
 

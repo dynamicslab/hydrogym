@@ -142,7 +142,7 @@ The time integration restarts at first order, because the field files carry no l
   lies in the window, so points shared by two faces are counted twice. Here every distinct wall GLL node of the window
   is an agent: 12931 at N = 3, more at N = 7. The policy is local, so this only changes the actuation resolution. Other
   agent sets can be given as a position file (`positions: {source: file}`).
-- **Actuation limit.** The policies act in [-1, 1] × u_tau,ch. OC with `wing_oc.yml` is bounded at 3 u_tau(x), which
+- **Actuation limit.** a > 0 blows (wall-normal velocity into the fluid), a < 0 sucks. The policies act in [-1, 1] × u_tau,ch. OC with `wing_oc.yml` is bounded at 3 u_tau(x), which
   it does not reach (with `wing.yml` it would be clipped where |v'| > u_tau,ch). UB blows `--ub-velocity` U_inf without
   zero net flux.
 - **Trip.** `[CASEDATA] tripModes` and `tripInterval` (`TRIP_MODES`, `TRIP_INTERVAL` in `run.sh` and

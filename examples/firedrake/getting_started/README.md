@@ -76,7 +76,7 @@ Usage:
 # Test environment
 ./run_example_docker.sh
 
-# Train SB3 agent
+# Train SB3 agent (50000 steps; several hours on a CPU node)
 ./run_example_docker.sh train
 ```
 

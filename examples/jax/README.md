@@ -53,7 +53,7 @@ cd ../2_channel
 
 # Train PPO
 cd ../3_ppo
-./run_ppo_docker.sh --env kolmogorov   # getting-started settings, ~10-15 min on a CPU
+./run_ppo_docker.sh --env kolmogorov   # getting-started settings, ~15-20 min on a CPU
 ```
 
 ## Available Environments

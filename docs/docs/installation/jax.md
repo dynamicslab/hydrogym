@@ -16,6 +16,9 @@ pip install -U jax
 
 This is sufficient for running the Kolmogorov and channel flow examples and for training small agents on a workstation.
 
+The tested set is the one pinned in `uv.lock` (JAX 0.11.1); newer JAX versions run the test suite but can change chaotic
+roll-outs, so reference numbers (for example of the released policies) are given for the pinned set.
+
 ### NVIDIA GPU
 
 JAX provides pre-built CUDA wheels for Linux x86_64 and Linux aarch64. Choose the wheel that matches your installed CUDA toolkit:

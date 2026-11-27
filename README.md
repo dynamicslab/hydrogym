@@ -212,7 +212,7 @@ cd examples/firedrake/getting_started
 # Test environment interactively
 ./run_example_docker.sh
 
-# Train with Stable-Baselines3
+# Train with Stable-Baselines3 (50000 steps; several hours on a CPU node)
 ./run_example_docker.sh train
 ```
 
@@ -268,7 +268,7 @@ cd ../2_channel
 
 # ... or train PPO
 cd ../3_ppo
-./run_ppo_docker.sh --env kolmogorov   # getting-started settings, ~10-15 min on a CPU
+./run_ppo_docker.sh --env kolmogorov   # getting-started settings, ~15-20 min on a CPU
 ```
 
 ## Training RL Agents

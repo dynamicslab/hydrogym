@@ -86,6 +86,14 @@ Notable user-facing changes to HydroGym. Format loosely follows
 - Firedrake cavity examples: `sine-forcing.py` restarts from the checkpoint of `unsteady.py`.
 - JAX PPO example: PureJaxRL licence and attribution.
 - Nek5000 cases: unused source variants, build products and private build paths removed; mesh map files in Git LFS.
+- Policy loader: a pickle that is listed in `policies/MANIFEST.yaml` is unpickled only if its SHA-256 matches.
+- m-AIA released-policy example: solver output is silent by default (`MAIA_ARGS`), the printed launch command matches
+  `run_example.sh`, and the README lists the evaluation protocol (roll-out, window, normalisation) of every case.
+- Hugging Face data manager: no longer configures the root logger (no more library INFO lines from `httpx`); the
+  offline warning is silent with `HF_HUB_OFFLINE=1`.
+- Nek5000 wing docs: rank count, download and disk size, sign of the action; the NekRS wing job defaults to 8 ranks on
+  aarch64. JAX-Fluids commit and the tested JAX version in the install pages; the JAX examples print the devices.
+- Real-solver smoke test (`test/test_solver_smoke.py`, `HYDROGYM_SOLVER_TESTS=1`).
 
 ### Behaviour changes that can change results
 - `terminated` now means invalid physics only; reaching the step budget sets `truncated` (m-AIA, Nek).

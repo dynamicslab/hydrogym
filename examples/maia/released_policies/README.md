@@ -187,6 +187,29 @@ Controllers with `hold_actions` > 0 hold their base rotation for that many actio
 default roll-out adds these actions to `n_actions` (600), and the summary window is the second half of the actions
 after them.
 
+## Evaluation protocol
+
+The default roll-out and the summary window of each case (`policy_cases.py`; actions are policy actions, counted from
+control onset). The drag summary is the mean $C_D$ of the controlled run over the window against the mean $C_D$ of the
+uncontrolled run over the same window.
+
+| Case | Roll-out (actions) | Summary window | Reported quantity |
+|---|---|---|---|
+| Pinball 2D Re 100 / Re 150 | 200 / 600 | 100-200 / 300-600 | mean $C_D$ vs uncontrolled |
+| Pinball 2D, `ppo_power` | 600 after the hold phase | 300-600 after the hold | mean $C_D$, $C_P$ and net saving |
+| Pinball 3D Re 150 | 100 | 50-100 | mean $C_D$ vs uncontrolled |
+| Cylinder 2D Re 200 / 1000 / 3900 | 100 | 50-100 | mean $C_D$ vs uncontrolled |
+| Square cylinder Re 200 | 100 (control starts at action 67 of the restart) | 50-100 | mean $C_D$ vs uncontrolled |
+| NACA0012 gust, Re 1000 | 200 | whole run | mean $C_L$; the figure shows the gust passage (2.53-5.0 c/U) |
+| Cavity 2D Re 4200 | 237 (about 4.5 D/U) | whole run from sample 37 | TKE (1 D/U trailing window) / mean uncontrolled TKE; ratio at action 237 |
+| Cavity 2D Re 7500 | 200 | whole run | the same, without the skipped samples |
+| Cavity 3D Re 7500 / Re 4200 | 3156 (60 D/U) / 1052 (about 20 D/U) | whole run | TKE (2 D/U trailing window) / mean uncontrolled TKE |
+
+Every roll-out starts from the same stored restart state of the environment: `reset(seed=...)` does not change the
+flow, so the runs test the policy on its training start state. The first 37 samples of the cavity Re 4200 TKE are left
+out of the figure and the normalisation, because controlled and uncontrolled TKE still coincide there. The complete
+time series of a run are in `run.npz` (`--store_data`).
+
 ## Output
 
 By default `run_policy.py` writes one figure (PNG) into the run directory:

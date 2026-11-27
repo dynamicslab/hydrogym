@@ -112,7 +112,7 @@ obs, state, reward, done, info = jit_step(key, state, action, params)
 
 ```bash
 # Select environment via --env argument; the defaults are getting-started settings
-python run_ppo.py --env kolmogorov   # ~10-15 min on a laptop CPU
+python run_ppo.py --env kolmogorov   # ~15-20 min on a laptop CPU
 python run_ppo.py --env channel      # ~15-20 min on a laptop CPU
 ```
 
@@ -164,7 +164,7 @@ reflect the immediate effect of an action. With long-horizon settings (`--initia
 --gae-lambda 0.985 --ent-coef 0.1`) the getting-started Kolmogorov returns stay flat; for full-size runs, a larger
 `--gamma` is the usual choice.
 
-**What to expect.** Kolmogorov (about 10-15 min on a laptop CPU): over the 50 updates
+**What to expect.** Kolmogorov (about 15-20 min on a laptop CPU): over the 50 updates
 the mean reward per step rises from about -2.5 to -1.8 and the episode return from about -50 to -35. Most of the gain
 comes from the policy lowering its exploration noise (standard deviation from 0.37 to about 0.15) and with it the
 actuation cost; the mean TKE drops only a little (about 1.38 to 1.29). Channel (about 15-20 min): the returns stay
@@ -212,7 +212,7 @@ cd 2_channel/
 
 ```bash
 cd 3_ppo/
-./run_ppo_docker.sh --env kolmogorov   # getting-started settings, ~10-15 min on a CPU
+./run_ppo_docker.sh --env kolmogorov   # getting-started settings, ~15-20 min on a CPU
 ./run_ppo_docker.sh --env channel      # getting-started settings, ~15-20 min on a CPU
 ./run_ppo_docker.sh --help             # full argument list
 ```
