@@ -136,7 +136,8 @@ def main():
     print(f"  cd {work}")
     # GPU image: one m-AIA rank per GPU (2D: 1, 3D: 4 GPUs); with the CPU build use one rank per core
     n = 1 if a.dim == 2 and "_3d_" not in a.policy else 4
-    print(f"  mpirun -np 1 python {here}/run_policy.py --policy {a.policy} : -np {n} maia properties_run.toml")
+    print(f"  mpirun -np 1 python {here}/run_policy.py --policy {a.policy} --out run.npz : -np {n} maia properties_run.toml --silent")
+    print("  (with fewer cores than ranks: mpirun --bind-to none --oversubscribe ...; run_example.sh does all of this)")
 
 
 if __name__ == "__main__":

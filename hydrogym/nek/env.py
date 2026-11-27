@@ -1372,7 +1372,11 @@ class NekEnv(HFEnvConfigMixin, ExternalProcessEnvMixin, gym.Env):
         pass
 
     def close(self):
-        """Close the environment."""
+        """Close the environment.
+
+        Sends the termination request to the Nek5000 ranks and finalises MPI (``MPI.Finalize``): the MPMD job ends
+        with the environment, so create one ``NekEnv`` per process and close it last.
+        """
         print("[NEK] CLOSE ENV", flush=True)
 
         # Close reward logger

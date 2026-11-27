@@ -222,3 +222,6 @@ module-root = ""
 [build-system]
 requires = ["uv_build>=0.12.5,<0.13"]
 build-backend = "uv_build"
+
+[tool.pytest.ini_options]
+markers = ["solver: runs a real solver binary (m-AIA); set HYDROGYM_SOLVER_TESTS=1"]

@@ -14,6 +14,7 @@
 #   ./run_example.sh naca0012_gust_re1000/td3_3jet_jet1.5U/seed1 runs/gust3d 4
 #
 # Environment variables:
+#   MAIA_ARGS     arguments of m-AIA after the property file (default "--silent": no per-step solver output)
 #   MPIRUN        MPMD launcher (default "mpirun"; e.g. "mpirun --bind-to none" or "prterun --bind-to none")
 #   MAIA          m-AIA executable (default "maia")
 #   PYTHON        Python interpreter (default "python")
@@ -44,4 +45,4 @@ if [ "${PLOT:-1}" = "0" ]; then PLOT_ARGS=(--no-plot --store_data); fi
 cd "$WORK"
 # shellcheck disable=SC2086
 ${MPIRUN:-mpirun} -np 1 "$PY" "$HERE/run_policy.py" --policy "$POLICY" --out run.npz "$@" "${PLOT_ARGS[@]}" \
-    : -np "$NP" "${MAIA:-maia}" properties_run.toml
+    : -np "$NP" "${MAIA:-maia}" properties_run.toml ${MAIA_ARGS:---silent}

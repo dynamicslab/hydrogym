@@ -134,9 +134,33 @@ class Policy:
 
 
 # ------------------------------------------------------------------------------------------------ formats
-def _load_pkl(path, kind):
+def _manifest_sha256(path):
+    """sha256 the MANIFEST lists for this file (None if the file is not in the MANIFEST)"""
+    rel = os.path.relpath(os.path.abspath(path), HERE).replace(os.sep, "/")
+    if rel.startswith("_large/"):
+        rel = rel[len("_large/") :]
+    for p in _load_manifest()["policies"]:
+        for f in p["files"]:
+            if f["path"] == rel:
+                return f["sha256"]
+    return None
+
+
+def _unpickle(path):
+    """pickle.load of a policy file, after checking its sha256 against the MANIFEST: a pickle can run code, so a file
+    that is listed in the MANIFEST and has another hash is refused (files that are not listed are the user's own)."""
+    import hashlib
+
+    want = _manifest_sha256(path)
     with open(path, "rb") as f:
-        blob = pickle.load(f)
+        raw = f.read()
+    if want is not None and hashlib.sha256(raw).hexdigest() != want:
+        raise ValueError(f"{path}: sha256 differs from MANIFEST.yaml; the file is not unpickled")
+    return pickle.loads(raw)
+
+
+def _load_pkl(path, kind):
+    blob = _unpickle(path)
     params, norm = blob[0], blob[1]
     L = _layers_pkl(params)
     mean, var = np.asarray(norm["mean"], np.float64), np.asarray(norm["var"], np.float64)

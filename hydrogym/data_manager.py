@@ -321,7 +321,6 @@ class HFDataManager:
         if self.use_clean_cache:
             os.makedirs(self.cache_dir, exist_ok=True)
 
-        logging.basicConfig(level=logging.INFO)
         self.logger = logging.getLogger(__name__)
 
         if not HF_AVAILABLE:
@@ -380,7 +379,9 @@ class HFDataManager:
                         self.logger.info(f"Detected solver profile '{profile_name}' from HF sentinel '{parts[1]}'")
                         return profile_name
             except Exception as e:
-                self.logger.warning(f"Could not query HF for solver profile: {e}")
+                # offline mode (HF_HUB_OFFLINE=1) is a normal way to run: the sentinel is then read from the local cache
+                log = self.logger.debug if os.environ.get("HF_HUB_OFFLINE") == "1" else self.logger.warning
+                log(f"Could not query HF for solver profile: {e}")
 
         # 4. Last resort
         self.logger.info(f"No sentinel found for '{env_name}', using fallback profile: '{self.fallback_profile}'")
