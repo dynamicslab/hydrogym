@@ -32,7 +32,7 @@ from pathlib import Path
 
 REPO = "dynamicslab/HydroGym-environments"
 # Revision the committed page was generated from. Update together with the release.
-PINNED_REVISION = "fbd2800b0b73f0d0182c0c5d71962a51bb5f5902"
+PINNED_REVISION = "2bfc949bcff90c9b717cc7075cc5c4c80babe105"
 
 ROOT = Path(__file__).resolve().parents[1]
 PAGE = ROOT / "docs" / "docs" / "environments.md"
