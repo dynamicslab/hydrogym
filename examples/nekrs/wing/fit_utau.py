@@ -6,7 +6,7 @@ stays the one of the base YAML):
 
     python fit_utau.py runs/zero_trip60 --skip 500 --out wing_utau_trip60.yml
     python fit_utau.py runs/zero_ref1 --skip 2420 --out wing_utau_ref1.yml
-    python fit_utau.py runs/zero_trip60 --skip 500 --out wing_utau_dtp_trip60.yml --dt-plus 0.68  # also dt+
+    python fit_utau.py runs/zero_trip60 --skip 500 --out wing_utau_dtp_trip60.yml --dt-plus 0.67  # also dt+
 
 The YAML has `base: wing.yml` and overrides only wall_units.u_tau (and steps_per_action with --dt-plus).
 """
@@ -23,7 +23,7 @@ p.add_argument("--skip", type=int, default=0, help="discard the samples of the f
 p.add_argument("--range", type=float, nargs=2, default=[0.2, 0.9], help="x/c range of the fit (window 0.25-0.86)")
 p.add_argument("--degree", type=int, default=6)
 p.add_argument("--base", default="wing.yml")
-p.add_argument("--dt-plus", type=float, help="also set steps_per_action from this dt+ (channel: 0.68)")
+p.add_argument("--dt-plus", type=float, help="also set steps_per_action from this dt+ (channel: 0.67)")
 p.add_argument("--out", required=True)
 args = p.parse_args()
 

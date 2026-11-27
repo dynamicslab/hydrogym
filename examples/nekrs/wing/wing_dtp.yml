@@ -1,7 +1,7 @@
-# wing.yml with the control interval of the channel in wall units (dt+ = 0.68, 13 steps x 4e-3 at u_tau 0.063,
+# wing.yml with the control interval of the channel in wall units (dt+ = 0.67, 13 steps x 4e-3 at u_tau 0.0624,
 # nu 1/3300) instead of the 31 solver steps of wing.yml; the number of steps follows from the mean u_tau
 # of the agents (printed as "[HGNEK] steps_per_action n"). Keep the simulated time of a 2500-action run with
 # ACTIONS = 100000 / n.
 base: wing.yml
 environment:
-  steps_per_action: {dt_plus: 0.68}
+  steps_per_action: {dt_plus: 0.67}

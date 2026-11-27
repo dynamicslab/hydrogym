@@ -132,6 +132,8 @@ git clone https://github.com/dynamicslab/hydrogym.git
 cd hydrogym && pip install -e ".[jax]"   # or uv sync --locked --extra jax
 ```
 
+The pretrained policies (`policies/`) are part of the repository, not of the PyPI package.
+
 The solver sources under `third_party/` are git submodules. They are only needed to build a solver from source (the
 container images ship them built), so a plain `git clone` is enough for the Python package. Initialise a single one
 when you need it, e.g. `git submodule update --init third_party/m-AIA`. Do not use `--recurse-submodules` or

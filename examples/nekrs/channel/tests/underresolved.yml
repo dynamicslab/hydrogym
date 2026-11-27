@@ -23,7 +23,7 @@ actuators:
   #   jets: [{position: [1, 0, 1], footprint: {type: gaussian, sigma: [0.1, null, 0.1]}, amplitude: 0.1}, ...]
   footprint: {type: gaussian, sigma: [0.01, null, 0.01]}
   direction: normal
-  amplitude: 0.063         # wall velocity for action 1 (ctrl_max_amp)
+  amplitude: 0.0624        # wall velocity for action 1 (ctrl_max_amp)
   znmf: actions            # none | uniform (subtract the mean wall-normal flux) | actions (subtract the mean action)
   resolution_check: {mode: error, min_nodes_per_width: 2.0}   # error | warn | off
 
@@ -31,7 +31,7 @@ probes:
   fields: [u, v]
   subtract_plane_mean: y   # u' = u - <u>(y)
   positions: {source: actuator_offset, offset: [0.0, 0.0724637681159420, 0.0]}   # y+ = 15 above each actuator
-  normalization: 0.0630    # u_tau
+  normalization: 0.0624    # u_tau
 
 reward:
   type: wall_shear

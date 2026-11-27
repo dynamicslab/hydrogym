@@ -8,7 +8,7 @@ environment:
   nproc: 4                 # NekRS ranks (one GPU each); overridden by run.sh NP
   dt: 4.0e-5               # solver time step (p012 of naca_wing.rea); run.sh writes it into naca_wing.par
   steps_per_action: 31     # p089 (ndrl) of naca_wing.rea: 1.24e-3 c/U_inf per action
-  # steps_per_action: {dt_plus: 0.68}  # the channel's control interval in wall units (wing_dtp.yml)
+  # steps_per_action: {dt_plus: 0.67}  # the channel's control interval in wall units (wing_dtp.yml)
   episode_actions: 0
   target_cfl: 2.0
 

@@ -16,7 +16,7 @@ The case is a NekRS port of the Nek5000 case `third_party/nek5000/cases/naca0012
 | `wing.yml` | the deployment of the Nek5000 case (`naca_wing.rea`, `drl_*.f`):<br>• dt = 4e-5, 31 solver steps (1.24e-3 c/U) per action;<br>• u_tau(x) is the polynomial `X2Utau` of `drl_init.f` (uncontrolled wing, Re_c = 2·10⁵);<br>• one agent per wall node of the window;<br>• obs [u_t'/u_tau(x), v_n'/u_tau(x)] at y+ = 15 along the wall tangent and normal (`frame: wall`);<br>• action 1 = u_tau,ch = 0.0624334733 (training channel), normal blowing;<br>• zero net flux per spanwise line. |
 | `wing_oc.yml` | opposition control: dt = 2e-5, 10 steps (2e-4 c/U) per action, v_w = -v_n' at y+ = 15, not clipped. |
 | `wing_dt2e-5.yml` | `wing.yml` at dt = 2e-5 with 62 steps (1.24e-3 c/U) per action: the time step of the validation against Ref1. |
-| `wing_dtp.yml` | `wing.yml` with the control interval of the training channel in wall units (dt+ = 0.68); the step count follows from the mean u_tau(x) of the agents. |
+| `wing_dtp.yml` | `wing.yml` with the control interval of the training channel in wall units (dt+ = 0.67); the step count follows from the mean u_tau(x) of the agents. |
 | `wing_dt8e-5.yml` | `wing.yml` at dt = 8e-5 with 25 steps (2e-3 c/U) per action (uncontrolled runs, trip sensitivity). |
 | `deploy.py` | runs one controller in chunks and records the span-averaged wall traction and pressure, and the actuator power and C_D of every action (env `power` section). |
 | `postprocess.py` | Cf(x/c) on the suction side, Cd and Cd,f (time series and mean), and the change against the first run. |
@@ -135,8 +135,8 @@ The time integration restarts at first order, because the field files carry no l
   u_tau,ch = 0.0624 (Re_τ 206), as in `drl_action.f`. The observations are divided by the wing's local u_tau(x),
   the polynomial of the uncontrolled wing at Re_c = 2·10⁵, which also places the probes at y+ = 15.
 - **Control interval.** `steps_per_action: 31` at dt = 4e-5 is the `ndrl` interval of the Nek5000 case (p089 and
-  p012 of `naca_wing.rea`), 1.24e-3 c/U. The channel policies were trained with 13 steps of dt+ ≈ 0.052, about 0.68
-  viscous time units. `wing_dtp.yml` (`steps_per_action: {dt_plus: 0.68}`) gives the channel's interval in wall units
+  p012 of `naca_wing.rea`), 1.24e-3 c/U. The channel policies were trained with 13 steps of dt+ ≈ 0.052, about 0.67
+  viscous time units. `wing_dtp.yml` (`steps_per_action: {dt_plus: 0.67}`) gives the channel's interval in wall units
   instead.
 - **Agent count.** The Nek5000 case (`register_wall_pts`) registers every grid point of the wall faces whose midpoint
   lies in the window, so points shared by two faces are counted twice. Here every distinct wall GLL node of the window

@@ -118,7 +118,7 @@ actuators:
   positions: {source: boundary_nodes, boundary: 1, nodes: all, sort: [x]}
   footprint: {type: point}      # | {type: gaussian, sigma: [sx, null, sz]} | {type: box, half_width: [...]}
   direction: normal             # | {vector: [vx, vy, vz]} | {angle: deg, towards: [vx, vy, vz]}
-  amplitude: 0.063              # wall velocity for action 1
+  amplitude: 0.0624            # wall velocity for action 1
   znmf: uniform                 # none | uniform (remove the net flux over the boundaries) | actions
   resolution_check: {mode: error, min_nodes_per_width: 2.0}   # error | warn | off
   # or an explicit list with per-jet overrides:
@@ -128,7 +128,7 @@ probes:
   positions: {source: actuator_offset, offset: [0, 0.0724637681159420, 0]}
   subtract_plane_mean: y        # optional: subtract the mean over planes normal to this axis (planar_avg)
   # subtract_group_mean: [x, y]  # optional: mean over the probes sharing x and y, weighted by the actuator footprint
-  normalization: 0.0630         # one value, one per field, or u_tau (from wall_units)
+  normalization: 0.0624         # one value, one per field, or u_tau (from wall_units)
   frame: global                 # global (default) | wall: u, v -> wall tangent u_t and normal v_n at each actuator |
                                 # hg_fortran: u_t = u n_y + v n_x (not a rotation)
 wall_units:                     # optional
