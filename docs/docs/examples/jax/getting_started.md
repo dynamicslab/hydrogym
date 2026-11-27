@@ -41,7 +41,8 @@ cd ../3_ppo
 | Environment | Solver | Grid | Action | Observation | Reward |
 |---|---|---|---|---|---|
 | `KolmogorovFlow` | 2D pseudo-spectral | 64×64 | 4 body-force modes | 8×8 velocity probes | -(α·TKE + action penalty) |
-| `ChannelFlowSpectralEnv` | 3D pseudo-spectral | 72×72×72 | 24 wall jets | 8×8×2 near-wall velocities | -WSS (drag) |
+| `ChannelFlowFDEnv` (`ChannelFlowEnv`, default) | 3D finite-difference, Re_τ = 180 | 72×72×72 | 24 wall jets (parabolic) | u at the 24 jet centres, y⁺ ≈ 15 | τ_ref/τ_w |
+| `ChannelFlowSpectralEnv` (`solver="spectral"`, legacy) | 3D pseudo-spectral, Re_τ ≈ 310 | 72×72×72 | 24 wall jets | 8×8×2 near-wall velocities | -WSS (drag) |
 
 ## Typical Usage
 

@@ -1,10 +1,19 @@
 ---
-sidebar_position: 3
+sidebar_position: 3.5
 ---
 
-# Turbulent Channel
+# Turbulent Channel (pseudo-spectral, legacy)
 
-HydroGym contains a 3D channel flow written in the differentiable programming language [JAX](https://docs.jax.dev/en/latest/notebooks/thinking_in_jax.html). The channel flow is of size $[2\pi, \pi, 2]$, where $z$ is the wall-normal direction. The channel flow is run at $Re_\tau = 180$, and is pre-configured to be controlled with 24 wall-normal jets evenly spaced throughout the wall. The observation value consists of evenly spaced x-velocity values sampled from $y^+ \approx 9$.
+:::note
+This is the earlier JAX channel of HydroGym, `ChannelFlowSpectralEnv`, selected with
+`ChannelFlowEnv({"solver": "spectral"})`. It is a different solver and a different flow than the finite-difference
+channel at $Re_\tau = 180$ (`solver="fd"`, the default, see [the finite-difference channel](channel_fd.md)). Its
+stored flow has the bulk velocity $U_b = 8.0$ and the body force $f_x = 2.0$; the wall shear stress of the stored field
+corresponds to $Re_\tau \approx 310$ ($u_\tau \approx 0.6$, $\nu = 1.9\times10^{-3}$, half-height 1), not 180. The
+`Channel_3D_Retau180` data keep their name.
+:::
+
+The legacy channel is a 3D channel flow in [JAX](https://docs.jax.dev/en/latest/notebooks/thinking_in_jax.html) of size $[2\pi, \pi, 2]$, where $z$ is the wall-normal direction. The grid is $72^3$ with Fourier modes in $x$ and $y$ and Chebyshev-Gauss-Lobatto points in $z$ (the wall nodes are grid points), advanced with a pseudo-spectral Runge-Kutta scheme at the fixed time step $2\times10^{-4}$ and a constant mass flux. It is pre-configured to be controlled with 24 wall-normal jets on the bottom wall. The observation consists of evenly spaced $u$ and $w$ values on the wall-parallel plane with index `k_det` = 9, and the reward is $-\tau_w$.
 
 ## Initializing the Environment
 
@@ -16,7 +25,7 @@ import jax.numpy as jnp
 import matplotlib.pyplot as plt
 
 # Import channel flow and environment configuration
-from hydrogym.jax.envs.channel import ChannelFlowSpectralEnv
+from hydrogym.jax.envs.channel import ChannelFlowSpectralEnv   # or ChannelFlowEnv({"solver": "spectral"})
 
 env_config = {}
 env = ChannelFlowSpectralEnv(env_config)

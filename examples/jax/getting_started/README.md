@@ -222,7 +222,7 @@ cd 3_ppo/
 | Directory | Environment | Dims | Action | Precision | GPU cost | Best For |
 |---|---|---|---|---|---|---|
 | **1_kolmogorov** | `KolmogorovFlow` | 2D 64×64 | 4 body-force modes | float64 | Low | Quick experiments, tunable reward |
-| **2_channel** | `ChannelFlowSpectralEnv` | 3D 72³ | 24 wall jets | float32 | High | Turbulent drag reduction |
+| **2_channel** | `ChannelFlowSpectralEnv` (legacy channel, Re_τ ≈ 310; `ChannelFlowEnv` selects the finite-difference Re_τ = 180 channel) | 3D 72³ | 24 wall jets | float32 | High | Turbulent drag reduction |
 | **3_ppo** | Both | — | — | Env-dependent | Depends on env | End-to-end JAX RL training |
 
 ## Requirements

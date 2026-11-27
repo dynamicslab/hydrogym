@@ -61,7 +61,8 @@ cd ../3_ppo
 | Environment | Solver | Grid | Action | Observation | Reward | Default dtype |
 |---|---|---|---|---|---|---|
 | `KolmogorovFlow` | 2D pseudo-spectral | 64×64 | 4 body-force modes | 8×8 velocity probes | -(α·TKE + action penalty) | float64 |
-| `ChannelFlowSpectralEnv` | 3D pseudo-spectral | 72×72×72 | 24 wall jets | 8×8×2 near-wall velocities | -WSS (drag) | float32 |
+| `ChannelFlowFDEnv` (`ChannelFlowEnv`, default) | 3D finite-difference, Re_τ = 180 | 72×72×72 | 24 wall jets (parabolic) | u at the 24 jet centres, y⁺ ≈ 15 | τ_ref/τ_w | float32 |
+| `ChannelFlowSpectralEnv` (`solver="spectral"`, legacy) | 3D pseudo-spectral, Re_τ ≈ 310 | 72×72×72 | 24 wall jets | 8×8×2 near-wall velocities | -WSS (drag) | float32 |
 
 ## JIT Compilation
 
@@ -82,6 +83,7 @@ The first call compiles (takes ~1–2 minutes); all subsequent calls run at full
 | Environment | Recommended | Notes |
 |---|---|---|
 | `KolmogorovFlow` | either | Runs in fp32 and fp64; the getting-started example defaults to fp64, the extreme-event preset (`extreme_events_re40`) and its released policies use fp32. The flow is chaotic, so fp32 and fp64 trajectories separate after a few actions |
+| `ChannelFlowFDEnv` | `float32` | float64 (validation) needs `jax_enable_x64`; the module does not enable it |
 | `ChannelFlowSpectralEnv` | `float32` | Stable at fp32 with JIT; fp64 available but ~2x slower on A100 |
 
 Override via `env_config`:
