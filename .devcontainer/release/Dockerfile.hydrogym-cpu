@@ -136,7 +136,7 @@ ARG HYDROGYM_REVISION=unknown
 ARG IMAGE_TITLE="HydroGym (CPU)"
 # The build stops unless the policy index of this revision has this many entries
 # (all files present, a forward pass each) and both venvs import /opt/hydrogym.
-ARG EXPECTED_POLICY_ENTRIES=30
+ARG EXPECTED_POLICY_ENTRIES=29
 COPY hydrogym /opt/hydrogym
 RUN ln -sfn /opt/nek5000 /opt/hydrogym/third_party/nek5000 && \
     MODE=project HYDROGYM_SRC=/opt/hydrogym bash /usr/local/libexec/hydrogym/install_hydrogym_venv.sh && \

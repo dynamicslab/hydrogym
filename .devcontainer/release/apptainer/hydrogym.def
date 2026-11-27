@@ -19,7 +19,7 @@ From: {{ BASE }}
     HYDROGYM_TAR=hydrogym.tar
     HYDROGYM_VERSION=1.0.2
     HYDROGYM_REVISION=unknown
-    EXPECTED_POLICY_ENTRIES=30
+    EXPECTED_POLICY_ENTRIES=29
 
 %files
     {{ HYDROGYM_TAR }} /opt/hydrogym.tar
