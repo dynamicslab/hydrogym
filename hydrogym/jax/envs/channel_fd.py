@@ -20,7 +20,8 @@ Setup
   0.0624) is the peak jet velocity per unit action in units of the nominal friction velocity ``sqrt(g_x H / 2)``
   (``jet_gain`` sets it in absolute units instead).
 * Observation: the streamwise velocity ``u`` at the jet centres on the wall-parallel plane of cell centres closest to
-  ``y+ = obs_yplus`` (default 15, using the nominal friction velocity ``sqrt(g_x H / 2)``); ``nx_jets * ny_jets`` values.
+  ``y+ = obs_yplus`` (default 15, using the nominal friction velocity ``sqrt(g_x H / 2)``); ``nx_jets * ny_jets``
+  values.
 * Reward: ``tau_ref / tau_w`` (``reward="ratio"``, default) or ``-tau_w`` (``reward="neg_tau"``), where ``tau_w =
   nu <u>(z_1) / z_1`` is the plane mean over the controlled (bottom) wall of the wall shear stress from the first cell
   at the end of the action interval (``z_1`` in the viscous sub-layer), and ``tau_ref`` (``tau_ref``, default the value
@@ -29,9 +30,9 @@ Setup
   the pressure of the last projection of the step divided by the time step), per jet footprint, normalised by
   ``U_b^3 Lx Ly / 2`` (``u_bulk_ref``); ``power_weight`` (default 0) charges it in the reward (``hydrogym.power``).
 * Initial state: ``initial_condition="turbulent"`` (default) loads ``U.npy``, ``V.npy``, ``W.npy`` from
-  ``initial_field_dir`` (or from the ``Channel_3D_Retau180_FD`` data of the environment hub); ``"laminar"`` builds, at
-  every reset, a parabolic laminar profile of bulk velocity ``u_bulk_init`` plus a random perturbation of relative
-  amplitude ``perturbation`` (such a flow needs many time units to become turbulent).
+  ``initial_field_dir`` (or from the ``Channel_3D_Retau180_JAXFD`` data of the environment hub); ``"laminar"``
+  builds, at every reset, a parabolic laminar profile of bulk velocity ``u_bulk_init`` plus a random perturbation of
+  relative amplitude ``perturbation`` (such a flow needs many time units to become turbulent).
 * Precision: ``dtype`` is ``"float32"`` (default) or ``"float64"``; the latter needs
   ``jax.config.update("jax_enable_x64", True)`` before the environment is built. The default pressure solver is the
   exact ``"direct"`` one; ``poisson_solver="bicgstab"`` (lineax) needs ``dtype="float64"``.
@@ -56,7 +57,7 @@ from hydrogym.jax.solvers.channel_fd import ChannelFD, ChannelFDConfig, ChannelF
 from hydrogym.jax.utils.power import power_info_jax
 from hydrogym.power import PowerConfig, power_forms
 
-ENVIRONMENT_NAME = "Channel_3D_Retau180_FD"
+ENVIRONMENT_NAME = "Channel_3D_Retau180_JAXFD"
 
 # Plane-mean wall shear stress (bottom wall, first cell) of the validated uncontrolled flow and its bulk velocity.
 TAU_REF_DEFAULT = 0.1166
@@ -111,7 +112,8 @@ class ChannelFlowFDEnv(JAXFlowEnvBase):
     ``env_config`` keys (defaults in parentheses): ``Nx, Ny, Nz`` (72), ``Lx, Ly, Lz`` (2 pi, pi, 2), ``nu`` (1.9e-3),
     ``Re_tau`` (180), ``ctanh`` (0.05), ``cfl`` (0.9), ``poisson_solver`` (``"direct"``), ``pressure_tol`` (1e-3),
     ``pressure_maxit`` (2000), ``dtype`` (``"float32"``), ``nsteps`` (100), ``max_steps_in_episode`` (5000),
-    ``nx_jets``/``ny_jets`` (6/4), ``jet_radius`` (0.25), ``jet_amplitude`` (0.0624 friction velocities; ``jet_gain``: absolute),
+    ``nx_jets``/``ny_jets`` (6/4), ``jet_radius`` (0.25), ``jet_amplitude`` (0.0624 friction velocities; ``jet_gain``:
+    absolute),
     ``obs_yplus`` (15), ``reward``
     (``"ratio"``), ``tau_ref`` and ``u_bulk_ref`` (validated uncontrolled values), ``initial_condition``
     (``"turbulent"``), ``initial_field_dir``, ``u_bulk_init``/``perturbation`` (laminar start), and the power options
@@ -199,7 +201,9 @@ class ChannelFlowFDEnv(JAXFlowEnvBase):
         if np.any(integral <= 0):
             raise ValueError("a jet footprint contains no cell centre: increase jet_radius or the resolution")
         self._jet_integral = jnp.asarray(integral, dtype=self.dtype)
-        self._jet_labels = jnp.asarray((profiles > 0).astype(np.float64), dtype=self.dtype)  # footprints, (n_jets, nx, ny)
+        self._jet_labels = jnp.asarray(
+            (profiles > 0).astype(np.float64), dtype=self.dtype
+        )  # footprints, (n_jets, nx, ny)
         self._xc_idx = np.floor(xc / s.dx_cell).astype(int)
         self._yc_idx = np.floor(yc / s.dy_cell).astype(int)
 
@@ -239,7 +243,7 @@ class ChannelFlowFDEnv(JAXFlowEnvBase):
     # jets, observation, wall shear
     # ------------------------------------------------------------------
     def jet_wall_velocity(self, action):
-        """Wall-normal velocity ``(nx, ny)`` imposed on the bottom wall by the jets for ``action`` of shape ``(n_jets,)``.
+        """Wall-normal velocity ``(nx, ny)`` imposed on the bottom wall by the jets for ``action`` (``(n_jets,)``).
 
         Positive action is suction. The area-weighted mean action is removed so that the net mass flux is exactly zero.
         """
@@ -278,7 +282,10 @@ class ChannelFlowFDEnv(JAXFlowEnvBase):
         k1, k2, k3 = jax.random.split(key, 3)
         amp = self.perturbation * jnp.max(profile)
         shape = s.shape
-        noise = lambda k: ((jax.random.uniform(k, shape, dtype=self.dtype) - 0.5) * amp).astype(self.dtype)  # noqa: E731
+
+        def noise(k):
+            return ((jax.random.uniform(k, shape, dtype=self.dtype) - 0.5) * amp).astype(self.dtype)
+
         return jnp.broadcast_to(profile, shape) + noise(k1), noise(k2), noise(k3)
 
     def reset_env(self, key: chex.PRNGKey, params: ChannelFDEnvParams) -> Tuple[chex.Array, ChannelFDEnvState]:
@@ -301,7 +308,7 @@ class ChannelFlowFDEnv(JAXFlowEnvBase):
         return jnp.logical_or(state.terminal, state.time >= params.max_steps_in_episode)
 
     def _rollout(self, state: ChannelFDEnvState, action: jnp.ndarray):
-        """Advance ``nsteps`` solver steps under the constant jet action; returns the final solver state and diagnostics."""
+        """Advance ``nsteps`` solver steps under the constant jet action; returns the final state and diagnostics."""
         s = self.solver
         w_wall = self.jet_wall_velocity(action)
         st0 = ChannelFDState(state.U, state.V, state.W, state.P, state.dt, state.t)

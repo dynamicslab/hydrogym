@@ -19,7 +19,7 @@ NX, NY, NZ = 6, 5, 8
 
 
 def _cfg(**kw):
-    """Configuration with the float64 BiCGStab defaults of the reference scheme (the package default is float32/direct)."""
+    """Configuration with the float64 BiCGStab defaults (the package default is float32 with the direct solver)."""
     return ChannelFDConfig(**{"dtype": "float64", "poisson_solver": "bicgstab", **kw})
 
 
@@ -103,8 +103,18 @@ def test_operators_match_assembled_matrices():
     s = small_solver()
     A = assemble_reference(s)
     rng = np.random.default_rng(1)
-    ops = {"Dx": s.dx, "Dy": s.dy, "Dz": s.dz, "Dxx": s.dxx, "Dyy": s.dyy, "Dzz": s.dzz, "Dxp": s.dxp, "Dyp": s.dyp,
-           "Dzp": s.dzp, "M": s.poisson}
+    ops = {
+        "Dx": s.dx,
+        "Dy": s.dy,
+        "Dz": s.dz,
+        "Dxx": s.dxx,
+        "Dyy": s.dyy,
+        "Dzz": s.dzz,
+        "Dxp": s.dxp,
+        "Dyp": s.dyp,
+        "Dzp": s.dzp,
+        "M": s.poisson,
+    }
     for _ in range(2):
         f = rng.standard_normal(s.shape)
         for n, fn in ops.items():
@@ -213,7 +223,8 @@ def test_laminar_poiseuille_flow_is_steady_to_second_order():
     for nz in (12, 24, 48):
         s = ChannelFD(_cfg(nx=4, ny=4, nz=nz, ctanh=0.05 * 72 / nz, poisson_solver="direct"))
         A = np.stack(
-            [np.asarray(s.dzz(jnp.broadcast_to(jnp.zeros(nz).at[j].set(1.0), s.shape))[0, 0]) for j in range(nz)], axis=1
+            [np.asarray(s.dzz(jnp.broadcast_to(jnp.zeros(nz).at[j].set(1.0), s.shape))[0, 0]) for j in range(nz)],
+            axis=1,
         )
         ue = s.gx / (2 * s.nu) * s.zc * (s.cfg.lz - s.zc)
         ud = np.linalg.solve(s.nu * A, -s.gx * np.ones(nz))
@@ -240,7 +251,9 @@ def test_runge_kutta_order_on_a_linear_problem(order):
     base = ChannelFD(_cfg(nx=nx, ny=ny, nz=nz, nu=nu, poisson_solver="direct", rk_order=order))
     npl = ny * nz
     eye = jnp.eye(npl).reshape(npl, ny, nz)
-    lap = jax.vmap(lambda e: nu * (base.dyy(jnp.broadcast_to(e, base.shape)) + base.dzz(jnp.broadcast_to(e, base.shape)))[0])(eye)
+    lap = jax.vmap(
+        lambda e: nu * (base.dyy(jnp.broadcast_to(e, base.shape)) + base.dzz(jnp.broadcast_to(e, base.shape)))[0]
+    )(eye)
     A = np.asarray(lap).reshape(npl, npl).T
     aug = np.zeros((npl + 1, npl + 1))
     aug[:npl, :npl] = A
@@ -281,7 +294,9 @@ def test_gradient_of_the_wall_shear_matches_finite_differences():
     x, y, z = (jnp.asarray(a) for a in s.grid())
     X, Y, Z = jnp.meshgrid(x, y, z, indexing="ij")
     env = jnp.sin(jnp.pi * Z / 2.0)
-    st0 = s.init_state(3.0 * env * (1.0 + 0.2 * jnp.cos(X) * jnp.cos(2 * Y)), 0.2 * env * jnp.sin(X), 0.1 * env**2 * jnp.cos(2 * Y))
+    st0 = s.init_state(
+        3.0 * env * (1.0 + 0.2 * jnp.cos(X) * jnp.cos(2 * Y)), 0.2 * env * jnp.sin(X), 0.1 * env**2 * jnp.cos(2 * Y)
+    )
     Xp, Yp = jnp.meshgrid(x, y, indexing="ij")
     shapes = [jnp.cos(Xp) * jnp.cos(Yp), jnp.sin(2 * Xp) * jnp.sin(Yp), jnp.cos(2 * Yp) * jnp.cos(Xp)]
 

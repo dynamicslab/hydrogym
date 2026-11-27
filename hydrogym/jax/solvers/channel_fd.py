@@ -38,16 +38,16 @@ Discretisation
 
 Pressure solve
 --------------
-``poisson_solver="direct"`` (default) solves the discrete problem exactly, with a Fourier transform in ``x`` and ``y`` and a
-tridiagonal solve in ``z`` (the Poisson operator is separable). It is the solver of the default 32-bit precision and
-runs about 10 to 20 times faster than BiCGStab.
+``poisson_solver="direct"`` (default) solves the discrete problem exactly, with a Fourier transform in ``x`` and ``y``
+and a tridiagonal solve in ``z`` (the Poisson operator is separable). It is the solver of the default 32-bit precision
+and runs about 10 to 20 times faster than BiCGStab.
 ``poisson_solver="bicgstab"`` (float64 only) uses ``lineax.BiCGStab`` with a matrix-free ``FunctionLinearOperator``
 (differentiable by implicit differentiation) and the stopping criterion ``||r||_2 <= pressure_tol * ||b||_2``;
-``jax.scipy.sparse.linalg.bicgstab`` (same criterion, differentiable) is used instead if ``lineax`` is not installed (the
-number of iterations is then not reported, ``-1``). The BiCGStab iteration is not reliable for this (strongly anisotropic,
-negative definite) operator in 32-bit precision: lineax's breakdown test stops it after a few steps, and the ``jax.scipy``
-iteration stagnates or breaks down (an infinite step, then NaN) on a fraction of the solves, which in a controlled flow
-led to a divergent or non-finite velocity; the combination is therefore rejected. Float64 requires
+``jax.scipy.sparse.linalg.bicgstab`` (same criterion, differentiable) is used instead if ``lineax`` is not installed
+(the number of iterations is then not reported, ``-1``). The BiCGStab iteration is not reliable for this (strongly
+anisotropic, negative definite) operator in 32-bit precision: lineax's breakdown test stops it after a few steps, and
+the ``jax.scipy`` iteration stagnates or breaks down (an infinite step, then NaN) on a fraction of the solves, which in
+a controlled flow led to a divergent or non-finite velocity; the combination is therefore rejected. Float64 requires
 ``jax.config.update("jax_enable_x64", True)`` before use; this module does not set it.
 """
 
@@ -87,6 +87,7 @@ if _lx is not None:
 def _two_norm(x):
     """Euclidean norm of an array (the norm of the BiCGStab stopping test)."""
     return jnp.sqrt(jnp.sum(jnp.abs(x) ** 2))
+
 
 #######################################################################################
 #                                                                                     #
@@ -206,7 +207,9 @@ class ChannelFD:
         if cfg.dtype not in ("float32", "float64"):
             raise ValueError(f"dtype must be 'float32' or 'float64', got {cfg.dtype!r}")
         if cfg.dtype == "float64" and not jax.config.jax_enable_x64:
-            raise RuntimeError('dtype="float64" needs jax.config.update("jax_enable_x64", True) before the solver is built')
+            raise RuntimeError(
+                'dtype="float64" needs jax.config.update("jax_enable_x64", True) before the solver is built'
+            )
         if cfg.poisson_solver not in ("bicgstab", "direct"):
             raise ValueError(f"poisson_solver must be 'bicgstab' or 'direct', got {cfg.poisson_solver!r}")
         if cfg.poisson_solver == "bicgstab" and cfg.dtype != "float64":
@@ -479,7 +482,9 @@ class ChannelFD:
         co = self.courant_number(u, v, w, dt)
         return ChannelFDState(u, v, w, p, dt, t + dt), {"dt": dt, "courant": co, "nits": nits}
 
-    def run(self, state: ChannelFDState, n_steps: int, w_bot=None, w_top=None, dt=None, record: Optional[Callable] = None):
+    def run(
+        self, state: ChannelFDState, n_steps: int, w_bot=None, w_top=None, dt=None, record: Optional[Callable] = None
+    ):
         """``n_steps`` steps with ``lax.scan``; ``record(state, aux)`` (optional) gives the per-step outputs."""
 
         def body(s, _):

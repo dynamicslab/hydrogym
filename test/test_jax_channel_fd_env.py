@@ -1,6 +1,6 @@
 """Unit tests for hydrogym.jax.envs.channel_fd (finite-difference channel environment and the solver factory).
 
-Hermetic: small grids, laminar start (generated at reset) or synthetic field files; nothing touches the Hugging Face Hub.
+Hermetic: small grids, laminar start (generated at reset) or synthetic field files; no Hugging Face Hub access.
 """
 
 import numpy as np
@@ -12,8 +12,20 @@ import jax.numpy as jnp  # noqa: E402
 
 from hydrogym.jax.envs.channel_fd import ChannelFlowEnv, ChannelFlowFDEnv  # noqa: E402
 
-CFG = dict(Nx=16, Ny=16, Nz=16, ctanh=0.3, initial_condition="laminar", dtype="float64", nsteps=4, nx_jets=3,
-           ny_jets=2, jet_radius=0.6, max_steps_in_episode=8, perturbation=0.1)
+CFG = dict(
+    Nx=16,
+    Ny=16,
+    Nz=16,
+    ctanh=0.3,
+    initial_condition="laminar",
+    dtype="float64",
+    nsteps=4,
+    nx_jets=3,
+    ny_jets=2,
+    jet_radius=0.6,
+    max_steps_in_episode=8,
+    perturbation=0.1,
+)
 
 
 @pytest.fixture(scope="module")
@@ -33,7 +45,12 @@ def test_spaces_and_defaults(env):
     # jet amplitude: 0.0624 friction velocities (nominal u_tau = sqrt(g_x H / 2))
     assert full.jet_amplitude == 0.0624 and full.jet_gain == pytest.approx(0.0624 * np.sqrt(0.116964), rel=1e-6)
     assert ChannelFlowFDEnv({"initial_condition": "laminar", "jet_gain": 0.3}).jet_gain == 0.3
-    assert full.cfg.cfl == 0.9 and full.cfg.poisson_solver == "direct" and full.cfg.dtype == "float32" and full.cfg.lx == pytest.approx(2 * np.pi)
+    assert (
+        full.cfg.cfl == 0.9
+        and full.cfg.poisson_solver == "direct"
+        and full.cfg.dtype == "float32"
+        and full.cfg.lx == pytest.approx(2 * np.pi)
+    )
 
 
 def test_jets_have_zero_net_flux_and_vanish_at_their_edges(env):
@@ -79,9 +96,18 @@ def test_reset_and_step_under_jit(env):
     obs1, st1, r, done, info = env.step(key, st, a, p)
     assert obs1.shape == (6,) and bool(jnp.isfinite(r)) and not bool(done)
     assert int(st1.time) == env.nsteps and float(st1.t) > 0.0
-    for k in ("discount", "actuation_power", "actuation_power_positive", "actuation_power_abs",
-              "actuation_power_per_actuator", "power_sampling", "drag_coefficient", "objective", "wall_shear_stress",
-              "obs_yplus"):
+    for k in (
+        "discount",
+        "actuation_power",
+        "actuation_power_positive",
+        "actuation_power_abs",
+        "actuation_power_per_actuator",
+        "power_sampling",
+        "drag_coefficient",
+        "objective",
+        "wall_shear_stress",
+        "obs_yplus",
+    ):
         assert k in info, k
     assert info["actuation_power_per_actuator"].shape == (6,)
     assert "wss" in info["objective"]
@@ -225,8 +251,7 @@ def test_importing_the_fd_modules_does_not_change_the_precision_setting():
     import subprocess
     import sys
 
-    code = ("import jax; from hydrogym.jax.envs.channel_fd import ChannelFlowFDEnv; "
-            "print(jax.config.jax_enable_x64)")
+    code = "import jax; from hydrogym.jax.envs.channel_fd import ChannelFlowFDEnv; print(jax.config.jax_enable_x64)"
     out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, timeout=300)
     assert out.stdout.strip().splitlines()[-1] == "False", out.stderr[-500:]
 
