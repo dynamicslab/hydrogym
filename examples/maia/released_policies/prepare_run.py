@@ -2,7 +2,7 @@
 """Prepare the run directory of a released policy (no MPI, run before the MPMD launch).
 
     python prepare_run.py --policy cylinder_2d_re200/ppo/seed1 --work-dir runs/cyl200
-    python prepare_run.py --policy naca0012_gust_re1000/td3_3jet_jet1.5U/seed1 --dim 3 --work-dir runs/gust3d
+    python prepare_run.py --policy naca0012_gust_re1000/td3_3jet_jet1.5U/seed1 --work-dir runs/gust3d
     python prepare_run.py --policy <id> --work-dir <dir> --env-dir /path/to/<Environment>   (offline copy)
 
 The run directory is the m-AIA working directory and, at the same time, the environment data folder that

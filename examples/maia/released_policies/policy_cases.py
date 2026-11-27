@@ -143,7 +143,7 @@ CASES = {
     "naca0012_gust_re1000": dict(
         quantity="lift",
         ylabel="Lift coefficient $C_L$",
-        env={2: "NACA0012Gust_2D_Re1000_AOA20", 3: "NACA0012Gust_3D_Re1000_AOA20"},
+        env="NACA0012Gust_3D_Re1000_AOA20",
         config={"max_control": "policy", "num_sim_substeps_per_actuation": "policy"},
         env_options={"gust": "fig2c"},  # the gust of Fig. 2c (gust_fig2c.bin of the case), at every reset
         observation="gust",
@@ -274,9 +274,8 @@ def env_dim(name):
 
 
 def load_for_run(pid, dim=2, file_role=None):
-    """The policy as used in the roll-out. The gust policies have one controller file per target case: the 2D file
-    (role deploy_2d) in 2D, the loader's file (the 3D deployment) in 3D. file_role: another file of the entry in the
-    loader's format (e.g. 'weights_best_eval')."""
+    """The policy as used in the roll-out. file_role: another file of the entry in the loader's format (e.g.
+    'weights_best_eval')."""
     case, c = case_of(pid)
     if file_role:
         e = entry(pid)
@@ -284,11 +283,6 @@ def load_for_run(pid, dim=2, file_role=None):
         pi.id, pi.manifest_entry = pid, e
         if getattr(pi, "max_control", None) is None and "max_control" in e["loader"]:
             pi.max_control = e["loader"]["max_control"]
-        return pi
-    if c["observation"] == "gust" and dim == 2:
-        e = entry(pid)
-        pi = LOADERS["gust_deploy_npz"](_file(e, "deploy_2d"))
-        pi.id, pi.manifest_entry = pid, e
         return pi
     return load_policy(pid)
 

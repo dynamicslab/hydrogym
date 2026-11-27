@@ -202,8 +202,7 @@ policies:
 - id: naca0012_gust_re1000/td3_3jet_jet1.5U/seed1
   group: naca_gust
   hydrogym_env:
-    id: NACA0012Gust_2D_Re1000_AOA20
-    id_3d: NACA0012Gust_3D_Re1000_AOA20
+    id: NACA0012Gust_3D_Re1000_AOA20
     backend: m-AIA
     config:
       gust: fig2c
@@ -216,47 +215,10 @@ policies:
     sha256: 3566624000f7a38444e9d4b9acbfe6dd72fd0c704ab29414a142accb7ce89ea8
     size_bytes: 1051280
     tracked_in_git: true
-  - role: deploy_2d
-    path: naca0012_gust_re1000/td3_3jet_jet1.5U/seed1/deploy_2d.npz
-    sha256: 9555ca0cbf7d260c6bd3fbb522edb8de2acbe9709c1e8cc3d479010f6ff5afab
-    size_bytes: 705222
-    tracked_in_git: true
-  - role: deploy_3d_at1.3
-    path: naca0012_gust_re1000/td3_3jet_jet1.5U/seed1/deploy_3d_at1.3.npz
-    sha256: 128c6daa3a07032bda6dd97411c3b5dea617f4ba39cfcb27b47ba2d15f1e5957
-    size_bytes: 705222
-    tracked_in_git: true
   - role: deploy_3d_at1.5
     path: naca0012_gust_re1000/td3_3jet_jet1.5U/seed1/deploy_3d_at1.5.npz
     sha256: a7b84163c65a0b3ada105b90d4033761b27eed3041d4d672ba4222843dbd0b3b
     size_bytes: 705222
-    tracked_in_git: true
-- id: naca0012_gust_re1000/td3_2jet_jet1.5U/seed0
-  group: naca_gust
-  hydrogym_env:
-    id: NACA0012Gust_2D_Re1000_AOA20
-    id_3d: NACA0012Gust_3D_Re1000_AOA20
-    backend: m-AIA
-    config:
-      gust: fig2c
-  loader:
-    format: gust_deploy_npz
-    file_role: deploy_3d_at1.5
-  files:
-  - role: weights
-    path: naca0012_gust_re1000/td3_2jet_jet1.5U/seed0/params.pkl
-    sha256: 346d477efbdd8c87827199d6109bf6806b10b01afaa4317b1ad33f93ef31dc28
-    size_bytes: 1051280
-    tracked_in_git: true
-  - role: deploy_2d
-    path: naca0012_gust_re1000/td3_2jet_jet1.5U/seed0/deploy_2d.npz
-    sha256: 13cc63bdda958b1ef9f9c1e88bdee6dfae07fc25ff705323e342af3fbb2b2ae1
-    size_bytes: 705578
-    tracked_in_git: true
-  - role: deploy_3d_at1.5
-    path: naca0012_gust_re1000/td3_2jet_jet1.5U/seed0/deploy_3d_at1.5.npz
-    sha256: bbee7b6352fd6d8972f769649bd92d4b9b7b8b19ccd24c59b0fec91946c4ca87
-    size_bytes: 705578
     tracked_in_git: true
 - id: cavity_2d_re7500/ppo_1jet/seed0
   group: cavity

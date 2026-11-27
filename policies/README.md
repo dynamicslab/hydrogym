@@ -76,7 +76,7 @@ see its README).
 | `cylinder_2d_re1000` | `Cylinder_2D_Re1000` | `ppo` (2), `ppo_finetune_from_re200` (2) | `jax_ppo_pkl` |
 | `cylinder_2d_re3900` | `Cylinder_2D_Re3900` | `ppo` (1), `ppo_finetune_from_re1000` (2) | `jax_ppo_pkl` |
 | `square_cylinder_2d_re200` | `SquareCylinder_2D_Re200` | `ppo` (0), `ppo_finetune_from_cylinder_re200` (2) | `jax_ppo_pkl` |
-| `naca0012_gust_re1000` | `NACA0012Gust_{2D,3D}_Re1000_AOA20` | `td3_3jet_jet1.5U` (1), `td3_2jet_jet1.5U` (0) | `gust_deploy_npz` |
+| `naca0012_gust_re1000` | `NACA0012Gust_3D_Re1000_AOA20` | `td3_3jet_jet1.5U` (1) | `gust_deploy_npz` |
 | `cavity_2d_re4200` | `Cavity_2D_Re4200` | `ppo_IM` (0), `ppo_tuned` (0) | `cavity_spec_npz` |
 | `cavity_2d_re7500` | `Cavity_2D_Re7500`, `Cavity3Jet_2D_Re7500` | `ppo_1jet` (0), `ppo_3jet` (1) | `cavity_spec_npz` |
 | `cavity_3d_re7500` | `Cavity_3D_Re7500_lz024`, `Cavity3Jet_3D_Re7500_lz024` | `ppo_IM_1jet` (1), `ppo_IM_3jet` (3) | `cavity3d_npz` |
@@ -103,9 +103,9 @@ see its README).
   y+ = 15 -> a in [-1, 1], the wall-normal velocity in units of u_tau,ch = 0.0624334733. `td3` is the
   Stable-Baselines3 policy of the HydroGym paper (the zip, and `actor.npz` for the numpy loader); `td3_N1F` applies
   its F actor on 0.2 <= x/c < 0.48 and N1 on 0.48 <= x/c <= 0.9 (`pi(obs, x)`).
-- **Gust airfoil:** the controller file of each target case (`deploy_2d`, `deploy_3d_at*`) holds `max_control`,
-  the lattice steps per action and the probe coordinates. `NACA0012Gust_{2D,3D}_Re1000_AOA20` default to
-  `max_control` = 1.5 U (0.0866 / 0.1732 lattice), the bound of the `*_jet1.5U` policies. Gust field: `fig2c` (the `transverse` gust of `NACA0012Gust`).
+- **Gust airfoil:** the controller file (`deploy_3d_at1.5`) holds `max_control`, the lattice steps per action and the
+  probe coordinates. `NACA0012Gust_3D_Re1000_AOA20` defaults to `max_control` = 1.5 U (0.1732 lattice), the bound of the
+  `*_jet1.5U` policy. Gust field: `fig2c` (the `transverse` gust of `NACA0012Gust`).
 
 ## Probes
 

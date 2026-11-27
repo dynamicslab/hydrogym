@@ -11,7 +11,7 @@
 # Examples:
 #   ./run_example.sh cylinder_2d_re200/ppo/seed1 runs/cyl200 1
 #   ./run_example.sh pinball_2d_re100/ppo_tuned/seed0 runs/pin100 1 --start 6 --readable --store_data
-#   PREPARE_ARGS="--dim 3" ./run_example.sh naca0012_gust_re1000/td3_3jet_jet1.5U/seed1 runs/gust3d 4
+#   ./run_example.sh naca0012_gust_re1000/td3_3jet_jet1.5U/seed1 runs/gust3d 4
 #
 # Environment variables:
 #   MPIRUN        MPMD launcher (default "mpirun"; e.g. "mpirun --bind-to none" or "prterun --bind-to none")

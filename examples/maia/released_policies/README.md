@@ -78,10 +78,8 @@ and stores `run.npz` instead (`--no-plot --store_data`), e.g. on a cluster witho
 ./run_example.sh square_cylinder_2d_re200/ppo/seed0                          runs/square_re200 1
 ./run_example.sh square_cylinder_2d_re200/ppo_finetune_from_cylinder_re200/seed2 runs/square_re200_ft 1
 
-# NACA0012 gust, Re 1000, alpha 20 deg (gust fig2c); 2D, and the same policy in 3D
-./run_example.sh naca0012_gust_re1000/td3_3jet_jet1.5U/seed1 runs/gust2d_td3 1
-PREPARE_ARGS="--dim 3" ./run_example.sh naca0012_gust_re1000/td3_3jet_jet1.5U/seed1 runs/gust3d_td3 4
-./run_example.sh naca0012_gust_re1000/td3_2jet_jet1.5U/seed0 runs/gust2d_td3_2jet 1   # two jets (jet 3 off)
+# NACA0012 gust, Re 1000, alpha 20 deg, 3D (gust fig2c)
+./run_example.sh naca0012_gust_re1000/td3_3jet_jet1.5U/seed1 runs/gust3d_td3 4
 
 # 2D open cavity, Re 4200 (one jet) and Re 7500 (one and three jets)
 ./run_example.sh cavity_2d_re4200/ppo_tuned/seed0 runs/cavity_re4200_tuned 1
