@@ -241,8 +241,6 @@ c=============================================
       call rzero(actV,ntot) 
       ! Rescale the actions by the friction velocity of the training
       ! channel (u_tau,ch at Re_tau 206): action 1 = u_tau,ch.
-      ! The reference implementation rescaled by the local u_tau,
-      ! call X2Utau(xi,uti).
 #ifdef UTAU
       do il = 1, NUMCTRL
         xi = pos_agt(1,il) 

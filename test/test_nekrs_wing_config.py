@@ -127,14 +127,13 @@ def test_wing_variants(tmp_path, name, dt, steps):
         NekRSFlowEnv(os.path.join(WING, name), run_root=str(tmp_path / "x"), iface=WingIface(1.5e-5))
 
 
-def test_wing_hg_fortran_yml_keeps_the_original_projection(tmp_path):
-    """wing_hg_fortran.yml = wing.yml with the projection of the original Nek5000 coupling, nothing else changed."""
+def test_wing_frame_default_and_option(tmp_path):
+    """wing.yml observes in the wall-tangent frame; a YAML that derives from it can select the other projection."""
     a = NekRSFlowEnv(os.path.join(WING, "wing.yml"), run_root=str(tmp_path / "a"), iface=WingIface(4e-5))
-    b = NekRSFlowEnv(os.path.join(WING, "wing_hg_fortran.yml"), run_root=str(tmp_path / "b"), iface=WingIface(4e-5))
-    assert (a._frame_kind, b._frame_kind) == ("wall", "hg_fortran")
-    ca, cb = dict(a.cfg), dict(b.cfg)
-    pa, pb = dict(ca.pop("probes")), dict(cb.pop("probes"))
-    assert pa.pop("frame") == "wall" and pb.pop("frame") == "hg_fortran" and pa == pb
-    assert ca == cb
+    assert a._frame_kind == "wall"
     a.close()
+    alt = tmp_path / "wing_alt_frame.yml"
+    alt.write_text(f"base: {os.path.join(WING, 'wing.yml')}\nprobes:\n  frame: hg_fortran\n")
+    b = NekRSFlowEnv(str(alt), run_root=str(tmp_path / "b"), iface=WingIface(4e-5))
+    assert b._frame_kind == "hg_fortran"
     b.close()

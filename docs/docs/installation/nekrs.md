@@ -165,9 +165,7 @@ Vinuesa, J. Fluid Mech. 2025: one line at x/c = 0.1, 30 spanwise modes renewed e
 Ref1's restart field at t = 28, Δt = 4·10⁻⁵ and 31 solver steps (1.24·10⁻³ c/U∞) per action. The uncontrolled flow
 with this trip is validated against Ref1 ([NekRS NACA0012 validation](../examples/nekrs/wing_validation)). The
 channel policies act in the wall units of their training channel (action 1 = its friction velocity, 0.0624334733 at
-Re_τ 206). Their observations [u_t', v_n'] at y+ = 15, along the wall tangent and normal (`frame: wall`; `wing_hg_fortran.yml`: the projection of the original Nek5000
-coupling, `frame: hg_fortran`, with which the roll-out of Fig. 4d of the HydroGym paper was deployed: its numbers are reproduced with
-`CONF=wing_hg_fortran.yml`; without a `frame` key the interface uses the velocity components as computed, `frame: global`),
+Re_τ 206). Their observations [u_t', v_n'] at y+ = 15, along the wall tangent and normal (`frame: wall`; without a `frame` key the interface uses the velocity components as computed, `frame: global`),
 are divided by the local friction velocity u_tau(x) of the uncontrolled wing at Re_c = 2·10⁵; zero net mass flux
 holds on every spanwise line of nodes. Opposition control (`wing_oc.yml`) acts every 10 solver steps at
 Δt = 2·10⁻⁵ with v_w = -v_n' at y+ = 15. The solver time step is `environment.dt` of the YAML; `run.sh` writes it

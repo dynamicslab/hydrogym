@@ -37,7 +37,6 @@ probes:
   fields: [u, v]
   positions: {source: actuator_offset, normal_distance: {plus: 15}}   # y+ = 15 along the normal (ypctrl)
   frame: wall              # (u_t, v_n): velocity along the downstream wall tangent and the wall normal (a rotation)
-  # frame: hg_fortran      # normal_V_project of drl_state.f: u_t = u n_y + v n_x, v_n = u n_x + v n_y (wing_hg_fortran.yml)
   subtract_group_mean: [x, y]   # fluctuation about the spanwise mean of each line (obs_zavg)
   normalization: u_tau     # divide by u_tau(x) of the actuator
 

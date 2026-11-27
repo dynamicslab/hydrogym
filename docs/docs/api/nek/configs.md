@@ -85,7 +85,7 @@ Amplitude for Body-Force
 
 #### frame
 
-wall (wall-tangent frame) | hg_fortran (projection of the original coupling)
+wall (wall-tangent frame) | hg_fortran (u_t = u n_y + v n_x)
 
 #### power\_mode
 

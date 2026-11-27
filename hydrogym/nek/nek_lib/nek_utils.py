@@ -49,7 +49,7 @@ V17_PARAM_MAPPING = {
 }
 
 # Observation frame of the v17 wing case (p092, drl/drl_state.f normal_V_project), names as in the NekRS
-# backend (probes.frame): wall = wall-tangent frame (default), hg_fortran = the projection of the original deployment.
+# backend (probes.frame): wall = wall-tangent frame (default), hg_fortran = u_t = u n_y + v n_x (not a rotation).
 FRAME_CODES = {"hg_fortran": 0, "wall": 1}
 
 

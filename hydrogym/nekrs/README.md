@@ -130,7 +130,7 @@ probes:
   # subtract_group_mean: [x, y]  # optional: mean over the probes sharing x and y, weighted by the actuator footprint
   normalization: 0.0630         # one value, one per field, or u_tau (from wall_units)
   frame: global                 # global (default) | wall: u, v -> wall tangent u_t and normal v_n at each actuator |
-                                # hg_fortran: u_t = u n_y + v n_x (projection of the Nek5000 wing coupling)
+                                # hg_fortran: u_t = u n_y + v n_x (not a rotation)
 wall_units:                     # optional
   nu: 1.0e-5                    # default: mu / rho of the solver
   u_tau: 0.0624                 # a value | {polynomial: [c0, c1, ...], axis: x}

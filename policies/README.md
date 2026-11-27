@@ -99,8 +99,7 @@ see its README).
   `num_sim_substeps_per_actuation` 352), from the environment restart.
 - **Cylinder:** `max_control` 0.0173 (0.3 U); 88 (Re 200), 224 (Re 1000) and 496 (Re 3900) lattice steps per action.
 - **Square cylinder:** `max_control` 0.021 (0.36 U), the bound of `SquareCylinder_2D_Re200`.
-- **NACA0012 wing:** `examples/nekrs/wing/wing.yml` (`wing_hg_fortran.yml`: the observation projection of the
-  paper's roll-out). One actor per wall actuator: obs [u_t', v_n'] / u_tau(x) at
+- **NACA0012 wing:** `examples/nekrs/wing/wing.yml`. One actor per wall actuator: obs [u_t', v_n'] / u_tau(x) at
   y+ = 15 -> a in [-1, 1], the wall-normal velocity in units of u_tau,ch = 0.0624334733. `td3` is the
   Stable-Baselines3 policy of the HydroGym paper (the zip, and `actor.npz` for the numpy loader); `td3_N1F` applies
   its F actor on 0.2 <= x/c < 0.48 and N1 on 0.48 <= x/c <= 0.9 (`pi(obs, x)`).

@@ -14,7 +14,6 @@ The case is a NekRS port of the Nek5000 case `third_party/nek5000/cases/naca0012
 | `naca_wing.par/.udf/.usr` | case at N = 7. The udf ports the Nek5000 case:<br>• frozen far field and outlet pressure;<br>• trip of `tripf.f`;<br>• RT filter, via `regularization = hpfrt`;<br>• bid 2 is the suction-side control window, 0.25 < x/c < 0.86. |
 | `naca_wing_smoke.par`, `wing_smoke.yml` | N = 3 smoke test from a uniform free stream on 1 GPU. |
 | `wing.yml` | the deployment of the Nek5000 case (`naca_wing.rea`, `drl_*.f`):<br>• dt = 4e-5, 31 solver steps (1.24e-3 c/U) per action;<br>• u_tau(x) is the polynomial `X2Utau` of `drl_init.f` (uncontrolled wing, Re_c = 2·10⁵);<br>• one agent per wall node of the window;<br>• obs [u_t'/u_tau(x), v_n'/u_tau(x)] at y+ = 15 along the wall tangent and normal (`frame: wall`);<br>• action 1 = u_tau,ch = 0.0624334733 (training channel), normal blowing;<br>• zero net flux per spanwise line. |
-| `wing_hg_fortran.yml` | `wing.yml` with the observation projection of the original Nek5000 coupling (`frame: hg_fortran`), the projection of the roll-out of Fig. 4d of the HydroGym paper. |
 | `wing_oc.yml` | opposition control: dt = 2e-5, 10 steps (2e-4 c/U) per action, v_w = -v_n' at y+ = 15, not clipped. |
 | `wing_dt2e-5.yml` | `wing.yml` at dt = 2e-5 with 62 steps (1.24e-3 c/U) per action: the time step of the validation against Ref1. |
 | `wing_dtp.yml` | `wing.yml` with the control interval of the training channel in wall units (dt+ = 0.68); the step count follows from the mean u_tau(x) of the agents. |
@@ -52,7 +51,6 @@ GPU=0,1,2,3 NP=4 RUN=runs/td3_s0 ./run.sh --policy td3:$PWD/../channel/runs/td3_
 
 python postprocess.py runs/zero runs/oc runs/ub runs/td3 --skip 500 --out wing.png
 # drag reductions and actuation power against the uncontrolled run over t - 28 = 1-3 c/U (start of control: t = 28);
-# the Fig. 4d numbers of the HydroGym paper need the controlled runs with CONF=wing_hg_fortran.yml (its projection)
 python fig4d.py --ref runs/zero --t0 1 --t1 3 --diff TD3-OC --out fig4d TD3=runs/td3:28 OC=runs/oc:28 UB=runs/ub:28
 python power_forms.py --ref runs/zero --t0 1 --t1 3 --out power TD3=runs/td3:28 N1=runs/n1:28 OC=runs/oc:28
 python action_hist.py --t0 1 --t1 3 --out action_hist TD3=runs/td3:28 N1=runs/n1:28 OC=runs/oc:28
@@ -78,8 +76,7 @@ The defaults (`naca_wing.par`, `wing.yml`) are the case and deployment of the Ne
 (`third_party/nek5000/cases/naca0012_200k`): Re_c = 2·10⁵, the trip of Ref1 (Wang, Atzori & Vinuesa, JFM 2025:
 30 spanwise modes renewed every 0.008 c/U, amplitude 10, at x/c = 0.1), the start field of Ref1 at t = 28
 (`rs8naca_wing0.f00008`, written at dt = 2e-5 with this trip), dt = 4e-5 and 31 solver steps (1.24e-3 c/U) per
-action, with the observations in the wall-tangent frame (`wing_hg_fortran.yml`: the projection of the original
-coupling). Opposition control runs with `wing_oc.yml` (dt = 2e-5, 10 steps per action). The uncontrolled flow with this
+action, with the observations in the wall-tangent frame. Opposition control runs with `wing_oc.yml` (dt = 2e-5, 10 steps per action). The uncontrolled flow with this
 trip is validated against Ref1 (docs page "NekRS NACA0012 validation", at dt = 2e-5 and 8e-5).
 
 ```bash
@@ -163,11 +160,7 @@ The time integration restarts at first order, because the field files carry no l
   averages over every solver step, `end` samples after the last step of each action; the step average includes the
   work of the pressure response to each jump of the wall velocity, which the end sample misses.
 - **Probe frame.** `frame: wall` (`wing.yml`, default) rotates (u, v) into the downstream wall tangent and the wall
-  normal. `frame: hg_fortran` (`wing_hg_fortran.yml`) is the projection of the original Nek5000 coupling
-  (`normal_V_project` of `drl_state.f`: u_t = u n_y + v n_x, v_n = u n_x + v n_y, not a rotation), with which the
-  roll-out of Fig. 4d of the HydroGym paper was deployed; on the suction side the two u_t differ by 2 n_x v, with
-  n_x up to 0.12 at the end of the control window. v_n, the input of OC, is the same in both, so `wing_oc.yml` does
-  not depend on the frame.
+  normal.
 
 ## Tested
 

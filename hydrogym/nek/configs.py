@@ -113,7 +113,7 @@ class Simulation:
     # but the drl sensing plane depends on the body-force channel
     ret_bdf: float = 207.0
     # ---- v17 wing case: observation frame (p092) and actuation power (p096) ----
-    frame: str = "wall"  # wall (wall-tangent frame) | hg_fortran (projection of the original coupling)
+    frame: str = "wall"  # wall (wall-tangent frame) | hg_fortran (u_t = u n_y + v n_x)
     power_mode: int = 0  # 0 off, 1 every solver step, 2 end of action; set by NekEnv from the power section
     # --------------------------------
 

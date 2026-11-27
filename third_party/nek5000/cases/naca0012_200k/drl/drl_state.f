@@ -150,9 +150,8 @@ c=============================================
         
         ! 1st variable: the tangential observation U_t
         ! PARAM(92) selects the projection (HydroGym simulation.frame):
-        ! 0 (hg_fortran): U_t = vx*n_y + vy*n_x, the projection of the
-        !   reference implementation (the wall-tangent component only
-        !   where n_x = 0);
+        ! 0 (hg_fortran): U_t = vx*n_y + vy*n_x, not a rotation (the
+        !   wall-tangent component only where n_x = 0);
         ! 1 (wall, the HydroGym default): U_t = vx*n_y - vy*n_x, the
         !   velocity along the downstream wall tangent t = (n_y,-n_x),
         !   n = (body_cos,body_sin).

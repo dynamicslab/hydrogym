@@ -93,7 +93,7 @@
    3.100000E+01     p089 DRL: solver steps per action
    1.000000E+00     p090 YW: wrt_ctrl (OC build); DRL: zero net mass flux per spanwise line if > 0
   5000.000000E+00  p091 YW: outp_ctrl: Frequency for dumping time_series                       
-  1.000000E+00     p092 DRL: observation frame (0 reference projection hg_fortran, 1 wall frame)
+  1.000000E+00     p092 DRL: observation frame (0 hg_fortran, 1 wall frame)
   40.00000E+00     p093 Number of previous pressure solns saved
   20.00000E+00     p094 start projecting velocity after p94 step
   20.00000E+00     p095 start projecting pressure after p95 step

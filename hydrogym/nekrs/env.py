@@ -18,8 +18,7 @@ for the wall-unit options of a non-uniform wall, examples/nekrs/wing/wing.yml):
   probes:       fields, positions (actuator_offset normal_distance may be {plus: y+}), subtract_plane_mean
                 (solver side) or subtract_group_mean: [x, y] (mean over probes sharing x, y, weighted by the
                 actuator footprint), frame: global | wall (u, v -> wall tangent u_t (t_x > 0) and inward normal
-                v_n) | hg_fortran (projection of drl_state.f in the HydroGym Nek5000 wing case, kept for
-                compatibility with policies trained there: u_t = u n_y + v n_x; v_n as for wall), normalization
+                v_n) | hg_fortran (u_t = u n_y + v n_x, not a rotation; v_n as for wall), normalization
                 (value per field, or u_tau)
   reward:       type wall_shear {boundary, quantity: gradient | force, baseline_dudy, average: legacy | mean}
   monitors:     further [{boundary, quantity: force | gradient}] recorded at every solver step (solver_steps.csv)

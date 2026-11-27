@@ -11,8 +11,7 @@ Notable user-facing changes to HydroGym. Format loosely follows
   modes renewed every 0.008 c/U∞; time step 4×10⁻⁵ and 31 solver steps per action; the start state is the developed
   uncontrolled flow at t = 28 c/U∞. Updated Hugging Face case files and configuration of `NACA0012_3D_Re200000_AOA0`.
 - NACA0012 wing (NekRS, `examples/nekrs/wing`): the defaults are the deployment of the Nek5000 case (time step, steps
-  per action, scaling, trip), with the observations in the wall-tangent frame (`wing_hg_fortran.yml`: the projection
-  of the original coupling); opposition control with `wing_oc.yml`; the solver time step is
+  per action, scaling, trip), with the observations in the wall-tangent frame; opposition control with `wing_oc.yml`; the solver time step is
   set from the YAML (`environment.dt`) and checked at start-up. `deploy.py` samples the walls every 10 solver steps,
   also within the actions (`--wall-steps`; `0` for samples at the end of the actions), and `fig4d.py` takes C_d,f and
   C_d as time means over every solver step.
@@ -91,8 +90,7 @@ Notable user-facing changes to HydroGym. Format loosely follows
 - NACA0012 wing deployment: action amplitude in friction-velocity units of the training channel; observation scaling
   and probe height by the friction velocity of the uncontrolled wing at Re_c = 2×10⁵ (Nek5000 and NekRS).
 - NACA0012 wing (Nek5000 and NekRS): the tangential velocity observed by the policies is the component along the
-  wall tangent (`frame: wall`, default). The original coupling added 2 n_x v to it (n_x up to 0.12 on the suction
-  side); `frame: hg_fortran` keeps that projection.
+  wall tangent (`frame: wall`, default).
 - NACA0012 wing (Nek5000): trip of 30 spanwise modes renewed every 0.008 c/U∞ (was 60 modes every 0.004), Re_c = 2×10⁵
   in the case file, time step 4×10⁻⁵ and 31 solver steps per action (Hugging Face configuration).
 - m-AIA environments: `step(a)` returns the state at the end of the interval in which `a` acted.

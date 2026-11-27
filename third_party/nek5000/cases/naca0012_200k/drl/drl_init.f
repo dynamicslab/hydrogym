@@ -495,8 +495,7 @@ c--------------------------------------------------------------------
 ! c=============================================
 cc Statistics obtained from A Tanarro
 cc YW Modified here for NACA0012, 2024.04.29
-cc The reference implementation used the fit of the u_tau distribution of
-cc Tanarro et al. (Re_c = 4e5); this case uses the fit of the uncontrolled Re_c = 2e5
+cc Fit of the u_tau distribution of the uncontrolled Re_c = 2e5
 cc wing: suction-side u_tau(x), polynomial in x/c, valid in the control
 cc window 0.25 < x/c < 0.86.
 cc---------------------------------------

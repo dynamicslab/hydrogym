@@ -148,8 +148,8 @@ c=============================================
         ! Compute the Projection
         ntot = LX1*LY1*LZ1*LELT
         
-        ! 1st variable: the tangential observation U_t, with the projection of
-        ! the reference implementation (vx*n_y + vy*n_x). The frame option of
+        ! 1st variable: the tangential observation U_t, with the projection
+        ! vx*n_y + vy*n_x (not a rotation). The frame option of
         ! naca0012_200k (PARAM(92)) is not available in this case.
         call rzero(rotV,ntot)
         rotV=vx*body_sin + vy*body_cos

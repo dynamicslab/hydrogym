@@ -15,8 +15,7 @@
         parameter (ypctrl=15.0)     ! y_plus
         
         ! YW Modified here 2024.04.29
-        ! Viscosity of this case, Re_c = 2e5 (the Re_c = 4e5 setup of the
-        ! reference implementation used 2.5e-6).
+        ! Viscosity of this case, Re_c = 2e5.
         parameter (nuctrl=5e-6)         ! Viscosity, Re_c = 2e5
 
         
