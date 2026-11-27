@@ -100,6 +100,9 @@ class MaiaFlowEnv(HFEnvConfigMixin, gym.Env):
                 - probe_locations (list): Probe coordinate locations.
                 - obs_normalization_strategy (str): One of 'U_inf', 'probewise_mean_std',
                     'none', 'customized'.
+                - obs_normalization_seed (int): Optional. Seed of the random actions used to compute the
+                    'probewise_mean_std' factors; set it (or store the printed factors and use 'customized')
+                    to make the normalisation reproducible. Default: None (not reproducible).
                 - obs_loc (list): Required if strategy is 'customized'.
                 - obs_scale (list): Required if strategy is 'customized'.
                 - nproc (int): Optional. Expected number of m-AIA solver
@@ -164,6 +167,8 @@ class MaiaFlowEnv(HFEnvConfigMixin, gym.Env):
                 "for a worked example."
             )
         self.obs_normalization_strategy = env_config.get("obs_normalization_strategy", "none")
+        # seed of the random actions of the 'probewise_mean_std' normalisation run (None: not reproducible)
+        self.obs_normalization_seed = env_config.get("obs_normalization_seed")
 
         valid_strategies = ["U_inf", "probewise_mean_std", "none", "customized"]
         if self.obs_normalization_strategy not in valid_strategies:
@@ -418,6 +423,7 @@ class MaiaFlowEnv(HFEnvConfigMixin, gym.Env):
             zero_actuation: If True, use zero actuation. Otherwise, use random actuation.
         """
         obs_norm_episodes = 5
+        rng = np.random.default_rng(self.obs_normalization_seed)
         probes = np.zeros(shape=(obs_norm_episodes * self.max_episode_steps, int(self.noProbes * self.noProbeVars)))
 
         for i in range(obs_norm_episodes * self.max_episode_steps):
@@ -435,7 +441,7 @@ class MaiaFlowEnv(HFEnvConfigMixin, gym.Env):
             else:
                 self.maiaInterface.setControlProperties(
                     self.convert_action(
-                        action=np.random.uniform(-self.MAX_CONTROL, self.MAX_CONTROL, size=self.num_inputs)
+                        action=rng.uniform(-self.MAX_CONTROL, self.MAX_CONTROL, size=self.num_inputs)
                     )
                 )
 
@@ -445,6 +451,8 @@ class MaiaFlowEnv(HFEnvConfigMixin, gym.Env):
 
         loc = np.mean(probes, axis=0)
         scale = np.std(probes, axis=0)
+        # a probe that stays constant (std 0) would give inf/NaN observations: leave it unscaled
+        scale = np.where(scale < 1e-12, 1.0, scale)
 
         loc = rearrange(loc, "(n p) -> n p", n=self.noProbes)
         scale = rearrange(scale, "(n p) -> n p", n=self.noProbes)
@@ -542,8 +550,8 @@ class MaiaFlowEnv(HFEnvConfigMixin, gym.Env):
         Returns:
             Tuple of (observation, reward, terminated, truncated, info).
             terminated is always False (no in-band physics-failure signal);
-            truncated becomes True once the step budget
-            (max_episode_steps) is reached.
+            truncated becomes True once more than max_episode_steps steps have been
+            taken, so an episode has max_episode_steps + 1 steps.
         """
         action = [a * self.MAX_CONTROL for a in action]
 
@@ -601,6 +609,17 @@ class MaiaFlowEnv(HFEnvConfigMixin, gym.Env):
 
         return self.obs, reward, False, bool(done), info
 
+    def _seed_reset(self, seed: Optional[int]) -> None:
+        """Seed the gymnasium RNG and the action space (call at the start of every ``reset``).
+
+        The solver itself is deterministic, so the seed only affects what is drawn on the Python side (for example
+        ``action_space.sample()``). Without a seed both generators keep their state, so repeated resets continue the
+        same random stream. ``gym.Env.reset`` is called directly because ``reset`` is overridden by the subclasses.
+        """
+        gym.Env.reset(self, seed=seed)
+        if seed is not None:
+            self.action_space.seed(seed)
+
     def reset(self, seed: Optional[int] = None, options: Optional[Dict] = None) -> Tuple[np.ndarray, Dict]:
         """
         Reset the environment to initial state.
@@ -613,6 +632,7 @@ class MaiaFlowEnv(HFEnvConfigMixin, gym.Env):
             Tuple of (initial_observation, info).
         """
         print("Resetting environment", flush=True)
+        self._seed_reset(seed)
 
         # Between calls m-AIA waits in its request loop at the start of the next segment (see step()).  Leave it first
         # (after a step), open an N-substep segment, reinitialise, and stay in the request loop (no continueRun).
@@ -973,7 +993,7 @@ class MaiaFlowEnv(HFEnvConfigMixin, gym.Env):
         Check if the episode is complete.
 
         Returns:
-            True if the episode has reached max_episode_steps.
+            True once ``iter > max_episode_steps`` (an episode has ``max_episode_steps + 1`` steps).
         """
         return self.iter > self.max_episode_steps
 

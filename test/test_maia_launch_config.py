@@ -74,3 +74,12 @@ class TestMaiaNprocValidation:
         iface.init_comm(_FakeComm(world_size=10), nproc=7)  # no raise
         with pytest.raises(RuntimeError, match=r"expected 8 .* got 7"):
             iface.init_comm(_FakeComm(world_size=10), nproc=8)
+
+
+class TestMaiaNoSolverRanks:
+    def test_controller_alone_raises_with_launch_pattern(self, monkeypatch):
+        # World of one rank = the controller only: without m-AIA ranks every request would block forever.
+        _patch_split(monkeypatch, app_no_ranks=1)
+        iface = mpmd_interface.MaiaInterface(nDim=2)
+        with pytest.raises(RuntimeError, match=r"No m-AIA solver ranks.*mpirun -n 1 python"):
+            iface.init_comm(_FakeComm(world_size=1), nproc=None)

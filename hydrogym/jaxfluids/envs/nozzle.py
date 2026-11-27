@@ -162,7 +162,7 @@ class NozzleBase(JAXFluidsFlowEnv):
 
     def _is_terminated(self, action: np.ndarray, jxf_buffers: JaxFluidsBuffers, info: dict) -> bool:
         physical_simulation_time = jxf_buffers.time_control_variables.physical_simulation_time
-        return physical_simulation_time >= self.SPEC.t_end
+        return bool(physical_simulation_time >= self.SPEC.t_end)
 
     def _is_truncated(self, jxf_buffers: JaxFluidsBuffers, info: dict) -> bool:
         return False
@@ -201,7 +201,8 @@ class NozzleBase(JAXFluidsFlowEnv):
 
         if self.is_scale_observations:
             low = np.array([-1.0] * (2 * num_angles) + [0.0] * self.num_probes, dtype=np.float32)
-            high = np.array([1.0] * (2 * num_angles) + [1.0] * self.num_probes, dtype=np.float32)
+            # the scaled pressures p / p0 are not bounded by 1 (the probes can see more than the reservoir pressure)
+            high = np.array([1.0] * (2 * num_angles) + [np.inf] * self.num_probes, dtype=np.float32)
         else:
             low = np.array([-np.pi] * (2 * num_angles) + [0.0] * self.num_probes, dtype=np.float32)
             high = np.array(
@@ -246,7 +247,8 @@ class NozzleBase(JAXFluidsFlowEnv):
         if obs.shape != self.observation_space.shape:
             raise ValueError(f"Observation shape mismatch: got {obs.shape}, expected {self.observation_space.shape}")
 
-        return np.asarray(obs)
+        # the solver runs in float64; the observation space is float32 (the dtype RL libraries expect)
+        return np.asarray(obs, dtype=self.observation_space.dtype)
 
     # ------------------------------------------------------------------
     # Actuation power

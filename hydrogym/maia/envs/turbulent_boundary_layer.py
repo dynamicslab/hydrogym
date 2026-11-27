@@ -485,6 +485,7 @@ class ZPGTBLSurfaceWave(ZPGTBLBase):
             Tuple of ``(initial_observation, info)``.
         """
         print("Resetting environment", flush=True)
+        self._seed_reset(seed)
 
         self.maiaInterface.runTimeSteps(1)
         self.maiaInterface.reinit()

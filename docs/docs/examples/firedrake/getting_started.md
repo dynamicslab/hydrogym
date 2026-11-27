@@ -123,7 +123,7 @@ python train_sb3_firedrake.py --env cylinder --algo PPO --total-timesteps 100000
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
-| `max_steps` | Episode length in environment steps | `1e6` |
+| `max_steps` | Episode length in solver steps; the episode is truncated once more than `max_steps` solver steps have been taken, i.e. after `max_steps // num_substeps + 1` environment steps | `1e6` |
 | `callbacks` | List of callbacks to attach to the solver | `[]` |
 
 ## Available environments

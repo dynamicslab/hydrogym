@@ -465,7 +465,8 @@ class FlowEnv(gym.Env):
         flow: The underlying PDE model.
         solver: The transient solver driving the PDE.
         callbacks: Callbacks invoked after each step.
-        max_steps: Episode length in environment steps.
+        max_steps: Episode length in solver steps (``iter`` counts solver steps, ``num_substeps`` per environment step).
+            The episode is truncated once ``iter > max_steps``, i.e. after ``max_steps // num_substeps + 1`` environment steps.
         iter: Total number of solver steps taken since the last reset.
         num_substeps: Solver steps per environment step.
         reward_aggregation: How per-substep objectives are combined

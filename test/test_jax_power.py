@@ -486,3 +486,20 @@ def test_channel_legacy_jets_reproduce_v1(channel):
     assert float(r1) == pytest.approx(-0.05662553012371063, rel=5e-6)
     assert float(info0["actuation_power"]) == pytest.approx(0.0027359589003026485, rel=1e-5)
     assert float(info1["actuation_power"]) == pytest.approx(0.1763174831867218, rel=1e-5)
+
+
+def test_channel_legacy_and_wall_jets_differ_in_drag(channel):
+    """Wall transpiration jets and the legacy jets (HydroGym <= 1.0) give different wall shear.
+
+    The legacy model overwrites w in five wall layers, also at zero action, so its reward at zero action is not
+    the uncontrolled flow's. The corrected jets at zero action reproduce the uncontrolled flow.
+    """
+    envs, params, state = channel
+    out = {}
+    for label, action in (("zero", jnp.zeros(24)), ("const", 0.5 * jnp.ones(24))):
+        for name in ("mean", "legacy"):
+            _, _, r, _, _ = envs[name].step(KEY, state, action, params)
+            out[label, name] = float(r)
+    assert all(np.isfinite(v) for v in out.values())
+    for label in ("zero", "const"):
+        assert out[label, "mean"] != out[label, "legacy"], f"{label}: {out}"

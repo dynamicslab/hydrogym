@@ -215,9 +215,12 @@ def run_firedrake_test(
     # cavity and the step keep their default observation (the domains do not contain these points)
 
     if env_type in ("cylinder", "rotary_cylinder", "pinball"):
+        # The pinball's rear cylinders (radius 0.5, centres at x = 1.3, y = +-0.75) reach x = 1.8, so its wake grid
+        # starts further downstream; a probe inside a cylinder is outside the mesh.
+        x_start = 3.0 if env_type == "pinball" else 1.0
         wake_probes = [
             (x, y)
-            for x in np.linspace(1.0, 10.0, 16)  # 16 points in x
+            for x in np.linspace(x_start, 10.0, 16)  # 16 points in x
             for y in np.linspace(-2.0, 2.0, 4)  # 4 points in y
         ]
         flow_config["probes"] = wake_probes
@@ -271,7 +274,7 @@ def run_firedrake_test(
     # --- SOLVER CONFIGURATION ---
     # Time-stepping parameters for transient solvers
     solver_config = {
-        "dt": 1e-2,  # Time step (REQUIRED for transient)
+        "dt": 1e-2,  # Time step (REQUIRED for transient); smoke-test value, see the recommended values below
         "order": 3,  # BDF order: 1, 2, or 3 (default: 3)
         "stabilization": "none",  # Options: 'none', 'supg', 'gls'
         # 'rtol': 1e-6,                # Krylov solver relative tolerance
@@ -279,7 +282,7 @@ def run_firedrake_test(
 
     # Recommended dt by environment:
     # - Cylinder: 1e-2
-    # - Cavity: 1e-4 (very stiff!)
+    # - Cavity: 1e-4 for production runs (stiff); the 1e-2 above is only enough for a few smoke-test steps
     # - Pinball: 1e-2
     # - Step: 1e-2 to 1e-3
 
@@ -316,7 +319,13 @@ def run_firedrake_test(
         ),
         # 3. Log observations - log every step
         LogCallback(
-            postprocess=lambda flow: flow.get_observations()[:4],  # Log first 4 probe velocities
+            # Log the first 4 observations; environments with fewer (cavity, step: one stress sensor) are padded
+            # with NaN so that every row has the same length.
+            postprocess=lambda flow: np.pad(
+                np.asarray(flow.get_observations(), dtype=float).ravel()[:4],
+                (0, max(0, 4 - np.asarray(flow.get_observations()).size)),
+                constant_values=np.nan,
+            ),
             nvals=4,
             interval=1,
             filename="output/observations.txt",

@@ -101,8 +101,16 @@ class MaiaInterface:
             self.remoteRoot,
         ) = split_comm_by_appnum(comm_world)
 
+        remote_size = comm_world.Get_size() - self.appNoRanks
+        if remote_size <= 0:
+            # Without the solver application every request would wait for an m-AIA rank that does not exist
+            # (the first `reset()` would hang), so fail here with the launch pattern.
+            raise RuntimeError(
+                "No m-AIA solver ranks found in the MPI job: the Python controller is running alone. "
+                "m-AIA environments run as an MPMD job, e.g. "
+                "`mpirun -n 1 python your_script.py : -n <nproc> maia properties_run.toml`."
+            )
         if nproc is not None:
-            remote_size = comm_world.Get_size() - self.appNoRanks
             if remote_size != nproc:
                 raise RuntimeError(
                     f"MAIA MPMD rank count mismatch: expected {nproc} m-AIA solver "

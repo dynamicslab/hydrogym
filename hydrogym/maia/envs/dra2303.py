@@ -520,6 +520,7 @@ class DRA2303SurfaceWave(DRA2303Base):
             Tuple of ``(initial_observation, info)``.
         """
         print("Resetting environment", flush=True)
+        self._seed_reset(seed)
 
         self.maiaInterface.runTimeSteps(1)
         self.maiaInterface.reinit()

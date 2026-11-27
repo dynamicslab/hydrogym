@@ -404,7 +404,7 @@ def example_production_rl():
                 filename="training_log.txt",
             ),
         ],
-        "max_steps": 200,  # Episode length
+        "max_steps": 200,  # Episode length in solver steps (num_substeps = 5: truncated after 41 environment steps)
     }
     return FlowEnv(env_config)
 

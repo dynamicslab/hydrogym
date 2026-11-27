@@ -307,6 +307,7 @@ class HFDataManager:
         self.repo_id = repo_id
         self.token = token
         self.revision = revision
+        self.resolved_revision: Optional[str] = None  # dataset commit of the last download (set by get_environment_path)
         self.cache_dir = cache_dir or os.path.expanduser("~/.cache/hydrogym")
         # cache_dir as the user actually passed it (None when defaulted). Only
         # an explicitly-set cache_dir is forwarded to snapshot_download(); see
@@ -619,6 +620,10 @@ class HFDataManager:
                     token=self.token,
                     revision=self.revision,
                 )
+                # The snapshot directory is named after the dataset commit that was resolved (a floating `main` when
+                # no revision is pinned); report it so that a run can be reproduced with `hf_revision=<commit>`.
+                self.resolved_revision = os.path.basename(os.path.normpath(hf_cache_path))
+                print(f"Dataset revision: {self.resolved_revision} (pin it with hf_revision=...)")
                 hf_env_path = os.path.join(hf_cache_path, env_name)
                 if os.path.exists(hf_env_path) and os.path.isdir(hf_env_path):
                     real_path = os.path.realpath(hf_env_path)
