@@ -247,6 +247,10 @@ class CavityBase(MaiaFlowEnv):
         For 'running_mean': Penalizes deviation from exponential moving average.
         For 'baseline_mean': Penalizes deviation from pre-computed baseline.
 
+        The deviation is the L1 sum divided by the observation scale ``obs_scale`` of the normalisation strategy and is
+        evaluated on the raw observation. With the default strategy ``none`` (scale 1) the reward is therefore in the
+        raw solver units; choose ``obs_normalization_strategy`` (for example ``U_inf``) for a reward of order one.
+
         Returns:
             Tuple containing:
                 - reward: Negative sum of absolute deviations
