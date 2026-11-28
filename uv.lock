@@ -1168,7 +1168,7 @@ wheels = [
 
 [[package]]
 name = "gymnasium"
-version = "1.3.0"
+version = "1.4.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cloudpickle" },
@@ -1177,14 +1177,14 @@ dependencies = [
     { name = "numpy", version = "2.5.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/4d/ff/14b6880d703dfaca204490979d3254ccd280c99550798993319902873658/gymnasium-1.3.0.tar.gz", hash = "sha256:6939e86e835d6b71b6ba6bfd360487420876deafc79bfb7bacba83a7c446bcf3", size = 830646, upload-time = "2026-04-22T13:47:14.155Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/fb/3a/6713c8a92c259fd7619dc93ff19e6e435463f20d3d7b180b14ce99074c10/gymnasium-1.4.0.tar.gz", hash = "sha256:9754f630a32abfdbb76386abe1bc1e706c982db2d62dfa119c9952eb2de7697d", size = 350436, upload-time = "2026-10-05T11:02:16.217Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e9/73/fda6a25f3beeb5e49d74330b44092b9e5a547395ccd478d1103ddcbff1fc/gymnasium-1.3.0-py3-none-any.whl", hash = "sha256:6b8c159a8540dcbcb221722d7efda24d78ebbcbc3bd2ea1c2611aa2a34471fc2", size = 953904, upload-time = "2026-04-22T13:47:12.13Z" },
+    { url = "https://files.pythonhosted.org/packages/38/4e/6a51be94ae8e9dc8eaddd6ea74a6dde754448c4c746b51a232681f81e41c/gymnasium-1.4.0-py3-none-any.whl", hash = "sha256:1cb947c59e7c72d8eabb2c2274c00cd20948e69f8452a9ef4092223be24fdf0e", size = 476306, upload-time = "2026-10-05T11:02:14.783Z" },
 ]
 
 [[package]]
 name = "gymnax"
-version = "1.0.1"
+version = "0.0.9"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "flax", version = "0.12.8", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
@@ -1195,9 +1195,9 @@ dependencies = [
     { name = "matplotlib" },
     { name = "seaborn" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e4/a1/a9648bc16a86306d22de219ac1fd2104edfd1dc6737c148f50c9a0e78de8/gymnax-1.0.1.tar.gz", hash = "sha256:f56d50e4be2f8827db6e548387bc8806d69785b637ca005c19ea95685eaacdbb", size = 80720, upload-time = "2026-10-18T10:15:02.801Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/9c/2c/91105387a5f6f11fe4c6e773fecd6aeac5a04656f1ea03c28e5228a8a11c/gymnax-0.0.9.tar.gz", hash = "sha256:407ececbefb527b8e18d2bc4df15dd5251fd3507f3f527ad69fbfc7b2d8ae410", size = 57128, upload-time = "2025-05-23T08:53:19.987Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/76/5a/03a25cf0d879ed8fce040c49f38572d0e467c116da612ef5daf60e7a8b98/gymnax-1.0.1-py3-none-any.whl", hash = "sha256:b7adcda33f41f6b8b27ac589be378a154a9209e736147977f6c0aebe5f35e796", size = 101241, upload-time = "2026-10-18T10:15:01.4Z" },
+    { url = "https://files.pythonhosted.org/packages/fd/04/1042695a9aee9d619d4802272ffeb7ab88f4c241d16c2701f666ec7e529b/gymnax-0.0.9-py3-none-any.whl", hash = "sha256:a73359cfbc2664f4963ccac06afe2b46ff7825cf48dd97200b0f4025f6f995bc", size = 86567, upload-time = "2025-05-23T08:53:18.316Z" },
 ]
 
 [[package]]
